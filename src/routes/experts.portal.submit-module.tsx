@@ -1,0 +1,194 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { FileEdit, CheckCircle2, AlertCircle, Send, Info } from "lucide-react";
+import { PageShell } from "@/components/baruna/page/PageShell";
+import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
+import {
+  DEMO_TRAINER,
+  canSubmitAdditionalModule,
+  LEVEL_MODULE_LIMIT,
+} from "@/lib/trainerModules";
+
+export const Route = createFileRoute("/experts/portal/submit-module")({
+  head: () => ({
+    meta: [
+      { title: "Submit Module — Trainer Portal" },
+      { name: "description", content: "Submit a training module for BARUNA review and publication as a Self-Paced Course." },
+    ],
+    links: [{ rel: "canonical", href: "/experts/portal/submit-module" }],
+  }),
+  component: SubmitModulePage,
+});
+
+const RESOURCES = [
+  "Complete module document (PDF)",
+  "Presentation slides (PDF or PPT)",
+  "Learning video (optional but strongly encouraged)",
+  "Quiz / assessment with answer key",
+  "Trainer guide",
+  "Evaluation form",
+  "Course cover image",
+  "Practical exercise (if applicable)",
+];
+
+const DECLARATIONS = [
+  "This is my own original work.",
+  "I hold or have cleared all copyrights for included content.",
+  "I have no undisclosed conflict of interest.",
+  "I accept the BARUNA Code of Conduct and reviewer feedback process.",
+];
+
+function SubmitModulePage() {
+  const gate = canSubmitAdditionalModule(DEMO_TRAINER, DEMO_TRAINER.approvedModules);
+  const [submitted, setSubmitted] = useState(false);
+  const [checked, setChecked] = useState<Record<number, boolean>>({});
+  const allDecls = DECLARATIONS.every((_, i) => checked[i]);
+
+  return (
+    <PageShell
+      sidebar={{ ...EXPERTS_SIDEBAR_META, title: "Trainer Portal", subtitle: "Submit a new training module.", sections: trainerPortalNav("/experts/portal/submit-module") }}
+      cta={{ icon: FileEdit, title: "After submission", description: "Your module enters Administrative → Academic → QA → Digital Learning → Final Approval.", button: "View Review Status", href: "/experts/portal/review-status" }}
+    >
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-navy">Submit a Training Module</h1>
+          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+            Your submission enters the BARUNA multi-stage review pipeline. Only Approved modules are published as Self-Paced Courses.
+          </p>
+        </div>
+
+        {!gate.allowed && (
+          <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-4">
+            <p className="flex items-center gap-2 text-sm font-bold text-destructive"><AlertCircle className="h-4 w-4" /> Submission Blocked</p>
+            <p className="mt-1 text-sm text-foreground/80">{gate.reason}</p>
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-marine/20 bg-marine/5 p-4 text-sm text-foreground/80">
+          <p className="flex items-center gap-2 font-bold text-marine"><Info className="h-4 w-4" /> Level limit</p>
+          <p className="mt-1">
+            Your current level ({DEMO_TRAINER.awardedLevel}) allows up to <strong>{LEVEL_MODULE_LIMIT[DEMO_TRAINER.awardedLevel]}</strong> active module{LEVEL_MODULE_LIMIT[DEMO_TRAINER.awardedLevel] === 1 ? "" : "s"}. You currently have <strong>{DEMO_TRAINER.approvedModules}</strong>.
+          </p>
+        </div>
+
+        {submitted ? (
+          <div className="rounded-2xl border border-eco-community/30 bg-eco-community/5 p-6 text-center">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-eco-community" />
+            <h2 className="mt-3 font-display text-xl font-bold text-navy">Module submitted</h2>
+            <p className="mt-2 text-sm text-foreground/70">Your module now enters the Administrative Review stage. You will be notified at every status change.</p>
+          </div>
+        ) : (
+          <form
+            className="space-y-5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!gate.allowed || !allDecls) return;
+              setSubmitted(true);
+            }}
+          >
+            <Section title="Module Metadata">
+              <Grid>
+                <Field label="Module Title" required><input className={inp} required /></Field>
+                <Field label="Topic / Field" required><input className={inp} required /></Field>
+                <Field label="Competency Area" required><input className={inp} required /></Field>
+                <Field label="Delivery Format" required>
+                  <select className={inp} required defaultValue="Self-paced">
+                    <option>Self-paced</option><option>Scheduled</option><option>Blended</option>
+                  </select>
+                </Field>
+                <Field label="Instructional Hours" required><input type="number" min={1} className={inp} required /></Field>
+                <Field label="Independent Study Hours"><input type="number" min={0} className={inp} /></Field>
+                <Field label="Level" required>
+                  <select className={inp} required defaultValue="Intermediate">
+                    <option>Introductory</option><option>Intermediate</option><option>Advanced</option>
+                  </select>
+                </Field>
+                <Field label="Language" required><input className={inp} defaultValue="English" required /></Field>
+              </Grid>
+              <Field label="Short Description" required>
+                <textarea className={`${inp} min-h-[80px]`} required />
+              </Field>
+              <Field label="Rationale">
+                <textarea className={`${inp} min-h-[60px]`} placeholder="Why this module matters strategically." />
+              </Field>
+            </Section>
+
+            <Section title="Target Learners">
+              <Field label="Target Participants" required><input className={inp} required /></Field>
+              <Field label="Entry Requirements"><input className={inp} /></Field>
+            </Section>
+
+            <Section title="Learning Design">
+              <Field label="Learning Objectives" required><textarea className={`${inp} min-h-[80px]`} required /></Field>
+              <Field label="Expected Competency Outcomes" required><textarea className={`${inp} min-h-[80px]`} required /></Field>
+              <Grid>
+                <Field label="Assessment Method" required><input className={inp} required /></Field>
+                <Field label="Passing Score (%)" required><input type="number" min={0} max={100} defaultValue={70} className={inp} required /></Field>
+              </Grid>
+            </Section>
+
+            <Section title="Attached Resources">
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {RESOURCES.map((r) => (
+                  <li key={r} className="flex items-center gap-2 rounded-lg border border-dashed border-border p-3 text-xs text-foreground/70">
+                    <input type="file" className="hidden" id={r} />
+                    <label htmlFor={r} className="flex-1 cursor-pointer">{r}</label>
+                    <span className="text-[0.65rem] font-bold text-marine">UPLOAD</span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+
+            <Section title="Copyright, Originality & Ethics">
+              <Grid>
+                <Field label="Copyright Holder" required><input className={inp} defaultValue={DEMO_TRAINER.fullName} required /></Field>
+                <Field label="Licensing"><input className={inp} placeholder="e.g. CC BY-NC-SA 4.0" /></Field>
+              </Grid>
+              <div className="space-y-2 rounded-xl border border-marine/20 bg-marine/5 p-4">
+                {DECLARATIONS.map((d, i) => (
+                  <label key={i} className="flex items-start gap-2 text-xs font-medium text-foreground/85">
+                    <input type="checkbox" className="mt-0.5 accent-marine" checked={!!checked[i]} onChange={(e) => setChecked({ ...checked, [i]: e.target.checked })} />
+                    {d}
+                  </label>
+                ))}
+              </div>
+            </Section>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="submit" disabled={!gate.allowed || !allDecls} className="inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy disabled:cursor-not-allowed disabled:opacity-50">
+                <Send className="h-4 w-4" /> Submit for Review
+              </button>
+              <button type="button" className="rounded-xl border border-border px-5 py-3 text-sm font-semibold text-navy hover:bg-muted">
+                Save as Draft
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </PageShell>
+  );
+}
+
+const inp = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-marine focus:ring-1 focus:ring-marine";
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+      <h3 className="font-display text-base font-bold text-navy">{title}</h3>
+      <div className="mt-4 space-y-4">{children}</div>
+    </section>
+  );
+}
+function Grid({ children }: { children: React.ReactNode }) {
+  return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
+}
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
+        {label}{required && <span className="text-destructive"> *</span>}
+      </label>
+      {children}
+    </div>
+  );
+}

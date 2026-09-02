@@ -1,0 +1,1 @@
+ALTER VIEW public.experts_public_v SET (security_invoker = true);
