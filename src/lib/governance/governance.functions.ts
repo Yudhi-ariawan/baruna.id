@@ -8,6 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requirePermission } from "@/lib/auth/permissions.server";
 
 const AppRole = z.enum(["admin", "management", "qa_reviewer"]);
 const Recommendation = z.enum(["approve", "reject", "request_changes"]);
@@ -461,52 +462,32 @@ export const exportGovernanceAuditCsv = createServerFn({ method: "POST" })
 // ─── Role administration (admin only) ──────────────────────────────────────
 export const grantRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
-    z.object({ userId: z.string().uuid(), role: AppRole }).parse(d),
-  )
+  .inputValidator((d) => z.object({ userId: z.string().uuid(), role: AppRole }).parse(d))
   .handler(async ({ data, context }) => {
-    if (!(await assertRole(context, "admin"))) throw new Error("forbidden");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
-      .from("user_roles")
-      .upsert({ user_id: data.userId, role: data.role, granted_by: context.userId }, { onConflict: "user_id,role" })
-      .select("id")
-      .single();
+    await requirePermission(context, "users.assign_role");
+    const { data: row, error } = await context.supabase.rpc(
+      "assign_rbac_role" as never,
+      {
+        _target_user_id: data.userId,
+        _role_code: data.role,
+      } as never,
+    );
     if (error) throw new Error(error.message);
-    await supabaseAdmin.rpc("log_governance_event", {
-      _event_type: "role_granted",
-      _actor_id: context.userId,
-      _subject_id: null as unknown as string,
-      _entity_type: "user_role",
-      _entity_id: row.id,
-      _before: null,
-      _after: { user_id: data.userId, role: data.role },
-    });
-    return row;
+    return { id: row as string };
   });
 
 export const revokeRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
-    z.object({ userId: z.string().uuid(), role: AppRole }).parse(d),
-  )
+  .inputValidator((d) => z.object({ userId: z.string().uuid(), role: AppRole }).parse(d))
   .handler(async ({ data, context }) => {
-    if (!(await assertRole(context, "admin"))) throw new Error("forbidden");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("user_roles")
-      .delete()
-      .eq("user_id", data.userId)
-      .eq("role", data.role);
+    await requirePermission(context, "users.assign_role");
+    const { error } = await context.supabase.rpc(
+      "revoke_rbac_role" as never,
+      {
+        _target_user_id: data.userId,
+        _role_code: data.role,
+      } as never,
+    );
     if (error) throw new Error(error.message);
-    await supabaseAdmin.rpc("log_governance_event", {
-      _event_type: "role_revoked",
-      _actor_id: context.userId,
-      _subject_id: null as unknown as string,
-      _entity_type: "user_role",
-      _entity_id: `${data.userId}:${data.role}`,
-      _before: { user_id: data.userId, role: data.role },
-      _after: null,
-    });
     return { ok: true };
   });
