@@ -7,7 +7,20 @@ import { hasPermission, requirePermission } from "@/lib/auth/permissions.server"
 // Keep the temporary untyped boundary isolated to this server-only module.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-const RoleCode = z.enum(["super_admin", "admin", "management", "qa_reviewer"]);
+const RoleCode = z.enum([
+  "super_admin",
+  "admin",
+  "management",
+  "qa_reviewer",
+  "registered_user",
+  "participant",
+  "expert",
+  "operator",
+  "reviewer",
+  "verifier",
+  "approver",
+  "publisher",
+]);
 const UserId = z.string().uuid();
 
 export type AdminUser = {

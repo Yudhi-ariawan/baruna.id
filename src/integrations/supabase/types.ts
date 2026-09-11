@@ -14,6 +14,157 @@ export type Database = {
   }
   public: {
     Tables: {
+      rbac_role_change_requests: {
+        Row: {
+          action: string
+          applied_at: string | null
+          created_at: string
+          decision_note: string | null
+          id: string
+          reason: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          role_id: string
+          scope: Json
+          status: string
+          target_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          applied_at?: string | null
+          created_at?: string
+          decision_note?: string | null
+          id?: string
+          reason: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role_id: string
+          scope?: Json
+          status?: string
+          target_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          applied_at?: string | null
+          created_at?: string
+          decision_note?: string | null
+          id?: string
+          reason?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role_id?: string
+          scope?: Json
+          status?: string
+          target_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rbac_role_change_requests_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "rbac_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rbac_user_roles: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          granted_by: string | null
+          id: string
+          is_primary: boolean
+          reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          role_id: string
+          scope: Json
+          status: string
+          user_id: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          is_primary?: boolean
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_id: string
+          scope?: Json
+          status?: string
+          user_id: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          is_primary?: boolean
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_id?: string
+          scope?: Json
+          status?: string
+          user_id?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rbac_user_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "rbac_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rbac_roles: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       certificates: {
         Row: {
           certificate_number: string
@@ -3833,6 +3984,22 @@ export type Database = {
       }
     }
     Functions: {
+      current_user_has_any_permission: {
+        Args: { _permissions: string[] }
+        Returns: boolean
+      }
+      current_user_has_permission: {
+        Args: { _permission: string }
+        Returns: boolean
+      }
+      has_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
+      }
+      has_rbac_role: {
+        Args: { _role: string; _user_id: string }
+        Returns: boolean
+      }
       _expert_child_read: { Args: { _expert_id: string }; Returns: boolean }
       _expert_child_write: { Args: { _expert_id: string }; Returns: boolean }
       _expert_is_owner: { Args: { _expert_id: string }; Returns: boolean }

@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import type { BusinessPermission } from "@/lib/auth/rbac.types";
 
-export type Permission =
+export type CorePermission =
   | "users.read"
   | "users.update"
   | "users.invite"
@@ -13,12 +14,14 @@ export type Permission =
   | "governance.read"
   | "governance.manage";
 
+export type Permission = CorePermission | BusinessPermission;
+
 type AuthContext = {
   supabase: SupabaseClient<Database>;
   userId: string;
 };
 
-/** Check a permission using the authenticated, RLS-bound Supabase client. */
+/** Check the authenticated caller, including profile and assignment lifecycle. */
 export async function hasPermission(
   context: AuthContext,
   permission: Permission,
@@ -26,15 +29,14 @@ export async function hasPermission(
   // Generated database types are refreshed after the remote migration is applied.
   const client = context.supabase as unknown as {
     rpc: (
-      name: "has_permission",
-      args: { _user_id: string; _permission: string },
+      name: "current_user_has_permission",
+      args: { _permission: string },
     ) => Promise<{
       data: boolean | null;
       error: { message?: string } | null;
     }>;
   };
-  const { data, error } = await client.rpc("has_permission", {
-    _user_id: context.userId,
+  const { data, error } = await client.rpc("current_user_has_permission", {
     _permission: permission,
   });
   if (error) throw new Error(error.message ?? "permission_check_failed");
