@@ -4,6 +4,8 @@ import type { Database } from "@/integrations/supabase/types";
 export type Permission =
   | "users.read"
   | "users.update"
+  | "users.invite"
+  | "users.suspend"
   | "users.assign_role"
   | "roles.read"
   | "roles.manage"

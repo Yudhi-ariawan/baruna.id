@@ -221,3 +221,18 @@
   background-image: linear-gradient(135deg, var(--marine), var(--ocean));
   color: var(--marine-foreground);
 }
+
+@utility input-admin {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+
+  &:focus {
+    border-color: var(--color-marine);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-marine) 15%, transparent);
+  }
+}

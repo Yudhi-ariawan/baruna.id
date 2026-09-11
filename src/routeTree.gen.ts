@@ -26,6 +26,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AcademyRouteImport } from './routes/academy'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -33,6 +34,7 @@ import { Route as MySubmissionsIndexRouteImport } from './routes/my-submissions.
 import { Route as GovernanceIndexRouteImport } from './routes/governance.index'
 import { Route as ExpertsIndexRouteImport } from './routes/experts.index'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AcademyIndexRouteImport } from './routes/academy.index'
 import { Route as MySubmissionsNewRouteImport } from './routes/my-submissions.new'
 import { Route as MySubmissionsIdRouteImport } from './routes/my-submissions.$id'
@@ -65,6 +67,7 @@ import { Route as EventsCategoriesRouteImport } from './routes/events.categories
 import { Route as EventsCalendarRouteImport } from './routes/events.calendar'
 import { Route as EventsAllRouteImport } from './routes/events.all'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
 import { Route as AcademySelfPacedRouteImport } from './routes/academy.self-paced'
@@ -198,6 +201,11 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AcademyRoute = AcademyRouteImport.update({
   id: '/academy',
   path: '/academy',
@@ -232,6 +240,11 @@ const EventsIndexRoute = EventsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => EventsRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AcademyIndexRoute = AcademyIndexRouteImport.update({
   id: '/',
@@ -394,6 +407,11 @@ const EventsSlugRoute = EventsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => EventsRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AcademyWorkshopRoute = AcademyWorkshopRouteImport.update({
   id: '/workshop',
@@ -651,6 +669,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/academy': typeof AcademyRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
@@ -677,6 +696,7 @@ export interface FileRoutesByFullPath {
   '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
+  '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
   '/events/calendar': typeof EventsCalendarRoute
@@ -709,6 +729,7 @@ export interface FileRoutesByFullPath {
   '/my-submissions/$id': typeof MySubmissionsIdRoute
   '/my-submissions/new': typeof MySubmissionsNewRoute
   '/academy/': typeof AcademyIndexRoute
+  '/admin/': typeof AdminIndexRoute
   '/events/': typeof EventsIndexRoute
   '/experts/': typeof ExpertsIndexRoute
   '/governance/': typeof GovernanceIndexRoute
@@ -777,6 +798,7 @@ export interface FileRoutesByTo {
   '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
+  '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
   '/events/calendar': typeof EventsCalendarRoute
@@ -808,6 +830,7 @@ export interface FileRoutesByTo {
   '/my-submissions/$id': typeof MySubmissionsIdRoute
   '/my-submissions/new': typeof MySubmissionsNewRoute
   '/academy': typeof AcademyIndexRoute
+  '/admin': typeof AdminIndexRoute
   '/events': typeof EventsIndexRoute
   '/experts': typeof ExpertsIndexRoute
   '/governance': typeof GovernanceIndexRoute
@@ -856,6 +879,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/academy': typeof AcademyRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
@@ -882,6 +906,7 @@ export interface FileRoutesById {
   '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
+  '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
   '/events/calendar': typeof EventsCalendarRoute
@@ -914,6 +939,7 @@ export interface FileRoutesById {
   '/my-submissions/$id': typeof MySubmissionsIdRoute
   '/my-submissions/new': typeof MySubmissionsNewRoute
   '/academy/': typeof AcademyIndexRoute
+  '/admin/': typeof AdminIndexRoute
   '/events/': typeof EventsIndexRoute
   '/experts/': typeof ExpertsIndexRoute
   '/governance/': typeof GovernanceIndexRoute
@@ -963,6 +989,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/academy'
+    | '/admin'
     | '/analytics'
     | '/auth'
     | '/community'
@@ -989,6 +1016,7 @@ export interface FileRouteTypes {
     | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
+    | '/admin/users'
     | '/events/$slug'
     | '/events/all'
     | '/events/calendar'
@@ -1021,6 +1049,7 @@ export interface FileRouteTypes {
     | '/my-submissions/$id'
     | '/my-submissions/new'
     | '/academy/'
+    | '/admin/'
     | '/events/'
     | '/experts/'
     | '/governance/'
@@ -1089,6 +1118,7 @@ export interface FileRouteTypes {
     | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
+    | '/admin/users'
     | '/events/$slug'
     | '/events/all'
     | '/events/calendar'
@@ -1120,6 +1150,7 @@ export interface FileRouteTypes {
     | '/my-submissions/$id'
     | '/my-submissions/new'
     | '/academy'
+    | '/admin'
     | '/events'
     | '/experts'
     | '/governance'
@@ -1167,6 +1198,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/academy'
+    | '/admin'
     | '/analytics'
     | '/auth'
     | '/community'
@@ -1193,6 +1225,7 @@ export interface FileRouteTypes {
     | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
+    | '/admin/users'
     | '/events/$slug'
     | '/events/all'
     | '/events/calendar'
@@ -1225,6 +1258,7 @@ export interface FileRouteTypes {
     | '/my-submissions/$id'
     | '/my-submissions/new'
     | '/academy/'
+    | '/admin/'
     | '/events/'
     | '/experts/'
     | '/governance/'
@@ -1273,6 +1307,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AcademyRoute: typeof AcademyRouteWithChildren
+  AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   AuthRoute: typeof AuthRoute
   CommunityRoute: typeof CommunityRoute
@@ -1417,6 +1452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/academy': {
       id: '/academy'
       path: '/academy'
@@ -1465,6 +1507,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/'
       preLoaderRoute: typeof EventsIndexRouteImport
       parentRoute: typeof EventsRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/academy/': {
       id: '/academy/'
@@ -1689,6 +1738,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/$slug'
       preLoaderRoute: typeof EventsSlugRouteImport
       parentRoute: typeof EventsRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/academy/workshop': {
       id: '/academy/workshop'
@@ -2105,6 +2161,18 @@ const AcademyRouteChildren: AcademyRouteChildren = {
 const AcademyRouteWithChildren =
   AcademyRoute._addFileChildren(AcademyRouteChildren)
 
+interface AdminRouteChildren {
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface EventsRouteChildren {
   EventsSlugRoute: typeof EventsSlugRoute
   EventsAllRoute: typeof EventsAllRoute
@@ -2253,6 +2321,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AcademyRoute: AcademyRouteWithChildren,
+  AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   AuthRoute: AuthRoute,
   CommunityRoute: CommunityRoute,
