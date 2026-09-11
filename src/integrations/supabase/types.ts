@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          job_title: string | null
+          organization: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          is_active?: boolean
+          job_title?: string | null
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          job_title?: string | null
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rbac_role_change_requests: {
         Row: {
           action: string
@@ -23,6 +59,8 @@ export type Database = {
           id: string
           reason: string
           requested_by: string
+          requested_valid_from: string
+          requested_valid_until: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           role_id: string
@@ -39,6 +77,8 @@ export type Database = {
           id?: string
           reason: string
           requested_by: string
+          requested_valid_from?: string
+          requested_valid_until?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           role_id: string
@@ -55,6 +95,8 @@ export type Database = {
           id?: string
           reason?: string
           requested_by?: string
+          requested_valid_from?: string
+          requested_valid_until?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           role_id?: string
@@ -3992,6 +4034,14 @@ export type Database = {
         Args: { _permission: string }
         Returns: boolean
       }
+      decide_rbac_role_change: {
+        Args: {
+          _decision: string
+          _decision_note?: string
+          _request_id: string
+        }
+        Returns: string
+      }
       has_permission: {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
@@ -3999,6 +4049,18 @@ export type Database = {
       has_rbac_role: {
         Args: { _role: string; _user_id: string }
         Returns: boolean
+      }
+      request_rbac_role_change: {
+        Args: {
+          _action: string
+          _reason: string
+          _role_code: string
+          _scope?: Json
+          _target_user_id: string
+          _valid_from?: string
+          _valid_until?: string
+        }
+        Returns: string
       }
       _expert_child_read: { Args: { _expert_id: string }; Returns: boolean }
       _expert_child_write: { Args: { _expert_id: string }; Returns: boolean }

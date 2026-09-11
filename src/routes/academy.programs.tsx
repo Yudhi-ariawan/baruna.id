@@ -728,14 +728,16 @@ function ProgramsPage() {
   function toggle(group: GroupKey, value: string) {
     if (group === "types") {
       const set = new Set(sel.types);
-      set.has(value) ? set.delete(value) : set.add(value);
+      if (set.has(value)) set.delete(value);
+      else set.add(value);
       const arr = [...set];
       patchSearch({ type: "", types: csv(arr), page: 1 });
       return;
     }
     const currentArr = (sel as Record<string, string[] | string>)[group] as string[];
     const set = new Set(currentArr);
-    set.has(value) ? set.delete(value) : set.add(value);
+    if (set.has(value)) set.delete(value);
+    else set.add(value);
     patchSearch({ [group]: csv([...set]), page: 1 } as Partial<ProgramsSearch>);
   }
 
