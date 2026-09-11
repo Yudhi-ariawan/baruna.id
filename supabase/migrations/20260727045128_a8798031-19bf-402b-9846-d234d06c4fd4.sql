@@ -1,5 +1,14 @@
 
 -- Fixed IDs so PostgREST tests can reference them deterministically.
+-- These disposable acceptance-test users only exist in the original project.
+DO $$
+BEGIN
+IF (SELECT count(*) FROM auth.users WHERE id IN (
+  '757d0081-1e4d-456c-b034-277c5dcf03a8',
+  '11d283bb-a2a6-4ed6-a0c1-da8e4dce53ff',
+  'f3b67fba-1b46-4698-b475-688a16798824',
+  'efc6743c-92e5-4932-a9a0-2acec2428c53'
+)) = 4 THEN
 INSERT INTO public.review_subjects (id, kind, external_ref, title, description, submitted_by, current_status, required_recommendations, metadata)
 VALUES
   ('11111111-1111-1111-1111-111111111111', 'module', 'test-mod-1', 'Test Module Subject #1',
@@ -22,3 +31,5 @@ VALUES
    '11d283bb-a2a6-4ed6-a0c1-da8e4dce53ff', 'efc6743c-92e5-4932-a9a0-2acec2428c53', 'active', false),
   ('a4444444-4444-4444-4444-444444444444', '33333333-3333-3333-3333-333333333333',
    'f3b67fba-1b46-4698-b475-688a16798824', 'efc6743c-92e5-4932-a9a0-2acec2428c53', 'active', false);
+END IF;
+END $$;

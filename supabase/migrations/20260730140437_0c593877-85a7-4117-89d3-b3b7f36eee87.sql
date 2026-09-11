@@ -12,8 +12,12 @@ DECLARE
   v_prev public.self_paced_access_model_v1;
   v_prev_ver integer;
   v_new_ver integer;
-  v_actor uuid := 'efc6743c-92e5-4932-a9a0-2acec2428c53';
+  v_actor uuid;
 BEGIN
+  -- The historical operator may not exist when provisioning a fresh project.
+  SELECT id INTO v_actor FROM auth.users
+  WHERE id = 'efc6743c-92e5-4932-a9a0-2acec2428c53';
+
   SELECT id, self_paced_access_model, self_paced_access_model_version
     INTO v_offering, v_prev, v_prev_ver
   FROM public.course_offerings
