@@ -111,7 +111,7 @@ export function HomeWelcomeCard() {
         search={{ mode: "signup" }}
         className="mt-6 flex w-full items-center justify-between rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
       >
-        Daftar Sekarang
+        Register Now
         <ArrowRight className="h-4 w-4" />
       </Link>
     </div>
