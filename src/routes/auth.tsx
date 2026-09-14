@@ -5,23 +5,26 @@ import { supabase } from "@/integrations/supabase/client";
 
 const signupSchema = z
   .object({
-    displayName: z.string().trim().min(2, "Nama lengkap wajib diisi (minimal 2 karakter)."),
-    organization: z.string().trim().min(2, "Instansi / organisasi wajib diisi."),
-    jobTitle: z.string().trim().min(2, "Jabatan / profesi wajib diisi."),
+    displayName: z
+      .string()
+      .trim()
+      .min(2, "Full name is required and must be at least 2 characters."),
+    organization: z.string().trim().min(2, "Institution / organization is required."),
+    jobTitle: z.string().trim().min(2, "Job title / profession is required."),
     phone: z
       .string()
       .trim()
-      .min(8, "Nomor telepon / WhatsApp wajib diisi (minimal 8 karakter).")
-      .regex(/^\+?[0-9 ()-]+$/, "Gunakan format nomor telepon yang valid."),
-    email: z.string().trim().email("Alamat email tidak valid."),
-    password: z.string().min(8, "Password minimal 8 karakter."),
-    confirmPassword: z.string().min(8, "Konfirmasi password wajib diisi."),
+      .min(8, "Phone number / WhatsApp is required and must be at least 8 characters.")
+      .regex(/^\+?[0-9 ()-]+$/, "Enter a valid phone number."),
+    email: z.string().trim().email("Enter a valid email address."),
+    password: z.string().min(8, "Password must be at least 8 characters."),
+    confirmPassword: z.string().min(8, "Confirm password is required."),
     acceptedTerms: z.literal(true, {
-      errorMap: () => ({ message: "Anda harus menyetujui Syarat & Ketentuan." }),
+      errorMap: () => ({ message: "You must agree to the Terms of Service and Privacy Policy." }),
     }),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Konfirmasi password tidak cocok.",
+    message: "Passwords do not match.",
     path: ["confirmPassword"],
   });
 
@@ -106,8 +109,8 @@ function AuthPage() {
         if (error) throw error;
         setSuccess(
           data.session
-            ? "Registrasi berhasil. Akun Anda sudah aktif dan dapat digunakan."
-            : "Registrasi berhasil. Silakan periksa email Anda untuk melakukan verifikasi akun.",
+            ? "Registration successful. Your account is active and ready to use."
+            : "Registration successful. Please check your email to verify your account.",
         );
         return;
       } else {
@@ -117,7 +120,7 @@ function AuthPage() {
       navigate({ to: redirect ?? "/academy/learn" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        setError(err.errors[0]?.message ?? "Mohon lengkapi seluruh data pendaftaran.");
+        setError(err.errors[0]?.message ?? "Please complete all required registration fields.");
       } else {
         setError(err instanceof Error ? err.message : "Authentication failed");
       }
@@ -144,30 +147,42 @@ function AuthPage() {
         <form onSubmit={submit} className="mt-6 space-y-4">
           {mode === "signup" ? (
             <>
-              <AuthField label="Nama Lengkap" value={displayName} onChange={setDisplayName} />
               <AuthField
-                label="Instansi / Organisasi"
+                label="Full Name"
+                value={displayName}
+                onChange={setDisplayName}
+                placeholder="Enter your full name"
+              />
+              <AuthField
+                label="Institution / Organization"
                 value={organization}
                 onChange={setOrganization}
+                placeholder="Enter your institution or organization"
               />
-              <AuthField label="Jabatan / Profesi" value={jobTitle} onChange={setJobTitle} />
               <AuthField
-                label="Nomor Telepon / WhatsApp"
+                label="Job Title / Profession"
+                value={jobTitle}
+                onChange={setJobTitle}
+                placeholder="e.g. Marine Researcher, Fisheries Officer"
+              />
+              <AuthField
+                label="Phone Number / WhatsApp"
                 type="tel"
                 value={phone}
                 onChange={setPhone}
-                placeholder="+62..."
+                placeholder="e.g. +628..."
               />
             </>
           ) : null}
           {mode !== "invite" ? (
             <div>
-              <label className="block text-sm font-medium text-navy">Email</label>
+              <label className="block text-sm font-medium text-navy">Email Address</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-marine"
               />
             </div>
@@ -180,6 +195,7 @@ function AuthPage() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-marine"
             />
             {(mode === "signup" || mode === "invite") && (
@@ -189,13 +205,14 @@ function AuthPage() {
           {mode === "signup" ? (
             <>
               <div>
-                <label className="block text-sm font-medium text-navy">Konfirmasi Password</label>
+                <label className="block text-sm font-medium text-navy">Confirm Password</label>
                 <input
                   type="password"
                   required
                   minLength={8}
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Re-enter your password"
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-marine"
                 />
               </div>
@@ -207,7 +224,7 @@ function AuthPage() {
                   onChange={(event) => setAcceptedTerms(event.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-border accent-marine"
                 />
-                <span>Saya menyetujui Syarat &amp; Ketentuan serta Kebijakan Privasi BARUNA.</span>
+                <span>I agree to the BARUNA Terms of Service and Privacy Policy.</span>
               </label>
             </>
           ) : null}
@@ -232,7 +249,7 @@ function AuthPage() {
                 ? "Sign in"
                 : mode === "invite"
                   ? "Set password"
-                  : "Create account"}
+                  : "Create Account"}
           </button>
         </form>
         {mode !== "invite" ? (
