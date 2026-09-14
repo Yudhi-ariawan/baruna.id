@@ -12,13 +12,14 @@ import {
   Info,
   Search,
   Bell,
-  ChevronDown,
+  LogOut,
   Menu,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "./Logo";
-import { images } from "@/data/baruna";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { useHomeExperience } from "./home-experience";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Home", href: "/", icon: Home },
@@ -35,6 +36,8 @@ const navItems: { label: string; href: string; icon: LucideIcon }[] = [
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { authState, viewer, signOut } = useHomeExperience();
+  const dashboardUrl = viewer?.variant === "admin" ? "/admin/users" : "/dashboard";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
@@ -77,31 +80,61 @@ export function Navbar() {
           >
             <Search className="h-5 w-5" />
           </Link>
-          <Link
-            to="/notifications"
-            className="relative grid h-10 w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1.5 top-1.5 grid h-4 w-4 place-items-center rounded-full bg-accent text-[0.6rem] font-bold text-accent-foreground">
-              3
-            </span>
-          </Link>
-
-          <Link to="/dashboard" className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted">
-            <img
-              src={images.userAvatar}
-              alt="Komang"
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-full object-cover ring-2 ring-marine/30"
+          {authState === "authenticated" && viewer ? (
+            <>
+              <Link
+                to="/notifications"
+                className="grid h-10 w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+              </Link>
+              <Link
+                to={dashboardUrl}
+                className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted"
+              >
+                <ProfileAvatar name={viewer.displayName} url={viewer.avatarUrl} />
+                <span className="hidden text-left leading-tight sm:block">
+                  <span className="block max-w-28 truncate text-sm font-semibold text-navy">
+                    {viewer.displayName}
+                  </span>
+                  <span className="block max-w-28 truncate text-xs text-muted-foreground">
+                    {viewer.primaryRoleLabel}
+                  </span>
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="hidden h-10 w-10 place-items-center rounded-full text-foreground/60 transition-colors hover:bg-muted hover:text-marine sm:grid"
+                aria-label="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </>
+          ) : authState === "loading" ? (
+            <span
+              className="h-9 w-28 animate-pulse rounded-full bg-muted"
+              aria-label="Loading account"
             />
-            <span className="hidden text-left leading-tight sm:block">
-              <span className="block text-sm font-semibold text-navy">Komang</span>
-              <span className="block text-xs text-muted-foreground">Learner</span>
-            </span>
-            <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
-          </Link>
+          ) : (
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link
+                to="/auth"
+                search={{ mode: "signin" }}
+                className="rounded-lg px-3 py-2 text-sm font-semibold text-navy hover:bg-muted"
+              >
+                Login
+              </Link>
+              <Link
+                to="/auth"
+                search={{ mode: "signup" }}
+                className="rounded-lg bg-marine px-3 py-2 text-sm font-semibold text-white hover:bg-marine/90"
+              >
+                Register
+              </Link>
+            </div>
+          )}
 
           {/* Mobile menu */}
           <Sheet open={open} onOpenChange={setOpen}>
@@ -128,6 +161,39 @@ export function Navbar() {
                     {label}
                   </Link>
                 ))}
+                <div className="mt-4 border-t border-border pt-4">
+                  {authState === "authenticated" && viewer ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        void signOut();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
+                    >
+                      <LogOut className="h-5 w-5" /> Sign out
+                    </button>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Link
+                        to="/auth"
+                        search={{ mode: "signin" }}
+                        onClick={() => setOpen(false)}
+                        className="rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold"
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        to="/auth"
+                        search={{ mode: "signup" }}
+                        onClick={() => setOpen(false)}
+                        className="rounded-lg bg-marine px-3 py-2 text-center text-sm font-semibold text-white"
+                      >
+                        Register
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </nav>
             </SheetContent>
           </Sheet>

@@ -9,7 +9,6 @@ import courseCoastal from "@/assets/course-coastal.jpg";
 import expert1 from "@/assets/expert-1.jpg";
 import expert2 from "@/assets/expert-2.jpg";
 import expert3 from "@/assets/expert-3.jpg";
-import userAvatar from "@/assets/user-avatar.jpg";
 
 import {
   GraduationCap,
@@ -24,7 +23,6 @@ import {
 
 export const images = {
   heroOcean,
-  userAvatar,
 };
 
 export const navItems = [
@@ -36,13 +34,6 @@ export const navItems = [
   { label: "Community", href: "/community" },
   { label: "Events", href: "/events" },
   { label: "Partnership", href: "/partnership" },
-];
-
-export const learnerStats = [
-  { label: "Enrolled Courses", value: "12", icon: BookOpen },
-  { label: "Certificates Earned", value: "4", icon: GraduationCap },
-  { label: "Communities Joined", value: "7", icon: Users },
-  { label: "Upcoming Events", value: "5", icon: CalendarDays },
 ];
 
 export type ContinueCourse = {
@@ -170,7 +161,8 @@ export const ecosystem: EcosystemItem[] = [
   },
   {
     title: "Partnership",
-    description: "Collaboration with government, academia, organizations, and development partners.",
+    description:
+      "Collaboration with government, academia, organizations, and development partners.",
     icon: Handshake,
     color: "eco-partnership",
     href: "/partnership",
@@ -256,8 +248,7 @@ export const experts: Expert[] = [
   },
   {
     name: "Dr. Larasati Pangan",
-    position:
-      "Secretary of The Agency for Marine and Fisheries and Human Resources Development",
+    position: "Secretary of The Agency for Marine and Fisheries and Human Resources Development",
     image: expert3,
   },
 ];

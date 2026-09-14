@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const searchSchema = z.object({
   redirect: z.string().optional(),
-  mode: z.literal("invite").optional(),
+  mode: z.enum(["signin", "signup", "invite"]).optional(),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -27,9 +27,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { redirect, mode: requestedMode } = useSearch({ from: "/auth" });
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup" | "invite">(
-    requestedMode === "invite" ? "invite" : "signin",
-  );
+  const [mode, setMode] = useState<"signin" | "signup" | "invite">(requestedMode ?? "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);

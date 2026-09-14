@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import favicon from "@/assets/baruna-icon.png";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PresentationMode } from "@/components/baruna/PresentationMode";
+import { HomeExperienceProvider } from "@/components/baruna/HomeExperienceProvider";
 
 function NotFoundComponent() {
   return (
@@ -89,8 +90,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "BARUNA — From Ocean Wisdom to Global Impact" },
       {
         property: "og:description",
-        content:
-          "Indonesia's Marine and Fisheries Knowledge & Capacity Building Network.",
+        content: "Indonesia's Marine and Fisheries Knowledge & Capacity Building Network.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -136,10 +136,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      {/* Global single-flag Presentation / Demo Mode control + banner. */}
-      <PresentationMode />
+      <HomeExperienceProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        {/* Global single-flag Presentation / Demo Mode control + banner. */}
+        <PresentationMode />
+      </HomeExperienceProvider>
     </QueryClientProvider>
   );
 }
