@@ -27,6 +27,7 @@ import { Route as CommunityRouteImport } from './routes/community'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as AcademyRouteImport } from './routes/academy'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -68,6 +69,7 @@ import { Route as EventsCalendarRouteImport } from './routes/events.calendar'
 import { Route as EventsAllRouteImport } from './routes/events.all'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AccountProfileRouteImport } from './routes/account.profile'
 import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
 import { Route as AcademySelfPacedRouteImport } from './routes/academy.self-paced'
@@ -204,6 +206,11 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcademyRoute = AcademyRouteImport.update({
@@ -412,6 +419,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRoute,
+} as any)
+const AccountProfileRoute = AccountProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AccountRoute,
 } as any)
 const AcademyWorkshopRoute = AcademyWorkshopRouteImport.update({
   id: '/workshop',
@@ -669,6 +681,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/academy': typeof AcademyRouteWithChildren
+  '/account': typeof AccountRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
@@ -696,6 +709,7 @@ export interface FileRoutesByFullPath {
   '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
+  '/account/profile': typeof AccountProfileRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -776,6 +790,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/account': typeof AccountRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
@@ -798,6 +813,7 @@ export interface FileRoutesByTo {
   '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
+  '/account/profile': typeof AccountProfileRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -879,6 +895,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/academy': typeof AcademyRouteWithChildren
+  '/account': typeof AccountRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
@@ -906,6 +923,7 @@ export interface FileRoutesById {
   '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
+  '/account/profile': typeof AccountProfileRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -989,6 +1007,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/academy'
+    | '/account'
     | '/admin'
     | '/analytics'
     | '/auth'
@@ -1016,6 +1035,7 @@ export interface FileRouteTypes {
     | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
+    | '/account/profile'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1096,6 +1116,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/account'
     | '/analytics'
     | '/auth'
     | '/community'
@@ -1118,6 +1139,7 @@ export interface FileRouteTypes {
     | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
+    | '/account/profile'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1198,6 +1220,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/academy'
+    | '/account'
     | '/admin'
     | '/analytics'
     | '/auth'
@@ -1225,6 +1248,7 @@ export interface FileRouteTypes {
     | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
+    | '/account/profile'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1307,6 +1331,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AcademyRoute: typeof AcademyRouteWithChildren
+  AccountRoute: typeof AccountRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   AuthRoute: typeof AuthRoute
@@ -1457,6 +1482,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/academy': {
@@ -1745,6 +1777,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/account/profile': {
+      id: '/account/profile'
+      path: '/profile'
+      fullPath: '/account/profile'
+      preLoaderRoute: typeof AccountProfileRouteImport
+      parentRoute: typeof AccountRoute
     }
     '/academy/workshop': {
       id: '/academy/workshop'
@@ -2161,6 +2200,17 @@ const AcademyRouteChildren: AcademyRouteChildren = {
 const AcademyRouteWithChildren =
   AcademyRoute._addFileChildren(AcademyRouteChildren)
 
+interface AccountRouteChildren {
+  AccountProfileRoute: typeof AccountProfileRoute
+}
+
+const AccountRouteChildren: AccountRouteChildren = {
+  AccountProfileRoute: AccountProfileRoute,
+}
+
+const AccountRouteWithChildren =
+  AccountRoute._addFileChildren(AccountRouteChildren)
+
 interface AdminRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -2321,6 +2371,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AcademyRoute: AcademyRouteWithChildren,
+  AccountRoute: AccountRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   AuthRoute: AuthRoute,
