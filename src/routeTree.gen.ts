@@ -75,6 +75,7 @@ import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
 import { Route as AcademySelfPacedRouteImport } from './routes/academy.self-paced'
 import { Route as AcademyRequestTrainingRouteImport } from './routes/academy.request-training'
 import { Route as AcademyProgramsRouteImport } from './routes/academy.programs'
+import { Route as AcademyLearnRouteImport } from './routes/academy.learn'
 import { Route as AcademyEdition2024RouteImport } from './routes/academy.edition-2024'
 import { Route as AcademyCertificationRouteImport } from './routes/academy.certification'
 import { Route as AcademyArchiveRouteImport } from './routes/academy.archive'
@@ -450,6 +451,11 @@ const AcademyProgramsRoute = AcademyProgramsRouteImport.update({
   path: '/programs',
   getParentRoute: () => AcademyRoute,
 } as any)
+const AcademyLearnRoute = AcademyLearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => AcademyRoute,
+} as any)
 const AcademyEdition2024Route = AcademyEdition2024RouteImport.update({
   id: '/edition-2024',
   path: '/edition-2024',
@@ -509,9 +515,9 @@ const AcademyPathwaysIndexRoute = AcademyPathwaysIndexRouteImport.update({
   getParentRoute: () => AcademyRoute,
 } as any)
 const AcademyLearnIndexRoute = AcademyLearnIndexRouteImport.update({
-  id: '/learn/',
-  path: '/learn/',
-  getParentRoute: () => AcademyRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AcademyLearnRoute,
 } as any)
 const AcademyApplicationsIndexRoute =
   AcademyApplicationsIndexRouteImport.update({
@@ -642,14 +648,14 @@ const AcademyPathwaysSlugRoute = AcademyPathwaysSlugRouteImport.update({
 } as any)
 const AcademyLearnAllocatedZonesForAquacultureRoute =
   AcademyLearnAllocatedZonesForAquacultureRouteImport.update({
-    id: '/learn/allocated-zones-for-aquaculture',
-    path: '/learn/allocated-zones-for-aquaculture',
-    getParentRoute: () => AcademyRoute,
+    id: '/allocated-zones-for-aquaculture',
+    path: '/allocated-zones-for-aquaculture',
+    getParentRoute: () => AcademyLearnRoute,
   } as any)
 const AcademyLearnIdRoute = AcademyLearnIdRouteImport.update({
-  id: '/learn/$id',
-  path: '/learn/$id',
-  getParentRoute: () => AcademyRoute,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AcademyLearnRoute,
 } as any)
 const AcademyCourseOfferingIdRoute = AcademyCourseOfferingIdRouteImport.update({
   id: '/course/$offeringId',
@@ -704,6 +710,7 @@ export interface FileRoutesByFullPath {
   '/academy/archive': typeof AcademyArchiveRoute
   '/academy/certification': typeof AcademyCertificationRoute
   '/academy/edition-2024': typeof AcademyEdition2024Route
+  '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
   '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
@@ -918,6 +925,7 @@ export interface FileRoutesById {
   '/academy/archive': typeof AcademyArchiveRoute
   '/academy/certification': typeof AcademyCertificationRoute
   '/academy/edition-2024': typeof AcademyEdition2024Route
+  '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
   '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
@@ -1030,6 +1038,7 @@ export interface FileRouteTypes {
     | '/academy/archive'
     | '/academy/certification'
     | '/academy/edition-2024'
+    | '/academy/learn'
     | '/academy/programs'
     | '/academy/request-training'
     | '/academy/self-paced'
@@ -1243,6 +1252,7 @@ export interface FileRouteTypes {
     | '/academy/archive'
     | '/academy/certification'
     | '/academy/edition-2024'
+    | '/academy/learn'
     | '/academy/programs'
     | '/academy/request-training'
     | '/academy/self-paced'
@@ -1820,6 +1830,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcademyProgramsRouteImport
       parentRoute: typeof AcademyRoute
     }
+    '/academy/learn': {
+      id: '/academy/learn'
+      path: '/learn'
+      fullPath: '/academy/learn'
+      preLoaderRoute: typeof AcademyLearnRouteImport
+      parentRoute: typeof AcademyRoute
+    }
     '/academy/edition-2024': {
       id: '/academy/edition-2024'
       path: '/edition-2024'
@@ -1899,10 +1916,10 @@ declare module '@tanstack/react-router' {
     }
     '/academy/learn/': {
       id: '/academy/learn/'
-      path: '/learn'
+      path: '/'
       fullPath: '/academy/learn/'
       preLoaderRoute: typeof AcademyLearnIndexRouteImport
-      parentRoute: typeof AcademyRoute
+      parentRoute: typeof AcademyLearnRoute
     }
     '/academy/applications/': {
       id: '/academy/applications/'
@@ -2067,17 +2084,17 @@ declare module '@tanstack/react-router' {
     }
     '/academy/learn/allocated-zones-for-aquaculture': {
       id: '/academy/learn/allocated-zones-for-aquaculture'
-      path: '/learn/allocated-zones-for-aquaculture'
+      path: '/allocated-zones-for-aquaculture'
       fullPath: '/academy/learn/allocated-zones-for-aquaculture'
       preLoaderRoute: typeof AcademyLearnAllocatedZonesForAquacultureRouteImport
-      parentRoute: typeof AcademyRoute
+      parentRoute: typeof AcademyLearnRoute
     }
     '/academy/learn/$id': {
       id: '/academy/learn/$id'
-      path: '/learn/$id'
+      path: '/$id'
       fullPath: '/academy/learn/$id'
       preLoaderRoute: typeof AcademyLearnIdRouteImport
-      parentRoute: typeof AcademyRoute
+      parentRoute: typeof AcademyLearnRoute
     }
     '/academy/course/$offeringId': {
       id: '/academy/course/$offeringId'
@@ -2117,6 +2134,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AcademyLearnRouteChildren {
+  AcademyLearnIdRoute: typeof AcademyLearnIdRoute
+  AcademyLearnAllocatedZonesForAquacultureRoute: typeof AcademyLearnAllocatedZonesForAquacultureRoute
+  AcademyLearnIndexRoute: typeof AcademyLearnIndexRoute
+}
+
+const AcademyLearnRouteChildren: AcademyLearnRouteChildren = {
+  AcademyLearnIdRoute: AcademyLearnIdRoute,
+  AcademyLearnAllocatedZonesForAquacultureRoute:
+    AcademyLearnAllocatedZonesForAquacultureRoute,
+  AcademyLearnIndexRoute: AcademyLearnIndexRoute,
+}
+
+const AcademyLearnRouteWithChildren = AcademyLearnRoute._addFileChildren(
+  AcademyLearnRouteChildren,
+)
+
 interface AcademySelfPacedRouteChildren {
   AcademySelfPacedCodeRoute: typeof AcademySelfPacedCodeRoute
 }
@@ -2133,6 +2167,7 @@ interface AcademyRouteChildren {
   AcademyArchiveRoute: typeof AcademyArchiveRoute
   AcademyCertificationRoute: typeof AcademyCertificationRoute
   AcademyEdition2024Route: typeof AcademyEdition2024Route
+  AcademyLearnRoute: typeof AcademyLearnRouteWithChildren
   AcademyProgramsRoute: typeof AcademyProgramsRoute
   AcademyRequestTrainingRoute: typeof AcademyRequestTrainingRoute
   AcademySelfPacedRoute: typeof AcademySelfPacedRouteWithChildren
@@ -2144,8 +2179,6 @@ interface AcademyRouteChildren {
   AcademyApplySlugRoute: typeof AcademyApplySlugRoute
   AcademyCategorySlugRoute: typeof AcademyCategorySlugRoute
   AcademyCourseOfferingIdRoute: typeof AcademyCourseOfferingIdRoute
-  AcademyLearnIdRoute: typeof AcademyLearnIdRoute
-  AcademyLearnAllocatedZonesForAquacultureRoute: typeof AcademyLearnAllocatedZonesForAquacultureRoute
   AcademyPathwaysSlugRoute: typeof AcademyPathwaysSlugRoute
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute: typeof AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute
   AcademyShortCoursesCodeRoute: typeof AcademyShortCoursesCodeRoute
@@ -2154,7 +2187,6 @@ interface AcademyRouteChildren {
   AcademyTrainingAllocatedZonesForAquacultureRoute: typeof AcademyTrainingAllocatedZonesForAquacultureRoute
   AcademyAlumniIndexRoute: typeof AcademyAlumniIndexRoute
   AcademyApplicationsIndexRoute: typeof AcademyApplicationsIndexRoute
-  AcademyLearnIndexRoute: typeof AcademyLearnIndexRoute
   AcademyPathwaysIndexRoute: typeof AcademyPathwaysIndexRoute
   AcademyShortCoursesIndexRoute: typeof AcademyShortCoursesIndexRoute
   AcademyTrainingRequestsIndexRoute: typeof AcademyTrainingRequestsIndexRoute
@@ -2166,6 +2198,7 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyArchiveRoute: AcademyArchiveRoute,
   AcademyCertificationRoute: AcademyCertificationRoute,
   AcademyEdition2024Route: AcademyEdition2024Route,
+  AcademyLearnRoute: AcademyLearnRouteWithChildren,
   AcademyProgramsRoute: AcademyProgramsRoute,
   AcademyRequestTrainingRoute: AcademyRequestTrainingRoute,
   AcademySelfPacedRoute: AcademySelfPacedRouteWithChildren,
@@ -2177,9 +2210,6 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyApplySlugRoute: AcademyApplySlugRoute,
   AcademyCategorySlugRoute: AcademyCategorySlugRoute,
   AcademyCourseOfferingIdRoute: AcademyCourseOfferingIdRoute,
-  AcademyLearnIdRoute: AcademyLearnIdRoute,
-  AcademyLearnAllocatedZonesForAquacultureRoute:
-    AcademyLearnAllocatedZonesForAquacultureRoute,
   AcademyPathwaysSlugRoute: AcademyPathwaysSlugRoute,
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute:
     AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute,
@@ -2190,7 +2220,6 @@ const AcademyRouteChildren: AcademyRouteChildren = {
     AcademyTrainingAllocatedZonesForAquacultureRoute,
   AcademyAlumniIndexRoute: AcademyAlumniIndexRoute,
   AcademyApplicationsIndexRoute: AcademyApplicationsIndexRoute,
-  AcademyLearnIndexRoute: AcademyLearnIndexRoute,
   AcademyPathwaysIndexRoute: AcademyPathwaysIndexRoute,
   AcademyShortCoursesIndexRoute: AcademyShortCoursesIndexRoute,
   AcademyTrainingRequestsIndexRoute: AcademyTrainingRequestsIndexRoute,

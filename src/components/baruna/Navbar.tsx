@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Home,
   GraduationCap,
@@ -46,9 +46,15 @@ const navItems: { label: string; href: string; icon: LucideIcon }[] = [
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { authState, viewer, signOut } = useHomeExperience();
   const dashboardUrl = viewer?.dashboardUrl ?? "/dashboard";
+
+  const handleSignOut = async () => {
+    await signOut();
+    await navigate({ to: "/", replace: true });
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
@@ -133,7 +139,7 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => void signOut()}>
+                  <DropdownMenuItem onSelect={() => void handleSignOut()}>
                     <LogOut /> Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -209,7 +215,7 @@ export function Navbar() {
                         type="button"
                         onClick={() => {
                           setOpen(false);
-                          void signOut();
+                          void handleSignOut();
                         }}
                         className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
                       >

@@ -10,6 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
+import { RequireAuth } from "@/components/baruna/auth/RequireAuth";
 import { DEMO_PARTICIPANTS, DEMO_SHORT_COURSES } from "@/data/demo";
 
 function buildHref(pattern: string, params?: Record<string, string>) {
@@ -134,67 +135,69 @@ function DashboardPage() {
   ];
 
   return (
-    <PageShell
-      sidebar={{
-        icon: LayoutDashboard,
-        title: "My Training Journey",
-        subtitle: "Demo participant workspace.",
-        sections: [
-          {
-            label: "Sections",
-            items: [
-              { label: "Overview", active: true },
-              { label: "Applications", to: "/academy/applications" },
-              { label: "My Learning", to: "/academy/learn" },
-              { label: "Certificates", to: "/academy/certification" },
-              { label: "Saved", to: "/saved" },
-            ],
-          },
-        ],
-      }}
-      cta={{
-        icon: LayoutDashboard,
-        title: "Explore more of BARUNA",
-        description: "Browse experts, events, and communities.",
-        button: "Browse Academy",
-        href: "/academy",
-      }}
-    >
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <span className="rounded-full bg-amber-500/15 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber-700">
-            Demo Profile · {me.fullName}
-          </span>
-          <h1 className="mt-3 font-display text-3xl font-extrabold text-navy">
-            My Training Journey
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            A single place for everything you're doing on BARUNA.
-          </p>
-        </div>
-        <a
-          href="/account/profile"
-          className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy shadow-soft transition hover:border-marine hover:text-marine"
-        >
-          <UserRound className="h-4 w-4" /> Edit Profile
-        </a>
-      </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {cards.map((c) => (
-          <div key={c.title} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-marine">
-              <c.icon className="h-4 w-4" /> {c.title}
-            </div>
-            <p className="mt-2 text-sm text-foreground/80">{c.body}</p>
-            <a
-              href={buildHref(c.to, c.params)}
-              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-marine hover:text-navy"
-            >
-              {c.cta} →
-            </a>
+    <RequireAuth>
+      <PageShell
+        sidebar={{
+          icon: LayoutDashboard,
+          title: "My Training Journey",
+          subtitle: "Demo participant workspace.",
+          sections: [
+            {
+              label: "Sections",
+              items: [
+                { label: "Overview", active: true },
+                { label: "Applications", to: "/academy/applications" },
+                { label: "My Learning", to: "/academy/learn" },
+                { label: "Certificates", to: "/academy/certification" },
+                { label: "Saved", to: "/saved" },
+              ],
+            },
+          ],
+        }}
+        cta={{
+          icon: LayoutDashboard,
+          title: "Explore more of BARUNA",
+          description: "Browse experts, events, and communities.",
+          button: "Browse Academy",
+          href: "/academy",
+        }}
+      >
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <span className="rounded-full bg-amber-500/15 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber-700">
+              Demo Profile · {me.fullName}
+            </span>
+            <h1 className="mt-3 font-display text-3xl font-extrabold text-navy">
+              My Training Journey
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A single place for everything you're doing on BARUNA.
+            </p>
           </div>
-        ))}
-      </div>
-    </PageShell>
+          <a
+            href="/account/profile"
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy shadow-soft transition hover:border-marine hover:text-marine"
+          >
+            <UserRound className="h-4 w-4" /> Edit Profile
+          </a>
+        </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {cards.map((c) => (
+            <div key={c.title} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-marine">
+                <c.icon className="h-4 w-4" /> {c.title}
+              </div>
+              <p className="mt-2 text-sm text-foreground/80">{c.body}</p>
+              <a
+                href={buildHref(c.to, c.params)}
+                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-marine hover:text-navy"
+              >
+                {c.cta} →
+              </a>
+            </div>
+          ))}
+        </div>
+      </PageShell>
+    </RequireAuth>
   );
 }
