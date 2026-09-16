@@ -1,194 +1,232 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import {
-  ChevronRight,
   ArrowLeft,
   ArrowRight,
-  Building2,
-  Mail,
   Award,
   BookOpen,
-  GraduationCap,
+  Building2,
   CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Globe2,
+  Languages,
+  MapPin,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
-import { instructorBySlug, type Instructor } from "@/data/instructors";
-import { trainingBySlug } from "@/data/training";
+import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
+import { getPublicExpertBySlug } from "@/lib/experts/directory.functions";
+import {
+  TRAINER_LEVEL_LABEL,
+  VERIFICATION_LABEL,
+  type PublicExpert,
+} from "@/lib/experts/directory.types";
 
 export const Route = createFileRoute("/experts/$slug")({
-  loader: ({ params }) => {
-    const instructor = instructorBySlug[params.slug];
-    if (!instructor) throw notFound();
-    return { instructor };
+  loader: async ({ params }) => {
+    const expert = await getPublicExpertBySlug({ data: { slug: params.slug } });
+    if (!expert) throw notFound();
+    return { expert };
   },
   head: ({ loaderData }) => {
-    const i = loaderData?.instructor;
-    if (!i) return {};
-    const url = `/experts/${i.slug}`;
+    const expert = loaderData?.expert;
+    if (!expert) return {};
+    const url = `/experts/${expert.slug}`;
     return {
       meta: [
-        { title: `${i.name} — ${i.position} — BARUNA Experts` },
-        { name: "description", content: i.summary.slice(0, 155) },
-        { property: "og:title", content: `${i.name} — BARUNA Experts` },
-        { property: "og:description", content: i.summary.slice(0, 155) },
-        { property: "og:image", content: i.photo },
+        { title: `${expert.displayName} — BARUNA Experts` },
+        {
+          name: "description",
+          content: (expert.bio ?? expert.headline ?? "BARUNA Expert").slice(0, 155),
+        },
+        { property: "og:title", content: `${expert.displayName} — BARUNA Experts` },
+        {
+          property: "og:description",
+          content: (expert.bio ?? expert.headline ?? "BARUNA Expert").slice(0, 155),
+        },
+        { property: "og:image", content: expert.avatarUrl ?? defaultExpertAvatar },
         { property: "og:url", content: url },
       ],
       links: [{ rel: "canonical", href: url }],
     };
   },
-  notFoundComponent: () => (
+  notFoundComponent: ExpertNotFound,
+  component: ExpertProfile,
+});
+
+function ExpertNotFound() {
+  return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="font-display text-2xl font-bold text-navy">Instructor not found</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">Expert not found</h1>
         <Link
-          to="/experts"
+          to="/experts/directory"
           className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-marine-foreground"
         >
           Back to Experts Directory <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </div>
-  ),
-  errorComponent: ({ error }) => (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div role="alert" className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="font-display text-2xl font-bold text-navy">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-      </div>
-    </div>
-  ),
-  component: InstructorProfile,
-});
+  );
+}
 
-function InstructorProfile() {
-  const { instructor: i } = Route.useLoaderData() as { instructor: Instructor };
-  const programs = i.programs
-    .map((slug) => trainingBySlug[slug])
-    .filter(Boolean);
+function ExpertProfile() {
+  const { expert } = Route.useLoaderData() as { expert: PublicExpert };
+  const trainerLevel = expert.trainerLevel ? TRAINER_LEVEL_LABEL[expert.trainerLevel] : null;
+  const location = [expert.city, expert.country].filter(Boolean).join(", ");
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6">
-        {/* Breadcrumb */}
-        <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-          <Link to="/experts" className="font-medium text-foreground/70 hover:text-marine">Experts</Link>
+      <main className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6">
+        <nav
+          className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground"
+          aria-label="Breadcrumb"
+        >
+          <Link
+            to="/experts/directory"
+            className="font-medium text-foreground/70 hover:text-marine"
+          >
+            Experts
+          </Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <span className="font-semibold text-navy">{i.name}</span>
+          <span className="font-semibold text-navy">{expert.displayName}</span>
         </nav>
-
         <Link
-          to="/experts"
+          to="/experts/directory"
           className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-marine hover:text-navy"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Experts Directory
         </Link>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[320px_1fr]">
-          {/* Profile card */}
           <aside className="space-y-4">
             <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
               <div className="aspect-[3/4] w-full overflow-hidden bg-secondary/40">
                 <img
-                  src={i.photo}
-                  alt={`Portrait of ${i.name}`}
+                  src={expert.avatarUrl ?? defaultExpertAvatar}
+                  alt={`Portrait of ${expert.displayName}`}
                   width={600}
                   height={800}
                   className="h-full w-full object-cover object-center"
                 />
               </div>
               <div className="p-5">
-                <h1 className="font-display text-xl font-extrabold leading-tight text-navy">{i.name}</h1>
-                <p className="mt-1 text-sm font-semibold text-marine">{i.position}</p>
-                <p className="mt-2 flex items-start gap-1.5 text-xs leading-snug text-muted-foreground">
-                  <Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {i.organization}
-                </p>
-                {i.email && (
-                  <a
-                    href={`mailto:${i.email}`}
-                    className="mt-3 flex items-center gap-2 rounded-lg border border-marine py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
-                  >
-                    <Mail className="h-4 w-4" /> Contact
-                  </a>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-marine/10 px-2.5 py-1 text-[0.65rem] font-bold text-marine">
+                    <CheckCircle2 className="h-3.5 w-3.5" />{" "}
+                    {VERIFICATION_LABEL[expert.verificationStatus]}
+                  </span>
+                  {expert.trainerStatus === "active" && (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[0.65rem] font-bold text-amber-800">
+                      BARUNA Trainer
+                    </span>
+                  )}
+                </div>
+                <h1 className="mt-3 font-display text-xl font-extrabold leading-tight text-navy">
+                  {expert.displayName}
+                </h1>
+                <p className="mt-1 text-sm font-semibold text-marine">{expert.headline}</p>
+                {expert.institution && (
+                  <p className="mt-3 flex items-start gap-1.5 text-xs leading-snug text-muted-foreground">
+                    <Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      {expert.institutionRole && `${expert.institutionRole} · `}
+                      {expert.institution}
+                    </span>
+                  </p>
                 )}
+                {location && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" /> {location}
+                  </p>
+                )}
+                <Link
+                  to="/experts/request"
+                  search={{ type: expert.trainerStatus === "active" ? "trainer" : "technical" }}
+                  className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-marine py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+                >
+                  Request This Expert <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
             </div>
-
             <div className="rounded-2xl border border-marine/20 bg-marine/5 p-5">
               <p className="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wide text-marine">
-                <Award className="h-4 w-4" /> Program Section
+                <Clock3 className="h-4 w-4" /> Public Availability
               </p>
-              <p className="mt-1.5 text-sm font-semibold text-navy">{i.group}</p>
+              <p className="mt-1.5 text-sm font-semibold capitalize text-navy">
+                {expert.availabilityStatus ?? "Contact BARUNA"}
+              </p>
+              {expert.availableModes.length > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {expert.availableModes.join(" · ")}
+                </p>
+              )}
             </div>
           </aside>
 
-          {/* Detail */}
           <div className="space-y-6">
             <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
                 <BookOpen className="h-5 w-5 text-marine" /> Biography
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{i.biography}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{expert.bio}</p>
             </section>
-
             <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-lg font-bold text-navy">Areas of Expertise</h2>
               <div className="mt-3 flex flex-wrap gap-2">
-                {i.expertise.map((x) => (
+                {expert.expertiseAreas.map((area) => (
                   <span
-                    key={x}
+                    key={area}
                     className="inline-flex rounded-full border border-marine/20 bg-marine/5 px-3 py-1.5 text-xs font-semibold text-marine"
                   >
-                    {x}
+                    {area}
                   </span>
                 ))}
               </div>
             </section>
-
-            <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-              <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
-                <GraduationCap className="h-5 w-5 text-marine" /> Role in This Program
-              </h2>
-              <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-border bg-secondary/30 p-4">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-marine" />
-                <p className="text-sm font-semibold text-navy">{i.programRole}</p>
+            <section className="grid gap-6 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+                <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
+                  <Languages className="h-5 w-5 text-marine" /> Languages
+                </h2>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {expert.languages.length > 0 ? expert.languages.join(", ") : "Not specified"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+                <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
+                  <Globe2 className="h-5 w-5 text-marine" /> Professional Affiliation
+                </h2>
+                <p className="mt-3 text-sm font-semibold text-navy">
+                  {expert.institution ?? "Independent Expert"}
+                </p>
+                {expert.institutionRole && (
+                  <p className="mt-1 text-xs text-muted-foreground">{expert.institutionRole}</p>
+                )}
               </div>
             </section>
-
-            {programs.length > 0 && (
+            {expert.trainerStatus === "active" && (
               <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-                <h2 className="font-display text-lg font-bold text-navy">Program Assignments</h2>
-                <div className="mt-3 space-y-3">
-                  {programs.map((p) => (
-                    <Link
-                      key={p.slug}
-                      to="/academy/training/$slug"
-                      params={{ slug: p.slug }}
-                      className="flex items-center gap-4 rounded-xl border border-border bg-secondary/30 p-4 transition-colors hover:border-marine/40"
-                    >
-                      <img
-                        src={p.hero}
-                        alt={p.title}
-                        loading="lazy"
-                        width={120}
-                        height={80}
-                        className="h-16 w-24 shrink-0 rounded-lg object-cover"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-navy">{p.title}</p>
-                        <p className="mt-0.5 text-xs text-marine">{p.type} · {p.location}</p>
-                      </div>
-                      <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-marine" />
-                    </Link>
-                  ))}
+                <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
+                  <Award className="h-5 w-5 text-marine" /> BARUNA Trainer Recognition
+                </h2>
+                <div className="mt-3 rounded-xl border border-border bg-secondary/30 p-4">
+                  <p className="text-sm font-bold text-navy">
+                    {trainerLevel ?? "Qualified Trainer"}
+                  </p>
+                  {expert.recognitionMinParticipants !== null && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Recognition threshold: {expert.recognitionMinParticipants.toLocaleString()}{" "}
+                      unique graduated participants
+                    </p>
+                  )}
                 </div>
               </section>
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

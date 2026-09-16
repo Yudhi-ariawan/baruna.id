@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "seed:avatar-presets": "node --env-file-if-exists=.env scripts/seed-avatar-presets.mjs",
+    "seed:experts-directory": "bun --env-file=.env scripts/seed-experts-directory.ts",
     "test:rbac": "node --env-file-if-exists=.env scripts/verify-rbac-matrix.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."

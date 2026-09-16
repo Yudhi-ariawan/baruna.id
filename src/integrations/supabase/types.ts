@@ -1802,6 +1802,7 @@ export type Database = {
           source_institution_id: string | null
           source_submission_id: string | null
           source_type: string
+          slug: string
           updated_at: string
           verification_status: Database["public"]["Enums"]["verification_status_v1"]
           version: number
@@ -1832,6 +1833,7 @@ export type Database = {
           source_institution_id?: string | null
           source_submission_id?: string | null
           source_type: string
+          slug: string
           updated_at?: string
           verification_status?: Database["public"]["Enums"]["verification_status_v1"]
           version?: number
@@ -1862,6 +1864,7 @@ export type Database = {
           source_institution_id?: string | null
           source_submission_id?: string | null
           source_type?: string
+          slug?: string
           updated_at?: string
           verification_status?: Database["public"]["Enums"]["verification_status_v1"]
           version?: number
@@ -3686,6 +3689,37 @@ export type Database = {
           learning_model?: string | null
           offering_code?: string | null
           offering_title?: string | null
+        }
+        Relationships: []
+      }
+      experts_directory_v: {
+        Row: {
+          availability_status:
+            | Database["public"]["Enums"]["availability_status_v1"]
+            | null
+          available_modes: string[] | null
+          avatar_url: string | null
+          bio: string | null
+          city: string | null
+          country: string | null
+          display_name: string
+          expertise_areas: string[]
+          headline: string | null
+          id: string
+          institution: string | null
+          institution_role: string | null
+          languages: string[]
+          next_available_from: string | null
+          publication_date: string | null
+          recognition_min_participants: number | null
+          slug: string
+          trainer_effective_from: string | null
+          trainer_expires_at: string | null
+          trainer_level: Database["public"]["Enums"]["trainer_level_v1"]
+          trainer_status: Database["public"]["Enums"]["trainer_status_v1"]
+          unique_graduated_participants: number | null
+          updated_at: string
+          verification_status: Database["public"]["Enums"]["verification_status_v1"]
         }
         Relationships: []
       }
