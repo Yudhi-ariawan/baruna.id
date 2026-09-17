@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,19 +16,29 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  getExpertApplicationBootstrap,
+  saveExpertApplicationDraft,
+  submitExpertApplication,
+} from "@/lib/experts/application.functions";
+import {
+  EXPERT_APPLICATION_BUCKET,
+  type ExpertApplicationDocument,
+  type ExpertDocumentCategory,
+} from "@/lib/experts/application.types";
 import {
   EXPERTISE_AREAS,
   EXPERT_ROLES,
   EXPERT_PIPELINE,
-  ACCEPTED_FILE_TYPES,
   MAX_BYTES,
   emptyExpertApplication,
-  createExpertApplication,
   formatBytes,
   type ExpertApplicationDraft,
   type ExpertRole,
-  type FileMeta,
 } from "@/lib/experts";
+
+const EXPERT_APPLICATION_ACCEPT = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp";
 
 export const Route = createFileRoute("/experts/join")({
   head: () => ({
@@ -86,9 +97,63 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 }
 
 function JoinExpertPage() {
+  const navigate = useNavigate();
+  const bootstrapFn = useServerFn(getExpertApplicationBootstrap);
+  const saveDraftFn = useServerFn(saveExpertApplicationDraft);
+  const submitFn = useServerFn(submitExpertApplication);
   const [form, setForm] = useState<ExpertApplicationDraft>({ ...emptyExpertApplication });
   const [submitted, setSubmitted] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [draftId, setDraftId] = useState<string | undefined>();
+  const [userId, setUserId] = useState("");
+  const [documents, setDocuments] = useState<ExpertApplicationDocument[]>([]);
+  const [files, setFiles] = useState<Partial<Record<ExpertDocumentCategory, File>>>({});
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!active) return;
+      if (!data.user) {
+        navigate({
+          to: "/auth",
+          search: { mode: "signin", redirect: "/experts/join" },
+          replace: true,
+        });
+        return;
+      }
+      try {
+        const bootstrap = await bootstrapFn();
+        if (!active) return;
+        setUserId(bootstrap.userId);
+        if (bootstrap.editableDraft) {
+          const payload = bootstrap.editableDraft.payload;
+          setDraftId(bootstrap.editableDraft.draftId);
+          setDocuments(payload.documents ?? []);
+          setForm({ ...emptyExpertApplication, ...payload });
+          setNotice("Your existing draft has been restored.");
+        } else {
+          setForm((current) => ({
+            ...current,
+            fullName: bootstrap.profile.fullName,
+            email: bootstrap.profile.email,
+            institution: bootstrap.profile.institution,
+            title: bootstrap.profile.title,
+            phone: bootstrap.profile.phone,
+          }));
+        }
+        setReady(true);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Unable to load your account profile.");
+        setReady(true);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [bootstrapFn, navigate]);
 
   const set = <K extends keyof ExpertApplicationDraft>(key: K, value: ExpertApplicationDraft[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -107,7 +172,7 @@ function JoinExpertPage() {
       roles: f.roles.includes(role) ? f.roles.filter((x) => x !== role) : [...f.roles, role],
     }));
 
-  const submit = () => {
+  const validate = () => {
     if (
       !form.fullName.trim() ||
       !form.title.trim() ||
@@ -116,24 +181,98 @@ function JoinExpertPage() {
       !form.email.trim()
     ) {
       setError("Please complete the required personal information fields.");
-      return;
+      return false;
     }
     if (form.expertise.length === 0) {
       setError("Please select at least one area of expertise.");
-      return;
+      return false;
     }
     if (form.roles.length === 0) {
       setError("Please select at least one available role.");
-      return;
+      return false;
     }
     if (!form.biography.trim()) {
       setError("Please provide a professional biography.");
+      return false;
+    }
+    return true;
+  };
+
+  const uploadSelectedFiles = async (id: string) => {
+    const uploaded = [...documents];
+    for (const [category, file] of Object.entries(files) as [ExpertDocumentCategory, File][]) {
+      const safeName = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+      const path = `users/${userId}/${id}/${category}-${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from(EXPERT_APPLICATION_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const document: ExpertApplicationDocument = {
+        category,
+        path,
+        name: file.name,
+        size: file.size,
+        type: file.type || "application/octet-stream",
+        uploadedAt: new Date().toISOString(),
+      };
+      const existingIndex = uploaded.findIndex((item) => item.category === category);
+      if (existingIndex >= 0) uploaded[existingIndex] = document;
+      else uploaded.push(document);
+    }
+    setDocuments(uploaded);
+    setFiles({});
+    return uploaded;
+  };
+
+  const persist = async (shouldSubmit: boolean) => {
+    if (shouldSubmit && !validate()) return;
+    if (!form.fullName.trim()) {
+      setError("Full name is required before saving a draft.");
       return;
     }
+    setBusy(true);
     setError(null);
-    createExpertApplication(form, "Applied");
-    setSubmitted(true);
+    setNotice(null);
+    try {
+      const initial = await saveDraftFn({
+        data: {
+          draftId,
+          displayName: form.fullName,
+          payload: { ...form, documents, schemaVersion: 1 },
+        },
+      });
+      setDraftId(initial.draftId);
+      const uploaded = await uploadSelectedFiles(initial.draftId);
+      await saveDraftFn({
+        data: {
+          draftId: initial.draftId,
+          displayName: form.fullName,
+          payload: { ...form, documents: uploaded, schemaVersion: 1 },
+        },
+      });
+      if (shouldSubmit) {
+        await submitFn({ data: { draftId: initial.draftId } });
+        setSubmitted(true);
+      } else {
+        setNotice("Draft saved securely to your BARUNA account.");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save the application.");
+    } finally {
+      setBusy(false);
+    }
   };
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="mx-auto max-w-4xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
+          Loading your expert application…
+        </main>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -143,7 +282,9 @@ function JoinExpertPage() {
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-eco-community/15 text-eco-community">
             <CheckCircle2 className="h-9 w-9" />
           </div>
-          <h1 className="mt-6 font-display text-2xl font-extrabold text-navy">Application submitted</h1>
+          <h1 className="mt-6 font-display text-2xl font-extrabold text-navy">
+            Application submitted
+          </h1>
           <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
             Thank you for applying to the BARUNA Expert Network. Your application now follows the
             approval workflow: Applied → Under Review → Approved Expert → Published. Only approved
@@ -182,8 +323,8 @@ function JoinExpertPage() {
         <div className="mt-4">
           <h1 className="font-display text-3xl font-extrabold text-navy">Join as an Expert</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Register your profile to share knowledge, build capacity, and create impact as part of the
-            BARUNA global marine and fisheries expert network.
+            Register your profile to share knowledge, build capacity, and create impact as part of
+            the BARUNA global marine and fisheries expert network.
           </p>
         </div>
 
@@ -207,35 +348,70 @@ function JoinExpertPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <FieldLabel required>Full Name</FieldLabel>
-                <input className={inputClass} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={form.fullName}
+                  onChange={(e) => set("fullName", e.target.value)}
+                />
               </div>
               <div>
                 <FieldLabel required>Professional Title</FieldLabel>
-                <input className={inputClass} value={form.title} onChange={(e) => set("title", e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={form.title}
+                  onChange={(e) => set("title", e.target.value)}
+                />
               </div>
               <div>
                 <FieldLabel required>Institution</FieldLabel>
-                <input className={inputClass} value={form.institution} onChange={(e) => set("institution", e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={form.institution}
+                  onChange={(e) => set("institution", e.target.value)}
+                />
               </div>
               <div>
                 <FieldLabel required>Country</FieldLabel>
-                <input className={inputClass} value={form.country} onChange={(e) => set("country", e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={form.country}
+                  onChange={(e) => set("country", e.target.value)}
+                />
               </div>
               <div>
                 <FieldLabel required>Email</FieldLabel>
-                <input className={inputClass} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+                <input
+                  className={inputClass}
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => set("email", e.target.value)}
+                />
               </div>
               <div>
                 <FieldLabel>Phone Number</FieldLabel>
-                <input className={inputClass} value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                />
               </div>
               <div>
                 <FieldLabel>LinkedIn</FieldLabel>
-                <input className={inputClass} value={form.linkedin} onChange={(e) => set("linkedin", e.target.value)} placeholder="https://linkedin.com/in/…" />
+                <input
+                  className={inputClass}
+                  value={form.linkedin}
+                  onChange={(e) => set("linkedin", e.target.value)}
+                  placeholder="https://linkedin.com/in/…"
+                />
               </div>
               <div>
                 <FieldLabel>Personal Website</FieldLabel>
-                <input className={inputClass} value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://…" />
+                <input
+                  className={inputClass}
+                  value={form.website}
+                  onChange={(e) => set("website", e.target.value)}
+                  placeholder="https://…"
+                />
               </div>
             </div>
           </SectionCard>
@@ -275,12 +451,16 @@ function JoinExpertPage() {
                     type="button"
                     onClick={() => toggleRole(role)}
                     className={`flex items-center gap-2.5 rounded-xl border p-3 text-left text-sm font-semibold transition-all ${
-                      active ? "border-marine bg-marine/10 text-marine" : "border-border text-foreground/80 hover:border-marine/40 hover:bg-muted"
+                      active
+                        ? "border-marine bg-marine/10 text-marine"
+                        : "border-border text-foreground/80 hover:border-marine/40 hover:bg-muted"
                     }`}
                   >
                     <span
                       className={`grid h-5 w-5 place-items-center rounded border ${
-                        active ? "border-marine bg-marine text-marine-foreground" : "border-muted-foreground/40"
+                        active
+                          ? "border-marine bg-marine text-marine-foreground"
+                          : "border-muted-foreground/40"
                       }`}
                     >
                       {active && <Check className="h-3.5 w-3.5" />}
@@ -306,40 +486,92 @@ function JoinExpertPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <FieldLabel>Years of Experience</FieldLabel>
-                  <input className={inputClass} type="number" min={0} value={form.yearsExperience} onChange={(e) => set("yearsExperience", e.target.value)} />
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min={0}
+                    value={form.yearsExperience}
+                    onChange={(e) => set("yearsExperience", e.target.value)}
+                  />
                 </div>
                 <div>
                   <FieldLabel>Languages Spoken</FieldLabel>
-                  <input className={inputClass} value={form.languages} onChange={(e) => set("languages", e.target.value)} placeholder="e.g. English, French" />
+                  <input
+                    className={inputClass}
+                    value={form.languages}
+                    onChange={(e) => set("languages", e.target.value)}
+                    placeholder="e.g. English, French"
+                  />
                 </div>
               </div>
               <div>
                 <FieldLabel>Key Projects</FieldLabel>
-                <textarea className={`${inputClass} min-h-[80px] resize-y`} value={form.keyProjects} onChange={(e) => set("keyProjects", e.target.value)} />
+                <textarea
+                  className={`${inputClass} min-h-[80px] resize-y`}
+                  value={form.keyProjects}
+                  onChange={(e) => set("keyProjects", e.target.value)}
+                />
               </div>
               <div>
                 <FieldLabel>Publications</FieldLabel>
-                <textarea className={`${inputClass} min-h-[80px] resize-y`} value={form.publications} onChange={(e) => set("publications", e.target.value)} />
+                <textarea
+                  className={`${inputClass} min-h-[80px] resize-y`}
+                  value={form.publications}
+                  onChange={(e) => set("publications", e.target.value)}
+                />
               </div>
             </div>
           </SectionCard>
 
           <SectionCard icon={Upload} n={5} title="Upload Documents">
             <div className="grid gap-4 sm:grid-cols-2">
-              <FileUpload label="CV / Resume" file={form.cv} onFile={(f) => set("cv", f)} />
-              <FileUpload label="Professional Photo" file={form.photo} onFile={(f) => set("photo", f)} />
-              <FileUpload label="Certifications" file={form.certifications} onFile={(f) => set("certifications", f)} />
-              <FileUpload label="Supporting Documents" file={form.supporting} onFile={(f) => set("supporting", f)} />
+              <FileUpload
+                label="CV / Resume"
+                file={files.cv ?? null}
+                stored={documents.find((item) => item.category === "cv") ?? null}
+                onFile={(file) => setFiles((current) => ({ ...current, cv: file ?? undefined }))}
+              />
+              <FileUpload
+                label="Professional Photo"
+                file={files.photo ?? null}
+                stored={documents.find((item) => item.category === "photo") ?? null}
+                onFile={(file) => setFiles((current) => ({ ...current, photo: file ?? undefined }))}
+              />
+              <FileUpload
+                label="Certifications"
+                file={files.certifications ?? null}
+                stored={documents.find((item) => item.category === "certifications") ?? null}
+                onFile={(file) =>
+                  setFiles((current) => ({ ...current, certifications: file ?? undefined }))
+                }
+              />
+              <FileUpload
+                label="Supporting Documents"
+                file={files.supporting ?? null}
+                stored={documents.find((item) => item.category === "supporting") ?? null}
+                onFile={(file) =>
+                  setFiles((current) => ({ ...current, supporting: file ?? undefined }))
+                }
+              />
             </div>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Files are stored in a private bucket and are visible only to you and authorized BARUNA
+              reviewers.
+            </p>
           </SectionCard>
 
+          {notice && (
+            <p className="rounded-lg bg-eco-community/10 px-4 py-2.5 text-sm font-medium text-eco-community">
+              {notice}
+            </p>
+          )}
           {error && (
             <p className="rounded-lg bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive">
               {error}
             </p>
           )}
 
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-wrap justify-end gap-3">
             <Link
               to="/experts"
               className="inline-flex items-center gap-1.5 rounded-xl border border-border px-5 py-3 text-sm font-semibold text-navy transition-colors hover:bg-muted"
@@ -348,10 +580,19 @@ function JoinExpertPage() {
             </Link>
             <button
               type="button"
-              onClick={submit}
+              disabled={busy}
+              onClick={() => void persist(false)}
+              className="inline-flex items-center gap-2 rounded-xl border border-marine px-6 py-3 text-sm font-semibold text-marine transition-colors hover:bg-marine/5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? "Saving…" : "Save Draft"} <FileText className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void persist(true)}
               className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
             >
-              Submit Application <Check className="h-4 w-4" />
+              {busy ? "Submitting…" : "Submit Application"} <Check className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -363,11 +604,13 @@ function JoinExpertPage() {
 function FileUpload({
   label,
   file,
+  stored,
   onFile,
 }: {
   label: string;
-  file: FileMeta | null;
-  onFile: (f: FileMeta | null) => void;
+  file: File | null;
+  stored: ExpertApplicationDocument | null;
+  onFile: (file: File | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -379,27 +622,39 @@ function FileUpload({
       return;
     }
     setErr(null);
-    onFile({ name: f.name, size: f.size, type: f.type || "file", uploadedAt: new Date().toISOString() });
+    onFile(f);
   };
+
+  const shown = file
+    ? { name: file.name, size: file.size }
+    : stored
+      ? { name: stored.name, size: stored.size }
+      : null;
 
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
-      {file ? (
+      {shown ? (
         <div className="flex items-center gap-3 rounded-xl border border-eco-community/40 bg-eco-community/5 p-3">
           <FileText className="h-5 w-5 shrink-0 text-eco-community" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-navy">{file.name}</p>
-            <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
+            <p className="truncate text-sm font-semibold text-navy">{shown.name}</p>
+            <p className="text-xs text-muted-foreground">{formatBytes(shown.size)}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => onFile(null)}
-            aria-label="Remove file"
-            className="grid h-7 w-7 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          {file ? (
+            <button
+              type="button"
+              onClick={() => onFile(null)}
+              aria-label="Remove file"
+              className="grid h-7 w-7 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <span className="text-[0.65rem] font-semibold uppercase text-eco-community">
+              Stored
+            </span>
+          )}
         </div>
       ) : (
         <button
@@ -413,7 +668,7 @@ function FileUpload({
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPTED_FILE_TYPES}
+        accept={EXPERT_APPLICATION_ACCEPT}
         className="hidden"
         onChange={(e) => handle(e.target.files?.[0] ?? null)}
       />
