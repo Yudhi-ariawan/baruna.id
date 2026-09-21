@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from "react";
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,13 +26,14 @@ import {
   ACCEPTED_FILE_TYPES,
   MAX_BYTES,
   emptyRequestDraft,
-  createRequest,
   formatBytes,
   type RequestType,
   type RequestDraft,
   type FieldDef,
   type FileMeta,
 } from "@/lib/experts";
+import { supabase } from "@/integrations/supabase/client";
+import { createExpertServiceRequest } from "@/lib/experts/portal-services.functions";
 
 export const Route = createFileRoute("/experts/request")({
   head: () => ({
@@ -50,9 +52,9 @@ export const Route = createFileRoute("/experts/request")({
     ],
     links: [{ rel: "canonical", href: "/experts/request" }],
   }),
-  validateSearch: (s: Record<string, unknown>): { type?: RequestType } => {
+  validateSearch: (s: Record<string, unknown>): { type?: RequestType; expert?: string } => {
     const t = typeof s.type === "string" ? s.type : undefined;
-    return { type: REQUEST_TYPE_ORDER.includes(t as RequestType) ? (t as RequestType) : undefined };
+    return { type: REQUEST_TYPE_ORDER.includes(t as RequestType) ? (t as RequestType) : undefined, expert: typeof s.expert === "string" ? s.expert : undefined };
   },
   component: RequestExpertPage,
 });
@@ -75,7 +77,9 @@ const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-marine focus:ring-1 focus:ring-marine";
 
 function RequestExpertPage() {
-  const { type: initialType } = useSearch({ from: Route.id });
+  const { type: initialType, expert } = useSearch({ from: Route.id });
+  const navigate = useNavigate();
+  const createRequest = useServerFn(createExpertServiceRequest);
   const [step, setStep] = useState(initialType ? 2 : 1);
   const [type, setType] = useState<RequestType | null>(initialType ?? null);
   const [draft, setDraft] = useState<RequestDraft>(() =>
@@ -83,6 +87,13 @@ function RequestExpertPage() {
   );
   const [submitted, setSubmitted] = useState<null | "draft" | "submitted">(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) void navigate({ to: "/auth", search: { mode: "signin", redirect: `/experts/request${initialType ? `?type=${initialType}` : ""}` }, replace: true });
+    });
+  }, [initialType, navigate]);
 
   const config = type ? REQUEST_TYPE_CONFIG[type] : null;
 
@@ -127,10 +138,16 @@ function RequestExpertPage() {
     setStep((s) => Math.max(1, s - 1));
   };
 
-  const persist = (status: "draft" | "submitted") => {
+  const persist = async (status: "draft" | "submitted") => {
     if (!type) return;
-    createRequest({ ...draft, type }, status === "draft" ? "Draft" : "Submitted");
-    setSubmitted(status);
+    setSaving(true);
+    setError(null);
+    try {
+      await createRequest({ data: { type, status, targetExpertSlug: expert ?? null, payload: { values: draft.values, files: draft.files } } });
+      setSubmitted(status);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save this request.");
+    } finally { setSaving(false); }
   };
 
   if (submitted) {
@@ -185,6 +202,7 @@ function RequestExpertPage() {
             Connect with marine and fisheries experts, trainers, reviewers, mentors, and technical
             specialists from the BARUNA network.
           </p>
+          {expert && <p className="mt-3 inline-flex rounded-full bg-marine/10 px-3 py-1 text-xs font-semibold text-marine">Directed request: {expert.replaceAll("-", " ")}</p>}
         </div>
 
         {/* Stepper */}
@@ -336,7 +354,8 @@ function RequestExpertPage() {
               {type && (
                 <button
                   type="button"
-                  onClick={() => persist("draft")}
+                  onClick={() => void persist("draft")}
+                  disabled={saving}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-marine px-4 py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
                 >
                   Save Draft
@@ -353,10 +372,11 @@ function RequestExpertPage() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => persist("submitted")}
+                  onClick={() => void persist("submitted")}
+                  disabled={saving}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
                 >
-                  Submit Request <Check className="h-4 w-4" />
+                  {saving ? "Submitting…" : "Submit Request"} <Check className="h-4 w-4" />
                 </button>
               )}
             </div>

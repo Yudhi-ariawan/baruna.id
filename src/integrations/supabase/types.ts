@@ -4257,6 +4257,26 @@ export type Database = {
         Args: { _display_name: string; _source_type?: unknown }
         Returns: string
       }
+      expert_service_request_create: {
+        Args: {
+          _payload: Json
+          _request_type: string
+          _status?: string
+          _target_expert_slug?: string | null
+        }
+        Returns: Json
+      }
+      expert_service_request_delete_draft: {
+        Args: { _request_id: string }
+        Returns: undefined
+      }
+      expert_service_requests_my: { Args: never; Returns: Json }
+      trainer_portal_bootstrap: { Args: never; Returns: Json }
+      trainer_service_request_respond: {
+        Args: { _action: string; _request_id: string }
+        Returns: Json
+      }
+      trainer_service_requests: { Args: never; Returns: Json }
       expert_draft_submit: { Args: { _draft_id: string }; Returns: string }
       expert_draft_update: {
         Args: { _draft_id: string; _patch: Json }

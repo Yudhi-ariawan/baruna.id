@@ -262,7 +262,7 @@ function ExpertCard({ expert }: { expert: PublicExpert }) {
         </Link>
         <Link
           to="/experts/request"
-          search={{ type: isTrainer ? "trainer" : "technical" }}
+          search={{ type: isTrainer ? "trainer" : "technical", expert: expert.slug }}
           className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-navy hover:bg-muted"
         >
           Request

@@ -143,7 +143,7 @@ function ExpertProfile() {
                 )}
                 <Link
                   to="/experts/request"
-                  search={{ type: expert.trainerStatus === "active" ? "trainer" : "technical" }}
+                  search={{ type: expert.trainerStatus === "active" ? "trainer" : "technical", expert: expert.slug }}
                   className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-marine py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
                 >
                   Request This Expert <ArrowRight className="h-4 w-4" />
