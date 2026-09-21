@@ -176,6 +176,36 @@ function dashboardUrlForRole(roleCode: string): string {
   return "/dashboard";
 }
 
+const ROLE_PRIORITY = [
+  "super_admin",
+  "admin",
+  "expert",
+  "approver",
+  "verifier",
+  "reviewer",
+  "operator",
+  "publisher",
+  "participant",
+  "registered_user",
+] as const;
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Administrator",
+  admin: "Administrator",
+  expert: "Expert",
+  approver: "Approver",
+  verifier: "Verifier",
+  reviewer: "Reviewer",
+  operator: "Operator",
+  publisher: "Publisher",
+  participant: "Participant",
+  registered_user: "Registered User",
+};
+
+function highestPriorityRole(roleCodes: string[]): string {
+  return ROLE_PRIORITY.find((code) => roleCodes.includes(code)) ?? roleCodes[0] ?? "registered_user";
+}
+
 export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<HomeViewer> => {
@@ -193,21 +223,41 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
     if (identityError || !identity.user) throw new Error("user_identity_not_found");
     if (profileError || !profile) throw new Error("profile_not_found");
 
-    const { data: assignment, error: assignmentError } = await admin
+    const { data: assignments, error: assignmentError } = await admin
       .from("rbac_user_roles")
-      .select("is_primary, rbac_roles(code,name)")
+      .select("rbac_roles(code)")
       .eq("user_id", context.userId)
       .eq("status", "active")
       .lte("valid_from", now)
-      .or(`valid_until.is.null,valid_until.gt.${now}`)
-      .order("is_primary", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .or(`valid_until.is.null,valid_until.gt.${now}`);
     if (assignmentError) throw new Error(assignmentError.message);
 
-    const role = assignment?.rbac_roles;
-    const roleCode = role?.code ?? "registered_user";
-    const roleLabel = role?.name ?? "Registered User";
+    const roleCodes = (assignments ?? [])
+      .map((assignment) => assignment.rbac_roles?.code)
+      .filter((code): code is string => Boolean(code));
+    const roleCode = highestPriorityRole(roleCodes);
+    let roleLabel = ROLE_LABELS[roleCode] ?? roleCode.replaceAll("_", " ");
+    if (roleCode === "expert") {
+      const { data: expert } = await admin
+        .from("experts")
+        .select("id")
+        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (expert) {
+        const { data: trainer } = await admin
+          .from("expert_trainer_status")
+          .select("id")
+          .eq("expert_id", expert.id)
+          .eq("trainer_status", "active")
+          .lte("effective_from", now)
+          .or(`expires_at.is.null,expires_at.gt.${now}`)
+          .limit(1)
+          .maybeSingle();
+        if (trainer) roleLabel = "BARUNA Trainer";
+      }
+    }
     const variant = ["super_admin", "admin"].includes(roleCode)
       ? "admin"
       : roleCode === "participant"
