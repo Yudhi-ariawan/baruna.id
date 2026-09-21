@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { FileEdit, CheckCircle2, AlertCircle, Send, Info } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import {
-  DEMO_TRAINER,
-  canSubmitAdditionalModule,
   LEVEL_MODULE_LIMIT,
 } from "@/lib/trainerModules";
+import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
+import { saveTrainerModuleSubmission } from "@/lib/experts/portal-services.functions";
 
 export const Route = createFileRoute("/experts/portal/submit-module")({
   head: () => ({
@@ -39,8 +41,14 @@ const DECLARATIONS = [
 ];
 
 function SubmitModulePage() {
-  const gate = canSubmitAdditionalModule(DEMO_TRAINER, DEMO_TRAINER.approvedModules);
+  const portal=useTrainerPortal(); const trainer=portal.data?.trainer; const modules=portal.data?.modules??[];
+  const saveModule=useServerFn(saveTrainerModuleSubmission); const queryClient=useQueryClient();
+  const level=trainer?.level==="not_assigned"?"none":trainer?.level??"none";
+  const activeModules=modules.filter(m=>["approved","published"].includes(m.status)).length;
+  const limit=LEVEL_MODULE_LIMIT[level];
+  const gate={allowed:Boolean(trainer)&&activeModules<limit,reason:!trainer?"Trainer profile unavailable.":activeModules>=limit?`Level limit reached (${limit} active modules).`:undefined};
   const [submitted, setSubmitted] = useState(false);
+  const [savedAsDraft,setSavedAsDraft]=useState(false); const [saving,setSaving]=useState(false); const [error,setError]=useState<string|null>(null); const [intent,setIntent]=useState<"draft"|"submit">("submit");
   const [checked, setChecked] = useState<Record<number, boolean>>({});
   const allDecls = DECLARATIONS.every((_, i) => checked[i]);
 
@@ -67,46 +75,47 @@ function SubmitModulePage() {
         <div className="rounded-2xl border border-marine/20 bg-marine/5 p-4 text-sm text-foreground/80">
           <p className="flex items-center gap-2 font-bold text-marine"><Info className="h-4 w-4" /> Level limit</p>
           <p className="mt-1">
-            Your current level ({DEMO_TRAINER.awardedLevel}) allows up to <strong>{LEVEL_MODULE_LIMIT[DEMO_TRAINER.awardedLevel]}</strong> active module{LEVEL_MODULE_LIMIT[DEMO_TRAINER.awardedLevel] === 1 ? "" : "s"}. You currently have <strong>{DEMO_TRAINER.approvedModules}</strong>.
+            Your current level ({level}) allows up to <strong>{limit}</strong> active module{limit === 1 ? "" : "s"}. You currently have <strong>{activeModules}</strong>.
           </p>
         </div>
 
-        {submitted ? (
+        {submitted || savedAsDraft ? (
           <div className="rounded-2xl border border-eco-community/30 bg-eco-community/5 p-6 text-center">
             <CheckCircle2 className="mx-auto h-10 w-10 text-eco-community" />
-            <h2 className="mt-3 font-display text-xl font-bold text-navy">Module submitted</h2>
-            <p className="mt-2 text-sm text-foreground/70">Your module now enters the Administrative Review stage. You will be notified at every status change.</p>
+            <h2 className="mt-3 font-display text-xl font-bold text-navy">{submitted?"Module submitted":"Draft saved"}</h2>
+            <p className="mt-2 text-sm text-foreground/70">{submitted?"Your module is now recorded in the governance review workflow.":"Your module draft is securely stored in Supabase."}</p>
           </div>
         ) : (
           <form
             className="space-y-5"
-            onSubmit={(e) => {
+            onSubmit={async(e) => {
               e.preventDefault();
-              if (!gate.allowed || !allDecls) return;
-              setSubmitted(true);
+              if (!gate.allowed || (intent==="submit"&&!allDecls)) return; setSaving(true);setError(null);
+              const form=new FormData(e.currentTarget); const title=String(form.get("title")??"");
+              try{await saveModule({data:{title,moduleType:"technical",submit:intent==="submit",payload:{title,module_type:"technical",summary:String(form.get("summary")??""),language:String(form.get("language")??""),estimated_learning_hours:Number(form.get("hours")??0),target_participants:String(form.get("targetParticipants")??""),content_outline:{topic:String(form.get("topic")??""),competency:String(form.get("competency")??"")},learning_objectives:String(form.get("objectives")??"").split("\n").filter(Boolean),assessment_approach:{method:String(form.get("assessment")??""),passing_score:Number(form.get("passingScore")??0)},metadata:{level:String(form.get("level")??""),delivery_format:String(form.get("deliveryFormat")??""),copyright_holder:String(form.get("copyrightHolder")??"")}}}});await queryClient.invalidateQueries({queryKey:["experts","trainer-portal-dashboard"]});if(intent==="submit")setSubmitted(true);else setSavedAsDraft(true)}catch(cause){setError(cause instanceof Error?cause.message:"Unable to save module.")}finally{setSaving(false)}
             }}
           >
             <Section title="Module Metadata">
               <Grid>
-                <Field label="Module Title" required><input className={inp} required /></Field>
-                <Field label="Topic / Field" required><input className={inp} required /></Field>
-                <Field label="Competency Area" required><input className={inp} required /></Field>
+                <Field label="Module Title" required><input name="title" className={inp} required /></Field>
+                <Field label="Topic / Field" required><input name="topic" className={inp} required /></Field>
+                <Field label="Competency Area" required><input name="competency" className={inp} required /></Field>
                 <Field label="Delivery Format" required>
-                  <select className={inp} required defaultValue="Self-paced">
+                  <select name="deliveryFormat" className={inp} required defaultValue="Self-paced">
                     <option>Self-paced</option><option>Scheduled</option><option>Blended</option>
                   </select>
                 </Field>
-                <Field label="Instructional Hours" required><input type="number" min={1} className={inp} required /></Field>
+                <Field label="Instructional Hours" required><input name="hours" type="number" min={1} className={inp} required /></Field>
                 <Field label="Independent Study Hours"><input type="number" min={0} className={inp} /></Field>
                 <Field label="Level" required>
-                  <select className={inp} required defaultValue="Intermediate">
+                  <select name="level" className={inp} required defaultValue="Intermediate">
                     <option>Introductory</option><option>Intermediate</option><option>Advanced</option>
                   </select>
                 </Field>
-                <Field label="Language" required><input className={inp} defaultValue="English" required /></Field>
+                <Field label="Language" required><input name="language" className={inp} defaultValue="English" required /></Field>
               </Grid>
               <Field label="Short Description" required>
-                <textarea className={`${inp} min-h-[80px]`} required />
+                <textarea name="summary" className={`${inp} min-h-[80px]`} required />
               </Field>
               <Field label="Rationale">
                 <textarea className={`${inp} min-h-[60px]`} placeholder="Why this module matters strategically." />
@@ -114,16 +123,16 @@ function SubmitModulePage() {
             </Section>
 
             <Section title="Target Learners">
-              <Field label="Target Participants" required><input className={inp} required /></Field>
+              <Field label="Target Participants" required><input name="targetParticipants" className={inp} required /></Field>
               <Field label="Entry Requirements"><input className={inp} /></Field>
             </Section>
 
             <Section title="Learning Design">
-              <Field label="Learning Objectives" required><textarea className={`${inp} min-h-[80px]`} required /></Field>
+              <Field label="Learning Objectives" required><textarea name="objectives" className={`${inp} min-h-[80px]`} required /></Field>
               <Field label="Expected Competency Outcomes" required><textarea className={`${inp} min-h-[80px]`} required /></Field>
               <Grid>
-                <Field label="Assessment Method" required><input className={inp} required /></Field>
-                <Field label="Passing Score (%)" required><input type="number" min={0} max={100} defaultValue={70} className={inp} required /></Field>
+                <Field label="Assessment Method" required><input name="assessment" className={inp} required /></Field>
+                <Field label="Passing Score (%)" required><input name="passingScore" type="number" min={0} max={100} defaultValue={70} className={inp} required /></Field>
               </Grid>
             </Section>
 
@@ -141,7 +150,7 @@ function SubmitModulePage() {
 
             <Section title="Copyright, Originality & Ethics">
               <Grid>
-                <Field label="Copyright Holder" required><input className={inp} defaultValue={DEMO_TRAINER.fullName} required /></Field>
+                <Field label="Copyright Holder" required><input name="copyrightHolder" className={inp} defaultValue={trainer?.fullName??""} required /></Field>
                 <Field label="Licensing"><input className={inp} placeholder="e.g. CC BY-NC-SA 4.0" /></Field>
               </Grid>
               <div className="space-y-2 rounded-xl border border-marine/20 bg-marine/5 p-4">
@@ -155,13 +164,14 @@ function SubmitModulePage() {
             </Section>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button type="submit" disabled={!gate.allowed || !allDecls} className="inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy disabled:cursor-not-allowed disabled:opacity-50">
-                <Send className="h-4 w-4" /> Submit for Review
+              <button type="submit" onClick={()=>setIntent("submit")} disabled={!gate.allowed || !allDecls||saving} className="inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy disabled:cursor-not-allowed disabled:opacity-50">
+                <Send className="h-4 w-4" /> {saving?"Saving…":"Submit for Review"}
               </button>
-              <button type="button" className="rounded-xl border border-border px-5 py-3 text-sm font-semibold text-navy hover:bg-muted">
+              <button type="submit" onClick={()=>setIntent("draft")} disabled={!gate.allowed||saving} className="rounded-xl border border-border px-5 py-3 text-sm font-semibold text-navy hover:bg-muted">
                 Save as Draft
               </button>
             </div>
+            {error&&<p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
           </form>
         )}
       </div>

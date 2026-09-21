@@ -1,14 +1,18 @@
 import type { FileMeta, RequestStatus, RequestType } from "@/lib/experts";
+import type { Json } from "@/integrations/supabase/types";
 
 export type PortalAccess = "registered_user" | "expert_non_trainer" | "active_trainer";
 
 export type TrainerModule = {
   id: string;
   title: string;
+  summary: string | null;
   status: string;
   hours: number | null;
   version: number;
   language: string | null;
+  moduleType: string;
+  targetParticipants: string | null;
   updatedAt: string;
 };
 
@@ -32,6 +36,10 @@ export type TrainerPortalBootstrap = {
     fullName: string;
     title: string | null;
     organization: string | null;
+    country: string | null;
+    expertiseAreas: string[];
+    languages: string[];
+    trainingRoles: string[];
     level: "not_assigned" | "certified" | "advanced" | "senior" | "master";
     status: string;
     approvedAt: string;
@@ -39,6 +47,21 @@ export type TrainerPortalBootstrap = {
   };
   modules?: TrainerModule[];
   history?: TrainingHistory[];
+  moduleDrafts?: Array<{
+    id: string; title: string; status: string; subjectId: string | null;
+    reviewStatus: string | null; payload: Json;
+    createdAt: string; updatedAt: string;
+    reviewHistory: Array<{ kind: string; at: string; actor: string; decision: string; comment: string | null }>;
+  }>;
+  certificates?: Array<{
+    id: string; type: string; title: string; subtitle: string | null;
+    number: string; issueDate: string; documentUrl: string | null; metadata: Json;
+  }>;
+  recognitionRules?: Array<{ level: string; minimumParticipants: number; evidenceRequirements: string | null }>;
+  analytics?: {
+    countries: Array<{ country: string; participants: number }>;
+    completionRate: number | null; averageRating: number | null; hasUnresolvedComplaint: boolean | null;
+  };
 };
 
 export type ServiceRequest = {
