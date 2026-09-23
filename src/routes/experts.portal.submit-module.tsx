@@ -10,6 +10,12 @@ import {
 } from "@/lib/trainerModules";
 import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
 import { saveTrainerModuleSubmission } from "@/lib/experts/portal-services.functions";
+import { ModuleAttachmentUploader } from "@/components/baruna/experts/ModuleAttachmentUploader";
+import {
+  MODULE_ATTACHMENT_DEFINITIONS,
+  type ModuleAttachment,
+  type ModuleAttachmentKey,
+} from "@/lib/experts/module-attachments";
 
 export const Route = createFileRoute("/experts/portal/submit-module")({
   head: () => ({
@@ -21,17 +27,6 @@ export const Route = createFileRoute("/experts/portal/submit-module")({
   }),
   component: SubmitModulePage,
 });
-
-const RESOURCES = [
-  "Complete module document (PDF)",
-  "Presentation slides (PDF or PPT)",
-  "Learning video (optional but strongly encouraged)",
-  "Quiz / assessment with answer key",
-  "Trainer guide",
-  "Evaluation form",
-  "Course cover image",
-  "Practical exercise (if applicable)",
-];
 
 const DECLARATIONS = [
   "This is my own original work.",
@@ -50,6 +45,7 @@ function SubmitModulePage() {
   const [submitted, setSubmitted] = useState(false);
   const [savedAsDraft,setSavedAsDraft]=useState(false); const [saving,setSaving]=useState(false); const [error,setError]=useState<string|null>(null); const [intent,setIntent]=useState<"draft"|"submit">("submit");
   const [checked, setChecked] = useState<Record<number, boolean>>({});
+  const [attachments, setAttachments] = useState<Partial<Record<ModuleAttachmentKey, ModuleAttachment>>>({});
   const allDecls = DECLARATIONS.every((_, i) => checked[i]);
 
   return (
@@ -92,7 +88,7 @@ function SubmitModulePage() {
               e.preventDefault();
               if (!gate.allowed || (intent==="submit"&&!allDecls)) return; setSaving(true);setError(null);
               const form=new FormData(e.currentTarget); const title=String(form.get("title")??"");
-              try{await saveModule({data:{title,moduleType:"technical",submit:intent==="submit",payload:{title,module_type:"technical",summary:String(form.get("summary")??""),language:String(form.get("language")??""),estimated_learning_hours:Number(form.get("hours")??0),target_participants:String(form.get("targetParticipants")??""),content_outline:{topic:String(form.get("topic")??""),competency:String(form.get("competency")??"")},learning_objectives:String(form.get("objectives")??"").split("\n").filter(Boolean),assessment_approach:{method:String(form.get("assessment")??""),passing_score:Number(form.get("passingScore")??0)},metadata:{level:String(form.get("level")??""),delivery_format:String(form.get("deliveryFormat")??""),copyright_holder:String(form.get("copyrightHolder")??"")}}}});await queryClient.invalidateQueries({queryKey:["experts","trainer-portal-dashboard"]});if(intent==="submit")setSubmitted(true);else setSavedAsDraft(true)}catch(cause){setError(cause instanceof Error?cause.message:"Unable to save module.")}finally{setSaving(false)}
+              try{await saveModule({data:{title,moduleType:"technical",submit:intent==="submit",payload:{title,module_type:"technical",summary:String(form.get("summary")??""),language:String(form.get("language")??""),estimated_learning_hours:Number(form.get("hours")??0),target_participants:String(form.get("targetParticipants")??""),content_outline:{topic:String(form.get("topic")??""),competency:String(form.get("competency")??"")},learning_objectives:String(form.get("objectives")??"").split("\n").filter(Boolean),assessment_approach:{method:String(form.get("assessment")??""),passing_score:Number(form.get("passingScore")??0)},attachments:Object.values(attachments).filter((attachment): attachment is ModuleAttachment => Boolean(attachment)),metadata:{level:String(form.get("level")??""),delivery_format:String(form.get("deliveryFormat")??""),copyright_holder:String(form.get("copyrightHolder")??"")}}}});await queryClient.invalidateQueries({queryKey:["experts","trainer-portal-dashboard"]});if(intent==="submit")setSubmitted(true);else setSavedAsDraft(true)}catch(cause){setError(cause instanceof Error?cause.message:"Unable to save module.")}finally{setSaving(false)}
             }}
           >
             <Section title="Module Metadata">
@@ -138,12 +134,13 @@ function SubmitModulePage() {
 
             <Section title="Attached Resources">
               <ul className="grid gap-2 sm:grid-cols-2">
-                {RESOURCES.map((r) => (
-                  <li key={r} className="flex items-center gap-2 rounded-lg border border-dashed border-border p-3 text-xs text-foreground/70">
-                    <input type="file" className="hidden" id={r} />
-                    <label htmlFor={r} className="flex-1 cursor-pointer">{r}</label>
-                    <span className="text-[0.65rem] font-bold text-marine">UPLOAD</span>
-                  </li>
+                {MODULE_ATTACHMENT_DEFINITIONS.map((definition) => (
+                  <ModuleAttachmentUploader
+                    key={definition.key}
+                    definition={definition}
+                    value={attachments[definition.key]}
+                    onChange={(attachment) => setAttachments((current) => ({ ...current, [definition.key]: attachment }))}
+                  />
                 ))}
               </ul>
             </Section>
