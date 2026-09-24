@@ -8,6 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requirePermission } from "@/lib/auth/permissions.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseCtx = any;
@@ -165,19 +166,9 @@ export const submitMyDraftForReview = createServerFn({ method: "POST" })
     return { subjectId: subjectId as string };
   });
 
-// ─── Admin/mgmt: subject management ────────────────────────────────────────
+// ─── Governance administration ─────────────────────────────────────────────
 async function assertGovRole(context: { supabase: SupabaseCtx; userId: string }) {
-  const check = async (role: "admin" | "management") => {
-    const { data, error } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: role,
-    });
-    if (error) throw new Error((error as { message?: string }).message ?? "role_check_failed");
-    return Boolean(data);
-  };
-  if (!(await check("admin")) && !(await check("management"))) {
-    throw new Error("forbidden");
-  }
+  await requirePermission(context, "governance.manage");
 }
 
 
@@ -365,18 +356,20 @@ export const setRequiredRecommendations = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Lookup: qa_reviewers available for assignment
+// Official reviewers and verifiers available for assignment.
 export const listReviewers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertGovRole(context);
     const { data, error } = await context.supabase
-      .from("user_roles")
-      .select("user_id, role, created_at")
-      .eq("role", "qa_reviewer")
+      .from("rbac_user_roles")
+      .select("user_id, created_at, status, valid_from, valid_until, rbac_roles!inner(code)")
+      .eq("status", "active")
+      .in("rbac_roles.code", ["reviewer", "verifier"])
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []) as { user_id: string; role: string; created_at: string }[];
+    const now = Date.now();
+    return (data ?? []).filter((row) => new Date(row.valid_from).getTime() <= now && (!row.valid_until || new Date(row.valid_until).getTime() > now)).map((row) => ({ user_id: row.user_id, role: row.rbac_roles.code, created_at: row.created_at }));
   });
 
 
@@ -417,7 +410,7 @@ export const saveReviewCriteria = createServerFn({ method: "POST" })
     return updated;
   });
 
-// ─── Admin/mgmt: template management ───────────────────────────────────────
+// ─── Template management ───────────────────────────────────────────────────
 export const listReviewTemplates = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ kind: SubjectKind.optional() }).parse(d ?? {}))
@@ -530,14 +523,15 @@ export const getGovernanceDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data: roleRows, error: roleErr } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
+      .from("rbac_user_roles")
+      .select("status,valid_from,valid_until,rbac_roles!inner(code)")
+      .eq("user_id", context.userId).eq("status", "active");
     if (roleErr) throw new Error(roleErr.message);
-    const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
-    const isAdmin = roles.includes("admin");
-    const isMgmt = roles.includes("management");
-    const isReviewer = roles.includes("qa_reviewer");
+    const now = Date.now();
+    const roles = (roleRows ?? []).filter((row) => new Date(row.valid_from).getTime() <= now && (!row.valid_until || new Date(row.valid_until).getTime() > now)).map((row) => row.rbac_roles.code);
+    const isAdmin = roles.includes("admin") || roles.includes("super_admin");
+    const isReviewer = roles.includes("reviewer") || roles.includes("verifier");
+    const isApprover = roles.includes("approver");
 
     // Submitter rollup — always available
     const draftsRes = await context.supabase
@@ -578,7 +572,7 @@ export const getGovernanceDashboard = createServerFn({ method: "GET" })
       };
     }
 
-    // Admin/mgmt rollup
+    // Administrator/approver rollup
     let admin: {
       pending: number;
       underReview: number;
@@ -587,7 +581,7 @@ export const getGovernanceDashboard = createServerFn({ method: "GET" })
       rejected: number;
       templates: number;
     } | null = null;
-    if (isAdmin || isMgmt) {
+    if (isAdmin || isApprover) {
       const [subjRes, tplRes] = await Promise.all([
         context.supabase.from("review_subjects").select("current_status"),
         context.supabase.from("review_templates").select("id").is("deprecated_at", null),

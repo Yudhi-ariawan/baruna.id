@@ -2,7 +2,7 @@
 // BARUNA Governance Review Foundation — Server functions (Phase 1.1)
 // ----------------------------------------------------------------------------
 // Institutional QA review layer. Reviewers issue recommendations only; final
-// decisions are recorded by admin/management. All privileged writes (roles,
+// decisions are recorded by approvers. All privileged writes (roles,
 // audit log) go through the service-role client after in-handler role checks.
 // ============================================================================
 import { createServerFn } from "@tanstack/react-start";
@@ -11,23 +11,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requirePermission } from "@/lib/auth/permissions.server";
 import type { Json } from "@/integrations/supabase/types";
 
-const AppRole = z.enum(["admin", "management", "qa_reviewer"]);
+const AppRole = z.enum(["reviewer", "verifier", "approver", "publisher"]);
 const Recommendation = z.enum(["approve", "reject", "request_changes"]);
 const Decision = z.enum(["approve", "reject", "return_for_revision"]);
 const SubjectKind = z.enum(["expert", "module", "knowledge_resource", "training_need"]);
-
-async function assertRole(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  context: { supabase: any; userId: string },
-  role: "admin" | "management" | "qa_reviewer",
-) {
-  const { data, error } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: role,
-  });
-  if (error) throw new Error((error as { message?: string }).message ?? "role_check_failed");
-  return Boolean(data);
-}
 
 // ─── Role queries ──────────────────────────────────────────────────────────
 export const getMyRoles = createServerFn({ method: "GET" })
@@ -304,13 +291,11 @@ export const declareConflict = createServerFn({ method: "POST" })
     return updated;
   });
 
-// ─── Admin / management ────────────────────────────────────────────────────
+// ─── Approval ──────────────────────────────────────────────────────────────
 export const listPendingDecisions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
-      throw new Error("forbidden");
-    }
+    await requirePermission(context, "academy.approve");
     const { data, error } = await context.supabase
       .from("review_subjects")
       .select("id, kind, title, current_status, submitted_by, created_at")
@@ -324,9 +309,7 @@ export const listSubmittedRecommendations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
-      throw new Error("forbidden");
-    }
+    await requirePermission(context, "academy.approve");
     const { data: rows, error } = await context.supabase
       .from("review_records")
       .select("id, reviewer_id, recommendation, rationale, criteria, submitted_at")
@@ -378,8 +361,40 @@ export const recordFinalDecision = createServerFn({ method: "POST" })
     return { id: id as string, decision: data.decision };
   });
 
+export const listApprovedModulesForPublication = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requirePermission(context, "academy.publish");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin.from("review_subjects")
+      .select("id,title,updated_at,review_decisions!inner(id,decision,decided_at,rationale)")
+      .eq("kind", "module").eq("current_status", "approved")
+      .eq("review_decisions.decision", "approve").order("updated_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    if (!data?.length) return [];
+    const { data: published, error: publishedError } = await supabaseAdmin.from("module_registry").select("source_submission_id").in("source_submission_id", (data ?? []).map((row) => row.id));
+    if (publishedError) throw new Error(publishedError.message);
+    const publishedIds = new Set((published ?? []).map((row) => row.source_submission_id));
+    return (data ?? []).filter((row) => !publishedIds.has(row.id)).map((row) => {
+      const decisions = Array.isArray(row.review_decisions) ? row.review_decisions : [row.review_decisions];
+      const decision = decisions.sort((a, b) => String(b.decided_at).localeCompare(String(a.decided_at)))[0];
+      return { id: row.id, title: row.title, updatedAt: row.updated_at, decisionId: decision.id, approvedAt: decision.decided_at, rationale: decision.rationale };
+    });
+  });
 
-// ─── Subject creation (admin/management) ───────────────────────────────────
+export const publishApprovedModule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ subjectId: z.string().uuid(), decisionId: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    await requirePermission(context, "academy.publish");
+    const client = context.supabase as unknown as { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+    const result = await client.rpc("module_publish_from_decision", { _subject_id: data.subjectId, _decision_id: data.decisionId, _visibility: "public", _verification: "governance_verified" });
+    if (result.error) throw new Error(result.error.message);
+    return { moduleId: result.data as string };
+  });
+
+
+// ─── Subject administration ────────────────────────────────────────────────
 export const createReviewSubject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
@@ -395,9 +410,7 @@ export const createReviewSubject = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
-      throw new Error("forbidden");
-    }
+    await requirePermission(context, "governance.manage");
     const { data: created, error } = await context.supabase
       .from("review_subjects")
       .insert({
@@ -426,17 +439,17 @@ export const assignReviewer = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
-      throw new Error("forbidden");
-    }
+    await requirePermission(context, "governance.manage");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Reviewer must have qa_reviewer role
-    const { data: hasRole } = await supabaseAdmin.rpc("has_role", {
-      _user_id: data.reviewerId,
-      _role: "qa_reviewer",
-    });
-    if (!hasRole) throw new Error("reviewer_not_qualified");
+    const { data: assignments, error: roleError } = await supabaseAdmin.from("rbac_user_roles")
+      .select("status,valid_from,valid_until,rbac_roles!inner(code)")
+      .eq("user_id", data.reviewerId).eq("status", "active")
+      .in("rbac_roles.code", ["reviewer", "verifier", "admin", "super_admin"]);
+    if (roleError) throw new Error(roleError.message);
+    const now = Date.now();
+    const qualified = (assignments ?? []).some((assignment) => new Date(assignment.valid_from).getTime() <= now && (!assignment.valid_until || new Date(assignment.valid_until).getTime() > now));
+    if (!qualified) throw new Error("reviewer_or_verifier_role_required");
 
     // Subject submitter cannot equal reviewer
     const { data: subject } = await supabaseAdmin
@@ -475,14 +488,12 @@ export const assignReviewer = createServerFn({ method: "POST" })
     return created;
   });
 
-// ─── Audit trail (admin/management) ────────────────────────────────────────
+// ─── Audit trail ───────────────────────────────────────────────────────────
 export const listGovernanceAudit = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
-      throw new Error("forbidden");
-    }
+    await requirePermission(context, "audit.read");
     const { data: rows, error } = await context.supabase
       .from("governance_audit_log")
       .select("id, event_type, actor_id, entity_type, entity_id, before, after, created_at")
@@ -507,7 +518,7 @@ export const exportGovernanceAuditCsv = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     // Delegates to export_governance_audit_csv RPC. The RPC enforces the
-    // admin/management gate, neutralises CSV formula injection, RFC4180
+    // Permission-gated RPC neutralises CSV formula injection, RFC4180
     // quotes fields, and logs the export in the audit trail itself.
     const args: Record<string, unknown> = { _limit: data.limit };
     if (data.subjectId) args._subject_id = data.subjectId;

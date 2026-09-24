@@ -41,10 +41,10 @@ function GovernanceShell() {
 
   const roles = rolesQ.data ?? [];
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
-  const isMgmt = roles.includes("management");
-  const isReviewer = roles.includes("qa_reviewer") || roles.includes("reviewer") || roles.includes("verifier");
+  const isReviewer = roles.includes("reviewer") || roles.includes("verifier");
   const isApprover = roles.includes("approver");
-  const hasAny = isAdmin || isMgmt || isReviewer || isApprover;
+  const isPublisher = roles.includes("publisher");
+  const hasAny = isAdmin || isReviewer || isApprover || isPublisher;
 
   if (rolesQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Checking access…</div>;
 
@@ -53,7 +53,7 @@ function GovernanceShell() {
       <div className="mx-auto max-w-xl px-6 py-16 text-center">
         <h1 className="text-2xl font-semibold text-foreground">Governance workspace</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          You don't have a governance role. This area is reserved for admins, management, and QA reviewers.
+          You don't have a governance role. This area is reserved for administrators, reviewers, verifiers, approvers, and publishers.
         </p>
         <Link to="/" className="mt-6 inline-block text-sm text-primary hover:underline">
           Return home
@@ -68,11 +68,11 @@ function GovernanceShell() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Governance Review</h1>
           <p className="text-xs text-muted-foreground">
-            Roles: {roles.join(", ") || "—"} · Recommendations only; final decisions rest with admin/management.
+            Roles: {roles.join(", ") || "—"} · Review, verification, approval, and publication are separated duties.
           </p>
         </div>
         <nav className="flex flex-wrap gap-2 text-sm">
-          {isAdmin || isMgmt ? (
+          {isAdmin ? (
             <Link to="/governance/subjects" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
               Review Subjects
             </Link>
@@ -82,12 +82,17 @@ function GovernanceShell() {
               My Queue
             </Link>
           ) : null}
-          {isAdmin || isMgmt || isApprover ? (
+          {isAdmin || isApprover ? (
             <Link to="/governance/decisions" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
               Pending Decisions
             </Link>
           ) : null}
-          {isAdmin || isMgmt ? (
+          {isAdmin || isPublisher ? (
+            <Link to="/governance/publications" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
+              Publication Queue
+            </Link>
+          ) : null}
+          {isAdmin ? (
             <Link to="/governance/templates" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
               Templates
             </Link>

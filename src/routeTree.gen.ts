@@ -44,6 +44,7 @@ import { Route as KnowledgeHubMyContributionsRouteImport } from './routes/knowle
 import { Route as KnowledgeHubTypeRouteImport } from './routes/knowledge-hub_.$type'
 import { Route as GovernanceRolesRouteImport } from './routes/governance.roles'
 import { Route as GovernanceQueueRouteImport } from './routes/governance.queue'
+import { Route as GovernancePublicationsRouteImport } from './routes/governance.publications'
 import { Route as GovernanceDecisionsRouteImport } from './routes/governance.decisions'
 import { Route as ExpertsServicesRouteImport } from './routes/experts.services'
 import { Route as ExpertsRequestRouteImport } from './routes/experts.request'
@@ -296,6 +297,11 @@ const GovernanceRolesRoute = GovernanceRolesRouteImport.update({
 const GovernanceQueueRoute = GovernanceQueueRouteImport.update({
   id: '/queue',
   path: '/queue',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const GovernancePublicationsRoute = GovernancePublicationsRouteImport.update({
+  id: '/publications',
+  path: '/publications',
   getParentRoute: () => GovernanceRoute,
 } as any)
 const GovernanceDecisionsRoute = GovernanceDecisionsRouteImport.update({
@@ -756,6 +762,7 @@ export interface FileRoutesByFullPath {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
+  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub/$type': typeof KnowledgeHubTypeRoute
@@ -861,6 +868,7 @@ export interface FileRoutesByTo {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
+  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub/$type': typeof KnowledgeHubTypeRoute
@@ -975,6 +983,7 @@ export interface FileRoutesById {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
+  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub_/$type': typeof KnowledgeHubTypeRoute
@@ -1090,6 +1099,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
+    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub/$type'
@@ -1195,6 +1205,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
+    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub/$type'
@@ -1308,6 +1319,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
+    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub_/$type'
@@ -1636,6 +1648,13 @@ declare module '@tanstack/react-router' {
       path: '/queue'
       fullPath: '/governance/queue'
       preLoaderRoute: typeof GovernanceQueueRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/publications': {
+      id: '/governance/publications'
+      path: '/publications'
+      fullPath: '/governance/publications'
+      preLoaderRoute: typeof GovernancePublicationsRouteImport
       parentRoute: typeof GovernanceRoute
     }
     '/governance/decisions': {
@@ -2395,6 +2414,7 @@ const ExpertsRouteWithChildren =
 
 interface GovernanceRouteChildren {
   GovernanceDecisionsRoute: typeof GovernanceDecisionsRoute
+  GovernancePublicationsRoute: typeof GovernancePublicationsRoute
   GovernanceQueueRoute: typeof GovernanceQueueRoute
   GovernanceRolesRoute: typeof GovernanceRolesRoute
   GovernanceIndexRoute: typeof GovernanceIndexRoute
@@ -2408,6 +2428,7 @@ interface GovernanceRouteChildren {
 
 const GovernanceRouteChildren: GovernanceRouteChildren = {
   GovernanceDecisionsRoute: GovernanceDecisionsRoute,
+  GovernancePublicationsRoute: GovernancePublicationsRoute,
   GovernanceQueueRoute: GovernanceQueueRoute,
   GovernanceRolesRoute: GovernanceRolesRoute,
   GovernanceIndexRoute: GovernanceIndexRoute,

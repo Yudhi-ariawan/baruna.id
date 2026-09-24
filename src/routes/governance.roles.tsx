@@ -8,13 +8,13 @@ export const Route = createFileRoute("/governance/roles")({
   component: RolesPage,
 });
 
-type Role = "admin" | "management" | "qa_reviewer";
+type Role = "reviewer" | "verifier" | "approver" | "publisher";
 
 function RolesPage() {
   const grantFn = useServerFn(grantRole);
   const revokeFn = useServerFn(revokeRole);
   const [userId, setUserId] = useState("");
-  const [role, setRole] = useState<Role>("qa_reviewer");
+  const [role, setRole] = useState<Role>("reviewer");
   const [msg, setMsg] = useState<string | null>(null);
 
   const grantM = useMutation({
@@ -51,9 +51,10 @@ function RolesPage() {
             onChange={(e) => setRole(e.target.value as Role)}
             className="mt-1 w-full rounded border border-border bg-background p-2 text-sm"
           >
-            <option value="qa_reviewer">qa_reviewer</option>
-            <option value="management">management</option>
-            <option value="admin">admin</option>
+            <option value="reviewer">Reviewer — substantive review</option>
+            <option value="verifier">Verifier — compliance verification</option>
+            <option value="approver">Approver — final approval</option>
+            <option value="publisher">Publisher — public catalog release</option>
           </select>
         </label>
         <div className="flex gap-2">

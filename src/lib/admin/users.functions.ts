@@ -10,8 +10,6 @@ import { hasPermission, requirePermission } from "@/lib/auth/permissions.server"
 const RoleCode = z.enum([
   "super_admin",
   "admin",
-  "management",
-  "qa_reviewer",
   "registered_user",
   "participant",
   "expert",
