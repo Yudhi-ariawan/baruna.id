@@ -40,10 +40,11 @@ function GovernanceShell() {
   if (!signedIn) return null;
 
   const roles = rolesQ.data ?? [];
-  const isAdmin = roles.includes("admin");
+  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
   const isMgmt = roles.includes("management");
-  const isReviewer = roles.includes("qa_reviewer");
-  const hasAny = isAdmin || isMgmt || isReviewer;
+  const isReviewer = roles.includes("qa_reviewer") || roles.includes("reviewer") || roles.includes("verifier");
+  const isApprover = roles.includes("approver");
+  const hasAny = isAdmin || isMgmt || isReviewer || isApprover;
 
   if (rolesQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Checking access…</div>;
 
@@ -71,12 +72,17 @@ function GovernanceShell() {
           </p>
         </div>
         <nav className="flex flex-wrap gap-2 text-sm">
+          {isAdmin || isMgmt ? (
+            <Link to="/governance/subjects" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
+              Review Subjects
+            </Link>
+          ) : null}
           {isReviewer || isAdmin ? (
             <Link to="/governance/queue" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
               My Queue
             </Link>
           ) : null}
-          {isAdmin || isMgmt ? (
+          {isAdmin || isMgmt || isApprover ? (
             <Link to="/governance/decisions" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
               Pending Decisions
             </Link>

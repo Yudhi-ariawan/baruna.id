@@ -8,8 +8,10 @@ import {
   submitReviewRecommendation,
   withdrawReviewRecord,
   declareConflict,
+  getModuleReviewPacket,
 } from "@/lib/governance/governance.functions";
 import { ReviewCriteriaForm } from "@/components/governance/ReviewCriteriaForm";
+import { ModuleReviewPacket } from "@/components/governance/ModuleReviewPacket";
 
 export const Route = createFileRoute("/governance/subject/$id")({
   component: SubjectPage,
@@ -25,6 +27,8 @@ function SubjectPage() {
     queryKey: ["governance", "subject", id],
     queryFn: () => fn({ data: { id } }),
   });
+  const packetFn = useServerFn(getModuleReviewPacket);
+  const packetQ = useQuery({ queryKey: ["governance", "module-packet", id], queryFn: () => packetFn({ data: { subjectId: id } }), enabled: q.data?.subject?.kind === "module" });
 
   const saveFn = useServerFn(saveReviewDraft);
   const submitFn = useServerFn(submitReviewRecommendation);
@@ -111,6 +115,8 @@ function SubjectPage() {
         </p>
         {subject.description ? <p className="mt-3 text-sm">{subject.description}</p> : null}
       </div>
+
+      {subject.kind === "module" ? <ModuleReviewPacket packet={packetQ.data} /> : null}
 
       {!assignment ? (
         <div className="rounded border border-border bg-muted/30 p-4 text-sm">

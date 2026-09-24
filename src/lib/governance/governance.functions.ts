@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requirePermission } from "@/lib/auth/permissions.server";
+import type { Json } from "@/integrations/supabase/types";
 
 const AppRole = z.enum(["admin", "management", "qa_reviewer"]);
 const Recommendation = z.enum(["approve", "reject", "request_changes"]);
@@ -37,7 +38,43 @@ export const getMyRoles = createServerFn({ method: "GET" })
       .select("role")
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => r.role as string);
+    const legacy = (data ?? []).map((r) => r.role as string);
+    const { data: business } = await context.supabase
+      .from("rbac_user_roles")
+      .select("status, valid_from, valid_until, rbac_roles(code)")
+      .eq("user_id", context.userId)
+      .eq("status", "active");
+    const now = Date.now();
+    const current = (business ?? [])
+      .filter((row) => new Date(row.valid_from).getTime() <= now && (!row.valid_until || new Date(row.valid_until).getTime() > now))
+      .map((row) => row.rbac_roles?.code)
+      .filter((code): code is string => Boolean(code));
+    return [...new Set([...legacy, ...current])];
+  });
+
+export const getModuleReviewPacket = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: allowed, error: roleError } = await context.supabase.rpc("has_any_governance_role", { _user_id: context.userId });
+    if (roleError || !allowed) throw new Error("forbidden");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: revision, error } = await supabaseAdmin.from("review_subject_revisions")
+      .select("revision, snapshot, submitted_at").eq("subject_id", data.subjectId)
+      .order("revision", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!revision) return null;
+    const snapshot = revision.snapshot as { payload?: Record<string, Json> };
+    const payload = snapshot.payload ?? {};
+    const raw = Array.isArray(payload.attachments) ? payload.attachments : [];
+    const attachments = await Promise.all(raw.map(async (item) => {
+      const file = item as { category?: string; name?: string; size?: number; type?: string; path?: string; bucket?: string };
+      if (!file.path || file.bucket !== "module-attachments") return null;
+      const signed = await supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 900, { download: file.name });
+      if (signed.error) throw new Error(signed.error.message);
+      return { category: file.category ?? "attachment", name: file.name ?? "Attachment", size: file.size ?? 0, type: file.type ?? "application/octet-stream", path: file.path, signedUrl: signed.data.signedUrl };
+    }));
+    return { revision: revision.revision, submittedAt: revision.submitted_at, payload, attachments: attachments.filter((file): file is NonNullable<typeof file> => Boolean(file)) };
   });
 
 // ─── Reviewer queue ────────────────────────────────────────────────────────
@@ -259,7 +296,7 @@ export const listPendingDecisions = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("review_subjects")
       .select("id, kind, title, current_status, submitted_by, created_at")
-      .in("current_status", ["decision_pending", "under_review", "pending"])
+      .eq("current_status", "decision_pending")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -305,6 +342,14 @@ export const recordFinalDecision = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
       return { id: id as string, decision: data.decision };
+    }
+    const { data: subject, error: subjectError } = await context.supabase.from("review_subjects").select("kind").eq("id", data.subjectId).single();
+    if (subjectError) throw new Error(subjectError.message);
+    if (subject.kind === "module") {
+      const client = context.supabase as unknown as { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+      const result = await client.rpc("module_finalize_review", { _subject_id: data.subjectId, _decision: data.decision, _rationale: data.rationale ?? "" });
+      if (result.error) throw new Error(result.error.message);
+      return result.data as { decision_id: string; module_id: string | null; status: string };
     }
     const { data: id, error } = await context.supabase.rpc("finalize_decision", {
       _subject_id: data.subjectId,
