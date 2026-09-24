@@ -1,7 +1,7 @@
 import { Link, Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ShieldCheck, Users } from "lucide-react";
+import { ClipboardCheck, ShieldCheck, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getAdminAccess } from "@/lib/admin/users.functions";
@@ -24,7 +24,7 @@ function AdminShell() {
       const authenticated = Boolean(data.user);
       setSignedIn(authenticated);
       setAuthReady(true);
-      if (!authenticated) navigate({ to: "/auth", search: { redirect: "/admin/users" } });
+      if (!authenticated) navigate({ to: "/auth", search: { redirect: "/admin" } });
     });
   }, [navigate]);
 
@@ -41,13 +41,14 @@ function AdminShell() {
     );
   }
   if (!signedIn) return null;
-  if (accessQuery.isError || !accessQuery.data?.canReadUsers) {
+  const canGovern = Boolean(accessQuery.data?.canReviewModules || accessQuery.data?.canVerifyModules || accessQuery.data?.canApproveModules);
+  if (accessQuery.isError || (!accessQuery.data?.canReadUsers && !canGovern)) {
     return (
       <main className="mx-auto max-w-xl px-6 py-20 text-center">
         <ShieldCheck className="mx-auto h-10 w-10 text-muted-foreground" />
         <h1 className="mt-4 text-2xl font-bold text-navy">Administrative access required</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your account does not have permission to manage BARUNA users.
+          Your account does not have permission to use BARUNA administration or governance tools.
         </p>
         <Link
           to="/"
@@ -73,13 +74,16 @@ function AdminShell() {
             </div>
           </div>
           <nav className="flex items-center gap-2 text-sm">
-            <Link
+            {accessQuery.data?.canReadUsers ? <Link
               to="/admin/users"
               className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-semibold hover:bg-muted"
               activeProps={{ className: "bg-navy text-white hover:bg-navy" }}
             >
               <Users className="h-4 w-4" /> Users
-            </Link>
+            </Link> : null}
+            {canGovern ? <Link to="/admin/reviews" className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-semibold hover:bg-muted" activeProps={{ className: "bg-navy text-white hover:bg-navy" }}>
+              <ClipboardCheck className="h-4 w-4" /> Module Reviews
+            </Link> : null}
             <Link to="/" className="rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted">
               Public site
             </Link>

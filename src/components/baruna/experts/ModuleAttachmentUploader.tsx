@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { CheckCircle2, FileUp, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
+import { CheckCircle2, Eye, FileUp, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   MODULE_ATTACHMENTS_BUCKET,
@@ -83,6 +83,14 @@ export function ModuleAttachmentUploader({
     setStatus("idle");
   }
 
+  async function preview() {
+    if (!value) return;
+    setError(null);
+    const { data, error: signedError } = await supabase.storage.from(MODULE_ATTACHMENTS_BUCKET).createSignedUrl(value.path, 300);
+    if (signedError) setError(signedError.message);
+    else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <li className="rounded-lg border border-dashed border-border p-3">
       <input
@@ -115,6 +123,11 @@ export function ModuleAttachmentUploader({
           {status === "uploading" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : value ? <RefreshCw className="h-3.5 w-3.5" /> : <FileUp className="h-3.5 w-3.5" />}
           {value ? "REPLACE" : "UPLOAD"}
         </button>
+        {value && (
+          <button type="button" disabled={busy} onClick={() => void preview()} className="inline-flex items-center gap-1 text-[0.65rem] font-bold text-navy hover:text-marine disabled:opacity-50">
+            <Eye className="h-3.5 w-3.5" /> PREVIEW
+          </button>
+        )}
         {value && (
           <button type="button" disabled={busy} onClick={() => void remove()} aria-label={`Remove ${value.name}`} className="text-destructive hover:text-destructive/70 disabled:opacity-50">
             <Trash2 className="h-4 w-4" />

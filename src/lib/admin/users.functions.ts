@@ -46,6 +46,9 @@ export type AdminAccess = {
   canSuspendUsers: boolean;
   canAssignRoles: boolean;
   canReadAudit: boolean;
+  canReviewModules: boolean;
+  canVerifyModules: boolean;
+  canApproveModules: boolean;
 };
 
 export type AdminRole = { code: string; name: string; description: string | null };
@@ -99,6 +102,9 @@ export const getAdminAccess = createServerFn({ method: "GET" })
     canSuspendUsers: await hasPermission(context, "users.suspend"),
     canAssignRoles: await hasPermission(context, "users.assign_role"),
     canReadAudit: await hasPermission(context, "audit.read"),
+    canReviewModules: await hasPermission(context, "academy.review"),
+    canVerifyModules: await hasPermission(context, "academy.verify"),
+    canApproveModules: await hasPermission(context, "academy.approve"),
   }));
 
 export const listUsers = createServerFn({ method: "GET" })

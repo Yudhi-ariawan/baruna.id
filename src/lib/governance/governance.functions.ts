@@ -93,6 +93,20 @@ export const listMyReviewQueue = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const listManualModuleReviewQueue = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: allowed, error: roleError } = await context.supabase.rpc("has_any_governance_role", { _user_id: context.userId });
+    if (roleError || !allowed) throw new Error("forbidden");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin.from("review_subjects")
+      .select("id,title,current_status,required_recommendations,updated_at,review_records(id,status)")
+      .eq("kind", "module").in("current_status", ["pending", "under_review", "decision_pending"])
+      .order("updated_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => ({ id: row.id, title: row.title, current_status: row.current_status, required_recommendations: row.required_recommendations, updated_at: row.updated_at, submitted_recommendations: row.review_records.filter((record) => record.status === "submitted").length }));
+  });
+
 export const getReviewSubject = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))

@@ -19,6 +19,7 @@ const ModuleSubmission = z.object({
   payload: z.record(z.unknown()),
   submit: z.boolean(),
 });
+const DraftId = z.object({ draftId: z.string().uuid() });
 
 export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -97,4 +98,23 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
     const submitted = await context.supabase.rpc("module_draft_submit", { _draft_id: draftId });
     if (submitted.error) throw new Error(submitted.error.message);
     return { draftId, subjectId: submitted.data as string, status: "submitted" };
+  });
+
+export const getMyModuleAttachmentLinks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => DraftId.parse(input))
+  .handler(async ({ context, data }) => {
+    const { data: draft, error } = await context.supabase.from("review_drafts")
+      .select("payload").eq("id", data.draftId).eq("submitter_id", context.userId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!draft) throw new Error("draft_not_found_or_not_owner");
+    const payload = draft.payload as { attachments?: Array<{ bucket?: string; path?: string; name?: string; category?: string; size?: number; type?: string }> };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const links = await Promise.all((payload.attachments ?? []).map(async (file) => {
+      if (file.bucket !== "module-attachments" || !file.path) return null;
+      const signed = await supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 300, { download: file.name });
+      if (signed.error) throw new Error(signed.error.message);
+      return { path: file.path, name: file.name ?? "Attachment", category: file.category ?? "attachment", size: file.size ?? 0, type: file.type ?? "application/octet-stream", signedUrl: signed.data.signedUrl };
+    }));
+    return links.filter((link): link is NonNullable<typeof link> => Boolean(link));
   });

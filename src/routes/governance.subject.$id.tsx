@@ -152,7 +152,7 @@ function SubjectPage() {
                       onClick={() => setRec(r)}
                       className={`rounded border px-3 py-1.5 text-xs ${rec === r ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
                     >
-                      {r}
+                      {r === "request_changes" ? "Request Revision" : r.charAt(0).toUpperCase() + r.slice(1)}
                     </button>
                   ))}
                 </div>

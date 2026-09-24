@@ -69,6 +69,7 @@ import { Route as EventsCalendarRouteImport } from './routes/events.calendar'
 import { Route as EventsAllRouteImport } from './routes/events.all'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
 import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
@@ -100,6 +101,7 @@ import { Route as ExpertsPortalServiceRequestsRouteImport } from './routes/exper
 import { Route as ExpertsPortalReviewStatusRouteImport } from './routes/experts.portal.review-status'
 import { Route as ExpertsPortalRecognitionRouteImport } from './routes/experts.portal.recognition'
 import { Route as ExpertsPortalPortfolioRouteImport } from './routes/experts.portal.portfolio'
+import { Route as ExpertsPortalModuleReviewStatusRouteImport } from './routes/experts.portal.module-review-status'
 import { Route as ExpertsPortalCertificatesRouteImport } from './routes/experts.portal.certificates'
 import { Route as ExpertsPortalAnalyticsRouteImport } from './routes/experts.portal.analytics'
 import { Route as EventsCategorySlugRouteImport } from './routes/events.category.$slug'
@@ -421,6 +423,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminReviewsRoute = AdminReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AccountProfileRoute = AccountProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -585,6 +592,12 @@ const ExpertsPortalPortfolioRoute = ExpertsPortalPortfolioRouteImport.update({
   path: '/portfolio',
   getParentRoute: () => ExpertsPortalRoute,
 } as any)
+const ExpertsPortalModuleReviewStatusRoute =
+  ExpertsPortalModuleReviewStatusRouteImport.update({
+    id: '/module-review-status',
+    path: '/module-review-status',
+    getParentRoute: () => ExpertsPortalRoute,
+  } as any)
 const ExpertsPortalCertificatesRoute =
   ExpertsPortalCertificatesRouteImport.update({
     id: '/certificates',
@@ -717,6 +730,7 @@ export interface FileRoutesByFullPath {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -773,6 +787,7 @@ export interface FileRoutesByFullPath {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
+  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -821,6 +836,7 @@ export interface FileRoutesByTo {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -876,6 +892,7 @@ export interface FileRoutesByTo {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
+  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -932,6 +949,7 @@ export interface FileRoutesById {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -988,6 +1006,7 @@ export interface FileRoutesById {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
+  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -1045,6 +1064,7 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/reviews'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1101,6 +1121,7 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
+    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1149,6 +1170,7 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/reviews'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1204,6 +1226,7 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
+    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1259,6 +1282,7 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/reviews'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1315,6 +1339,7 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
+    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1788,6 +1813,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/reviews': {
+      id: '/admin/reviews'
+      path: '/reviews'
+      fullPath: '/admin/reviews'
+      preLoaderRoute: typeof AdminReviewsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/account/profile': {
       id: '/account/profile'
       path: '/profile'
@@ -2003,6 +2035,13 @@ declare module '@tanstack/react-router' {
       path: '/portfolio'
       fullPath: '/experts/portal/portfolio'
       preLoaderRoute: typeof ExpertsPortalPortfolioRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/module-review-status': {
+      id: '/experts/portal/module-review-status'
+      path: '/module-review-status'
+      fullPath: '/experts/portal/module-review-status'
+      preLoaderRoute: typeof ExpertsPortalModuleReviewStatusRouteImport
       parentRoute: typeof ExpertsPortalRoute
     }
     '/experts/portal/certificates': {
@@ -2241,11 +2280,13 @@ const AccountRouteWithChildren =
   AccountRoute._addFileChildren(AccountRouteChildren)
 
 interface AdminRouteChildren {
+  AdminReviewsRoute: typeof AdminReviewsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminReviewsRoute: AdminReviewsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -2292,6 +2333,7 @@ const EventsRouteWithChildren =
 interface ExpertsPortalRouteChildren {
   ExpertsPortalAnalyticsRoute: typeof ExpertsPortalAnalyticsRoute
   ExpertsPortalCertificatesRoute: typeof ExpertsPortalCertificatesRoute
+  ExpertsPortalModuleReviewStatusRoute: typeof ExpertsPortalModuleReviewStatusRoute
   ExpertsPortalPortfolioRoute: typeof ExpertsPortalPortfolioRoute
   ExpertsPortalRecognitionRoute: typeof ExpertsPortalRecognitionRoute
   ExpertsPortalReviewStatusRoute: typeof ExpertsPortalReviewStatusRoute
@@ -2303,6 +2345,7 @@ interface ExpertsPortalRouteChildren {
 const ExpertsPortalRouteChildren: ExpertsPortalRouteChildren = {
   ExpertsPortalAnalyticsRoute: ExpertsPortalAnalyticsRoute,
   ExpertsPortalCertificatesRoute: ExpertsPortalCertificatesRoute,
+  ExpertsPortalModuleReviewStatusRoute: ExpertsPortalModuleReviewStatusRoute,
   ExpertsPortalPortfolioRoute: ExpertsPortalPortfolioRoute,
   ExpertsPortalRecognitionRoute: ExpertsPortalRecognitionRoute,
   ExpertsPortalReviewStatusRoute: ExpertsPortalReviewStatusRoute,

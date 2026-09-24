@@ -120,8 +120,8 @@ function DecisionPanel({ subjectId }: { subjectId: string }) {
         <button disabled={!rationale.trim() || m.isPending} onClick={() => m.mutate("reject")} className="rounded bg-red-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
           Reject
         </button>
-        <button onClick={() => m.mutate("return_for_revision")} className="rounded border border-border px-3 py-1.5 text-sm">
-          Return for revision
+        <button disabled={!rationale.trim() || m.isPending} onClick={() => m.mutate("return_for_revision")} className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50">
+          Request Revision
         </button>
       </div>
       {msg ? <p className="text-xs text-muted-foreground">{msg}</p> : null}
