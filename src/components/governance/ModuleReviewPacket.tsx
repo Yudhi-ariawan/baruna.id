@@ -1,5 +1,6 @@
-import { Download, FileText } from "lucide-react";
+import { Eye, FileText } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
+import { AttachmentPreviewDialog } from "@/components/baruna/experts/AttachmentPreviewDialog";
 
 export type ReviewAttachment = {
   category: string;
@@ -8,6 +9,7 @@ export type ReviewAttachment = {
   type: string;
   path: string;
   signedUrl: string;
+  downloadUrl?: string;
 };
 
 export function ModuleReviewPacket({ packet }: { packet: { payload: Record<string, Json>; attachments: ReviewAttachment[] } | null | undefined }) {
@@ -26,10 +28,8 @@ export function ModuleReviewPacket({ packet }: { packet: { payload: Record<strin
       {packet.attachments.length ? (
         <ul className="mt-2 grid gap-2 sm:grid-cols-2">
           {packet.attachments.map((file) => (
-            <li key={file.path} className="flex min-w-0 items-center gap-2 rounded bg-muted/40 p-2 text-xs">
-              <FileText className="h-4 w-4 shrink-0 text-primary" />
-              <div className="min-w-0 flex-1"><p className="truncate font-medium">{file.name}</p><p className="text-muted-foreground">{file.category.replaceAll("_", " ")} · {(file.size / 1024 / 1024).toFixed(1)} MB</p></div>
-              <a href={file.signedUrl} target="_blank" rel="noreferrer" className="rounded border border-border p-1.5 hover:bg-background" aria-label={`Open ${file.name}`}><Download className="h-3.5 w-3.5" /></a>
+            <li key={file.path}>
+              <AttachmentPreviewDialog file={file} trigger={<button type="button" className="flex w-full min-w-0 items-center gap-2 rounded bg-muted/40 p-2 text-left text-xs hover:bg-muted" aria-label={`Preview ${file.name}`}><FileText className="h-4 w-4 shrink-0 text-primary" /><span className="min-w-0 flex-1"><span className="block truncate font-medium">{file.name}</span><span className="text-muted-foreground">{file.category.replaceAll("_", " ")} · {(file.size / 1024 / 1024).toFixed(1)} MB</span></span><Eye className="h-4 w-4 shrink-0 text-marine" /></button>} />
             </li>
           ))}
         </ul>

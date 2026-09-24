@@ -6,6 +6,7 @@ import {
   type ModuleAttachment,
   type ModuleAttachmentDefinition,
 } from "@/lib/experts/module-attachments";
+import { AttachmentPreviewDialog, type PreviewAttachment } from "./AttachmentPreviewDialog";
 
 function safeFilename(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -28,6 +29,7 @@ export function ModuleAttachmentUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<"idle" | "uploading" | "removing">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<PreviewAttachment | null>(null);
   const busy = status !== "idle";
 
   async function selectFile(file?: File) {
@@ -86,9 +88,13 @@ export function ModuleAttachmentUploader({
   async function preview() {
     if (!value) return;
     setError(null);
-    const { data, error: signedError } = await supabase.storage.from(MODULE_ATTACHMENTS_BUCKET).createSignedUrl(value.path, 300);
-    if (signedError) setError(signedError.message);
-    else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    const [previewResult, downloadResult] = await Promise.all([
+      supabase.storage.from(MODULE_ATTACHMENTS_BUCKET).createSignedUrl(value.path, 300),
+      supabase.storage.from(MODULE_ATTACHMENTS_BUCKET).createSignedUrl(value.path, 300, { download: value.name }),
+    ]);
+    if (previewResult.error) setError(previewResult.error.message);
+    else if (downloadResult.error) setError(downloadResult.error.message);
+    else setPreviewFile({ name: value.name, type: value.type, size: value.size, signedUrl: previewResult.data.signedUrl, downloadUrl: downloadResult.data.signedUrl });
   }
 
   return (
@@ -135,6 +141,7 @@ export function ModuleAttachmentUploader({
         )}
       </div>
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      {previewFile ? <AttachmentPreviewDialog file={previewFile} open onOpenChange={(open) => { if (!open) setPreviewFile(null); }} /> : null}
     </li>
   );
 }

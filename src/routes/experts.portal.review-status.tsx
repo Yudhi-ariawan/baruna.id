@@ -6,6 +6,7 @@ import { PageShell } from "@/components/baruna/page/PageShell";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import { getMyModuleAttachmentLinks } from "@/lib/experts/portal-services.functions";
 import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
+import { AttachmentPreviewDialog } from "@/components/baruna/experts/AttachmentPreviewDialog";
 
 export const Route = createFileRoute("/experts/portal/review-status")({
   head: () => ({ meta: [{ title: "Module Review Status — Trainer Portal" }] }),
@@ -20,7 +21,7 @@ function DraftAttachments({ draftId }: { draftId: string }) {
   if (!query.data?.length) return null;
   return <div className="mt-5 border-t border-border pt-4">
     <h3 className="flex items-center gap-2 font-display text-sm font-bold text-navy"><Paperclip className="h-4 w-4" />Submitted Attachments</h3>
-    <div className="mt-2 grid gap-2 sm:grid-cols-2">{query.data.map((file) => <a key={file.path} href={file.signedUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted"><span className="min-w-0"><span className="block truncate font-semibold text-navy">{file.name}</span><span className="text-xs capitalize text-muted-foreground">{file.category.replaceAll("_", " ")}</span></span><span className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-marine"><Eye className="h-4 w-4" />View Document</span></a>)}</div>
+    <div className="mt-2 grid gap-2 sm:grid-cols-2">{query.data.map((file) => <AttachmentPreviewDialog key={file.path} file={file} trigger={<button type="button" className="flex w-full items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-muted"><span className="min-w-0"><span className="block truncate font-semibold text-navy">{file.name}</span><span className="text-xs capitalize text-muted-foreground">{file.category.replaceAll("_", " ")}</span></span><span className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-marine"><Eye className="h-4 w-4" />Preview</span></button>} />)}</div>
     <p className="mt-2 text-xs text-muted-foreground">Secure links expire after 5 minutes.</p>
   </div>;
 }

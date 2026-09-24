@@ -112,9 +112,13 @@ export const getMyModuleAttachmentLinks = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const links = await Promise.all((payload.attachments ?? []).map(async (file) => {
       if (file.bucket !== "module-attachments" || !file.path) return null;
-      const signed = await supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 300, { download: file.name });
-      if (signed.error) throw new Error(signed.error.message);
-      return { path: file.path, name: file.name ?? "Attachment", category: file.category ?? "attachment", size: file.size ?? 0, type: file.type ?? "application/octet-stream", signedUrl: signed.data.signedUrl };
+      const [preview, download] = await Promise.all([
+        supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 300),
+        supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 300, { download: file.name }),
+      ]);
+      if (preview.error) throw new Error(preview.error.message);
+      if (download.error) throw new Error(download.error.message);
+      return { path: file.path, name: file.name ?? "Attachment", category: file.category ?? "attachment", size: file.size ?? 0, type: file.type ?? "application/octet-stream", signedUrl: preview.data.signedUrl, downloadUrl: download.data.signedUrl };
     }));
     return links.filter((link): link is NonNullable<typeof link> => Boolean(link));
   });

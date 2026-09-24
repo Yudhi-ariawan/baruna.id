@@ -70,9 +70,13 @@ export const getModuleReviewPacket = createServerFn({ method: "GET" })
     const attachments = await Promise.all(raw.map(async (item) => {
       const file = item as { category?: string; name?: string; size?: number; type?: string; path?: string; bucket?: string };
       if (!file.path || file.bucket !== "module-attachments") return null;
-      const signed = await supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 900, { download: file.name });
-      if (signed.error) throw new Error(signed.error.message);
-      return { category: file.category ?? "attachment", name: file.name ?? "Attachment", size: file.size ?? 0, type: file.type ?? "application/octet-stream", path: file.path, signedUrl: signed.data.signedUrl };
+      const [preview, download] = await Promise.all([
+        supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 900),
+        supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 900, { download: file.name }),
+      ]);
+      if (preview.error) throw new Error(preview.error.message);
+      if (download.error) throw new Error(download.error.message);
+      return { category: file.category ?? "attachment", name: file.name ?? "Attachment", size: file.size ?? 0, type: file.type ?? "application/octet-stream", path: file.path, signedUrl: preview.data.signedUrl, downloadUrl: download.data.signedUrl };
     }));
     return { revision: revision.revision, submittedAt: revision.submitted_at, payload, attachments: attachments.filter((file): file is NonNullable<typeof file> => Boolean(file)) };
   });
