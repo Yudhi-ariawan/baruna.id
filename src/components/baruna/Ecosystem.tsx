@@ -14,17 +14,17 @@ const iconBg: Record<string, string> = {
 
 export function Ecosystem() {
   return (
-    <section className="mx-auto max-w-[1500px] px-4 py-2 sm:px-6">
+    <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-6 sm:py-8 w-full overflow-hidden">
       <div className="mb-6 text-center">
-        <h2 className="font-display text-2xl font-extrabold text-navy sm:text-3xl">
+        <h2 className="font-display text-xl xs:text-2xl sm:text-3xl font-extrabold text-navy">
           Explore the BARUNA Ecosystem
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
           One connected network for marine and fisheries capacity building.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 w-full">
         {ecosystem.map(({ title, description, icon: Icon, color, href }) => (
           <Link
             key={title}

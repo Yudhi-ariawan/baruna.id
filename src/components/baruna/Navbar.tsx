@@ -73,10 +73,10 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-      <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link to="/" aria-label="BARUNA home" className="flex min-w-0 shrink-[2] items-center">
-          <Logo className="h-10 max-w-[220px] sm:h-14 sm:max-w-none md:h-16" />
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75 w-full">
+      <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3 w-full">
+        <Link to="/" aria-label="BARUNA home" className="flex min-w-0 shrink items-center">
+          <Logo className="h-8 xs:h-9 sm:h-12 md:h-14 max-w-[140px] xs:max-w-[180px] sm:max-w-none" />
         </Link>
 
         {/* Desktop nav */}
@@ -105,28 +105,28 @@ export function Navbar() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 shrink-0">
           <Link
             to="/search"
-            className="grid h-10 w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
+            className="grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
             aria-label="Search"
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           </Link>
           {authState === "authenticated" && viewer ? (
             <>
               <Link
                 to="/notifications"
-                className="relative grid h-10 w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
+                className="relative grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
                 aria-label="Notifications"
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
                 {revisionCount > 0 ? (
-                  <span className="absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-extrabold text-white shadow-xs">
+                  <span className="absolute top-0.5 right-0.5 flex h-3.5 min-w-[14px] sm:h-4 sm:min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[8px] sm:text-[9px] font-extrabold text-white shadow-xs">
                     {revisionCount}
                   </span>
                 ) : hasNotifications ? (
-                  <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-marine" />
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-marine" />
                 ) : null}
               </Link>
               <DropdownMenu>
@@ -213,10 +213,10 @@ export function Navbar() {
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <button
-                className="grid h-10 w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted xl:hidden"
+                className="grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted xl:hidden"
                 aria-label="Open menu"
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-72">

@@ -53,7 +53,7 @@ const resourceIcon: Record<string, typeof FileText> = {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">{children}</div>
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-soft min-w-0">{children}</div>
   );
 }
 
@@ -203,11 +203,11 @@ function Partnership() {
   return (
     <Card>
       <ColHeader title="Partnership Highlights" action="View all partners" />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
         {partners.map((p) => (
           <div
             key={p}
-            className="flex h-16 items-center justify-center rounded-lg border border-border bg-secondary/50 px-2 text-center text-[0.65rem] font-bold uppercase tracking-tight text-navy/70"
+            className="flex h-14 sm:h-16 items-center justify-center rounded-lg border border-border bg-secondary/50 px-2 text-center text-[0.65rem] font-bold uppercase tracking-tight text-navy/70"
           >
             {p}
           </div>
@@ -216,7 +216,7 @@ function Partnership() {
       <p className="mt-4 text-center text-xs text-muted-foreground">
         Working together for sustainable oceans and fisheries.
       </p>
-      <button className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-marine py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground">
+      <button className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-marine py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground cursor-pointer">
         <Building2 className="h-4 w-4" />
         Become a Partner
       </button>
@@ -226,8 +226,8 @@ function Partnership() {
 
 export function BottomGrid() {
   return (
-    <section className="mx-auto max-w-[1500px] px-4 py-10 sm:px-6">
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+    <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-8 sm:py-10 w-full overflow-hidden">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5 w-full">
         <UpcomingEvents />
         <KnowledgeHub />
         <FeaturedExperts />

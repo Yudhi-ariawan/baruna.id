@@ -111,20 +111,20 @@ function RecommendedCard({ course }: { course: RecommendedCourse }) {
 
 export function LearningSections() {
   return (
-    <section className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+    <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-6 sm:py-8 w-full overflow-hidden">
+      <div className="grid gap-6 lg:grid-cols-2 w-full">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-soft min-w-0 overflow-hidden">
           <SectionHead title="Continue Learning" action="View all my learning" />
-          <div className="flex gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible">
+          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-2 sm:overflow-visible">
             {continueLearning.slice(0, 2).map((c) => (
               <ContinueCard key={c.title} course={c} />
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-soft min-w-0 overflow-hidden">
           <SectionHead title="Recommended for You" action="View all recommendations" />
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-none">
             {recommended.map((c) => (
               <RecommendedCard key={c.title} course={c} />
             ))}
