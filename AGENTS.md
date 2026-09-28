@@ -19,3 +19,35 @@
 - Before committing, inspect `git status` and confirm no secret-bearing file is
   staged. Use `scripts/backup-to-github.sh "<descriptive commit message>"` for
   the standard build, commit, and push sequence.
+
+## Long-Term Scalability & Engineering Standards (Responsible Vibe Coding)
+
+All AI agents and developers working on BARUNA must strictly adhere to the following principles:
+
+1. **Alignment with Official Business Process:**
+   - Every feature implementation must align with the official 51-slide business process specification in `dokumen/` (especially Slide 35-41 for Experts, Slide 11-25 for Academy, Slide 26-34 for Knowledge Hub).
+   - Detailed architectural standards are recorded in `dokumen/ENGINEERING_STANDARDS.md`.
+
+2. **Database & Schema Integrity:**
+   - Never alter database tables or columns on the fly without a corresponding timestamped SQL migration in `supabase/migrations/`.
+   - Never hardcode arbitrary fallback IDs for production data entities.
+
+3. **Security & Row Level Security (RLS):**
+   - All user-facing tables must have RLS enabled with explicit policies.
+   - Server functions must enforce identity checks using `requireSupabaseAuth` middleware (`context.userId`).
+   - `supabaseAdmin` (service role) must only be used in server functions for legitimate system-level or admin operations, never exposed to client-side code or used as a shortcut to bypass user-level RLS.
+
+4. **Component Modularization:**
+   - Avoid bloated files exceeding 400-500 lines. Break presentation, dialogs, forms, and business logic into modular components under `src/components/` and `src/lib/`.
+
+5. **Query Caching & High-Traffic Performance:**
+   - Always configure appropriate `staleTime` and `gcTime` in `useQuery` for master/reference data to prevent unnecessary request spikes on Supabase.
+   - In production, always use the Supabase Transaction Pooler (`port 6543 / Supavisor`) instead of direct connection.
+
+6. **File Size & Storage Limits:**
+   - Validate upload file sizes strictly: PDFs <= 10MB, Presentations (PPT/PPTX) <= 25MB, Images <= 2MB.
+   - For document viewing, prefer direct signed URLs opened in new browser tabs for native rendering (PDF/images) or direct downloads for PPTs, rather than unstable third-party iframes.
+
+7. **Strict Validation & Zero-Breakage Policy:**
+   - Before completing any task, always verify with `npm run build` (which validates TypeScript, TanStack router routes, Vite bundle, and Nitro SSR output). Exit code must be 0.
+
