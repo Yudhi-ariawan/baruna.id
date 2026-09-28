@@ -109,27 +109,27 @@ function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-marine">
             User management
           </p>
-          <h2 className="mt-1 font-display text-3xl font-bold text-navy">Users & access</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-navy">Users &amp; access</h2>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
             Auth identities are read securely through the Supabase Admin API.
           </p>
         </div>
         {accessQuery.data?.canInviteUsers ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => setShowCreate(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-navy/90"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-navy/90"
             >
               <UserPlus className="h-4 w-4" /> Create user
             </button>
             <button
               onClick={() => setShowInvite(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-marine bg-white px-4 py-2.5 text-sm font-bold text-marine shadow-sm hover:bg-marine/10"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-marine bg-white px-4 py-2 text-sm font-bold text-marine shadow-xs hover:bg-marine/10"
             >
               <MailPlus className="h-4 w-4" /> Invite user
             </button>
@@ -148,8 +148,8 @@ function UsersPage() {
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+      <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border p-4">
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -163,14 +163,14 @@ function UsersPage() {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder="Search name, email, organization, UID…"
-                className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-3 text-sm outline-none focus:border-marine"
+                className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs sm:text-sm outline-none focus:border-marine"
               />
             </div>
-            <button className="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-muted">
+            <button className="rounded-lg border border-border px-3.5 py-2 text-xs sm:text-sm font-semibold hover:bg-muted shrink-0">
               Search
             </button>
           </form>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground self-end sm:self-center">
             {usersQuery.data?.total ?? 0} user(s)
           </span>
         </div>
@@ -185,78 +185,138 @@ function UsersPage() {
           <div className="p-10 text-center text-sm text-muted-foreground">No users found.</div>
         ) : null}
         {users.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-5 py-3">User</th>
-                  <th className="px-5 py-3">Roles</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Last sign-in</th>
-                  <th className="px-5 py-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/80">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-bold text-white">
-                          {initials(user)}
-                        </span>
-                        <div>
-                          <p className="font-semibold text-navy">
-                            {user.displayName || "Unnamed user"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
-                          <p className="font-mono text-[10px] text-muted-foreground">{user.id}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex max-w-xs flex-wrap gap-1">
-                        {user.roles.length ? (
-                          user.roles.map((role) => (
-                            <span
-                              key={role}
-                              className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700"
-                            >
-                              {role}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No role</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${user.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
-                      >
-                        {user.isActive ? (
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                        ) : (
-                          <Ban className="h-3.5 w-3.5" />
-                        )}
-                        {user.isActive ? "Active" : "Suspended"}
+          <>
+            {/* 1. Mobile Card View */}
+            <div className="block md:hidden divide-y divide-border/60">
+              {users.map((user) => (
+                <div key={user.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-bold text-white">
+                        {initials(user)}
                       </span>
-                    </td>
-                    <td className="px-5 py-4 text-xs text-muted-foreground">
-                      {formatDate(user.lastSignInAt)}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedId(user.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:border-marine hover:text-marine"
-                      >
-                        <Pencil className="h-3.5 w-3.5" /> Manage
-                      </button>
-                    </td>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-navy truncate">
+                          {user.displayName || "Unnamed user"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${user.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
+                    >
+                      {user.isActive ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : (
+                        <Ban className="h-3 w-3" />
+                      )}
+                      {user.isActive ? "Active" : "Suspended"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] text-muted-foreground mr-1">Roles:</span>
+                    {user.roles.length ? (
+                      user.roles.map((role) => (
+                        <span
+                          key={role}
+                          className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700"
+                        >
+                          {role}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground italic">No role</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/50">
+                    <span>Last sign-in: {formatDate(user.lastSignInAt)}</span>
+                    <button
+                      onClick={() => setSelectedId(user.id)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy hover:border-marine hover:text-marine bg-slate-50 hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Manage
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full min-w-[820px] text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-5 py-3">User</th>
+                    <th className="px-5 py-3">Roles</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Last sign-in</th>
+                    <th className="px-5 py-3 text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-50/80">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-bold text-white">
+                            {initials(user)}
+                          </span>
+                          <div>
+                            <p className="font-semibold text-navy">
+                              {user.displayName || "Unnamed user"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                            <p className="font-mono text-[10px] text-muted-foreground">{user.id}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex max-w-xs flex-wrap gap-1">
+                          {user.roles.length ? (
+                            user.roles.map((role) => (
+                              <span
+                                key={role}
+                                className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700"
+                              >
+                                {role}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No role</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${user.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
+                        >
+                          {user.isActive ? (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          ) : (
+                            <Ban className="h-3.5 w-3.5" />
+                          )}
+                          {user.isActive ? "Active" : "Suspended"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-xs text-muted-foreground">
+                        {formatDate(user.lastSignInAt)}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          onClick={() => setSelectedId(user.id)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:border-marine hover:text-marine cursor-pointer"
+                        >
+                          <Pencil className="h-3.5 w-3.5" /> Manage
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : null}
       </section>
 
@@ -308,14 +368,14 @@ function Modal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
     >
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-white px-6 py-4">
-          <h3 className="font-display text-xl font-bold text-navy">{title}</h3>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-muted" aria-label="Close">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-white px-4 sm:px-6 py-3 sm:py-4">
+          <h3 className="font-display text-lg sm:text-xl font-bold text-navy">{title}</h3>
+          <button onClick={onClose} className="rounded-lg p-1.5 sm:p-2 hover:bg-muted cursor-pointer" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -384,7 +444,7 @@ function CreateUserDialog({
           }
           mutation.mutate();
         }}
-        className="space-y-4 p-6"
+        className="space-y-4 p-4 sm:p-6"
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Full name *">
@@ -520,7 +580,7 @@ function InviteDialog({
           event.preventDefault();
           mutation.mutate();
         }}
-        className="space-y-4 p-6"
+        className="space-y-4 p-4 sm:p-6"
       >
         <Field label="Full name">
           <input
@@ -614,7 +674,7 @@ function UserDialog({
   }, [user.roles, user.isActive, queryClient, user.id]);
   return (
     <Modal title={user.displayName || user.email} onClose={onClose}>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <div className="rounded-xl bg-slate-50 p-4 text-xs">
           <p className="font-semibold text-navy">{user.email}</p>
           <p className="mt-1 font-mono text-muted-foreground">{user.id}</p>

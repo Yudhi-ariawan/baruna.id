@@ -175,25 +175,25 @@ function AdminModulesPage() {
   });
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="space-y-6">
       {/* Top Banner & Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4 sm:pb-6">
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-lg bg-marine/10 p-1.5 text-marine">
+            <span className="rounded-lg bg-marine/10 p-1.5 text-marine shrink-0">
               <BookOpen className="h-5 w-5" />
             </span>
-            <h1 className="font-display text-2xl font-bold text-navy">
+            <h1 className="font-display text-lg sm:text-xl md:text-2xl font-bold text-navy">
               Verifikasi &amp; Review Modul Pelatihan
             </h1>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
             Tinjau pengajuan modul dari Trainer, periksa kelengkapan berkas dokumen, silabus materi, dan
             berikan keputusan (Setujui, Minta Revisi, atau Tolak).
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
           <Button
             variant="outline"
             size="sm"
@@ -207,52 +207,52 @@ function AdminModulesPage() {
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-border bg-white p-4 shadow-2xs">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Total Pengajuan Modul
+      {/* Statistics Cards - Responsive Grid for all mobile & desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="rounded-xl border border-border bg-white p-3 sm:p-4 shadow-2xs">
+          <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Total Modul
           </p>
-          <p className="font-display text-2xl font-bold text-navy mt-1">{stats.total}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Semua status terekam</p>
+          <p className="font-display text-xl sm:text-2xl font-bold text-navy mt-1">{stats.total}</p>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">Semua status</p>
         </div>
 
-        <div className="rounded-xl border border-yellow-200 bg-yellow-50/50 p-4 shadow-2xs">
-          <p className="text-xs font-semibold text-yellow-800 uppercase tracking-wider flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" /> Menunggu Verifikasi
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50/60 p-3 sm:p-4 shadow-2xs">
+          <p className="text-[10px] sm:text-xs font-semibold text-yellow-800 uppercase tracking-wider flex items-center gap-1 truncate">
+            <Clock className="h-3 w-3 shrink-0" /> Menunggu
           </p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <p className="font-display text-2xl font-bold text-yellow-900">{stats.pending}</p>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <p className="font-display text-xl sm:text-2xl font-bold text-yellow-900">{stats.pending}</p>
             {stats.resubmitted > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 border border-sky-200">
-                <RotateCcw className="h-2.5 w-2.5" /> {stats.resubmitted} Sudah Direvisi
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] font-bold text-sky-800 border border-sky-200 truncate">
+                <RotateCcw className="h-2 w-2" /> {stats.resubmitted} Revisi
               </span>
             )}
           </div>
-          <p className="text-[11px] text-yellow-700/80 mt-0.5">Perlu tindakan verifikator</p>
+          <p className="text-[10px] sm:text-[11px] text-yellow-700/80 mt-0.5 truncate">Perlu verifikasi</p>
         </div>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-2xs">
-          <p className="text-xs font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-1">
-            <RotateCcw className="h-3.5 w-3.5" /> Perlu Revisi
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 sm:p-4 shadow-2xs">
+          <p className="text-[10px] sm:text-xs font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-1 truncate">
+            <RotateCcw className="h-3 w-3 shrink-0" /> Perlu Revisi
           </p>
-          <p className="font-display text-2xl font-bold text-amber-900 mt-1">{stats.revision}</p>
-          <p className="text-[11px] text-amber-700/80 mt-0.5">Menunggu perbaikan trainer</p>
+          <p className="font-display text-xl sm:text-2xl font-bold text-amber-900 mt-1">{stats.revision}</p>
+          <p className="text-[10px] sm:text-[11px] text-amber-700/80 mt-0.5 truncate">Tunggu trainer</p>
         </div>
 
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs">
-          <p className="text-xs font-semibold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Disetujui / Tayang
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 sm:p-4 shadow-2xs">
+          <p className="text-[10px] sm:text-xs font-semibold text-emerald-800 uppercase tracking-wider flex items-center gap-1 truncate">
+            <CheckCircle2 className="h-3 w-3 shrink-0" /> Disetujui
           </p>
-          <p className="font-display text-2xl font-bold text-emerald-900 mt-1">{stats.approved}</p>
-          <p className="text-[11px] text-emerald-700/80 mt-0.5">Aktif di Katalog &amp; Academy</p>
+          <p className="font-display text-xl sm:text-2xl font-bold text-emerald-900 mt-1">{stats.approved}</p>
+          <p className="text-[10px] sm:text-[11px] text-emerald-700/80 mt-0.5 truncate">Aktif tayang</p>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+      {/* Filter and Search Bar - Mobile swipeable */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Status Filters */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+        <div className="flex items-center overflow-x-auto gap-1 bg-slate-100 p-1 rounded-xl whitespace-nowrap scrollbar-none -mx-1 px-1">
           {[
             { id: "all", label: "Semua" },
             { id: "pending", label: "Menunggu" },
@@ -264,7 +264,7 @@ function AdminModulesPage() {
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${
                 statusFilter === tab.id
                   ? "bg-white text-navy shadow-xs"
                   : "text-muted-foreground hover:text-navy"
@@ -276,7 +276,7 @@ function AdminModulesPage() {
         </div>
 
         {/* Search Input */}
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full sm:w-64 md:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
@@ -288,15 +288,15 @@ function AdminModulesPage() {
         </div>
       </div>
 
-      {/* Main Table */}
-      <div className="mt-4 rounded-2xl border border-border bg-white shadow-2xs overflow-hidden">
+      {/* Main Content Area: Responsive Mobile Cards + Desktop Table */}
+      <div className="rounded-2xl border border-border bg-white shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="py-20 text-center text-sm text-muted-foreground">
+          <div className="py-16 text-center text-sm text-muted-foreground">
             <RefreshCw className="h-6 w-6 animate-spin mx-auto text-marine mb-2" />
             Memuat daftar pengajuan modul...
           </div>
         ) : modules.length === 0 ? (
-          <div className="py-20 text-center">
+          <div className="py-16 px-4 text-center">
             <BookOpen className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-base font-semibold text-navy">Tidak ada pengajuan modul ditemukan</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -306,100 +306,169 @@ function AdminModulesPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border bg-slate-50/70 text-xs font-semibold uppercase text-muted-foreground">
-                  <th className="px-6 py-3.5">Judul Modul &amp; Topik</th>
-                  <th className="px-6 py-3.5">Trainer / Penulis</th>
-                  <th className="px-6 py-3.5">Durasi &amp; Format</th>
-                  <th className="px-6 py-3.5 text-center">Berkas Lampiran</th>
-                  <th className="px-6 py-3.5">Diajukan Pada</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {modules.map((item) => (
-                  <tr key={item.subjectId} className="hover:bg-slate-50/50 transition">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-navy">{item.title}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                        <span className="capitalize">{item.moduleType}</span>
-                        {item.topic && (
-                          <>
-                            <span>•</span>
-                            <span className="text-marine font-medium">{item.topic}</span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-navy text-xs flex items-center gap-1.5">
-                        <User className="h-3.5 w-3.5 text-marine" />
-                        {item.authorName}
-                      </div>
-                      {item.authorInstitution && (
-                        <div className="text-[11px] text-muted-foreground mt-0.5">
-                          {item.authorInstitution}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4 text-xs">
-                      <div className="font-medium text-navy">{item.estimatedHours} Jam Belajar</div>
-                      <div className="text-muted-foreground text-[11px]">
-                        {item.deliveryFormat} • {item.level}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                        <FileCheck2 className="h-3.5 w-3.5 text-marine" />
-                        {item.documentsCount} Dokumen
+          <>
+            {/* 1. MOBILE CARD VIEW (Displayed on mobile & small tablets < md) */}
+            <div className="block md:hidden divide-y divide-border/60">
+              {modules.map((item) => (
+                <div key={item.subjectId} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-marine block">
+                        {item.moduleType || "Modul Pelatihan"}
                       </span>
-                    </td>
+                      <h3 className="font-display text-sm font-bold text-navy line-clamp-2 mt-0.5">
+                        {item.title}
+                      </h3>
+                    </div>
+                    <div className="shrink-0">{getStatusBadge(item.status)}</div>
+                  </div>
 
-                    <td className="px-6 py-4 text-xs text-muted-foreground">
-                      {formatDate(item.createdAt)}
-                    </td>
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-muted-foreground block">Trainer</span>
+                      <span className="font-semibold text-navy truncate block flex items-center gap-1 mt-0.5">
+                        <User className="h-3 w-3 text-marine shrink-0" />
+                        <span className="truncate">{item.authorName}</span>
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-muted-foreground block">Durasi</span>
+                      <span className="font-semibold text-navy truncate block mt-0.5">
+                        {item.estimatedHours} Jam Belajar
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-muted-foreground block">Lampiran</span>
+                      <span className="font-semibold text-marine flex items-center gap-1 mt-0.5">
+                        <FileCheck2 className="h-3.5 w-3.5" /> {item.documentsCount} Dokumen
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-muted-foreground block">Diajukan</span>
+                      <span className="font-medium text-slate-600 truncate block mt-0.5">
+                        {formatDate(item.createdAt)}
+                      </span>
+                    </div>
+                  </div>
 
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        {getStatusBadge(item.status)}
-                        {item.status === "resubmitted" && (
-                          <span className="text-[11px] font-medium text-sky-700">
-                            Revisi dikirim {formatDate(item.resubmittedAt || item.updatedAt)}
-                          </span>
-                        )}
-                        {item.publishedModuleId ? (
-                          <button
-                            type="button"
-                            onClick={() => window.open(`/academy/self-paced/${item.publishedModuleId}`, "_blank", "noopener,noreferrer")}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-marine hover:underline mt-0.5 cursor-pointer"
-                          >
-                            <ExternalLink className="h-3 w-3" /> Tayang di Kursus
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4 text-right">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="bg-navy hover:bg-navy/90 text-white text-xs font-semibold"
-                        onClick={() => setSelectedSubjectId(item.subjectId)}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                    {item.publishedModuleId && (
+                      <button
+                        type="button"
+                        onClick={() => window.open(`/academy/self-paced/${item.publishedModuleId}`, "_blank", "noopener,noreferrer")}
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 py-2 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
                       >
-                        Periksa &amp; Verifikasi
-                      </Button>
-                    </td>
+                        <ExternalLink className="h-3.5 w-3.5" /> Lihat di Kursus
+                      </button>
+                    )}
+                    <Button
+                      size="sm"
+                      className="w-full sm:flex-1 bg-navy hover:bg-navy/90 text-white text-xs font-semibold py-2 rounded-xl shadow-xs"
+                      onClick={() => setSelectedSubjectId(item.subjectId)}
+                    >
+                      Periksa &amp; Verifikasi Modul
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. DESKTOP TABLE VIEW (Displayed on screens >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-slate-50/70 text-xs font-semibold uppercase text-muted-foreground">
+                    <th className="px-6 py-3.5">Judul Modul &amp; Topik</th>
+                    <th className="px-6 py-3.5">Trainer / Penulis</th>
+                    <th className="px-6 py-3.5">Durasi &amp; Format</th>
+                    <th className="px-6 py-3.5 text-center">Berkas Lampiran</th>
+                    <th className="px-6 py-3.5">Diajukan Pada</th>
+                    <th className="px-6 py-3.5">Status</th>
+                    <th className="px-6 py-3.5 text-right">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {modules.map((item) => (
+                    <tr key={item.subjectId} className="hover:bg-slate-50/50 transition">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-navy">{item.title}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                          <span className="capitalize">{item.moduleType}</span>
+                          {item.topic && (
+                            <>
+                              <span>•</span>
+                              <span className="text-marine font-medium">{item.topic}</span>
+                            </>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-navy text-xs flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5 text-marine" />
+                          {item.authorName}
+                        </div>
+                        {item.authorInstitution && (
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
+                            {item.authorInstitution}
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 text-xs">
+                        <div className="font-medium text-navy">{item.estimatedHours} Jam Belajar</div>
+                        <div className="text-muted-foreground text-[11px]">
+                          {item.deliveryFormat} • {item.level}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                          <FileCheck2 className="h-3.5 w-3.5 text-marine" />
+                          {item.documentsCount} Dokumen
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-xs text-muted-foreground">
+                        {formatDate(item.createdAt)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          {getStatusBadge(item.status)}
+                          {item.status === "resubmitted" && (
+                            <span className="text-[11px] font-medium text-sky-700">
+                              Revisi dikirim {formatDate(item.resubmittedAt || item.updatedAt)}
+                            </span>
+                          )}
+                          {item.publishedModuleId ? (
+                            <button
+                              type="button"
+                              onClick={() => window.open(`/academy/self-paced/${item.publishedModuleId}`, "_blank", "noopener,noreferrer")}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-marine hover:underline mt-0.5 cursor-pointer"
+                            >
+                              <ExternalLink className="h-3 w-3" /> Tayang di Kursus
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-right">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="bg-navy hover:bg-navy/90 text-white text-xs font-semibold"
+                          onClick={() => setSelectedSubjectId(item.subjectId)}
+                        >
+                          Periksa &amp; Verifikasi
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -501,7 +570,7 @@ function ModuleDetailModal({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8">
+      <DialogContent className="max-w-4xl w-[96vw] sm:w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 md:p-8">
         {isLoading || !detail ? (
           <div className="py-24 text-center">
             <RefreshCw className="h-8 w-8 animate-spin mx-auto text-marine mb-3" />
@@ -512,11 +581,11 @@ function ModuleDetailModal({
             <DialogHeader className="border-b border-border pb-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="rounded-xl bg-marine/10 p-2.5 text-marine">
-                    <BookOpen className="h-6 w-6" />
+                  <span className="rounded-xl bg-marine/10 p-2.5 text-marine shrink-0">
+                    <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
                   </span>
                   <div>
-                    <DialogTitle className="text-xl font-bold text-navy">
+                    <DialogTitle className="text-base sm:text-xl font-bold text-navy leading-snug">
                       {detail.title}
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground mt-0.5">
@@ -551,7 +620,7 @@ function ModuleDetailModal({
             {detail?.status === "resubmitted" && (
               <div className="mt-3 rounded-xl border border-sky-300 bg-sky-50/90 p-4 shadow-2xs">
                 <div className="flex items-center gap-2 font-bold text-sky-950 text-sm">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-200 text-sky-800">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-200 text-sky-800 shrink-0">
                     <RotateCcw className="h-3.5 w-3.5" />
                   </span>
                   Pengajuan Modul Ini Sudah Direvisi oleh Trainer
@@ -577,17 +646,17 @@ function ModuleDetailModal({
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-              <TabsList className="grid grid-cols-4 w-full bg-slate-100 p-1">
-                <TabsTrigger value="overview" className="text-xs font-semibold">
+              <TabsList className="flex w-full overflow-x-auto justify-start md:grid md:grid-cols-4 bg-slate-100 p-1 rounded-xl scrollbar-none whitespace-nowrap -mx-1 px-1 sm:mx-0 sm:px-1">
+                <TabsTrigger value="overview" className="shrink-0 px-3 py-1.5 text-xs font-semibold">
                   Ringkasan &amp; Silabus
                 </TabsTrigger>
-                <TabsTrigger value="author" className="text-xs font-semibold">
+                <TabsTrigger value="author" className="shrink-0 px-3 py-1.5 text-xs font-semibold">
                   Data Trainer
                 </TabsTrigger>
-                <TabsTrigger value="documents" className="text-xs font-semibold flex items-center gap-1.5">
+                <TabsTrigger value="documents" className="shrink-0 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5">
                   Lampiran Berkas ({detail.documents.length})
                 </TabsTrigger>
-                <TabsTrigger value="decision" className="text-xs font-semibold text-marine">
+                <TabsTrigger value="decision" className="shrink-0 px-3 py-1.5 text-xs font-semibold text-marine">
                   Keputusan Verifikasi
                 </TabsTrigger>
               </TabsList>
@@ -899,28 +968,26 @@ function ModuleDetailModal({
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onClose}
-                        disabled={submitting}
-                        className="text-xs"
-                      >
-                        Batal
-                      </Button>
-                    </div>
+                  <div className="pt-3 border-t border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onClose}
+                      disabled={submitting}
+                      className="w-full sm:w-auto text-xs order-last sm:order-first py-2 sm:py-1.5"
+                    >
+                      Batal
+                    </Button>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
                       <Button
                         type="button"
                         variant="outline"
                         disabled={submitting}
                         onClick={() => handleDecision("reject")}
-                        className="text-xs border-rose-300 text-rose-700 hover:bg-rose-50 flex items-center gap-1.5"
+                        className="w-full sm:w-auto text-xs border-rose-300 text-rose-700 hover:bg-rose-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                       >
-                        <XCircle className="h-4 w-4" /> Tolak Modul
+                        <XCircle className="h-4 w-4 shrink-0" /> Tolak Modul
                       </Button>
 
                       <Button
@@ -928,9 +995,9 @@ function ModuleDetailModal({
                         variant="outline"
                         disabled={submitting}
                         onClick={() => handleDecision("return_for_revision")}
-                        className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center gap-1.5"
+                        className="w-full sm:w-auto text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                       >
-                        <RotateCcw className={`h-4 w-4 ${submitting ? "animate-spin" : ""}`} />
+                        <RotateCcw className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
                         {submitting ? "Memproses..." : "Minta Revisi Dokumen"}
                       </Button>
 
@@ -938,9 +1005,9 @@ function ModuleDetailModal({
                         type="button"
                         disabled={submitting}
                         onClick={() => handleDecision("approve")}
-                        className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1.5 shadow-sm"
+                        className="w-full sm:w-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-1.5 py-2.5 sm:py-2 shadow-xs"
                       >
-                        <CheckCircle2 className={`h-4 w-4 ${submitting ? "animate-spin" : ""}`} />
+                        <CheckCircle2 className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
                         {submitting
                           ? "Memproses..."
                           : detail?.status === "approved"

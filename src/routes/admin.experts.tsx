@@ -176,265 +176,331 @@ function AdminExpertsPage() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4 sm:pb-6">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-marine/10 text-marine">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-marine/10 text-marine shrink-0">
               <UserCheck className="h-5 w-5" />
             </span>
-            <h1 className="font-display text-2xl font-bold text-navy">
-              Verifikasi & Tata Kelola Expert
+            <h1 className="font-display text-lg sm:text-xl md:text-2xl font-bold text-navy">
+              Verifikasi &amp; Tata Kelola Expert
             </h1>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Berdasarkan Panduan Proses Bisnis BARUNA (PB-EXP-01 & PB-EXP-02). Kelola verifikasi berkas,
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            Berdasarkan Panduan Proses Bisnis BARUNA (PB-EXP-01 &amp; PB-EXP-02). Kelola verifikasi berkas,
             keahlian, dan persetujuan narasumber kelautan dan perikanan.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isLoading || isRefetching}
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-1.5 text-xs font-semibold"
           >
-            <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefetching ? "animate-spin" : ""}`} />
             Segarkan Data
           </Button>
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Total Pengajuan
-            </span>
-            <span className="rounded-lg bg-slate-100 p-2 text-slate-700">
-              <Award className="h-4 w-4" />
-            </span>
-          </div>
-          <p className="mt-3 text-2xl font-bold text-navy">{stats.total}</p>
-          <span className="text-xs text-muted-foreground">Seluruh permohonan tercatat</span>
+      {/* Statistics Cards - Responsive Grid for mobile and desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="rounded-xl border border-border bg-white p-3 sm:p-4 shadow-2xs">
+          <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Total Pengajuan
+          </p>
+          <p className="font-display text-xl sm:text-2xl font-bold text-navy mt-1">{stats.total}</p>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">Semua status</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-yellow-700">
-              Menunggu Verifikasi
-            </span>
-            <span className="rounded-lg bg-yellow-50 p-2 text-yellow-600">
-              <Clock className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2 mt-3">
-            <p className="text-2xl font-bold text-yellow-700">{stats.pending}</p>
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50/60 p-3 sm:p-4 shadow-2xs">
+          <p className="text-[10px] sm:text-xs font-semibold text-yellow-800 uppercase tracking-wider flex items-center gap-1 truncate">
+            <Clock className="h-3 w-3 shrink-0" /> Menunggu
+          </p>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <p className="font-display text-xl sm:text-2xl font-bold text-yellow-900">{stats.pending}</p>
             {stats.resubmitted > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 border border-sky-200">
-                <RotateCcw className="h-2.5 w-2.5" /> {stats.resubmitted} Sudah Direvisi
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] font-bold text-sky-800 border border-sky-200 truncate">
+                <RotateCcw className="h-2 w-2" /> {stats.resubmitted} Revisi
               </span>
             )}
           </div>
-          <span className="text-xs text-muted-foreground">Perlu pemeriksaan berkas & substansi</span>
+          <p className="text-[10px] sm:text-[11px] text-yellow-700/80 mt-0.5 truncate">Perlu verifikasi</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
-              Perlu Revisi
-            </span>
-            <span className="rounded-lg bg-amber-50 p-2 text-amber-600">
-              <RotateCcw className="h-4 w-4" />
-            </span>
-          </div>
-          <p className="mt-3 text-2xl font-bold text-amber-700">{stats.revision}</p>
-          <span className="text-xs text-muted-foreground">Menunggu perbaikan dari pemohon</span>
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 sm:p-4 shadow-2xs">
+          <p className="text-[10px] sm:text-xs font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-1 truncate">
+            <RotateCcw className="h-3 w-3 shrink-0" /> Perlu Revisi
+          </p>
+          <p className="font-display text-xl sm:text-2xl font-bold text-amber-900 mt-1">{stats.revision}</p>
+          <p className="text-[10px] sm:text-[11px] text-amber-700/80 mt-0.5 truncate">Tunggu pemohon</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-              Disetujui & Aktif
-            </span>
-            <span className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-              <CheckCircle2 className="h-4 w-4" />
-            </span>
-          </div>
-          <p className="mt-3 text-2xl font-bold text-emerald-700">{stats.approved}</p>
-          <span className="text-xs text-muted-foreground">Tayang di Direktori Publik</span>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 sm:p-4 shadow-2xs">
+          <p className="text-[10px] sm:text-xs font-semibold text-emerald-800 uppercase tracking-wider flex items-center gap-1 truncate">
+            <CheckCircle2 className="h-3 w-3 shrink-0" /> Disetujui
+          </p>
+          <p className="font-display text-xl sm:text-2xl font-bold text-emerald-900 mt-1">{stats.approved}</p>
+          <p className="text-[10px] sm:text-[11px] text-emerald-700/80 mt-0.5 truncate">Tayang di direktori</p>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Cari nama kandidat, institusi, email, atau bidang keahlian..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-border bg-slate-50/50 py-2 pl-9 pr-4 text-sm text-foreground outline-none transition focus:border-marine focus:bg-white focus:ring-1 focus:ring-marine"
-            />
-          </div>
+      {/* Filter and Search Bar - Mobile swipeable */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Status Filters */}
+        <div className="flex items-center overflow-x-auto gap-1 bg-slate-100 p-1 rounded-xl whitespace-nowrap scrollbar-none -mx-1 px-1">
+          {[
+            { id: "all", label: "Semua" },
+            { id: "pending", label: "Menunggu" },
+            { id: "resubmitted", label: "Sudah Direvisi" },
+            { id: "revision_requested", label: "Perlu Revisi" },
+            { id: "approved", label: "Disetujui" },
+            { id: "rejected", label: "Ditolak" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${
+                statusFilter === tab.id
+                  ? "bg-white text-navy shadow-xs"
+                  : "text-muted-foreground hover:text-navy"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <Filter className="h-3.5 w-3.5" /> Status:
-            </span>
-            {[
-              { id: "all", label: "Semua" },
-              { id: "pending", label: "Menunggu" },
-              { id: "resubmitted", label: "Sudah Direvisi" },
-              { id: "revision_requested", label: "Perlu Revisi" },
-              { id: "approved", label: "Disetujui" },
-              { id: "rejected", label: "Ditolak" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setStatusFilter(tab.id)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  statusFilter === tab.id
-                    ? "bg-navy text-white shadow-xs"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        {/* Search Input */}
+        <div className="relative w-full sm:w-64 md:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Cari nama, institusi, email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-white text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-marine/30"
+          />
         </div>
       </div>
 
-      {/* Table of Applications */}
-      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-xs">
+      {/* Main Content Area: Responsive Mobile Cards + Desktop Table */}
+      <div className="rounded-2xl border border-border bg-white shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="p-12 text-center text-sm text-muted-foreground">
-            <RefreshCw className="mx-auto h-6 w-6 animate-spin text-marine" />
-            <p className="mt-3">Memuat data permohonan expert...</p>
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-marine mb-2" />
+            Memuat data permohonan expert...
           </div>
         ) : applications.length === 0 ? (
-          <div className="p-12 text-center">
-            <FileText className="mx-auto h-10 w-10 text-muted-foreground/60" />
-            <h3 className="mt-3 font-display text-base font-bold text-navy">
+          <div className="py-16 px-4 text-center">
+            <FileText className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />
+            <h3 className="font-display text-base font-semibold text-navy">
               Tidak Ada Pengajuan Ditemukan
             </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
               {search || statusFilter !== "all"
                 ? "Cobalah mengubah kata kunci pencarian atau filter status."
                 : "Belum ada pendaftaran calon expert yang masuk ke sistem."}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-slate-50/70 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <tr>
-                  <th className="px-6 py-4">Kandidat / Pelamar</th>
-                  <th className="px-6 py-4">Institusi & Kontak</th>
-                  <th className="px-6 py-4">Kepakaran & Peran</th>
-                  <th className="px-6 py-4 text-center">Dokumen</th>
-                  <th className="px-6 py-4">Tanggal Daftar</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {applications.map((item) => (
-                  <tr key={item.subjectId} className="hover:bg-slate-50/60 transition">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-navy">{item.applicantName}</div>
+          <>
+            {/* 1. MOBILE CARD VIEW (Displayed on mobile & small tablets < md) */}
+            <div className="block md:hidden divide-y divide-border/60">
+              {applications.map((item) => (
+                <div key={item.subjectId} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-display text-sm font-bold text-navy truncate">
+                        {item.applicantName}
+                      </h3>
                       {item.jobTitle && (
-                        <div className="text-xs text-muted-foreground">{item.jobTitle}</div>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {item.jobTitle}
+                        </p>
                       )}
-                    </td>
+                    </div>
+                    <div className="shrink-0">{getStatusBadge(item.status)}</div>
+                  </div>
 
-                    <td className="px-6 py-4">
-                      <div className="text-foreground">{item.institution || "—"}</div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                        {item.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> {item.email}
-                          </span>
-                        )}
-                        {item.country && <span>{item.country}</span>}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {item.expertise.slice(0, 2).map((exp, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-block rounded bg-marine/10 px-2 py-0.5 text-[11px] font-medium text-marine"
-                          >
-                            {exp}
-                          </span>
-                        ))}
-                        {item.expertise.length > 2 && (
-                          <span className="text-[11px] text-muted-foreground">
-                            +{item.expertise.length - 2}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground mt-1">
-                        Peran: {item.roles.join(", ") || "Trainer"}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                        <FileCheck2 className="h-3.5 w-3.5 text-marine" />
-                        {item.documentsCount} Berkas
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-muted-foreground block">Institusi</span>
+                      <span className="font-semibold text-navy truncate block mt-0.5">
+                        {item.institution || "Independen"}
                       </span>
-                    </td>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-muted-foreground block">Negara / Wilayah</span>
+                      <span className="font-semibold text-navy truncate block mt-0.5">
+                        {item.country || "Indonesia"}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-muted-foreground block">Lampiran</span>
+                      <span className="font-semibold text-marine flex items-center gap-1 mt-0.5">
+                        <FileCheck2 className="h-3.5 w-3.5" /> {item.documentsCount} Berkas
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-muted-foreground block">Tanggal Daftar</span>
+                      <span className="font-medium text-slate-600 truncate block mt-0.5">
+                        {formatDate(item.createdAt)}
+                      </span>
+                    </div>
+                  </div>
 
-                    <td className="px-6 py-4 text-xs text-muted-foreground">
-                      {formatDate(item.createdAt)}
-                    </td>
+                  {item.expertise.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {item.expertise.slice(0, 3).map((exp, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-block rounded bg-marine/10 px-2 py-0.5 text-[10px] font-medium text-marine"
+                        >
+                          {exp}
+                        </span>
+                      ))}
+                      {item.expertise.length > 3 && (
+                        <span className="text-[10px] text-muted-foreground self-center">
+                          +{item.expertise.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        {getStatusBadge(item.status)}
-                        {item.status === "resubmitted" && (
-                          <span className="text-[11px] font-medium text-sky-700">
-                            Revisi dikirim {formatDate(item.resubmittedAt || item.updatedAt)}
-                          </span>
-                        )}
-                        {item.publishedSlug && (
-                          <a
-                            href={`/experts/${item.publishedSlug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-marine hover:underline mt-0.5"
-                          >
-                            <ExternalLink className="h-3 w-3" /> Tayang di Direktori
-                          </a>
-                        )}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4 text-right">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="bg-navy hover:bg-navy/90 text-white text-xs font-semibold"
-                        onClick={() => setSelectedSubjectId(item.subjectId)}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                    {item.publishedSlug && (
+                      <a
+                        href={`/experts/${item.publishedSlug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 py-2 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
                       >
-                        Periksa & Verifikasi
-                      </Button>
-                    </td>
+                        <ExternalLink className="h-3.5 w-3.5" /> Lihat di Direktori
+                      </a>
+                    )}
+                    <Button
+                      size="sm"
+                      className="w-full sm:flex-1 bg-navy hover:bg-navy/90 text-white text-xs font-semibold py-2 rounded-xl shadow-xs"
+                      onClick={() => setSelectedSubjectId(item.subjectId)}
+                    >
+                      Periksa &amp; Verifikasi Expert
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. DESKTOP TABLE VIEW (Displayed on screens >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-border bg-slate-50/70 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <tr>
+                    <th className="px-6 py-4">Kandidat / Pelamar</th>
+                    <th className="px-6 py-4">Institusi & Kontak</th>
+                    <th className="px-6 py-4">Kepakaran & Peran</th>
+                    <th className="px-6 py-4 text-center">Dokumen</th>
+                    <th className="px-6 py-4">Tanggal Daftar</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {applications.map((item) => (
+                    <tr key={item.subjectId} className="hover:bg-slate-50/60 transition">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-navy">{item.applicantName}</div>
+                        {item.jobTitle && (
+                          <div className="text-xs text-muted-foreground">{item.jobTitle}</div>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="text-foreground">{item.institution || "—"}</div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                          {item.email && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" /> {item.email}
+                            </span>
+                          )}
+                          {item.country && <span>{item.country}</span>}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {item.expertise.slice(0, 2).map((exp, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-block rounded bg-marine/10 px-2 py-0.5 text-[11px] font-medium text-marine"
+                            >
+                              {exp}
+                            </span>
+                          ))}
+                          {item.expertise.length > 2 && (
+                            <span className="text-[11px] text-muted-foreground">
+                              +{item.expertise.length - 2}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-1">
+                          Peran: {item.roles.join(", ") || "Trainer"}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                          <FileCheck2 className="h-3.5 w-3.5 text-marine" />
+                          {item.documentsCount} Berkas
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-xs text-muted-foreground">
+                        {formatDate(item.createdAt)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          {getStatusBadge(item.status)}
+                          {item.status === "resubmitted" && (
+                            <span className="text-[11px] font-medium text-sky-700">
+                              Revisi dikirim {formatDate(item.resubmittedAt || item.updatedAt)}
+                            </span>
+                          )}
+                          {item.publishedSlug && (
+                            <a
+                              href={`/experts/${item.publishedSlug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-marine hover:underline mt-0.5"
+                            >
+                              <ExternalLink className="h-3 w-3" /> Tayang di Direktori
+                            </a>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-right">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="bg-navy hover:bg-navy/90 text-white text-xs font-semibold"
+                          onClick={() => setSelectedSubjectId(item.subjectId)}
+                        >
+                          Periksa &amp; Verifikasi
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -534,19 +600,23 @@ function ExpertDetailModal({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl w-[96vw] sm:w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 md:p-8">
         <DialogHeader className="border-b border-border pb-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <DialogTitle className="text-xl font-bold text-navy flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-marine" />
-                {isLoading ? "Memuat data kandidat..." : detail?.applicantName}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                {detail?.jobTitle
-                  ? `${detail.jobTitle} • ${detail.institution || "Independen"}`
-                  : "Detail Pemeriksaan Calon Expert BARUNA"}
-              </DialogDescription>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="rounded-xl bg-marine/10 p-2 text-marine shrink-0">
+                <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6" />
+              </span>
+              <div>
+                <DialogTitle className="text-base sm:text-xl font-bold text-navy leading-snug">
+                  {isLoading ? "Memuat data kandidat..." : detail?.applicantName}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  {detail?.jobTitle
+                    ? `${detail.jobTitle} • ${detail.institution || "Independen"}`
+                    : "Detail Pemeriksaan Calon Expert BARUNA"}
+                </DialogDescription>
+              </div>
             </div>
             {detail && <div>{getStatusBadge(detail.status)}</div>}
           </div>
@@ -583,7 +653,7 @@ function ExpertDetailModal({
             {detail?.status === "resubmitted" && (
               <div className="mt-3 rounded-xl border border-sky-300 bg-sky-50/90 p-4 shadow-2xs">
                 <div className="flex items-center gap-2 font-bold text-sky-950 text-sm">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-200 text-sky-800">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-200 text-sky-800 shrink-0">
                     <RotateCcw className="h-3.5 w-3.5" />
                   </span>
                   Pengajuan Calon Expert Ini Sudah Direvisi
@@ -608,17 +678,17 @@ function ExpertDetailModal({
               </div>
             )}
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-3">
-            <TabsList className="grid grid-cols-4 bg-slate-100">
-              <TabsTrigger value="profile">Biodata Diri</TabsTrigger>
-              <TabsTrigger value="expertise">Keahlian & Karir</TabsTrigger>
-              <TabsTrigger value="documents">
-                Lampiran Dokumen ({detail.documents.length})
-              </TabsTrigger>
-              <TabsTrigger value="decision" className="font-semibold text-marine">
-                Keputusan Verifikasi
-              </TabsTrigger>
-            </TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+              <TabsList className="flex w-full overflow-x-auto justify-start md:grid md:grid-cols-4 bg-slate-100 p-1 rounded-xl scrollbar-none whitespace-nowrap -mx-1 px-1 sm:mx-0 sm:px-1">
+                <TabsTrigger value="profile" className="shrink-0 px-3 py-1.5 text-xs font-semibold">Biodata Diri</TabsTrigger>
+                <TabsTrigger value="expertise" className="shrink-0 px-3 py-1.5 text-xs font-semibold">Keahlian &amp; Karir</TabsTrigger>
+                <TabsTrigger value="documents" className="shrink-0 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5">
+                  Lampiran Dokumen ({detail.documents.length})
+                </TabsTrigger>
+                <TabsTrigger value="decision" className="shrink-0 px-3 py-1.5 text-xs font-semibold text-marine">
+                  Keputusan Verifikasi
+                </TabsTrigger>
+              </TabsList>
 
             {/* TAB 1: BIODATA */}
             <TabsContent value="profile" className="mt-5 space-y-4">
@@ -923,28 +993,26 @@ function ExpertDetailModal({
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={onClose}
-                      disabled={submitting}
-                      className="text-xs"
-                    >
-                      Batal
-                    </Button>
-                  </div>
+                <div className="pt-3 border-t border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    disabled={submitting}
+                    className="w-full sm:w-auto text-xs order-last sm:order-first py-2 sm:py-1.5"
+                  >
+                    Batal
+                  </Button>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       disabled={submitting}
                       onClick={() => handleDecision("reject")}
-                      className="text-xs border-rose-300 text-rose-700 hover:bg-rose-50 flex items-center gap-1.5"
+                      className="w-full sm:w-auto text-xs border-rose-300 text-rose-700 hover:bg-rose-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                     >
-                      <XCircle className="h-4 w-4" /> Tolak Pengajuan
+                      <XCircle className="h-4 w-4 shrink-0" /> Tolak Pengajuan
                     </Button>
 
                     <Button
@@ -952,9 +1020,9 @@ function ExpertDetailModal({
                       variant="outline"
                       disabled={submitting}
                       onClick={() => handleDecision("return_for_revision")}
-                      className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center gap-1.5"
+                      className="w-full sm:w-auto text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                     >
-                      <RotateCcw className={`h-4 w-4 ${submitting ? "animate-spin" : ""}`} />
+                      <RotateCcw className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
                       {submitting ? "Memproses..." : "Minta Revisi"}
                     </Button>
 
@@ -962,9 +1030,9 @@ function ExpertDetailModal({
                       type="button"
                       disabled={submitting}
                       onClick={() => handleDecision("approve")}
-                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1.5 shadow-sm"
+                      className="w-full sm:w-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-1.5 py-2.5 sm:py-2 shadow-xs"
                     >
-                      <CheckCircle2 className={`h-4 w-4 ${submitting ? "animate-spin" : ""}`} />
+                      <CheckCircle2 className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
                       {submitting
                         ? "Memproses..."
                         : detail?.status === "approved"

@@ -90,3 +90,4 @@ Pastikan ketiga pilar utama BARUNA saling terhubung secara konsisten:
 
 ---
 *Dokumen ini diperbarui secara berkala sesuai dengan evolusi sistem dan tata kelola BARUNA.*
+
