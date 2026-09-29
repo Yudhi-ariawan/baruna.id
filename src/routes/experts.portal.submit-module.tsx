@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Clock,
   ArrowLeft,
+  Video,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
@@ -122,8 +123,9 @@ function SubmitModulePage() {
 
   // Pre-existing attached resources from draft metadata
   const [existingFiles, setExistingFiles] = useState<Record<string, ExistingResource>>({});
+  const [videoUrl, setVideoUrl] = useState<string>("");
 
-  // Initialize existing files when activeDraft loads
+  // Initialize existing files and videoUrl when activeDraft loads
   useEffect(() => {
     if (activeDraft) {
       const rawAttached = Array.isArray(draftMeta.attached_resources)
@@ -136,9 +138,19 @@ function SubmitModulePage() {
       rawAttached.forEach((res) => {
         if (res.type) {
           map[res.type] = res;
+          if (
+            res.type.toLowerCase().includes("video") &&
+            (res.path?.startsWith("http") || res.fileName?.startsWith("http"))
+          ) {
+            setVideoUrl(res.path || res.fileName || "");
+          }
         }
       });
       setExistingFiles(map);
+
+      if (typeof draftMeta.video_url === "string" && draftMeta.video_url) {
+        setVideoUrl(draftMeta.video_url);
+      }
     }
   }, [activeDraft?.id]);
 
@@ -281,7 +293,7 @@ function SubmitModulePage() {
                 const { data: userRes } = await supabase.auth.getUser();
                 const uid = userRes.user?.id;
 
-                const uploadedResources: Array<{
+                let uploadedResources: Array<{
                   type: string;
                   name: string;
                   fileName: string;
@@ -348,7 +360,26 @@ function SubmitModulePage() {
                   }),
                 );
 
+                // Always append newly uploaded files
                 uploadedResources.push(...newUploaded);
+
+                // If videoUrl is provided, add / update as a learning video resource
+                if (videoUrl.trim()) {
+                  const nonVideoResources = uploadedResources.filter(
+                    (r) => !r.type.toLowerCase().includes("video")
+                  );
+                  nonVideoResources.push({
+                    type: "Learning video (optional but strongly encouraged)",
+                    name: "Video Pembelajaran (Tautan Online)",
+                    fileName: videoUrl.trim(),
+                    fileSize: 0,
+                    fileType: "video/online-stream",
+                    path: videoUrl.trim(),
+                    uploadedAt: new Date().toISOString(),
+                  });
+                  uploadedResources = nonVideoResources;
+                }
+
                 setUploadProgress("Menyimpan modul ke sistem...");
 
                 // 2. Prepare payload
@@ -389,6 +420,7 @@ function SubmitModulePage() {
                         delivery_format: String(form.get("deliveryFormat") ?? "Self-paced"),
                         copyright_holder: String(form.get("copyrightHolder") ?? ""),
                         licensing: String(form.get("licensing") ?? ""),
+                        video_url: videoUrl.trim() || undefined,
                         attached_resources: uploadedResources,
                       },
                       // Also save as documents for cross-compatibility
@@ -556,10 +588,50 @@ function SubmitModulePage() {
             </Section>
 
             <Section title="Lampiran Berkas & Dokumen Modul">
-              <p className="text-xs text-muted-foreground mb-3">
+              <p className="text-xs text-muted-foreground mb-4">
                 Unggah berkas silabus modul, slide presentasi, panduan instruktur, dan instrumen
                 kuis (PDF, PPT, DOCX, gambar/video). Maksimum 50 MB per berkas.
               </p>
+
+              {/* Tautan Video Streaming (YouTube / Vimeo / Direct) */}
+              <div className="mb-4 rounded-xl border border-marine/30 bg-marine/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <label className="text-xs font-bold text-navy flex items-center gap-1.5">
+                    <Video className="h-4 w-4 text-marine" /> Tautan / URL Video Pembelajaran (YouTube / Vimeo / Cloudflare)
+                  </label>
+                  <span className="rounded-full bg-marine/15 px-2 py-0.5 text-[10px] font-bold text-marine uppercase tracking-wider">
+                    Sangat Direkomendasikan
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+                  Tempelkan URL video YouTube (misal: <code>https://www.youtube.com/watch?v=...</code> atau <code>https://youtu.be/...</code>) atau Vimeo. Video akan otomatis tersemat di Ruang Belajar peserta tanpa membebani kuota server.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=... atau https://youtu.be/..."
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:border-marine focus:outline-hidden"
+                  />
+                  {videoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setVideoUrl("")}
+                      className="shrink-0 rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+                      title="Hapus URL"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {videoUrl && (
+                  <p className="mt-2 text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Tautan video terkonfigurasi. Akan otomatis disematkan dan diputar di Tab Video Ruang Belajar.
+                  </p>
+                )}
+              </div>
+
               <ul className="grid gap-3 sm:grid-cols-2">
                 {RESOURCES.map((r, idx) => {
                   const newFile = attachedFiles[r];

@@ -170,6 +170,18 @@ function MyLearning() {
                     const hours = sc.hours || masterByCode[sc.code]?.hours || 2;
                     const isDone = sc.completed;
 
+                    const stepsDoneCount = isDone
+                      ? 4
+                      : (sc.completedSteps?.video ? 1 : 0) +
+                        (sc.completedSteps?.pdf ? 1 : 0) +
+                        (sc.completedSteps?.ppt ? 1 : 0) +
+                        (sc.completedSteps?.quiz ? 1 : 0);
+                    const progressPercent = isDone
+                      ? 100
+                      : stepsDoneCount > 0
+                        ? Math.round((stepsDoneCount / 4) * 100)
+                        : 25;
+
                     return (
                       <article
                         key={sc.code}
@@ -182,7 +194,7 @@ function MyLearning() {
                             </span>
                             {isDone ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-                                <CheckCircle2 className="h-3 w-3" /> Selesai
+                                <CheckCircle2 className="h-3 w-3" /> Selesai 100%
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
@@ -203,24 +215,28 @@ function MyLearning() {
                             <div className="flex items-center justify-between text-[11px] font-semibold">
                               <span className="text-muted-foreground">Progress Pembelajaran</span>
                               <span className={isDone ? "text-emerald-700 font-bold" : "text-marine font-bold"}>
-                                {isDone ? "100% Selesai" : "Sedang Berjalan"}
+                                {isDone ? "100% Selesai" : `${progressPercent}% Selesai`}
                               </span>
                             </div>
                             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
                               <div
-                                className={`h-full rounded-full transition-all ${
+                                className={`h-full rounded-full transition-all duration-300 ${
                                   isDone ? "bg-emerald-600" : "bg-marine"
                                 }`}
-                                style={{ width: isDone ? "100%" : "35%" }}
+                                style={{ width: `${progressPercent}%` }}
                               />
                             </div>
                           </div>
                         </div>
 
                         <div className="mt-4 pt-3 border-t border-border/50 flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-[11px] text-muted-foreground">
-                            Terdaftar: {sc.enrolledAt ? new Date(sc.enrolledAt).toLocaleDateString("id-ID") : "Baru saja"}
-                          </span>
+                          <Link
+                            to="/academy/self-paced/$code"
+                            params={{ code: sc.code }}
+                            className="text-[11px] text-muted-foreground hover:text-navy hover:underline"
+                          >
+                            Lihat Silabus Modul
+                          </Link>
                           <div className="flex items-center gap-2">
                             {isDone && (
                               <button
@@ -231,8 +247,8 @@ function MyLearning() {
                               </button>
                             )}
                             <Link
-                              to="/academy/self-paced/$code"
-                              params={{ code: sc.code }}
+                              to="/academy/learn/$id"
+                              params={{ id: sc.code }}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
                             >
                               <PlayCircle className="h-3.5 w-3.5" /> {isDone ? "Tinjau Modul" : "Lanjutkan Belajar"}

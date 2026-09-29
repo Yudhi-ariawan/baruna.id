@@ -31,6 +31,12 @@ export type ShortCourseEnrollment = {
   hours?: number | string;
   instructor?: string;
   category?: string;
+  completedSteps?: {
+    video?: boolean;
+    pdf?: boolean;
+    ppt?: boolean;
+    quiz?: boolean;
+  };
 };
 
 type Store = Record<string, ShortCourseEnrollment>;
@@ -93,9 +99,33 @@ export function enrollShortCourse(
       hours: meta?.hours,
       instructor: meta?.instructor,
       category: meta?.category,
+      completedSteps: { video: false, pdf: false, ppt: false, quiz: false },
     };
     writeStore(store);
   }
+  return store[code];
+}
+
+export function updateShortCourseSteps(
+  code: string,
+  steps: { video?: boolean; pdf?: boolean; ppt?: boolean; quiz?: boolean },
+): ShortCourseEnrollment {
+  const store = readStore();
+  const existing = store[code] ?? {
+    code,
+    enrolledAt: Date.now(),
+    completed: false,
+    source: "self-paced",
+  };
+  const updatedSteps = {
+    ...(existing.completedSteps ?? {}),
+    ...steps,
+  };
+  store[code] = {
+    ...existing,
+    completedSteps: updatedSteps,
+  };
+  writeStore(store);
   return store[code];
 }
 
@@ -107,8 +137,18 @@ export function completeShortCourse(
   const store = readStore();
   const existing = store[code] ?? { code, enrolledAt: Date.now(), completed: false };
   store[code] = {
-    ...existing, completed: true, completedAt: Date.now(), score,
+    ...existing,
+    completed: true,
+    completedAt: Date.now(),
+    score,
     source: existing.source ?? source,
+    completedSteps: {
+      ...(existing.completedSteps ?? {}),
+      video: true,
+      pdf: true,
+      ppt: true,
+      quiz: true,
+    },
   };
   writeStore(store);
   return store[code];

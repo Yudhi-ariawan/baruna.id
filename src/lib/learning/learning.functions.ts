@@ -449,9 +449,113 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
 
       if (mErr) {
         console.error("Error querying module_registry:", mErr);
-        return null;
       }
-      if (!mod) return null;
+
+      if (!mod) {
+        // Fallback: Check if it's an expert module submission (draft or under review)
+        const { data: subData } = await (supabaseAdmin as any)
+          .from("expert_module_submissions")
+          .select("*")
+          .eq("id", data.moduleId)
+          .maybeSingle();
+
+        const sub = subData as Record<string, any> | null;
+        if (!sub) return null;
+
+        const subPayload = (sub.payload as Record<string, any>) ?? {};
+        const subMeta = (subPayload.metadata as Record<string, any>) ?? {};
+        const subOutline = (subPayload.content_outline as Record<string, any>) ?? {};
+        const subAssessment = (subPayload.assessment_approach as Record<string, any>) ?? {};
+
+        let subTrainer: PublishedModuleTrainer = {
+          name: "BARUNA Trainer",
+          headline: null,
+          institution: null,
+          avatarUrl: null,
+          slug: null,
+        };
+
+        if (sub.expert_id) {
+          const { data: exp } = await supabaseAdmin
+            .from("experts_directory_v")
+            .select("id, display_name, headline, institution, avatar_url, slug")
+            .eq("id", sub.expert_id)
+            .maybeSingle();
+
+          if (exp) {
+            subTrainer = {
+              name: exp.display_name || "BARUNA Trainer",
+              headline: exp.headline || null,
+              institution: exp.institution || null,
+              avatarUrl: exp.avatar_url || null,
+              slug: exp.slug || null,
+            };
+          }
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawAttachedSub: Array<Record<string, any>> = Array.isArray(subMeta.attached_resources)
+          ? subMeta.attached_resources
+          : Array.isArray(subPayload.documents)
+          ? subPayload.documents
+          : [];
+
+        const subDocs: PublishedModuleDocument[] = await Promise.all(
+          rawAttachedSub.map(async (doc) => {
+            const type = String(doc.type || doc.category || "Dokumen Pendukung");
+            const name = String(doc.fileName || doc.name || "Berkas");
+            const size = Number(doc.fileSize || doc.size || 0);
+            const fileType = typeof doc.fileType === "string" ? doc.fileType : (typeof doc.type === "string" ? doc.type : null);
+            const storagePath = typeof doc.path === "string" ? doc.path : null;
+            let downloadUrl: string | null = null;
+
+            if (storagePath) {
+              if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+                downloadUrl = storagePath;
+              } else {
+                try {
+                  const { data: signed } = await supabaseAdmin.storage
+                    .from("expert-applications")
+                    .createSignedUrl(storagePath, 86400);
+                  downloadUrl = signed?.signedUrl ?? null;
+                } catch {
+                  downloadUrl = null;
+                }
+              }
+            } else if (typeof doc.url === "string" && (doc.url.startsWith("http://") || doc.url.startsWith("https://"))) {
+              downloadUrl = doc.url;
+            } else if (name.startsWith("http://") || name.startsWith("https://")) {
+              downloadUrl = name;
+            }
+
+            return { type, name, size, fileType, downloadUrl };
+          }),
+        );
+
+        return {
+          id: String(sub.id),
+          title: String(subPayload.title || sub.title || "Modul Pelatihan"),
+          summary: String(subPayload.summary || ""),
+          moduleType: String(subPayload.module_type || sub.module_type || "technical"),
+          language: String(subPayload.language || "English"),
+          hours: Number(subPayload.estimated_learning_hours || 2),
+          targetParticipants: (subPayload.target_participants as string | null) ?? null,
+          learningObjectives: Array.isArray(subPayload.learning_objectives)
+            ? (subPayload.learning_objectives as string[])
+            : [],
+          competencyOutcomes:
+            (typeof subPayload.competency_outcomes === "string" && subPayload.competency_outcomes) ||
+            (typeof subMeta.competency_outcomes === "string" && subMeta.competency_outcomes) ||
+            null,
+          topic: String(subOutline.topic || subMeta.topic || ""),
+          competency: String(subOutline.competency || subMeta.competency || ""),
+          assessmentMethod: String(subAssessment.method || "Evaluasi Mandiri & Kuis Pemahaman"),
+          passingScore: Number(subAssessment.passing_score ?? 70),
+          trainer: subTrainer,
+          documents: subDocs,
+          publishedAt: String(sub.created_at),
+        };
+      }
 
     let trainerInfo: PublishedModuleTrainer = {
       name: "BARUNA Trainer",
@@ -524,14 +628,22 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
         let downloadUrl: string | null = null;
 
         if (storagePath) {
-          try {
-            const { data: signed } = await supabaseAdmin.storage
-              .from("expert-applications")
-              .createSignedUrl(storagePath, 86400);
-            downloadUrl = signed?.signedUrl ?? null;
-          } catch {
-            downloadUrl = null;
+          if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+            downloadUrl = storagePath;
+          } else {
+            try {
+              const { data: signed } = await supabaseAdmin.storage
+                .from("expert-applications")
+                .createSignedUrl(storagePath, 86400);
+              downloadUrl = signed?.signedUrl ?? null;
+            } catch {
+              downloadUrl = null;
+            }
           }
+        } else if (typeof doc.url === "string" && (doc.url.startsWith("http://") || doc.url.startsWith("https://"))) {
+          downloadUrl = doc.url;
+        } else if (name.startsWith("http://") || name.startsWith("https://")) {
+          downloadUrl = name;
         }
 
         return {

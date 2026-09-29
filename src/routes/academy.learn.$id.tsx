@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import {
   ChevronRight,
@@ -36,10 +37,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
+import { DemoModeBar } from "@/components/baruna/academy/DemoModeBar";
 import { Toaster } from "@/components/baruna/Toaster";
 import { DocumentUploadRow } from "@/components/baruna/academy/DocumentUploadRow";
 import { ModuleQuiz } from "@/components/baruna/academy/ModuleQuiz";
 import { barunaToast } from "@/lib/downloads";
+import { useDemoMode } from "@/lib/demoMode";
 import {
   downloadCertificatePdf,
   downloadBadgePng,
@@ -85,31 +88,74 @@ import {
   type QuizRecord,
   type DocumentMeta,
 } from "@/lib/application";
-import { codeForLmsId } from "@/data/masterModules";
+import { masterByCode, codeForLmsId, type MasterModule } from "@/data/masterModules";
 import { completeShortCourse } from "@/lib/shortCourses";
-import { useDemoMode } from "@/lib/demoMode";
-import { DemoModeBar } from "@/components/baruna/academy/DemoModeBar";
+import {
+  getPublishedModuleDetail,
+  type PublishedModuleDetail,
+} from "@/lib/learning/learning.functions";
+import { DynamicModuleLmsPlayer } from "@/components/baruna/academy/DynamicModuleLmsPlayer";
+import { MasterModuleLmsPlayer } from "@/components/baruna/academy/MasterModuleLmsPlayer";
+
+type LearnLoaderData =
+  | { kind: "dynamic"; module: PublishedModuleDetail }
+  | {
+      kind: "master";
+      master: MasterModule;
+      lms: LmsModule | undefined;
+    }
+  | { kind: "program"; id: string };
 
 export const Route = createFileRoute("/academy/learn/$id")({
-  loader: ({ params }) => {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
-    if (isUuid) {
-      throw redirect({ to: "/academy/self-paced/$code", params: { code: params.id } });
+  loader: async ({ params }): Promise<LearnLoaderData> => {
+    // 1. Check if it's a static master module
+    const master = masterByCode[params.id];
+    if (master) {
+      const lms = LMS_MODULES.find((m) => m.id === master.lmsId);
+      return { kind: "master", master, lms };
     }
-    return { id: params.id };
+
+    // 2. Check if it's a dynamic module from module_registry
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
+      if (isUuid) {
+        const publishedModule = await getPublishedModuleDetail({ data: { moduleId: params.id } });
+        if (publishedModule) {
+          return { kind: "dynamic", module: publishedModule };
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load dynamic module for learn route:", err);
+    }
+
+    // 3. Otherwise treat as a program / application ID
+    return { kind: "program", id: params.id };
   },
   head: () => ({
     meta: [
-      { title: "My Learning — Academy — BARUNA" },
-      { name: "description", content: "Your dedicated learning dashboard for the International Training on Fisheries for African Countries." },
+      { title: "Ruang Belajar — Academy — BARUNA" },
+      { name: "description", content: "Ruang pembelajaran mandiri dan program pelatihan interaktif BARUNA Academy." },
     ],
   }),
+  errorComponent: ({ error }: { error: any }) => (
+    <AcademyShell active="my-learning">
+      <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
+        <h1 className="font-display text-2xl font-bold text-navy">Kendala Memuat Ruang Belajar</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          {String(error?.message || error || "Terjadi kendala saat memuat ruang belajar. Silakan coba kembali atau kembali ke menu My Learning.")}
+        </p>
+        <Link to="/academy/learn" className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-white">
+          Kembali ke My Learning
+        </Link>
+      </div>
+    </AcademyShell>
+  ),
   notFoundComponent: () => (
     <AcademyShell active="my-learning">
       <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
-        <h1 className="font-display text-2xl font-bold text-navy">Learning dashboard not found</h1>
-        <Link to="/academy/applications" className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-marine-foreground">
-          Back to My Applications
+        <h1 className="font-display text-2xl font-bold text-navy">Ruang belajar tidak ditemukan</h1>
+        <Link to="/academy/learn" className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-white">
+          Kembali ke My Learning
         </Link>
       </div>
     </AcademyShell>
@@ -155,7 +201,17 @@ const welcomeIcons: Record<string, LucideIcon> = {
 };
 
 function LearningDashboard() {
-  const { id } = Route.useLoaderData() as { id: string };
+  const loaderData = Route.useLoaderData();
+
+  if (loaderData.kind === "dynamic") {
+    return <DynamicModuleLmsPlayer module={loaderData.module} />;
+  }
+
+  if (loaderData.kind === "master") {
+    return <MasterModuleLmsPlayer master={loaderData.master} lms={loaderData.lms} />;
+  }
+
+  const { id } = loaderData;
   const appFromHook = useApplication(id);
   const app =
     appFromHook ||
@@ -169,7 +225,35 @@ function LearningDashboard() {
 
   const [demo] = useDemoMode();
 
-  if (!app) throw notFound();
+  if (!app) {
+    return (
+      <AcademyShell active="my-learning">
+        <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-muted text-muted-foreground">
+            <Lock className="h-7 w-7" />
+          </span>
+          <h1 className="mt-4 font-display text-2xl font-bold text-navy">Ruang Belajar Tidak Ditemukan</h1>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            Modul atau program pelatihan dengan ID &quot;{id}&quot; belum terdaftar atau masih dalam proses penelaahan.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/academy/learn"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-white hover:bg-marine/90"
+            >
+              Kembali ke My Learning
+            </Link>
+            <Link
+              to="/academy/self-paced"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-navy hover:bg-muted"
+            >
+              Jelajahi Modul Mandiri
+            </Link>
+          </div>
+        </div>
+      </AcademyShell>
+    );
+  }
 
   // Demo Mode relaxes navigation locks only; stored progress is never changed.
   const confirmed = app.participationConfirmed || demo;
