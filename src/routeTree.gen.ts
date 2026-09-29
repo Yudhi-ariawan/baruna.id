@@ -40,7 +40,6 @@ import { Route as AcademyEdition2024RouteImport } from './routes/academy.edition
 import { Route as AcademyLearnRouteImport } from './routes/academy.learn'
 import { Route as AcademyProgramsRouteImport } from './routes/academy.programs'
 import { Route as AcademyRequestTrainingRouteImport } from './routes/academy.request-training'
-import { Route as AcademySelfPacedRouteImport } from './routes/academy.self-paced'
 import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
 import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
@@ -96,6 +95,7 @@ import { Route as AcademyLearnAllocatedZonesForAquacultureRouteImport } from './
 import { Route as AcademyPathwaysIndexRouteImport } from './routes/academy.pathways.index'
 import { Route as AcademyPathwaysSlugRouteImport } from './routes/academy.pathways.$slug'
 import { Route as AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRouteImport } from './routes/academy.preview.international-training-fisheries-african-countries'
+import { Route as AcademySelfPacedIndexRouteImport } from './routes/academy.self-paced.index'
 import { Route as AcademySelfPacedCodeRouteImport } from './routes/academy.self-paced.$code'
 import { Route as AcademyShortCoursesIndexRouteImport } from './routes/academy.short-courses.index'
 import { Route as AcademyShortCoursesCodeRouteImport } from './routes/academy.short-courses.$code'
@@ -275,11 +275,6 @@ const AcademyProgramsRoute = AcademyProgramsRouteImport.update({
 const AcademyRequestTrainingRoute = AcademyRequestTrainingRouteImport.update({
   id: '/request-training',
   path: '/request-training',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademySelfPacedRoute = AcademySelfPacedRouteImport.update({
-  id: '/self-paced',
-  path: '/self-paced',
   getParentRoute: () => AcademyRoute,
 } as any)
 const AcademyWebinarRoute = AcademyWebinarRouteImport.update({
@@ -564,10 +559,15 @@ const AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute =
       getParentRoute: () => AcademyRoute,
     } as any,
   )
+const AcademySelfPacedIndexRoute = AcademySelfPacedIndexRouteImport.update({
+  id: '/self-paced/',
+  path: '/self-paced/',
+  getParentRoute: () => AcademyRoute,
+} as any)
 const AcademySelfPacedCodeRoute = AcademySelfPacedCodeRouteImport.update({
-  id: '/$code',
-  path: '/$code',
-  getParentRoute: () => AcademySelfPacedRoute,
+  id: '/self-paced/$code',
+  path: '/self-paced/$code',
+  getParentRoute: () => AcademyRoute,
 } as any)
 const AcademyShortCoursesIndexRoute =
   AcademyShortCoursesIndexRouteImport.update({
@@ -732,7 +732,6 @@ export interface FileRoutesByFullPath {
   '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
-  '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
@@ -808,6 +807,7 @@ export interface FileRoutesByFullPath {
   '/academy/applications/': typeof AcademyApplicationsIndexRoute
   '/academy/learn/': typeof AcademyLearnIndexRoute
   '/academy/pathways/': typeof AcademyPathwaysIndexRoute
+  '/academy/self-paced/': typeof AcademySelfPacedIndexRoute
   '/academy/short-courses/': typeof AcademyShortCoursesIndexRoute
   '/academy/training-requests/': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training/': typeof AcademyTrainingIndexRoute
@@ -839,7 +839,6 @@ export interface FileRoutesByTo {
   '/academy/edition-2024': typeof AcademyEdition2024Route
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
-  '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
@@ -914,6 +913,7 @@ export interface FileRoutesByTo {
   '/academy/applications': typeof AcademyApplicationsIndexRoute
   '/academy/learn': typeof AcademyLearnIndexRoute
   '/academy/pathways': typeof AcademyPathwaysIndexRoute
+  '/academy/self-paced': typeof AcademySelfPacedIndexRoute
   '/academy/short-courses': typeof AcademyShortCoursesIndexRoute
   '/academy/training-requests': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training': typeof AcademyTrainingIndexRoute
@@ -953,7 +953,6 @@ export interface FileRoutesById {
   '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
-  '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
@@ -1029,6 +1028,7 @@ export interface FileRoutesById {
   '/academy/applications/': typeof AcademyApplicationsIndexRoute
   '/academy/learn/': typeof AcademyLearnIndexRoute
   '/academy/pathways/': typeof AcademyPathwaysIndexRoute
+  '/academy/self-paced/': typeof AcademySelfPacedIndexRoute
   '/academy/short-courses/': typeof AcademyShortCoursesIndexRoute
   '/academy/training-requests/': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training/': typeof AcademyTrainingIndexRoute
@@ -1069,7 +1069,6 @@ export interface FileRouteTypes {
     | '/academy/learn'
     | '/academy/programs'
     | '/academy/request-training'
-    | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
@@ -1145,6 +1144,7 @@ export interface FileRouteTypes {
     | '/academy/applications/'
     | '/academy/learn/'
     | '/academy/pathways/'
+    | '/academy/self-paced/'
     | '/academy/short-courses/'
     | '/academy/training-requests/'
     | '/academy/training/'
@@ -1176,7 +1176,6 @@ export interface FileRouteTypes {
     | '/academy/edition-2024'
     | '/academy/programs'
     | '/academy/request-training'
-    | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
@@ -1251,6 +1250,7 @@ export interface FileRouteTypes {
     | '/academy/applications'
     | '/academy/learn'
     | '/academy/pathways'
+    | '/academy/self-paced'
     | '/academy/short-courses'
     | '/academy/training-requests'
     | '/academy/training'
@@ -1289,7 +1289,6 @@ export interface FileRouteTypes {
     | '/academy/learn'
     | '/academy/programs'
     | '/academy/request-training'
-    | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
@@ -1365,6 +1364,7 @@ export interface FileRouteTypes {
     | '/academy/applications/'
     | '/academy/learn/'
     | '/academy/pathways/'
+    | '/academy/self-paced/'
     | '/academy/short-courses/'
     | '/academy/training-requests/'
     | '/academy/training/'
@@ -1620,13 +1620,6 @@ declare module '@tanstack/react-router' {
       path: '/request-training'
       fullPath: '/academy/request-training'
       preLoaderRoute: typeof AcademyRequestTrainingRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/self-paced': {
-      id: '/academy/self-paced'
-      path: '/self-paced'
-      fullPath: '/academy/self-paced'
-      preLoaderRoute: typeof AcademySelfPacedRouteImport
       parentRoute: typeof AcademyRoute
     }
     '/academy/webinar': {
@@ -2014,12 +2007,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRouteImport
       parentRoute: typeof AcademyRoute
     }
+    '/academy/self-paced/': {
+      id: '/academy/self-paced/'
+      path: '/self-paced'
+      fullPath: '/academy/self-paced/'
+      preLoaderRoute: typeof AcademySelfPacedIndexRouteImport
+      parentRoute: typeof AcademyRoute
+    }
     '/academy/self-paced/$code': {
       id: '/academy/self-paced/$code'
-      path: '/$code'
+      path: '/self-paced/$code'
       fullPath: '/academy/self-paced/$code'
       preLoaderRoute: typeof AcademySelfPacedCodeRouteImport
-      parentRoute: typeof AcademySelfPacedRoute
+      parentRoute: typeof AcademyRoute
     }
     '/academy/short-courses/': {
       id: '/academy/short-courses/'
@@ -2209,17 +2209,6 @@ const AcademyLearnRouteWithChildren = AcademyLearnRoute._addFileChildren(
   AcademyLearnRouteChildren,
 )
 
-interface AcademySelfPacedRouteChildren {
-  AcademySelfPacedCodeRoute: typeof AcademySelfPacedCodeRoute
-}
-
-const AcademySelfPacedRouteChildren: AcademySelfPacedRouteChildren = {
-  AcademySelfPacedCodeRoute: AcademySelfPacedCodeRoute,
-}
-
-const AcademySelfPacedRouteWithChildren =
-  AcademySelfPacedRoute._addFileChildren(AcademySelfPacedRouteChildren)
-
 interface AcademyRouteChildren {
   AcademyAlumniNetworkRoute: typeof AcademyAlumniNetworkRoute
   AcademyArchiveRoute: typeof AcademyArchiveRoute
@@ -2228,7 +2217,6 @@ interface AcademyRouteChildren {
   AcademyLearnRoute: typeof AcademyLearnRouteWithChildren
   AcademyProgramsRoute: typeof AcademyProgramsRoute
   AcademyRequestTrainingRoute: typeof AcademyRequestTrainingRoute
-  AcademySelfPacedRoute: typeof AcademySelfPacedRouteWithChildren
   AcademyWebinarRoute: typeof AcademyWebinarRoute
   AcademyWorkshopRoute: typeof AcademyWorkshopRoute
   AcademyIndexRoute: typeof AcademyIndexRoute
@@ -2239,6 +2227,7 @@ interface AcademyRouteChildren {
   AcademyCourseOfferingIdRoute: typeof AcademyCourseOfferingIdRoute
   AcademyPathwaysSlugRoute: typeof AcademyPathwaysSlugRoute
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute: typeof AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute
+  AcademySelfPacedCodeRoute: typeof AcademySelfPacedCodeRoute
   AcademyShortCoursesCodeRoute: typeof AcademyShortCoursesCodeRoute
   AcademyTrainingRequestsIdRoute: typeof AcademyTrainingRequestsIdRoute
   AcademyTrainingSlugRoute: typeof AcademyTrainingSlugRoute
@@ -2246,6 +2235,7 @@ interface AcademyRouteChildren {
   AcademyAlumniIndexRoute: typeof AcademyAlumniIndexRoute
   AcademyApplicationsIndexRoute: typeof AcademyApplicationsIndexRoute
   AcademyPathwaysIndexRoute: typeof AcademyPathwaysIndexRoute
+  AcademySelfPacedIndexRoute: typeof AcademySelfPacedIndexRoute
   AcademyShortCoursesIndexRoute: typeof AcademyShortCoursesIndexRoute
   AcademyTrainingRequestsIndexRoute: typeof AcademyTrainingRequestsIndexRoute
   AcademyTrainingIndexRoute: typeof AcademyTrainingIndexRoute
@@ -2259,7 +2249,6 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyLearnRoute: AcademyLearnRouteWithChildren,
   AcademyProgramsRoute: AcademyProgramsRoute,
   AcademyRequestTrainingRoute: AcademyRequestTrainingRoute,
-  AcademySelfPacedRoute: AcademySelfPacedRouteWithChildren,
   AcademyWebinarRoute: AcademyWebinarRoute,
   AcademyWorkshopRoute: AcademyWorkshopRoute,
   AcademyIndexRoute: AcademyIndexRoute,
@@ -2271,6 +2260,7 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyPathwaysSlugRoute: AcademyPathwaysSlugRoute,
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute:
     AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute,
+  AcademySelfPacedCodeRoute: AcademySelfPacedCodeRoute,
   AcademyShortCoursesCodeRoute: AcademyShortCoursesCodeRoute,
   AcademyTrainingRequestsIdRoute: AcademyTrainingRequestsIdRoute,
   AcademyTrainingSlugRoute: AcademyTrainingSlugRoute,
@@ -2279,6 +2269,7 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyAlumniIndexRoute: AcademyAlumniIndexRoute,
   AcademyApplicationsIndexRoute: AcademyApplicationsIndexRoute,
   AcademyPathwaysIndexRoute: AcademyPathwaysIndexRoute,
+  AcademySelfPacedIndexRoute: AcademySelfPacedIndexRoute,
   AcademyShortCoursesIndexRoute: AcademyShortCoursesIndexRoute,
   AcademyTrainingRequestsIndexRoute: AcademyTrainingRequestsIndexRoute,
   AcademyTrainingIndexRoute: AcademyTrainingIndexRoute,

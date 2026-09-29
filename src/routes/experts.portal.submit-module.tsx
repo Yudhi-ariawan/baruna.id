@@ -112,6 +112,7 @@ function SubmitModulePage() {
   const [submitted, setSubmitted] = useState(false);
   const [savedAsDraft, setSavedAsDraft] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [intent, setIntent] = useState<"draft" | "submit">("submit");
   const [checked, setChecked] = useState<Record<number, boolean>>({});
@@ -305,36 +306,50 @@ function SubmitModulePage() {
                   }
                 }
 
-                // Upload new files
-                for (const [type, f] of Object.entries(attachedFiles)) {
-                  let storagePath: string | undefined = undefined;
-                  const contentType = resolveFileContentType(f.name, f.type);
-                  if (uid) {
-                    try {
-                      const safeName = f.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
-                      const path = `users/${uid}/modules/${draftId || Date.now()}/${Date.now()}-${safeName}`;
-                      const { error: upErr } = await supabase.storage
-                        .from("expert-applications")
-                        .upload(path, f, { contentType, upsert: true });
-
-                      if (!upErr) {
-                        storagePath = path;
-                      }
-                    } catch {
-                      // Continue even if storage upload fails, preserve metadata
-                    }
-                  }
-
-                  uploadedResources.push({
-                    type,
-                    name: f.name,
-                    fileName: f.name,
-                    fileSize: f.size,
-                    fileType: contentType,
-                    path: storagePath,
-                    uploadedAt: new Date().toISOString(),
-                  });
+                // Upload new files concurrently
+                const newEntries = Object.entries(attachedFiles);
+                if (newEntries.length > 0) {
+                  setUploadProgress(`Mengunggah ${newEntries.length} berkas...`);
                 }
+
+                let completedCount = 0;
+                const newUploaded = await Promise.all(
+                  newEntries.map(async ([type, f]) => {
+                    let storagePath: string | undefined = undefined;
+                    const contentType = resolveFileContentType(f.name, f.type);
+                    if (uid) {
+                      try {
+                        const safeName = f.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+                        const path = `users/${uid}/modules/${draftId || Date.now()}/${Date.now()}-${safeName}`;
+                        const { error: upErr } = await supabase.storage
+                          .from("expert-applications")
+                          .upload(path, f, { contentType, upsert: true });
+
+                        if (!upErr) {
+                          storagePath = path;
+                        }
+                      } catch {
+                        // Continue even if storage upload fails, preserve metadata
+                      }
+                    }
+
+                    completedCount++;
+                    setUploadProgress(`Mengunggah (${completedCount}/${newEntries.length}) berkas...`);
+
+                    return {
+                      type,
+                      name: f.name,
+                      fileName: f.name,
+                      fileSize: f.size,
+                      fileType: contentType,
+                      path: storagePath,
+                      uploadedAt: new Date().toISOString(),
+                    };
+                  }),
+                );
+
+                uploadedResources.push(...newUploaded);
+                setUploadProgress("Menyimpan modul ke sistem...");
 
                 // 2. Prepare payload
                 const objectivesRaw = String(form.get("objectives") ?? "");
@@ -714,7 +729,7 @@ function SubmitModulePage() {
                 >
                   <Send className="h-4 w-4" />{" "}
                   {saving
-                    ? "Menyimpan & Mengunggah…"
+                    ? uploadProgress || "Menyimpan & Mengunggah…"
                     : isRevision
                       ? "Kirim Ulang Revisi Modul"
                       : "Submit for Review"}

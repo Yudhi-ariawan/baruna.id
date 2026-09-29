@@ -17,7 +17,7 @@ const EVENT = "baruna:short-courses";
 const APPS_EVENT = "baruna:applications";
 
 export type ShortCourseEnrollment = {
-  code: string;                // Self-Paced / Master Module code (BARUNA-SC-AQ-001…)
+  code: string;                // Self-Paced / Master Module code or dynamic module id
   enrolledAt: number;
   completed: boolean;
   completedAt?: number;
@@ -25,6 +25,11 @@ export type ShortCourseEnrollment = {
   score?: number;
   /** How this credit was earned. */
   source?: "self-paced" | "full-training-program";
+  /** Optional metadata for dynamic modules from module_registry */
+  title?: string;
+  hours?: number | string;
+  instructor?: string;
+  category?: string;
 };
 
 type Store = Record<string, ShortCourseEnrollment>;
@@ -72,12 +77,21 @@ export function getShortCourse(code: string): ShortCourseEnrollment | undefined 
   return readStore()[code];
 }
 
-export function enrollShortCourse(code: string): ShortCourseEnrollment {
-  if (!masterByCode[code]) throw new Error(`Unknown module code: ${code}`);
+export function enrollShortCourse(
+  code: string,
+  meta?: { title?: string; hours?: number | string; instructor?: string; category?: string },
+): ShortCourseEnrollment {
   const store = readStore();
   if (!store[code]) {
     store[code] = {
-      code, enrolledAt: Date.now(), completed: false, source: "self-paced",
+      code,
+      enrolledAt: Date.now(),
+      completed: false,
+      source: "self-paced",
+      title: meta?.title,
+      hours: meta?.hours,
+      instructor: meta?.instructor,
+      category: meta?.category,
     };
     writeStore(store);
   }

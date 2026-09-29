@@ -4,12 +4,17 @@ import {
   ArrowLeft,
   ArrowRight,
   Award,
+  BadgeCheck,
   BookOpen,
+  Building2,
   CheckCircle2,
   ChevronRight,
   Clock,
+  Download,
   ExternalLink,
   FileText,
+  GraduationCap,
+  Image as ImageIcon,
   Layers,
   ListChecks,
   PlayCircle,
@@ -42,12 +47,14 @@ import {
   completeShortCourse,
 } from "@/lib/shortCourses";
 import { barunaToast } from "@/lib/downloads";
-
-import { supabase } from "@/integrations/supabase/client";
-import defaultCover from "@/assets/self-paced/m01.jpg";
+import {
+  getPublishedModuleDetail,
+  type PublishedModuleDetail,
+} from "@/lib/learning/learning.functions";
 
 type LoaderData =
   | { kind: "master"; master: NonNullable<ReturnType<typeof lookupMaster>>; lms: LmsModule | undefined }
+  | { kind: "dynamic"; module: PublishedModuleDetail }
   | { kind: "program"; program: Program };
 
 function lookupMaster(code: string) {
@@ -65,58 +72,9 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
     if (program) return { kind: "program", program };
 
     // Dynamic module lookup from module_registry
-    const { data: mod } = await supabase
-      .from("module_registry")
-      .select("*")
-      .eq("id", params.code)
-      .maybeSingle();
-
-    if (mod) {
-      let expName = "BARUNA Trainer";
-      if (mod.author_expert_id) {
-        const { data: exp } = await supabase
-          .from("experts_directory_v")
-          .select("display_name")
-          .eq("id", mod.author_expert_id)
-          .maybeSingle();
-        if (exp?.display_name) {
-          expName = exp.display_name;
-        } else {
-          const { data: rawExp } = await supabase
-            .from("experts")
-            .select("display_name")
-            .eq("id", mod.author_expert_id)
-            .maybeSingle();
-          if (rawExp?.display_name) {
-            expName = rawExp.display_name;
-          }
-        }
-      }
-
-      return {
-        kind: "program",
-        program: {
-          id: mod.id,
-          type: "self-paced",
-          title: mod.title,
-          description: mod.summary || "Approved BARUNA self-paced course.",
-          image: defaultCover,
-          category: "Fisheries Management",
-          level: "Intermediate",
-          language: mod.language || "English",
-          duration: `${mod.estimated_learning_hours || 2} Hours`,
-          instructor: `${expName} (BARUNA Trainer)`,
-          organization: "BARUNA Academy",
-          country: "Indonesia",
-          startDate: new Date(mod.created_at).toISOString().split("T")[0],
-          participants: 1,
-          rating: 5.0,
-          reviews: 1,
-          status: "ONLINE",
-          keywords: ["self-paced", "module"],
-          href: `/academy/self-paced/${mod.id}`,
-        },
-      };
+    const publishedModule = await getPublishedModuleDetail({ data: { moduleId: params.code } });
+    if (publishedModule) {
+      return { kind: "dynamic", module: publishedModule };
     }
 
     throw notFound();
@@ -136,6 +94,18 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
           { property: "og:description", content: m.summary },
         ],
         links: [{ rel: "canonical", href: `/academy/self-paced/${m.code}` }],
+      };
+    }
+    if (loaderData.kind === "dynamic") {
+      const mod = loaderData.module;
+      return {
+        meta: [
+          { title: `${mod.title} — Self-Paced Course — BARUNA Academy` },
+          { name: "description", content: mod.summary || "BARUNA self-paced course." },
+          { property: "og:title", content: `${mod.title} — Self-Paced Course` },
+          { property: "og:description", content: mod.summary || "BARUNA self-paced course." },
+        ],
+        links: [{ rel: "canonical", href: `/academy/self-paced/${mod.id}` }],
       };
     }
     const p = loaderData.program;
@@ -174,9 +144,11 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
 
 function SelfPacedDetail() {
   const data = Route.useLoaderData();
+  if (data.kind === "dynamic") return <DynamicModuleWorkspace module={data.module} />;
   if (data.kind === "program") return <StandaloneProgramDetail program={data.program} />;
   return <MasterModuleWorkspace master={data.master} lms={data.lms} />;
 }
+
 
 // ============================================================================
 // Master Module workspace — the SHARED learning page for Self-Paced and Full
@@ -662,3 +634,439 @@ function StandaloneProgramDetail({ program }: { program: Program }) {
     </AcademyShell>
   );
 }
+
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
+  const { get, isCompleted } = useShortCourses();
+  const enrollment = get(module.id);
+  const done = isCompleted(module.id);
+  const [completedItems, setCompletedItems] = useState<Record<string, boolean>>({});
+
+  const handleEnroll = () => {
+    enrollShortCourse(module.id, {
+      title: module.title,
+      hours: module.hours,
+      instructor: module.trainer.name,
+      category: module.topic || "Fisheries Management",
+    });
+    barunaToast("Berhasil terdaftar! Modul kini aktif di Ruang Belajar Anda.");
+  };
+
+  const handleMarkComplete = () => {
+    completeShortCourse(module.id, 100, "self-paced");
+    barunaToast("Selamat! Anda telah menyelesaikan modul pembelajaran ini.");
+  };
+
+  const toggleItemDone = (key: string) => {
+    setCompletedItems((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const topic = module.topic;
+  const competency = module.competency;
+  const passingScore = module.passingScore;
+  const assessmentMethod = module.assessmentMethod;
+  const coverDoc = module.documents.find(
+    (d) =>
+      d.type.toLowerCase().includes("cover") ||
+      d.fileType?.includes("image") ||
+      d.name.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/),
+  );
+
+  const aside = (
+    <div className="space-y-5">
+      {/* Module Overview Card */}
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+        <div className="flex items-center justify-between">
+          <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-[0.65rem] font-bold text-foreground/70">
+            MOD-{module.id.slice(0, 8).toUpperCase()}
+          </span>
+          {done ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
+              <CheckCircle2 className="h-3 w-3" /> Selesai
+            </span>
+          ) : enrollment ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-marine/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine">
+              <Sparkles className="h-3 w-3" /> Aktif Belajar
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-eco-community">
+              Tersedia Online
+            </span>
+          )}
+        </div>
+
+        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
+        <ul className="mt-3 space-y-2.5 text-sm">
+          <li className="flex items-center justify-between">
+            <span className="text-muted-foreground">Durasi Belajar</span>
+            <span className="font-semibold text-navy">{module.hours} Jam (JP)</span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span className="text-muted-foreground">Format</span>
+            <span className="font-semibold text-navy">Self-Paced (Mandiri)</span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span className="text-muted-foreground">Bahasa Pengantar</span>
+            <span className="font-semibold text-navy">{module.language}</span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span className="text-muted-foreground">Passing Grade</span>
+            <span className="font-semibold text-navy">{passingScore}%</span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span className="text-muted-foreground">Sertifikat</span>
+            <span className="font-semibold text-navy">Certificate of Completion</span>
+          </li>
+        </ul>
+
+        {!enrollment && !done ? (
+          <button
+            onClick={handleEnroll}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-2.5 text-sm font-semibold text-marine-foreground shadow-sm transition hover:bg-marine/90"
+          >
+            Daftar Pelatihan Sekarang (Gratis) <ArrowRight className="h-4 w-4" />
+          </button>
+        ) : (
+          <div className="mt-5 space-y-2.5">
+            {done ? (
+              <div className="rounded-xl border border-success/40 bg-success/5 p-3 text-xs text-success">
+                <p className="flex items-center gap-1.5 font-bold">
+                  <Award className="h-4 w-4" /> Modul Telah Selesai
+                </p>
+                <p className="mt-1 text-success/80">
+                  Selamat! Anda telah menuntaskan seluruh materi modul ini. Rekam kelulusan tersimpan di ruang belajar Anda.
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={handleMarkComplete}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-marine bg-marine/10 py-2.5 text-xs font-bold text-marine transition hover:bg-marine hover:text-white"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Tandai Selesai &amp; Rekam Kredit
+              </button>
+            )}
+            <Link
+              to="/academy/learn"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted"
+            >
+              Buka Ruang Belajar Saya <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Trainer Profile Card */}
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
+          Instruktur &amp; Pengampu
+        </span>
+        <div className="mt-3 flex items-start gap-3">
+          {module.trainer.avatarUrl ? (
+            <img
+              src={module.trainer.avatarUrl}
+              alt={module.trainer.name}
+              className="h-12 w-12 rounded-full object-cover ring-2 ring-marine/20"
+            />
+          ) : (
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-marine/15 font-display text-base font-bold text-marine">
+              {module.trainer.name.charAt(0)}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <h4 className="font-display text-sm font-bold text-navy truncate">{module.trainer.name}</h4>
+              <BadgeCheck className="h-4 w-4 shrink-0 text-marine" />
+            </div>
+            {module.trainer.headline && (
+              <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{module.trainer.headline}</p>
+            )}
+            {module.trainer.institution && (
+              <p className="mt-1 flex items-center gap-1 text-[0.7rem] text-foreground/70">
+                <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span className="truncate">{module.trainer.institution}</span>
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs">
+          <span className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-marine">
+            <Award className="h-3.5 w-3.5" /> BARUNA Verified Trainer
+          </span>
+          {module.trainer.slug && (
+            <Link
+              to="/experts/$slug"
+              params={{ slug: module.trainer.slug }}
+              className="inline-flex items-center gap-1 font-semibold text-marine hover:underline"
+            >
+              Profil Pakar <ExternalLink className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <AcademyShell active="self-paced" aside={aside}>
+      <Toaster />
+      <div className="space-y-6">
+        {/* Breadcrumb */}
+        <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
+          <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to="/academy/self-paced" className="font-medium text-foreground/70 hover:text-marine">
+            Self-Paced Courses
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="font-semibold text-navy truncate max-w-xs">{module.title}</span>
+        </nav>
+
+        {/* Verification banner */}
+        <div className="flex items-center gap-2 rounded-xl border border-marine/30 bg-marine/5 px-4 py-2 text-xs font-semibold text-marine">
+          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            MODUL AJAR TERVERIFIKASI — Modul pelatihan ini disusun oleh Trainer BARUNA tersertifikasi dan telah lolos evaluasi kurikulum serta penjaminan mutu.
+          </span>
+        </div>
+
+        {/* Course Cover Banner if uploaded */}
+        {coverDoc?.downloadUrl && (
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-slate-900 shadow-soft max-h-72">
+            <img
+              src={coverDoc.downloadUrl}
+              alt={module.title}
+              className="w-full h-full max-h-72 object-cover object-center"
+            />
+          </div>
+        )}
+
+        {/* Hero */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-md bg-marine/10 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-marine">
+              Self-Paced Course
+            </span>
+            <span className="rounded-md bg-muted px-2 py-1 font-mono text-[0.65rem] font-bold text-foreground/70">
+              MOD-{module.id.slice(0, 8).toUpperCase()}
+            </span>
+            {done ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-success">
+                <CheckCircle2 className="h-3 w-3" /> Selesai
+              </span>
+            ) : enrollment ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-marine/15 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-marine">
+                <Sparkles className="h-3 w-3" /> Sedang Dipelajari
+              </span>
+            ) : null}
+          </div>
+
+          <h1 className="mt-3 font-display text-2xl sm:text-3xl font-extrabold text-navy">
+            {module.title}
+          </h1>
+
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+            {module.summary}
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-2.5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
+              <Clock className="h-3.5 w-3.5 text-marine" /> {module.hours} Jam Belajar
+            </span>
+            {topic && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
+                <Layers className="h-3.5 w-3.5 text-marine" /> {topic}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
+              <User className="h-3.5 w-3.5 text-marine" /> {module.trainer.name}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
+              <FileText className="h-3.5 w-3.5 text-marine" /> {module.language}
+            </span>
+          </div>
+        </div>
+
+        {/* Learning Objectives */}
+        {module.learningObjectives && module.learningObjectives.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-marine/10 text-marine">
+                <Target className="h-4 w-4" />
+              </span>
+              <h2 className="font-display text-base font-bold text-navy">Tujuan Pembelajaran</h2>
+            </div>
+            <ul className="mt-4 space-y-2.5">
+              {module.learningObjectives.map((obj, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-sm">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-marine" />
+                  <span className="text-foreground/85 leading-relaxed">{obj}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Target Participants & Outcomes */}
+        {(module.targetParticipants || module.competencyOutcomes || competency) && (
+          <div className="grid gap-5 md:grid-cols-2">
+            {module.targetParticipants && (
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+                <h3 className="font-display text-sm font-bold text-navy flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-marine" /> Target Profil Peserta
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  {module.targetParticipants}
+                </p>
+              </div>
+            )}
+            {(module.competencyOutcomes || competency) && (
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+                <h3 className="font-display text-sm font-bold text-navy flex items-center gap-2">
+                  <Award className="h-4 w-4 text-marine" /> Capaian Kompetensi
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  {module.competencyOutcomes || competency}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Handouts & Materials */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-base font-bold text-navy">Materi &amp; Berkas Pembelajaran</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Unduh slide materi, dokumen panduan, dan instrumen pelatihan yang disediakan oleh Trainer.
+              </p>
+            </div>
+            <span className="rounded-full bg-marine/10 px-3 py-1 text-xs font-bold text-marine">
+              {module.documents.length} Berkas Tersedia
+            </span>
+          </div>
+
+          {module.documents.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center text-xs text-muted-foreground">
+              Materi modul sedang dalam persiapan sinkronisasi berkas oleh instruktur.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-2.5">
+              {module.documents.map((doc, idx) => {
+                const isPdf = doc.fileType?.includes("pdf") || doc.name.toLowerCase().endsWith(".pdf");
+                const isPpt = doc.fileType?.includes("presentation") || doc.name.toLowerCase().match(/\.(ppt|pptx)$/);
+                const isVid = doc.fileType?.includes("video") || doc.name.toLowerCase().match(/\.(mp4|webm|mov)$/);
+                const isImg = doc.fileType?.includes("image") || doc.name.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/);
+                const Icon = isPdf ? FileText : isPpt ? Presentation : isVid ? PlayCircle : isImg ? ImageIcon : BookOpen;
+                const isItemDone = completedItems[String(idx)];
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between transition-colors hover:border-marine/30"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-marine/10 text-marine">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-navy truncate">{doc.name}</p>
+                        <p className="text-[0.7rem] text-muted-foreground">
+                          {doc.type} {doc.size > 0 && `· ${formatBytes(doc.size)}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      {doc.downloadUrl ? (
+                        <a
+                          href={doc.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-marine bg-card px-3 py-1.5 text-xs font-semibold text-marine hover:bg-marine hover:text-marine-foreground transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {isPdf ? "Buka PDF" : "Unduh Berkas"}
+                          {isPdf ? "Buka PDF" : isVid ? "Tonton Video" : isImg ? "Buka Gambar" : "Unduh Berkas"}
+                        </a>
+                      ) : (
+                        <span className="rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+                          Tersedia di Portal
+                        </span>
+                      )}
+
+                      {enrollment && (
+                        <button
+                          onClick={() => toggleItemDone(String(idx))}
+                          className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                            isItemDone
+                              ? "border-success/30 bg-success/10 text-success"
+                              : "border-border bg-card text-muted-foreground hover:border-marine/40 hover:text-marine"
+                          }`}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {isItemDone ? "Selesai" : "Tandai"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Assessment Section */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-marine/10 text-marine">
+              <ListChecks className="h-4 w-4" />
+            </span>
+            <h2 className="font-display text-base font-bold text-navy">Evaluasi &amp; Penilaian Kelulusan</h2>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-background p-4">
+              <span className="text-[0.7rem] uppercase tracking-wider font-bold text-muted-foreground">
+                Metode Penilaian
+              </span>
+              <p className="mt-1 text-sm font-semibold text-navy">{assessmentMethod}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-4">
+              <span className="text-[0.7rem] uppercase tracking-wider font-bold text-muted-foreground">
+                Standar Kelulusan Minimum
+              </span>
+              <p className="mt-1 text-sm font-semibold text-navy">{passingScore}% Nilai Kelulusan</p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Menyelesaikan seluruh materi modul dan evaluasi akan otomatis mencatatkan kelulusan Anda serta mengaktifkan sertifikat di profil pembelajar Anda.
+          </p>
+        </div>
+
+        {/* Back Link */}
+        <div className="flex items-center justify-between">
+          <Link
+            to="/academy/self-paced"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-navy hover:border-marine/40"
+          >
+            <ArrowLeft className="h-4 w-4" /> Semua Kursus Mandiri
+          </Link>
+          <Link
+            to="/academy/programs"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-navy hover:border-marine/40"
+          >
+            Katalog Program <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    </AcademyShell>
+  );
+}
+

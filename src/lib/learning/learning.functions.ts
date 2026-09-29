@@ -396,3 +396,171 @@ export const rollbackOwnEnrolment = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+export type PublishedModuleDocument = {
+  type: string;
+  name: string;
+  size: number;
+  fileType: string | null;
+  downloadUrl: string | null;
+};
+
+export type PublishedModuleTrainer = {
+  name: string;
+  headline: string | null;
+  institution: string | null;
+  avatarUrl: string | null;
+  slug: string | null;
+};
+
+export type PublishedModuleDetail = {
+  id: string;
+  title: string;
+  summary: string;
+  moduleType: string;
+  language: string;
+  hours: number;
+  targetParticipants: string | null;
+  learningObjectives: string[];
+  competencyOutcomes: string | null;
+  topic: string;
+  competency: string;
+  assessmentMethod: string;
+  passingScore: number;
+  trainer: PublishedModuleTrainer;
+  documents: PublishedModuleDocument[];
+  publishedAt: string;
+};
+
+export const getPublishedModuleDetail = createServerFn({ method: "GET" })
+  .inputValidator((d) => z.object({ moduleId: z.string() }).parse(d))
+  .handler(async ({ data }): Promise<PublishedModuleDetail | null> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: mod, error: mErr } = await supabaseAdmin
+      .from("module_registry")
+      .select("*")
+      .eq("id", data.moduleId)
+      .maybeSingle();
+
+    if (mErr) throw new Error(mErr.message);
+    if (!mod) return null;
+
+    let trainerInfo: PublishedModuleTrainer = {
+      name: "BARUNA Trainer",
+      headline: null,
+      institution: null,
+      avatarUrl: null,
+      slug: null,
+    };
+
+    if (mod.author_expert_id) {
+      // Query experts_directory_v for curated profile and institution
+      const { data: exp } = await supabaseAdmin
+        .from("experts_directory_v")
+        .select("id, display_name, headline, institution, avatar_url, slug")
+        .eq("id", mod.author_expert_id)
+        .maybeSingle();
+
+      if (exp) {
+        trainerInfo = {
+          name: exp.display_name || "BARUNA Trainer",
+          headline: exp.headline || null,
+          institution: exp.institution || null,
+          avatarUrl: exp.avatar_url || null,
+          slug: exp.slug || null,
+        };
+      } else {
+        const { data: rawExp } = await supabaseAdmin
+          .from("experts")
+          .select("id, display_name, headline, avatar_url, slug")
+          .eq("id", mod.author_expert_id)
+          .maybeSingle();
+        if (rawExp) {
+          trainerInfo = {
+            name: rawExp.display_name || "BARUNA Trainer",
+            headline: rawExp.headline || null,
+            institution: null,
+            avatarUrl: rawExp.avatar_url || null,
+            slug: rawExp.slug || null,
+          };
+        }
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contentOutline = (mod.content_outline as Record<string, any>) ?? {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const assessmentApproach = (mod.assessment_approach as Record<string, any>) ?? {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const meta = (mod.metadata as Record<string, any>) ?? {};
+
+    const topic = String(contentOutline.topic || meta.topic || "");
+    const competency = String(contentOutline.competency || meta.competency || "");
+    const assessmentMethod = String(assessmentApproach.method || "Evaluasi Mandiri & Kuis Pemahaman");
+    const passingScore = Number(assessmentApproach.passing_score ?? 70);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawAttached: Array<Record<string, any>> = Array.isArray(meta.attached_resources)
+      ? meta.attached_resources
+      : Array.isArray(meta.documents)
+      ? meta.documents
+      : [];
+
+    const documentsWithUrls: PublishedModuleDocument[] = await Promise.all(
+      rawAttached.map(async (doc) => {
+        const type = String(doc.type || doc.category || "Dokumen Pendukung");
+        const name = String(doc.fileName || doc.name || "Berkas");
+        const size = Number(doc.fileSize || doc.size || 0);
+        const fileType = typeof doc.fileType === "string" ? doc.fileType : (typeof doc.type === "string" ? doc.type : null);
+        const storagePath = typeof doc.path === "string" ? doc.path : null;
+        let downloadUrl: string | null = null;
+
+        if (storagePath) {
+          try {
+            const { data: signed } = await supabaseAdmin.storage
+              .from("expert-applications")
+              .createSignedUrl(storagePath, 86400);
+            downloadUrl = signed?.signedUrl ?? null;
+          } catch {
+            downloadUrl = null;
+          }
+        }
+
+        return {
+          type,
+          name,
+          size,
+          fileType,
+          downloadUrl,
+        };
+      }),
+    );
+
+    return {
+      id: String(mod.id),
+      title: String(mod.title),
+      summary: String(mod.summary || ""),
+      moduleType: String(mod.module_type || "technical"),
+      language: String(mod.language || "English"),
+      hours: Number(mod.estimated_learning_hours || 2),
+      targetParticipants: (mod.target_participants as string | null) ?? null,
+      learningObjectives: Array.isArray(mod.learning_objectives)
+        ? (mod.learning_objectives as string[])
+        : [],
+      competencyOutcomes:
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (typeof (mod as any).competency_outcomes === "string" && (mod as any).competency_outcomes) ||
+        (typeof meta.competency_outcomes === "string" && meta.competency_outcomes) ||
+        null,
+      topic,
+      competency,
+      assessmentMethod,
+      passingScore,
+      trainer: trainerInfo,
+      documents: documentsWithUrls,
+      publishedAt: String(mod.publication_date || mod.created_at),
+    };
+  });
+
+

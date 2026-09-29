@@ -20,7 +20,7 @@ import { useShortCourses } from "@/lib/shortCourses";
 import { supabase } from "@/integrations/supabase/client";
 import defaultCover from "@/assets/self-paced/m01.jpg";
 
-export const Route = createFileRoute("/academy/self-paced")({
+export const Route = createFileRoute("/academy/self-paced/")({
   loader: async () => {
     const { data: dbModules } = await supabase
       .from("module_registry")
@@ -320,3 +320,4 @@ function Stat({ label, value, icon: Icon }: { label: string; value: string; icon
     </div>
   );
 }
+

@@ -35,6 +35,8 @@ import {
   type ProgramType,
 } from "@/data/programs";
 import type { AcademyActive } from "@/components/baruna/academy/AcademySidebar";
+import { supabase } from "@/integrations/supabase/client";
+import defaultCover from "@/assets/self-paced/m01.jpg";
 
 /* ============================================================
  *  Filter option definitions (label + URL-safe value)
@@ -317,6 +319,40 @@ const EMPTY_SEARCH: ProgramsSearch = {
 
 export const Route = createFileRoute("/academy/programs")({
   validateSearch: zodValidator(searchSchema),
+  loader: async () => {
+    const { data: dbModules } = await supabase
+      .from("module_registry")
+      .select(
+        "id, title, summary, language, estimated_learning_hours, current_status, created_at, author_expert_id, metadata, module_type",
+      )
+      .eq("current_status", "published")
+      .order("created_at", { ascending: false });
+
+    const expertIds = Array.from(
+      new Set((dbModules ?? []).map((m) => m.author_expert_id).filter(Boolean)),
+    ) as string[];
+
+    let expertMap: Record<string, string> = {};
+    if (expertIds.length > 0) {
+      const { data: expList } = await supabase
+        .from("experts_directory_v")
+        .select("id, display_name")
+        .in("id", expertIds);
+      if (expList && expList.length > 0) {
+        expertMap = Object.fromEntries(expList.map((e) => [e.id, e.display_name]));
+      } else {
+        const { data: rawList } = await supabase
+          .from("experts")
+          .select("id, display_name")
+          .in("id", expertIds);
+        if (rawList && rawList.length > 0) {
+          expertMap = Object.fromEntries(rawList.map((e) => [e.id, e.display_name]));
+        }
+      }
+    }
+
+    return { dbModules: dbModules ?? [], expertMap };
+  },
   head: () => ({
     meta: [
       { title: "All Programs — Academy — BARUNA" },
@@ -502,8 +538,39 @@ const GROUP_LABEL: Record<GroupKey, string> = {
 };
 
 function ProgramsPage() {
+  const { dbModules, expertMap } = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/academy/programs" });
+
+  const allPrograms = useMemo<Program[]>(() => {
+    const dynamic: Program[] = (dbModules ?? []).map((m) => {
+      const author = m.author_expert_id ? expertMap[m.author_expert_id] : "BARUNA Trainer";
+      const meta = (m.metadata as Record<string, unknown>) || {};
+      const topic = typeof meta.topic === "string" ? meta.topic : "Fisheries Management";
+      return {
+        id: m.id,
+        type: "self-paced" as const,
+        title: m.title,
+        description: m.summary || "Approved BARUNA learning module.",
+        image: defaultCover,
+        category: topic,
+        level: "Intermediate" as const,
+        language: m.language || "English",
+        duration: `${m.estimated_learning_hours || 2} Hours`,
+        instructor: author ? `${author} (BARUNA Trainer)` : "BARUNA Trainer",
+        organization: "BARUNA Academy",
+        country: "Indonesia",
+        startDate: new Date(m.created_at).toISOString().split("T")[0],
+        participants: 1,
+        rating: 5.0,
+        reviews: 1,
+        status: "AVAILABLE NOW",
+        keywords: ["self-paced", "module", "trainer", m.title.toLowerCase()],
+        href: `/academy/self-paced/${m.id}`,
+      };
+    });
+    return [...dynamic, ...programs];
+  }, [dbModules, expertMap]);
 
   // ------- Parse URL into filter arrays -------
   const selectedTypes = useMemo<ProgramType[]>(() => {
@@ -616,7 +683,7 @@ function ProgramsPage() {
     | "schedule";
 
   const applyExcept = (except?: Group) =>
-    programs.filter((p) => {
+    allPrograms.filter((p) => {
       if (!matchText(p)) return false;
       if (except !== "type" && !matchType(p)) return false;
       if (except !== "category" && !matchCategory(p)) return false;
