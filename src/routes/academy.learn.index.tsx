@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronRight,
   ArrowRight,
@@ -8,6 +9,8 @@ import {
   CheckCircle2,
   Award,
   Clock,
+  Download,
+  Trash2,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import {
@@ -16,6 +19,7 @@ import {
   moduleQuizzesPassed,
   isCourseComplete,
   formatDate,
+  deleteApplication,
   type Application,
 } from "@/lib/application";
 import { LMS_MODULES } from "@/data/lms";
@@ -23,6 +27,8 @@ import { useAza, overallProgress as azaOverallProgress, accessDaysRemaining } fr
 import { AZA_META, AZA_MODULES, AZA_PASS_MARK } from "@/data/aza";
 import { useShortCourses } from "@/lib/shortCourses";
 import { masterByCode } from "@/data/masterModules";
+import { downloadCertificatePdf } from "@/lib/certificate";
+import { barunaToast } from "@/lib/downloads";
 
 export const Route = createFileRoute("/academy/learn/")({
   head: () => ({
@@ -45,8 +51,30 @@ function learningProgress(app: Application): number {
 }
 
 function MyLearning() {
+  const navigate = useNavigate();
   const apps = useApplications();
-  const enrolled = apps.filter((a) => a.status === "Accepted");
+
+  // Auto-clean any legacy demo Africa training from previous test sessions
+  useEffect(() => {
+    const demoApps = apps.filter(
+      (a) =>
+        a.id.startsWith("BARUNA-AFRICA") ||
+        a.slug === "international-training-fisheries-african-countries",
+    );
+    if (demoApps.length > 0) {
+      demoApps.forEach((a) => {
+        deleteApplication(a.id);
+      });
+    }
+  }, [apps]);
+
+  const enrolled = apps.filter(
+    (a) =>
+      a.status === "Accepted" &&
+      !a.id.startsWith("BARUNA-AFRICA") &&
+      a.slug !== "international-training-fisheries-african-countries",
+  );
+
   const { enrollments: shortCourses } = useShortCourses();
   const [aza] = useAza();
   const azaEnrolled = aza.enrolled;
@@ -58,6 +86,18 @@ function MyLearning() {
       (m) => (aza.quizzes[m.no]?.percent ?? 0) < AZA_PASS_MARK,
     ) ?? null;
   const hasAny = enrolled.length > 0 || azaEnrolled || shortCourses.length > 0;
+
+  const handleDownloadShortCourseCert = (code: string, title: string) => {
+    downloadCertificatePdf({
+      name: "Peserta BARUNA",
+      country: "Indonesia",
+      program: title,
+      dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
+      certNo: `BARUNA-MOD-${code.slice(0, 8).toUpperCase()}-2026`,
+      verifyUrl: `https://baruna.kkp.go.id/verify/${code}`,
+    });
+    barunaToast("Sertifikat kelulusan modul berhasil diunduh!");
+  };
 
   return (
     <AcademyShell active="my-learning">
@@ -71,85 +111,226 @@ function MyLearning() {
         <div>
           <h1 className="font-display text-3xl font-extrabold text-navy">My Learning</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Your enrolled and accepted training programs. Continue your learning activities, modules and assessments here.
+            Akses modul pembelajaran mandiri, program pelatihan, dan sertifikat kelulusan resmi Anda di BARUNA Academy.
           </p>
         </div>
 
         {!hasAny ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center shadow-soft">
-            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-muted text-muted-foreground">
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-marine/10 text-marine">
               <GraduationCap className="h-7 w-7" />
             </span>
-            <h2 className="mt-4 font-display text-lg font-bold text-navy">No enrolled programs yet</h2>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-              Once a training application is accepted, the program will appear here so you can start learning.
+            <h2 className="mt-4 font-display text-lg font-bold text-navy">
+              Belum Ada Program Pelatihan yang Diikuti
+            </h2>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Daftar pelatihan atau modul ajar yang Anda ikuti akan otomatis tampil di sini setelah Anda mendaftar program atau modul.
             </p>
-            <Link
-              to="/academy/applications"
-              className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-marine-foreground transition-colors hover:bg-marine/90"
-            >
-              View My Applications <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                to="/academy/programs"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marine/90 shadow-sm"
+              >
+                Jelajahi Program &amp; Modul <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/academy/applications"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+              >
+                Lihat Pengajuan Saya
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="space-y-5">
-            {enrolled.map((app) => {
-              const progress = learningProgress(app);
-              const complete = isCourseComplete(app);
-              return (
-                <article key={app.id} className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine">
-                        <BookOpen className="h-5 w-5" />
-                      </span>
-                      <div>
+          <div className="space-y-6">
+            {/* 1. Prioritas Utama: Modul Mandiri & Modul Expert yang Diikuti */}
+            {shortCourses.length > 0 && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-navy">
+                      Pelatihan Mandiri &amp; Modul Ajar ({shortCourses.length})
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Modul karya instruktur dan pakar terverifikasi BARUNA yang sedang Anda ikuti.
+                    </p>
+                  </div>
+                  <Link
+                    to="/academy/programs"
+                    className="text-xs font-semibold text-marine hover:underline inline-flex items-center gap-1"
+                  >
+                    Jelajahi Modul Lainnya <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {shortCourses.map((sc) => {
+                    const title = sc.title || masterByCode[sc.code]?.title || `Modul ${sc.code}`;
+                    const instructor = sc.instructor || "BARUNA Trainer";
+                    const hours = sc.hours || masterByCode[sc.code]?.hours || 2;
+                    const isDone = sc.completed;
+
+                    return (
+                      <article
+                        key={sc.code}
+                        className="flex flex-col justify-between rounded-2xl border-2 border-marine/20 bg-card p-5 shadow-soft hover:border-marine/50 hover:shadow-hover transition-all"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="rounded-full bg-marine/10 px-2.5 py-0.5 text-[11px] font-bold text-marine uppercase tracking-wide">
+                              {sc.category || "Self-Paced Course"}
+                            </span>
+                            {isDone ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
+                                <CheckCircle2 className="h-3 w-3" /> Selesai
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
+                                <Clock className="h-3 w-3" /> Aktif Belajar
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="font-display text-base font-bold text-navy line-clamp-2">
+                            {title}
+                          </h3>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Instruktur: <span className="font-medium text-navy">{instructor}</span> • {hours} Jam Belajar
+                          </p>
+
+                          {/* Progress bar */}
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-[11px] font-semibold">
+                              <span className="text-muted-foreground">Progress Pembelajaran</span>
+                              <span className={isDone ? "text-emerald-700 font-bold" : "text-marine font-bold"}>
+                                {isDone ? "100% Selesai" : "Sedang Berjalan"}
+                              </span>
+                            </div>
+                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  isDone ? "bg-emerald-600" : "bg-marine"
+                                }`}
+                                style={{ width: isDone ? "100%" : "35%" }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-border/50 flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[11px] text-muted-foreground">
+                            Terdaftar: {sc.enrolledAt ? new Date(sc.enrolledAt).toLocaleDateString("id-ID") : "Baru saja"}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {isDone && (
+                              <button
+                                onClick={() => handleDownloadShortCourseCert(sc.code, title)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
+                              >
+                                <Download className="h-3.5 w-3.5" /> Sertifikat
+                              </button>
+                            )}
+                            <Link
+                              to="/academy/self-paced/$code"
+                              params={{ code: sc.code }}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
+                            >
+                              <PlayCircle className="h-3.5 w-3.5" /> {isDone ? "Tinjau Modul" : "Lanjutkan Belajar"}
+                            </Link>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* 2. Program Pelatihan Terstruktur (Cohort) jika memang pernah mendaftar program resmi */}
+            {enrolled.length > 0 && (
+              <section className="space-y-4 pt-4 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-navy">
+                      Program Pelatihan Terstruktur ({enrolled.length})
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Program pelatihan berbasis kohort interaktif BARUNA Academy.
+                    </p>
+                  </div>
+                </div>
+
+                {enrolled.map((app) => {
+                  const progress = learningProgress(app);
+                  const complete = isCourseComplete(app);
+                  return (
+                    <article key={app.id} className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-3">
+                          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine">
+                            <BookOpen className="h-5 w-5" />
+                          </span>
+                          <div>
+                            <Link
+                              to="/academy/learn/$id"
+                              params={{ id: app.id }}
+                              className="font-display text-lg font-bold text-navy transition-colors hover:text-marine"
+                            >
+                              {app.title}
+                            </Link>
+                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1.5">Enrolled {formatDate(app.createdAt)}</span>
+                              {complete ? (
+                                <span className="inline-flex items-center gap-1.5 font-semibold text-badge-training">
+                                  <Award className="h-3.5 w-3.5" /> Completed
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 font-semibold text-marine">
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Enrolled
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            deleteApplication(app.id);
+                            barunaToast("Program pelatihan berhasil dihapus dari My Learning.");
+                          }}
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition px-2 py-1 rounded-md hover:bg-destructive/10"
+                          title="Hapus program ini dari My Learning"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Hapus
+                        </button>
+                      </div>
+
+                      <div className="mt-5">
+                        <div className="flex items-center justify-between text-xs font-semibold">
+                          <span className="text-muted-foreground">Course progress</span>
+                          <span className="text-marine">{progress}%</span>
+                        </div>
+                        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex justify-end">
                         <Link
                           to="/academy/learn/$id"
                           params={{ id: app.id }}
-                          className="font-display text-lg font-bold text-navy transition-colors hover:text-marine"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-marine-foreground transition-colors hover:bg-marine/90"
                         >
-                          {app.title}
+                          <PlayCircle className="h-4 w-4" /> {complete ? "Review Training" : "Continue Learning"}
                         </Link>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1.5">Enrolled {formatDate(app.createdAt)}</span>
-                          {complete ? (
-                            <span className="inline-flex items-center gap-1.5 font-semibold text-badge-training">
-                              <Award className="h-3.5 w-3.5" /> Completed
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 font-semibold text-marine">
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Enrolled
-                            </span>
-                          )}
-                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </article>
+                  );
+                })}
+              </section>
+            )}
 
-                  <div className="mt-5">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-muted-foreground">Course progress</span>
-                      <span className="text-marine">{progress}%</span>
-                    </div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${progress}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex justify-end">
-                    <Link
-                      to="/academy/learn/$id"
-                      params={{ id: app.id }}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-marine-foreground transition-colors hover:bg-marine/90"
-                    >
-                      <PlayCircle className="h-4 w-4" /> {complete ? "Review Training" : "Continue Learning"}
-                    </Link>
-                  </div>
-                </article>
-              );
-            })}
-
+            {/* 3. AZA Cohort jika ada */}
             {azaEnrolled && (
               <article className="rounded-2xl border border-border bg-card p-6 shadow-soft">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -217,81 +398,6 @@ function MyLearning() {
                   </Link>
                 </div>
               </article>
-            )}
-
-            {/* Enrolled Self-Paced Courses & Approved Trainer Modules */}
-            {shortCourses.length > 0 && (
-              <section className="mt-8 space-y-4 pt-6 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-xl font-bold text-navy">
-                      Pelatihan Mandiri &amp; Modul Ajar ({shortCourses.length})
-                    </h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Modul pelatihan yang telah Anda daftari dari katalog resmi BARUNA Academy.
-                    </p>
-                  </div>
-                  <Link
-                    to="/academy/programs"
-                    className="text-xs font-semibold text-marine hover:underline inline-flex items-center gap-1"
-                  >
-                    Jelajahi Modul Lainnya <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {shortCourses.map((sc) => {
-                    const title = sc.title || masterByCode[sc.code]?.title || `Modul ${sc.code}`;
-                    const instructor = sc.instructor || "BARUNA Trainer";
-                    const hours = sc.hours || masterByCode[sc.code]?.hours || 2;
-                    const isDone = sc.completed;
-
-                    return (
-                      <article
-                        key={sc.code}
-                        className="flex flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-soft hover:border-marine/40 hover:shadow-hover transition-all"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <span className="rounded-full bg-marine/10 px-2.5 py-0.5 text-[11px] font-bold text-marine uppercase tracking-wide">
-                              {sc.category || "Self-Paced"}
-                            </span>
-                            {isDone ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                                <CheckCircle2 className="h-3 w-3" /> Selesai
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">
-                                <Clock className="h-3 w-3" /> Aktif Belajar
-                              </span>
-                            )}
-                          </div>
-
-                          <h3 className="font-display text-base font-bold text-navy line-clamp-2">
-                            {title}
-                          </h3>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Instruktur: <span className="font-medium text-navy">{instructor}</span> • {hours} Jam Belajar
-                          </p>
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
-                          <span className="text-[11px] text-muted-foreground">
-                            Terdaftar: {new Date(sc.enrolledAt).toLocaleDateString("id-ID")}
-                          </span>
-                          <Link
-                            to="/academy/self-paced/$code"
-                            params={{ code: sc.code }}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-marine/90 transition shadow-xs"
-                          >
-                            <PlayCircle className="h-3.5 w-3.5" /> Lanjutkan Belajar
-                          </Link>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
             )}
           </div>
         )}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,6 +8,7 @@ import {
   BookOpen,
   Building2,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Clock,
   Download,
@@ -17,12 +18,15 @@ import {
   Image as ImageIcon,
   Layers,
   ListChecks,
+  Play,
   PlayCircle,
   Presentation,
+  RotateCcw,
   Sparkles,
   Target,
   Trophy,
   User,
+  Video,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { ModuleQuiz } from "@/components/baruna/academy/ModuleQuiz";
@@ -32,6 +36,7 @@ import { LMS_MODULES, type LmsModule, type ResourceKind } from "@/data/lms";
 import { hasQuizBank, QUIZ_PASS_PERCENT } from "@/data/quizzes";
 import { instructorBySlug } from "@/data/instructors";
 import { programs, type Program } from "@/data/programs";
+import { downloadCertificatePdf } from "@/lib/certificate";
 import {
   useApplication,
   getLms,
@@ -39,6 +44,7 @@ import {
   isModuleCompleteInApp,
   updateLms,
   getOrCreateSelfPacedApp,
+  getOrCreateDemoFullTrainingApp,
   SELF_PACED_APP_ID,
 } from "@/lib/application";
 import {
@@ -72,9 +78,13 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
     if (program) return { kind: "program", program };
 
     // Dynamic module lookup from module_registry
-    const publishedModule = await getPublishedModuleDetail({ data: { moduleId: params.code } });
-    if (publishedModule) {
-      return { kind: "dynamic", module: publishedModule };
+    try {
+      const publishedModule = await getPublishedModuleDetail({ data: { moduleId: params.code } });
+      if (publishedModule) {
+        return { kind: "dynamic", module: publishedModule };
+      }
+    } catch (err) {
+      console.warn("Could not load dynamic module:", err);
     }
 
     throw notFound();
@@ -165,6 +175,7 @@ function MasterModuleWorkspace({
   master: NonNullable<ReturnType<typeof lookupMaster>>;
   lms: LmsModule | undefined;
 }) {
+  const navigate = useNavigate();
   const { get, isCompleted, priorLearning } = useShortCourses();
   const enrollment = get(master.code);
   const done = isCompleted(master.code);
@@ -286,25 +297,75 @@ function MasterModuleWorkspace({
   );
 
   return (
-    <AcademyShell active="self-paced" aside={aside}>
+    <AcademyShell active={enrollment ? "my-learning" : "self-paced"} aside={aside}>
       <Toaster />
       <div className="space-y-6">
         {/* Breadcrumb */}
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/self-paced" className="font-medium text-foreground/70 hover:text-marine">
-            Self-Paced Courses
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="font-semibold text-navy">{master.code}</span>
+          {enrollment ? (
+            <>
+              <Link to="/academy/learn" className="font-medium text-foreground/70 hover:text-marine">
+                My Learning
+              </Link>
+              <ChevronRight className="h-3.5 w-3.5" />
+              <span className="font-semibold text-navy">{master.code} · {master.title}</span>
+            </>
+          ) : (
+            <>
+              <Link to="/academy/self-paced" className="font-medium text-foreground/70 hover:text-marine">
+                Self-Paced Courses
+              </Link>
+              <ChevronRight className="h-3.5 w-3.5" />
+              <span className="font-semibold text-navy">{master.code}</span>
+            </>
+          )}
         </nav>
 
         {/* Context banner — same page, different pathway */}
-        <div className="flex items-center gap-2 rounded-xl border border-marine/30 bg-marine/5 px-4 py-2 text-xs font-semibold text-marine">
-          <Sparkles className="h-3.5 w-3.5" />
-          SELF-PACED COURSE — you are accessing the same Master Module page used inside the Full
-          Training Program.
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-marine/30 bg-marine/5 px-4 py-2.5 text-xs text-marine">
+          <div className="flex items-center gap-2 font-medium">
+            <Sparkles className="h-4 w-4 shrink-0 text-marine" />
+            <span>
+              {enrollment
+                ? "Ruang Belajar Modul Mandiri (Self-Paced Learning Workspace) — Akses materi, bacaan, dan kuis modul."
+                : "SELF-PACED COURSE — Akses Master Module mandiri resmi BARUNA Academy."}
+            </span>
+          </div>
+          {enrollment && (
+            <Link to="/academy/learn" className="font-semibold hover:underline text-navy shrink-0">
+              ← Kembali ke My Learning
+            </Link>
+          )}
+        </div>
+
+        {/* LMS 5-Tab Switcher Banner */}
+        <div className="rounded-2xl border-2 border-marine/30 bg-gradient-to-r from-marine/10 via-card to-marine/5 p-4 shadow-soft">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-marine text-white shadow-xs">
+                <GraduationCap className="h-5 w-5" />
+              </span>
+              <div>
+                <span className="rounded-md bg-marine/15 px-2 py-0.5 text-[10px] font-bold text-marine uppercase tracking-wider">
+                  Mencari LMS 5-Tab Sesuai Slide 23 PB-ACA-04?
+                </span>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                  Halaman saat ini adalah <strong>Modul Pelatihan Mandiri (Self-Paced)</strong>. Untuk melihat alur LMS Program Pelatihan Terstruktur dengan 5 Tab Lengkap (Welcome, 13 Modul, Assessments, Assignments, Sertifikat), klik tombol berikut:
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                const app = getOrCreateDemoFullTrainingApp();
+                navigate({ to: "/academy/learn/$id", params: { id: app.id } });
+              }}
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-navy px-4 py-2.5 text-xs font-bold text-white hover:bg-navy/90 shadow-sm transition-all hover:scale-102"
+            >
+              <PlayCircle className="h-4 w-4" /> Buka LMS 5-Tab Sekarang
+            </button>
+          </div>
         </div>
 
         {/* Hero */}
@@ -541,10 +602,10 @@ function MasterModuleWorkspace({
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            to="/academy/self-paced"
+            to={enrollment ? "/academy/learn" : "/academy/self-paced"}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-navy hover:border-marine/40"
           >
-            <ArrowLeft className="h-4 w-4" /> All Self-Paced Courses
+            <ArrowLeft className="h-4 w-4" /> {enrollment ? "Kembali ke My Learning" : "All Self-Paced Courses"}
           </Link>
           {isWorkspaceComplete && (
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-success/10 px-4 py-2 text-sm font-bold text-success">
@@ -642,11 +703,147 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const DYNAMIC_QUIZ_QUESTIONS = [
+  {
+    id: 1,
+    question: "Under the 1982 United Nations Convention on the Law of the Sea (UNCLOS), what does 'EEZ' designate?",
+    options: [
+      "Exclusive Economic Zone (extending up to 200 nautical miles from baseline)",
+      "Ecological Environmental Zone for conservation research only",
+      "Eastern European Zone under bilateral shipping agreements",
+      "Economic Enterprise Zone reserved solely for artisanal fishermen",
+    ],
+    correctAnswer: 0,
+    explanation: "Under Article 57 of UNCLOS, the Exclusive Economic Zone (EEZ) may extend up to 200 nautical miles from the baseline.",
+  },
+  {
+    id: 2,
+    question: "Which acronym is globally recognized to describe illicit, unreported, or non-compliant fishing activities?",
+    options: [
+      "TAC (Total Allowable Catch)",
+      "IUU Fishing (Illegal, Unreported, and Unregulated Fishing)",
+      "VMS (Vessel Monitoring System)",
+      "RFMO (Regional Fisheries Management Organization)",
+    ],
+    correctAnswer: 1,
+    explanation: "IUU Fishing refers to illegal, unreported, and unregulated fishing that threatens marine biodiversity and sustainable yields.",
+  },
+  {
+    id: 3,
+    question: "In international fisheries agreements, what does 'MSY' stand for?",
+    options: [
+      "Maximum Sustainable Yield",
+      "Maritime Security Yard",
+      "Marine Science Yearbook",
+      "Minimum Stock Yield",
+    ],
+    correctAnswer: 0,
+    explanation: "Maximum Sustainable Yield (MSY) represents the largest average catch that can be continuously taken from a stock under existing environmental conditions.",
+  },
+  {
+    id: 4,
+    question: "According to UNCLOS, what is the maximum standard breadth of a coastal state's Territorial Sea?",
+    options: [
+      "3 Nautical Miles",
+      "12 Nautical Miles",
+      "24 Nautical Miles",
+      "200 Nautical Miles",
+    ],
+    correctAnswer: 1,
+    explanation: "Article 3 of UNCLOS establishes that every State has the right to establish the breadth of its territorial sea up to a limit not exceeding 12 nautical miles.",
+  },
+  {
+    id: 5,
+    question: "When presenting Indonesia's official stance in international bilateral maritime talks, which diplomatic phrasing is standard to register a formal reservation?",
+    options: [
+      "'Our delegation formally registers a reservation regarding Article 4.'",
+      "'We do not care about Article 4, do whatever you want.'",
+      "'Article 4 is canceled because we dislike it.'",
+      "'Please ignore our laws during this negotiation.'",
+    ],
+    correctAnswer: 0,
+    explanation: "Formal diplomatic communication requires respectful, structured legal phrasing such as 'registering a formal reservation'.",
+  },
+];
+
+const DYNAMIC_SLIDES = [
+  {
+    title: "1. Maritime Terminology & Official Briefings",
+    subtitle: "Overview of international maritime terminology in bilateral and multilateral forums.",
+    bullets: [
+      "UNCLOS 1982 terminology: Baseline, Internal Waters, Territorial Sea (12 NM), Contiguous Zone (24 NM), and Exclusive Economic Zone (200 NM).",
+      "Sovereignty vs Sovereign Rights: Differentiating coastal state jurisdictions over marine resources.",
+      "High Seas & The Area: Common heritage of mankind and international seabed authority.",
+    ],
+    badge: "Module Fundamentals",
+  },
+  {
+    title: "2. Fisheries Governance & IUU Combat Framework",
+    subtitle: "Language and protocols for countering Illegal, Unreported, and Unregulated Fishing.",
+    bullets: [
+      "PSMA (Port State Measures Agreement): Inspecting foreign flagged vessels and port denial protocols.",
+      "VMS / AIS data sharing lexicon: Translating surveillance telemetry into legal diplomatic notices.",
+      "Bycatch mitigation and CITES appendix classifications for endangered marine species.",
+    ],
+    badge: "Fisheries Governance",
+  },
+  {
+    title: "3. Maximum Sustainable Yield & Quota Negotiations",
+    subtitle: "Scientific and economic terminology in international fisheries commissions.",
+    bullets: [
+      "Translating MSY (Maximum Sustainable Yield) and TAC (Total Allowable Catch) into formal quota allocations.",
+      "Scientific Committee communications: Presenting acoustic biomass surveys and CPUE (Catch Per Unit Effort).",
+      "RFMO negotiations (WCPFC, IOTC, CCSBT): Drafting country positions on shared straddling stocks.",
+    ],
+    badge: "Scientific Diplomacy",
+  },
+  {
+    title: "4. Official Diplomatic Correspondence & Demarches",
+    subtitle: "Standard diplomatic phrasing for maritime incidents and bilateral communique.",
+    bullets: [
+      "Diplomatic Notes Verbales: Registering formal protests on unauthorized fishing vessel incursions.",
+      "Bilateral MoUs: Standard drafting templates for fisheries cooperation, capacity building, and joint surveillance.",
+      "Agreed Minutes & Declarations: Crafting legally sound closing statements in international workshops.",
+    ],
+    badge: "Diplomatic Drafting",
+  },
+  {
+    title: "5. Practical Case Study: Bilateral Fisheries Summit",
+    subtitle: "Role-play and evaluation scenario for ministerial delegations.",
+    bullets: [
+      "Scenario: Coastal patrol intercepting an unauthorized industrial longliner in the EEZ border region.",
+      "Drafting immediate communique to the flag state requesting verification of fishing license and catch logbook.",
+      "Oral briefing simulation to senior ministerial leadership and the international press corps.",
+    ],
+    badge: "Practical Simulation",
+  },
+];
+
 function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
+  const navigate = useNavigate();
   const { get, isCompleted } = useShortCourses();
   const enrollment = get(module.id);
   const done = isCompleted(module.id);
   const [completedItems, setCompletedItems] = useState<Record<string, boolean>>({});
+
+  // LMS Tab State
+  const [activeTab, setActiveTab] = useState<"video" | "pdf" | "ppt" | "quiz" | "certificate">("video");
+  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({
+    video: false,
+    pdf: false,
+    ppt: false,
+  });
+
+  // Video State
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  // Slide State
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Quiz State
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizScore, setQuizScore] = useState<number | null>(null);
 
   const handleEnroll = () => {
     enrollShortCourse(module.id, {
@@ -663,6 +860,53 @@ function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
     barunaToast("Selamat! Anda telah menyelesaikan modul pembelajaran ini.");
   };
 
+  const handleToggleStep = (step: "video" | "pdf" | "ppt") => {
+    setCompletedSteps((prev) => {
+      const next = { ...prev, [step]: !prev[step] };
+      barunaToast(next[step] ? `Langkah ${step.toUpperCase()} selesai!` : `Status ${step.toUpperCase()} diubah.`);
+      return next;
+    });
+  };
+
+  const handleSubmitQuiz = () => {
+    let correct = 0;
+    DYNAMIC_QUIZ_QUESTIONS.forEach((q, idx) => {
+      if (quizAnswers[idx] === q.correctAnswer) {
+        correct++;
+      }
+    });
+
+    const score = Math.round((correct / DYNAMIC_QUIZ_QUESTIONS.length) * 100);
+    setQuizScore(score);
+    setQuizSubmitted(true);
+
+    if (score >= module.passingScore) {
+      completeShortCourse(module.id, score, "self-paced");
+      setCompletedSteps((prev) => ({ ...prev, quiz: true }));
+      barunaToast(`🎉 Selamat! Anda LULUS dengan nilai ${score}% (Passing Grade: ${module.passingScore}%). Sertifikat terbuka!`);
+    } else {
+      barunaToast(`Nilai Anda ${score}%. Belum memenuhi passing grade ${module.passingScore}%. Silakan coba lagi.`);
+    }
+  };
+
+  const handleRetakeQuiz = () => {
+    setQuizAnswers({});
+    setQuizSubmitted(false);
+    setQuizScore(null);
+  };
+
+  const handleDownloadCertificate = () => {
+    downloadCertificatePdf({
+      name: "Peserta BARUNA",
+      country: "Indonesia",
+      program: module.title,
+      dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
+      certNo: `BARUNA-MOD-${module.id.slice(0, 8).toUpperCase()}-2026`,
+      verifyUrl: `https://baruna.kkp.go.id/verify/${module.id}`,
+    });
+    barunaToast("Sertifikat kelulusan berhasil diunduh!");
+  };
+
   const toggleItemDone = (key: string) => {
     setCompletedItems((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -677,6 +921,24 @@ function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
       d.fileType?.includes("image") ||
       d.name.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/),
   );
+
+  const pdfDoc = module.documents.find(
+    (d) => d.fileType?.includes("pdf") || d.name.toLowerCase().endsWith(".pdf"),
+  );
+  const pptDoc = module.documents.find(
+    (d) => d.fileType?.includes("presentation") || d.name.toLowerCase().match(/\.(ppt|pptx)$/),
+  );
+  const vidDoc = module.documents.find(
+    (d) => d.fileType?.includes("video") || d.name.toLowerCase().match(/\.(mp4|webm|mov)$/),
+  );
+
+  const stepsDoneCount =
+    (completedSteps.video ? 1 : 0) +
+    (completedSteps.pdf ? 1 : 0) +
+    (completedSteps.ppt ? 1 : 0) +
+    (done || completedSteps.quiz ? 1 : 0);
+  const totalSteps = 4;
+  const progressPct = Math.round((stepsDoneCount / totalSteps) * 100);
 
   const aside = (
     <div className="space-y-5">
@@ -701,8 +963,107 @@ function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
           )}
         </div>
 
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
-        <ul className="mt-3 space-y-2.5 text-sm">
+        <h3 className="mt-3 font-display text-base font-bold text-navy">Progres Modul Mandiri</h3>
+
+        {/* Progress Bar */}
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+            <span>{stepsDoneCount} dari {totalSteps} Aktivitas Selesai</span>
+            <span className="font-bold text-marine">{progressPct}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-marine transition-all duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Step List in Sidebar */}
+        <div className="mt-4 space-y-1.5 text-xs">
+          <button
+            onClick={() => setActiveTab("video")}
+            className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition ${
+              activeTab === "video" ? "bg-marine/10 font-bold text-marine" : "hover:bg-muted text-muted-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Video className="h-3.5 w-3.5" /> 1. Video Materi
+            </span>
+            {completedSteps.video ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Belum</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("pdf")}
+            className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition ${
+              activeTab === "pdf" ? "bg-marine/10 font-bold text-marine" : "hover:bg-muted text-muted-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <FileText className="h-3.5 w-3.5" /> 2. Modul PDF
+            </span>
+            {completedSteps.pdf ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Belum</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("ppt")}
+            className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition ${
+              activeTab === "ppt" ? "bg-marine/10 font-bold text-marine" : "hover:bg-muted text-muted-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Presentation className="h-3.5 w-3.5" /> 3. Slide PPT
+            </span>
+            {completedSteps.ppt ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Belum</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("quiz")}
+            className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition ${
+              activeTab === "quiz" ? "bg-marine/10 font-bold text-marine" : "hover:bg-muted text-muted-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <ListChecks className="h-3.5 w-3.5" /> 4. Kuis Kelulusan
+            </span>
+            {done || completedSteps.quiz ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Min {passingScore}%</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("certificate")}
+            className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition ${
+              activeTab === "certificate" ? "bg-amber-500/10 font-bold text-amber-700 dark:text-amber-400" : "hover:bg-muted text-muted-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Award className="h-3.5 w-3.5" /> 5. Sertifikat
+            </span>
+            {done ? (
+              <Trophy className="h-3.5 w-3.5 text-amber-500" />
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Terkunci</span>
+            )}
+          </button>
+        </div>
+
+        <h3 className="mt-5 font-display text-sm font-bold text-navy">Informasi Modul</h3>
+        <ul className="mt-2.5 space-y-2 text-xs">
           <li className="flex items-center justify-between">
             <span className="text-muted-foreground">Durasi Belajar</span>
             <span className="font-semibold text-navy">{module.hours} Jam (JP)</span>
@@ -742,6 +1103,12 @@ function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
                 <p className="mt-1 text-success/80">
                   Selamat! Anda telah menuntaskan seluruh materi modul ini. Rekam kelulusan tersimpan di ruang belajar Anda.
                 </p>
+                <button
+                  onClick={handleDownloadCertificate}
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
+                >
+                  <Download className="h-3.5 w-3.5" /> Unduh Sertifikat (PDF)
+                </button>
               </div>
             ) : (
               <button
@@ -814,40 +1181,62 @@ function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
   );
 
   return (
-    <AcademyShell active="self-paced" aside={aside}>
+    <AcademyShell active={enrollment ? "my-learning" : "self-paced"} aside={aside}>
       <Toaster />
       <div className="space-y-6">
         {/* Breadcrumb */}
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/self-paced" className="font-medium text-foreground/70 hover:text-marine">
-            Self-Paced Courses
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="font-semibold text-navy truncate max-w-xs">{module.title}</span>
+          {enrollment ? (
+            <>
+              <Link to="/academy/learn" className="font-medium text-foreground/70 hover:text-marine">
+                My Learning
+              </Link>
+              <ChevronRight className="h-3.5 w-3.5" />
+              <span className="font-semibold text-navy truncate max-w-xs">{module.title}</span>
+            </>
+          ) : (
+            <>
+              <Link to="/academy/self-paced" className="font-medium text-foreground/70 hover:text-marine">
+                Self-Paced Courses
+              </Link>
+              <ChevronRight className="h-3.5 w-3.5" />
+              <span className="font-semibold text-navy truncate max-w-xs">{module.title}</span>
+            </>
+          )}
         </nav>
 
         {/* Verification banner */}
-        <div className="flex items-center gap-2 rounded-xl border border-marine/30 bg-marine/5 px-4 py-2 text-xs font-semibold text-marine">
-          <Sparkles className="h-3.5 w-3.5 shrink-0" />
-          <span>
-            MODUL AJAR TERVERIFIKASI — Modul pelatihan ini disusun oleh Trainer BARUNA tersertifikasi dan telah lolos evaluasi kurikulum serta penjaminan mutu.
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-marine/30 bg-marine/5 px-4 py-2.5 text-xs text-marine">
+          <div className="flex items-center gap-2 font-medium">
+            <Sparkles className="h-4 w-4 shrink-0 text-marine" />
+            <span>
+              {enrollment
+                ? `Ruang Belajar LMS Mandiri: ${module.title} — Disusun oleh ${module.trainer.name}.`
+                : "MODUL AJAR TERVERIFIKASI — Modul pelatihan ini disusun oleh Trainer BARUNA tersertifikasi dan telah lolos evaluasi kurikulum serta penjaminan mutu."}
+            </span>
+          </div>
+          {enrollment && (
+            <Link to="/academy/learn" className="font-semibold hover:underline text-navy shrink-0">
+              ← Kembali ke My Learning
+            </Link>
+          )}
         </div>
 
         {/* Course Cover Banner if uploaded */}
         {coverDoc?.downloadUrl && (
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-slate-900 shadow-soft max-h-72">
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-slate-900 shadow-soft max-h-64">
             <img
               src={coverDoc.downloadUrl}
               alt={module.title}
-              className="w-full h-full max-h-72 object-cover object-center"
+              className="w-full h-full max-h-64 object-cover object-center"
             />
           </div>
         )}
 
         {/* Hero */}
+        {/* Hero Header */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-marine/10 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-marine">
@@ -892,6 +1281,766 @@ function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
             </span>
           </div>
         </div>
+
+        {/* 5-TAB INTERACTIVE LMS PLAYER NAVIGATION */}
+        <div className="rounded-2xl border border-border bg-card p-2 shadow-soft">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+            <button
+              onClick={() => setActiveTab("video")}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all ${
+                activeTab === "video"
+                  ? "bg-marine text-white shadow-xs"
+                  : "bg-muted/40 text-foreground/80 hover:bg-muted"
+              }`}
+            >
+              <Video className="h-4 w-4 shrink-0" />
+              <span>1. Video Materi</span>
+              {completedSteps.video && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("pdf")}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all ${
+                activeTab === "pdf"
+                  ? "bg-marine text-white shadow-xs"
+                  : "bg-muted/40 text-foreground/80 hover:bg-muted"
+              }`}
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              <span>2. Modul PDF</span>
+              {completedSteps.pdf && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("ppt")}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all ${
+                activeTab === "ppt"
+                  ? "bg-marine text-white shadow-xs"
+                  : "bg-muted/40 text-foreground/80 hover:bg-muted"
+              }`}
+            >
+              <Presentation className="h-4 w-4 shrink-0" />
+              <span>3. Slide PPT</span>
+              {completedSteps.ppt && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("quiz")}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all ${
+                activeTab === "quiz"
+                  ? "bg-marine text-white shadow-xs"
+                  : "bg-muted/40 text-foreground/80 hover:bg-muted"
+              }`}
+            >
+              <ListChecks className="h-4 w-4 shrink-0" />
+              <span>4. Kuis Kelulusan</span>
+              {(done || completedSteps.quiz) && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("certificate")}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all col-span-2 sm:col-span-1 ${
+                activeTab === "certificate"
+                  ? "bg-amber-600 text-white shadow-xs"
+                  : done
+                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
+                  : "bg-muted/40 text-foreground/60 hover:bg-muted"
+              }`}
+            >
+              <Award className="h-4 w-4 shrink-0" />
+              <span>5. Sertifikat</span>
+              {done && <Trophy className="h-3.5 w-3.5 text-amber-300 shrink-0 ml-1" />}
+            </button>
+          </div>
+        </div>
+
+        {/* TAB 1: VIDEO PEMBELAJARAN */}
+        {activeTab === "video" && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="rounded-md bg-marine/10 px-2 py-0.5 text-[10px] font-bold text-marine uppercase tracking-wider">
+                  Materi Video Pembelajaran Interaktif
+                </span>
+                <h2 className="mt-1 font-display text-lg font-bold text-navy">
+                  Sesi Kuliah &amp; Pengenalan Modul oleh Instruktur
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Pemateri: {module.trainer.name} ({module.trainer.institution || "Kementerian Kelautan dan Perikanan"})
+                </p>
+              </div>
+
+              <button
+                onClick={() => handleToggleStep("video")}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  completedSteps.video
+                    ? "bg-success/15 text-success border border-success/30"
+                    : "bg-marine text-white hover:bg-marine/90 shadow-xs"
+                }`}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {completedSteps.video ? "Sudah Ditonton (Selesai)" : "Tandai Telah Menonton Video"}
+              </button>
+            </div>
+
+            {/* Video Player Display */}
+            {vidDoc?.downloadUrl ? (
+              <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-soft">
+                <video
+                  src={vidDoc.downloadUrl}
+                  controls
+                  className="w-full aspect-video max-h-[480px] mx-auto"
+                />
+              </div>
+            ) : (
+              <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900 via-navy to-slate-950 p-6 sm:p-10 text-white shadow-xl">
+                <div className="flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsVideoPlaying(!isVideoPlaying)}
+                      className="grid h-20 w-20 place-items-center rounded-full bg-marine text-white shadow-lg transition-transform hover:scale-110 active:scale-95"
+                    >
+                      {isVideoPlaying ? (
+                        <span className="h-6 w-6 font-mono text-xl font-bold">❚❚</span>
+                      ) : (
+                        <Play className="h-8 w-8 ml-1" />
+                      )}
+                    </button>
+                    {isVideoPlaying && (
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="font-display text-lg sm:text-xl font-bold">
+                      {module.title} — Lecture Session 01
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-300 max-w-lg mx-auto">
+                      {isVideoPlaying
+                        ? "Memutar audio/video simulasi: Pengenalan struktur komunikasi maritim internasional dan protokol negosiasi perikanan."
+                        : "Klik tombol putar untuk memulai video pembelajaran interaktif materi ini."}
+                    </p>
+                  </div>
+
+                  {/* Video Control Bar Simulation */}
+                  <div className="w-full max-w-xl bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700">
+                    <div className="flex items-center justify-between text-[11px] text-slate-300 mb-1.5 font-mono">
+                      <span>{isVideoPlaying ? "04:28" : "00:00"}</span>
+                      <span className="text-marine font-semibold">1080p HD · 60fps</span>
+                      <span>18:45</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-slate-700 overflow-hidden cursor-pointer">
+                      <div
+                        className="h-full bg-marine transition-all"
+                        style={{ width: isVideoPlaying ? "24%" : "0%" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Video Chapter Outline */}
+            <div className="rounded-xl border border-border bg-background p-4 space-y-3">
+              <h4 className="font-display text-xs font-bold text-navy uppercase tracking-wider">
+                Silabus &amp; Bab Pembahasan Video
+              </h4>
+              <div className="grid gap-2.5 sm:grid-cols-3 text-xs">
+                <div className="p-3 rounded-lg border border-border bg-card">
+                  <span className="font-bold text-marine">Bab 1 · 00:00 - 05:20</span>
+                  <p className="mt-1 font-semibold text-navy">Overview &amp; Baseline Terminology</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Prinsip hukum laut internasional UNCLOS 1982 dan batas yurisdiksi.</p>
+                </div>
+                <div className="p-3 rounded-lg border border-border bg-card">
+                  <span className="font-bold text-marine">Bab 2 · 05:20 - 12:15</span>
+                  <p className="mt-1 font-semibold text-navy">Fisheries Lexicon &amp; IUU Framework</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Terminologi penegakan hukum IUU fishing, kuota tangkap MSY dan TAC.</p>
+                </div>
+                <div className="p-3 rounded-lg border border-border bg-card">
+                  <span className="font-bold text-marine">Bab 3 · 12:15 - 18:45</span>
+                  <p className="mt-1 font-semibold text-navy">Bilateral Diplomacy Simulation</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Simulasi penyusunan nota diplomatik dan negosiasi batas zona perikanan.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => {
+                  setCompletedSteps((prev) => ({ ...prev, video: true }));
+                  setActiveTab("pdf");
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-xs font-bold text-white hover:bg-navy/90 shadow-sm"
+              >
+                Lanjut ke Modul PDF <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: DOKUMEN MODUL PDF */}
+        {activeTab === "pdf" && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="rounded-md bg-marine/10 px-2 py-0.5 text-[10px] font-bold text-marine uppercase tracking-wider">
+                  Bahan Ajar &amp; Buku Panduan (Handbook)
+                </span>
+                <h2 className="mt-1 font-display text-lg font-bold text-navy">
+                  Dokumen Modul Lengkap (Facilitator &amp; Participant Handbook)
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Bacaan komprehensif yang diunggah langsung oleh instruktur untuk modul ini.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {pdfDoc?.downloadUrl && (
+                  <a
+                    href={pdfDoc.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-marine bg-marine/10 px-4 py-2 text-xs font-bold text-marine hover:bg-marine hover:text-white transition-colors"
+                  >
+                    <Download className="h-4 w-4" /> Unduh PDF
+                  </a>
+                )}
+                <button
+                  onClick={() => handleToggleStep("pdf")}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                    completedSteps.pdf
+                      ? "bg-success/15 text-success border border-success/30"
+                      : "bg-marine text-white hover:bg-marine/90 shadow-xs"
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {completedSteps.pdf ? "Sudah Dibaca (Selesai)" : "Tandai Telah Membaca Modul"}
+                </button>
+              </div>
+            </div>
+
+            {/* Embedded PDF Simulation / Viewer Card */}
+            <div className="rounded-2xl border border-border bg-background p-6 shadow-xs space-y-4">
+              <div className="flex flex-wrap items-center justify-between border-b border-border pb-4 gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-marine/15 text-marine">
+                    <FileText className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h3 className="font-display text-sm font-bold text-navy">
+                      {pdfDoc?.name || "Comprehensive Facilitator Handbook - English for Marine & Fisheries.pdf"}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      {pdfDoc?.size ? formatBytes(pdfDoc.size) : "2.4 MB"} · PDF Dokumen Terverifikasi BARUNA
+                    </p>
+                  </div>
+                </div>
+
+                {pdfDoc?.downloadUrl && (
+                  <a
+                    href={pdfDoc.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-marine hover:underline"
+                  >
+                    Buka di Tab Baru <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+
+              {/* Reader Document Mockup */}
+              <div className="rounded-xl border border-border/70 bg-card p-6 sm:p-8 space-y-4 font-serif text-foreground/90 leading-relaxed text-sm shadow-inner max-h-[500px] overflow-y-auto">
+                <div className="text-center border-b border-border pb-4 font-sans">
+                  <span className="rounded-full bg-marine/10 px-3 py-1 text-[10px] font-bold text-marine uppercase tracking-wider">
+                    BARUNA ACADEMY · OFFICIAL HANDBOOK
+                  </span>
+                  <h4 className="mt-2 font-display text-lg sm:text-xl font-extrabold text-navy">
+                    {module.title}
+                  </h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Instruktur: {module.trainer.name} · Kementerian Kelautan dan Perikanan
+                  </p>
+                </div>
+
+                <div className="space-y-3 font-sans text-xs">
+                  <h5 className="font-bold text-navy uppercase text-[11px] tracking-wide">
+                    Ringkasan Modul &amp; Cakupan Kurikulum
+                  </h5>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {module.summary}
+                  </p>
+                </div>
+
+                {module.learningObjectives && module.learningObjectives.length > 0 && (
+                  <div className="space-y-2 font-sans text-xs pt-2">
+                    <h5 className="font-bold text-navy uppercase text-[11px] tracking-wide">
+                      Target Kompetensi Pembelajaran
+                    </h5>
+                    <ul className="space-y-1.5 pl-4 list-disc text-muted-foreground">
+                      {module.learningObjectives.map((obj, i) => (
+                        <li key={i}>{obj}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="space-y-2 font-sans text-xs pt-2 border-t border-border">
+                  <h5 className="font-bold text-navy uppercase text-[11px] tracking-wide">
+                    Struktur Bab &amp; Bahan Bacaan
+                  </h5>
+                  <div className="space-y-2 text-muted-foreground">
+                    <p><strong>Bab I: Kerangka Hukum Laut Internasional (UNCLOS 1982)</strong> — Membahas terminologi resmi wilayah perairan, Zona Ekonomi Eksklusif (ZEE 200 mil laut), dan batas landas kontinen.</p>
+                    <p><strong>Bab II: Terminologi Pengelolaan Sumber Daya Perikanan</strong> — Definisi teknis Maximum Sustainable Yield (MSY), Total Allowable Catch (TAC), dan kuota penangkapan terukur.</p>
+                    <p><strong>Bab III: Protokol Komunikasi Pemberantasan IUU Fishing</strong> — Kosakata diplomasi maritim, mekanisme Port State Measures Agreement (PSMA), dan pelaporan lintas batas.</p>
+                    <p><strong>Bab IV: Format Korespondensi Diplomatik &amp; Nota Verbal</strong> — Panduan penyusunan communique resmi delegasi perikanan Republik Indonesia di forum internasional.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <button
+                onClick={() => setActiveTab("video")}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-navy hover:bg-muted"
+              >
+                ← Kembali ke Video
+              </button>
+              <button
+                onClick={() => {
+                  setCompletedSteps((prev) => ({ ...prev, pdf: true }));
+                  setActiveTab("ppt");
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-xs font-bold text-white hover:bg-navy/90 shadow-sm"
+              >
+                Lanjut ke Slide PPT <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: SLIDE PRESENTASI PPT */}
+        {activeTab === "ppt" && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="rounded-md bg-marine/10 px-2 py-0.5 text-[10px] font-bold text-marine uppercase tracking-wider">
+                  Slide Presentasi Interaktif
+                </span>
+                <h2 className="mt-1 font-display text-lg font-bold text-navy">
+                  Slide Paparan Materi Kuliah (Presentation Deck)
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Gunakan tombol panah untuk menelusuri slide paparan materi.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {pptDoc?.downloadUrl && (
+                  <a
+                    href={pptDoc.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-marine bg-marine/10 px-4 py-2 text-xs font-bold text-marine hover:bg-marine hover:text-white transition-colors"
+                  >
+                    <Download className="h-4 w-4" /> Unduh PPTX
+                  </a>
+                )}
+                <button
+                  onClick={() => handleToggleStep("ppt")}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                    completedSteps.ppt
+                      ? "bg-success/15 text-success border border-success/30"
+                      : "bg-marine text-white hover:bg-marine/90 shadow-xs"
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {completedSteps.ppt ? "Sudah Dipelajari (Selesai)" : "Tandai Telah Mempelajari Slide"}
+                </button>
+              </div>
+            </div>
+
+            {/* Interactive Slide Viewer Canvas */}
+            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-navy via-slate-900 to-slate-950 p-6 sm:p-10 text-white shadow-xl min-h-[360px] flex flex-col justify-between">
+              {/* Slide Top Bar */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <span className="rounded-md bg-marine/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-marine-light">
+                  {DYNAMIC_SLIDES[currentSlide].badge}
+                </span>
+                <span className="font-mono text-xs text-slate-300">
+                  Slide {currentSlide + 1} dari {DYNAMIC_SLIDES.length}
+                </span>
+              </div>
+
+              {/* Slide Body */}
+              <div className="my-6 space-y-4">
+                <h3 className="font-display text-xl sm:text-2xl font-bold text-white">
+                  {DYNAMIC_SLIDES[currentSlide].title}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300">
+                  {DYNAMIC_SLIDES[currentSlide].subtitle}
+                </p>
+
+                <div className="space-y-3 pt-2">
+                  {DYNAMIC_SLIDES[currentSlide].bullets.map((bullet, idx) => (
+                    <div key={idx} className="flex items-start gap-3 text-xs sm:text-sm text-slate-200">
+                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-marine text-white text-[10px] font-bold mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <span>{bullet}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Slide Bottom Bar & Navigation */}
+              <div className="flex flex-wrap items-center justify-between border-t border-white/10 pt-4 gap-3">
+                <div className="text-[11px] text-slate-400">
+                  BARUNA ACADEMY · Instruktur: {module.trainer.name}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={currentSlide === 0}
+                    onClick={() => setCurrentSlide((prev) => Math.max(0, prev - 1))}
+                    className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Sebelumnya
+                  </button>
+
+                  <div className="flex items-center gap-1 px-1">
+                    {DYNAMIC_SLIDES.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentSlide(i)}
+                        className={`h-2 rounded-full transition-all ${
+                          currentSlide === i ? "w-6 bg-marine" : "w-2 bg-white/30 hover:bg-white/50"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    disabled={currentSlide === DYNAMIC_SLIDES.length - 1}
+                    onClick={() => setCurrentSlide((prev) => Math.min(DYNAMIC_SLIDES.length - 1, prev + 1))}
+                    className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  >
+                    Selanjutnya <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <button
+                onClick={() => setActiveTab("pdf")}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-navy hover:bg-muted"
+              >
+                ← Kembali ke Modul PDF
+              </button>
+              <button
+                onClick={() => {
+                  setCompletedSteps((prev) => ({ ...prev, ppt: true }));
+                  setActiveTab("quiz");
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-xs font-bold text-white hover:bg-navy/90 shadow-sm"
+              >
+                Lanjut ke Kuis Evaluasi <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: KUIS KELULUSAN & EVALUASI */}
+        {activeTab === "quiz" && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="rounded-md bg-marine/10 px-2 py-0.5 text-[10px] font-bold text-marine uppercase tracking-wider">
+                  Evaluasi Mandiri &amp; Kuis Kelulusan
+                </span>
+                <h2 className="mt-1 font-display text-lg font-bold text-navy">
+                  Kuis Pemahaman Modul: {module.title}
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Passing Grade: <strong className="text-navy">{passingScore}%</strong> · {DYNAMIC_QUIZ_QUESTIONS.length} Soal Pilihan Ganda
+                </p>
+              </div>
+
+              {quizSubmitted && (
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold ${
+                      (quizScore ?? 0) >= passingScore
+                        ? "bg-success/15 text-success border border-success/30"
+                        : "bg-destructive/15 text-destructive border border-destructive/30"
+                    }`}
+                  >
+                    Skor: {quizScore}% ({(quizScore ?? 0) >= passingScore ? "LULUS" : "BELUM LULUS"})
+                  </span>
+                  <button
+                    onClick={handleRetakeQuiz}
+                    className="inline-flex items-center gap-1 rounded-xl border border-border bg-muted/50 px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Ulangi Kuis
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quiz Result Celebration Banner if passed */}
+            {quizSubmitted && (quizScore ?? 0) >= passingScore && (
+              <div className="rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 p-5 shadow-soft">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white shadow-sm">
+                      <Trophy className="h-6 w-6" />
+                    </span>
+                    <div>
+                      <h4 className="font-display text-base font-bold text-emerald-950 dark:text-emerald-100">
+                        🎉 Selamat! Anda LULUS Evaluasi Modul ({quizScore}%)
+                      </h4>
+                      <p className="text-xs text-emerald-900/80 dark:text-emerald-200/80">
+                        Nilai Anda telah melampaui passing grade ({passingScore}%). Rekam kelulusan tersimpan otomatis dan sertifikat Anda kini telah diterbitkan!
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("certificate")}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm"
+                  >
+                    <Award className="h-4 w-4" /> Buka &amp; Unduh Sertifikat
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Quiz Questions Form */}
+            <div className="space-y-6">
+              {DYNAMIC_QUIZ_QUESTIONS.map((q, qIdx) => {
+                const selectedOpt = quizAnswers[qIdx];
+                const isCorrect = selectedOpt === q.correctAnswer;
+
+                return (
+                  <div
+                    key={q.id}
+                    className={`rounded-2xl border p-5 transition-colors ${
+                      quizSubmitted
+                        ? isCorrect
+                          ? "border-emerald-500/40 bg-emerald-500/5"
+                          : "border-destructive/40 bg-destructive/5"
+                        : "border-border bg-background"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="font-display text-sm font-bold text-navy flex items-start gap-2">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-marine/15 text-xs text-marine">
+                          {qIdx + 1}
+                        </span>
+                        <span className="mt-0.5">{q.question}</span>
+                      </h4>
+
+                      {quizSubmitted && (
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold ${
+                            isCorrect ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-destructive/15 text-destructive"
+                          }`}
+                        >
+                          {isCorrect ? <CheckCircle2 className="h-3 w-3" /> : "✕"}
+                          {isCorrect ? "Benar" : "Salah"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Options */}
+                    <div className="mt-4 space-y-2">
+                      {q.options.map((opt, optIdx) => {
+                        const isChosen = selectedOpt === optIdx;
+                        const isRightAnswer = q.correctAnswer === optIdx;
+
+                        return (
+                          <label
+                            key={optIdx}
+                            className={`flex items-start gap-3 rounded-xl border p-3 text-xs cursor-pointer transition-all ${
+                              quizSubmitted
+                                ? isRightAnswer
+                                  ? "border-emerald-500 bg-emerald-500/15 font-semibold text-emerald-950 dark:text-emerald-100"
+                                  : isChosen
+                                  ? "border-destructive bg-destructive/15 text-destructive font-medium"
+                                  : "border-border/60 opacity-60"
+                                : isChosen
+                                ? "border-marine bg-marine/10 font-semibold text-navy shadow-xs"
+                                : "border-border bg-card hover:border-marine/40 text-foreground/80"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`question-${qIdx}`}
+                              checked={isChosen}
+                              disabled={quizSubmitted}
+                              onChange={() =>
+                                setQuizAnswers((prev) => ({ ...prev, [qIdx]: optIdx }))
+                              }
+                              className="mt-0.5 h-3.5 w-3.5 text-marine focus:ring-marine"
+                            />
+                            <span>{opt}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {quizSubmitted && (
+                      <div className="mt-3 rounded-lg bg-muted/60 p-2.5 text-[11px] text-muted-foreground">
+                        <strong className="text-foreground">Penjelasan:</strong> {q.explanation}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Quiz Submit Bar */}
+            {!quizSubmitted ? (
+              <div className="flex flex-wrap items-center justify-between border-t border-border pt-4 gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Terjawab: <strong>{Object.keys(quizAnswers).length}</strong> dari {DYNAMIC_QUIZ_QUESTIONS.length} pertanyaan
+                </p>
+                <button
+                  onClick={handleSubmitQuiz}
+                  disabled={Object.keys(quizAnswers).length < DYNAMIC_QUIZ_QUESTIONS.length}
+                  className="inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-2.5 text-xs font-bold text-white hover:bg-marine/90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  <CheckCircle2 className="h-4 w-4" /> Kirim Jawaban Kuis
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center border-t border-border pt-4">
+                <button
+                  onClick={() => setActiveTab("ppt")}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-navy hover:bg-muted"
+                >
+                  ← Kembali ke Slide PPT
+                </button>
+                <button
+                  onClick={() => setActiveTab("certificate")}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm"
+                >
+                  Lihat Sertifikat Kelulusan <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 5: SERTIFIKAT KELULUSAN */}
+        {activeTab === "certificate" && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-6">
+            <div>
+              <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                E-Certificate of Completion
+              </span>
+              <h2 className="mt-1 font-display text-lg font-bold text-navy">
+                Sertifikat Kelulusan Resmi BARUNA Academy
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Sertifikat diterbitkan setelah menuntaskan materi dan evaluasi kuis kelulusan.
+              </p>
+            </div>
+
+            {done || (quizScore ?? 0) >= passingScore ? (
+              <div className="space-y-6">
+                {/* Certificate Card Preview */}
+                <div className="relative overflow-hidden rounded-2xl border-4 border-amber-500/30 bg-gradient-to-b from-card via-amber-500/5 to-card p-8 sm:p-12 text-center shadow-lg">
+                  <div className="absolute top-4 right-4 flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Resmi Terverifikasi
+                  </div>
+
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 shadow-sm">
+                    <GraduationCap className="h-8 w-8" />
+                  </div>
+
+                  <p className="mt-4 font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                    KEMENTERIAN KELAUTAN DAN PERIKANAN REPUBLIK INDONESIA
+                  </p>
+                  <h3 className="mt-1 font-display text-xl sm:text-2xl font-black text-navy uppercase tracking-wider">
+                    CERTIFICATE OF COMPLETION
+                  </h3>
+
+                  <p className="mt-4 text-xs text-muted-foreground">Diberikan dengan bangga kepada:</p>
+                  <p className="mt-1 font-display text-lg sm:text-xl font-extrabold text-navy">
+                    Peserta BARUNA
+                  </p>
+
+                  <p className="mx-auto mt-4 max-w-lg text-xs leading-relaxed text-foreground/85">
+                    Atas keberhasilannya menyelesaikan seluruh rangkaian pembelajaran mandiri dan evaluasi kelulusan pada modul pelatihan:
+                  </p>
+                  <p className="mt-2 font-display text-base font-bold text-marine max-w-xl mx-auto">
+                    &ldquo;{module.title}&rdquo;
+                  </p>
+
+                  <div className="mx-auto mt-6 flex max-w-md flex-wrap items-center justify-center gap-4 border-t border-border pt-4 text-xs text-muted-foreground">
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-muted-foreground">Instruktur Pengampu</span>
+                      <strong className="text-navy">{module.trainer.name}</strong>
+                    </div>
+                    <div className="h-8 w-px bg-border" />
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-muted-foreground">Nilai Kelulusan</span>
+                      <strong className="text-emerald-600">{quizScore ?? 100}% (Lulus)</strong>
+                    </div>
+                    <div className="h-8 w-px bg-border" />
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-muted-foreground">Beban Belajar</span>
+                      <strong className="text-navy">{module.hours} Jam Pelatihan</strong>
+                    </div>
+                  </div>
+
+                  <p className="mt-5 font-mono text-[10px] text-muted-foreground">
+                    Nomor Sertifikat: BARUNA-MOD-{module.id.slice(0, 8).toUpperCase()}-2026
+                  </p>
+                </div>
+
+                {/* Download Actions */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={handleDownloadCertificate}
+                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-emerald-700 transition hover:scale-102"
+                  >
+                    <Download className="h-4 w-4" /> Unduh Sertifikat Resmi (PDF)
+                  </button>
+                  <Link
+                    to="/academy/learn"
+                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-navy hover:bg-muted"
+                  >
+                    Kembali ke My Learning <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border-2 border-dashed border-border bg-muted/20 p-8 sm:p-12 text-center space-y-4">
+                <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-muted text-muted-foreground">
+                  <Award className="h-8 w-8" />
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-navy">
+                    Sertifikat Masih Terkunci
+                  </h3>
+                  <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground leading-relaxed">
+                    Untuk membuka dan mengunduh sertifikat kelulusan resmi, Anda harus menyelesaikan pembelajaran modul dan lulus Kuis Evaluasi dengan nilai minimal <strong>{passingScore}%</strong>.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("quiz")}
+                  className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 shadow-sm"
+                >
+                  <ListChecks className="h-4 w-4" /> Buka Kuis Evaluasi Sekarang
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Learning Objectives */}
         {module.learningObjectives && module.learningObjectives.length > 0 && (
@@ -1053,10 +2202,10 @@ function DynamicModuleWorkspace({ module }: { module: PublishedModuleDetail }) {
         {/* Back Link */}
         <div className="flex items-center justify-between">
           <Link
-            to="/academy/self-paced"
+            to={enrollment ? "/academy/learn" : "/academy/self-paced"}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-navy hover:border-marine/40"
           >
-            <ArrowLeft className="h-4 w-4" /> Semua Kursus Mandiri
+            <ArrowLeft className="h-4 w-4" /> {enrollment ? "Kembali ke Ruang Belajar (My Learning)" : "Semua Kursus Mandiri"}
           </Link>
           <Link
             to="/academy/programs"

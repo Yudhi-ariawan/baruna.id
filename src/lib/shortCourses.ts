@@ -11,8 +11,9 @@
 import { useEffect, useState } from "react";
 import { MASTER_MODULES, masterByCode, type MasterModule } from "@/data/masterModules";
 import { loadApplications } from "@/lib/application";
+import { getUserScopedKey, subscribeToAuthChange } from "@/lib/authSession";
 
-const STORE_KEY = "baruna:short-courses";
+const STORE_PREFIX = "baruna:short-courses";
 const EVENT = "baruna:short-courses";
 const APPS_EVENT = "baruna:applications";
 
@@ -37,7 +38,7 @@ type Store = Record<string, ShortCourseEnrollment>;
 function readStore(): Store {
   if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+    return JSON.parse(localStorage.getItem(getUserScopedKey(STORE_PREFIX)) || "{}");
   } catch {
     return {};
   }
@@ -45,7 +46,7 @@ function readStore(): Store {
 
 function writeStore(store: Store) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORE_KEY, JSON.stringify(store));
+  localStorage.setItem(getUserScopedKey(STORE_PREFIX), JSON.stringify(store));
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -153,10 +154,12 @@ export function useShortCourses() {
     window.addEventListener(EVENT, sync);
     window.addEventListener(APPS_EVENT, sync);
     window.addEventListener("storage", sync);
+    const unsubAuth = subscribeToAuthChange(sync);
     return () => {
       window.removeEventListener(EVENT, sync);
       window.removeEventListener(APPS_EVENT, sync);
       window.removeEventListener("storage", sync);
+      unsubAuth();
     };
   }, []);
 

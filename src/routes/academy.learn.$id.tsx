@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import {
   ChevronRight,
   ArrowLeft,
@@ -81,6 +80,7 @@ import {
   knowledgeSharingSubmitted,
   isCourseComplete,
   creditedLmsIds,
+  getOrCreateDemoFullTrainingApp,
   type ModuleProgress,
   type QuizRecord,
   type DocumentMeta,
@@ -91,7 +91,13 @@ import { useDemoMode } from "@/lib/demoMode";
 import { DemoModeBar } from "@/components/baruna/academy/DemoModeBar";
 
 export const Route = createFileRoute("/academy/learn/$id")({
-  loader: ({ params }) => ({ id: params.id }),
+  loader: ({ params }) => {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
+    if (isUuid) {
+      throw redirect({ to: "/academy/self-paced/$code", params: { code: params.id } });
+    }
+    return { id: params.id };
+  },
   head: () => ({
     meta: [
       { title: "My Learning — Academy — BARUNA" },
@@ -150,7 +156,12 @@ const welcomeIcons: Record<string, LucideIcon> = {
 
 function LearningDashboard() {
   const { id } = Route.useLoaderData() as { id: string };
-  const app = useApplication(id);
+  const appFromHook = useApplication(id);
+  const app =
+    appFromHook ||
+    (id === "demo" || id === "africa-fisheries-2026"
+      ? getOrCreateDemoFullTrainingApp()
+      : undefined);
   const [tab, setTab] = useState<Tab>("Welcome");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [quizModuleId, setQuizModuleId] = useState<string | null>(null);

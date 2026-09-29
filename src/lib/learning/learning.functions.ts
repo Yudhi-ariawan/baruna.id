@@ -435,16 +435,23 @@ export type PublishedModuleDetail = {
 export const getPublishedModuleDetail = createServerFn({ method: "GET" })
   .inputValidator((d) => z.object({ moduleId: z.string() }).parse(d))
   .handler(async ({ data }): Promise<PublishedModuleDetail | null> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.moduleId);
+    if (!isUuid) return null;
 
-    const { data: mod, error: mErr } = await supabaseAdmin
-      .from("module_registry")
-      .select("*")
-      .eq("id", data.moduleId)
-      .maybeSingle();
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (mErr) throw new Error(mErr.message);
-    if (!mod) return null;
+      const { data: mod, error: mErr } = await supabaseAdmin
+        .from("module_registry")
+        .select("*")
+        .eq("id", data.moduleId)
+        .maybeSingle();
+
+      if (mErr) {
+        console.error("Error querying module_registry:", mErr);
+        return null;
+      }
+      if (!mod) return null;
 
     let trainerInfo: PublishedModuleTrainer = {
       name: "BARUNA Trainer",
@@ -561,6 +568,10 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
       documents: documentsWithUrls,
       publishedAt: String(mod.publication_date || mod.created_at),
     };
-  });
+  } catch (err) {
+    console.error("Error in getPublishedModuleDetail:", err);
+    return null;
+  }
+});
 
 

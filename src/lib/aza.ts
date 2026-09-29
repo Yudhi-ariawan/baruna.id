@@ -14,8 +14,9 @@ import {
   AZA_WEIGHTS,
   type AzaQuizQuestion,
 } from "@/data/aza";
+import { getUserScopedKey, subscribeToAuthChange } from "@/lib/authSession";
 
-const KEY = "baruna:aza";
+const KEY_PREFIX = "baruna:aza";
 const EVENT = "baruna:aza";
 
 export type QuizAttempt = { score: number; total: number; percent: number; at: string };
@@ -90,7 +91,7 @@ const EMPTY: AzaState = {
 function read(): AzaState {
   if (typeof window === "undefined") return EMPTY;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(getUserScopedKey(KEY_PREFIX));
     if (!raw) return EMPTY;
     return { ...EMPTY, ...(JSON.parse(raw) as AzaState) };
   } catch {
@@ -100,7 +101,7 @@ function read(): AzaState {
 
 function write(state: AzaState) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(state));
+  window.localStorage.setItem(getUserScopedKey(KEY_PREFIX), JSON.stringify(state));
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -111,9 +112,11 @@ export function useAza(): [AzaState, (fn: (s: AzaState) => AzaState) => void] {
     const onChange = () => setState(read());
     window.addEventListener(EVENT, onChange);
     window.addEventListener("storage", onChange);
+    const unsubAuth = subscribeToAuthChange(onChange);
     return () => {
       window.removeEventListener(EVENT, onChange);
       window.removeEventListener("storage", onChange);
+      unsubAuth();
     };
   }, []);
   const update = (fn: (s: AzaState) => AzaState) => {
