@@ -1,6 +1,8 @@
 -- Retire non-standard governance roles and enforce the official BARUNA chain.
 -- reviewer -> verifier -> approver -> publisher; admin/super_admin bypass all.
 
+BEGIN;
+
 INSERT INTO public.rbac_roles(code,name,description,is_system) VALUES
  ('reviewer','Reviewer','Substantive review of learning content and syllabus.',true),
  ('verifier','Verifier','Document authenticity, licensing, and policy compliance verification.',true),
@@ -24,7 +26,14 @@ WHERE req.role_id=legacy.id AND legacy.code IN ('qa_reviewer','management')
 DELETE FROM public.rbac_user_roles WHERE role_id IN (SELECT id FROM public.rbac_roles WHERE code IN ('qa_reviewer','management'));
 UPDATE public.rbac_user_roles candidate SET is_primary=true
 WHERE candidate.reason IN ('migrated_from_qa_reviewer','migrated_from_management')
-  AND candidate.id=(SELECT min(choice.id) FROM public.rbac_user_roles choice WHERE choice.user_id=candidate.user_id AND choice.reason IN ('migrated_from_qa_reviewer','migrated_from_management'))
+  AND candidate.id=(
+    SELECT choice.id
+    FROM public.rbac_user_roles choice
+    WHERE choice.user_id=candidate.user_id
+      AND choice.reason IN ('migrated_from_qa_reviewer','migrated_from_management')
+    ORDER BY choice.created_at,choice.id::text
+    LIMIT 1
+  )
   AND NOT EXISTS(SELECT 1 FROM public.rbac_user_roles active WHERE active.user_id=candidate.user_id AND active.is_primary AND active.status='active');
 DELETE FROM public.rbac_role_permissions WHERE role_id IN (SELECT id FROM public.rbac_roles WHERE code IN ('qa_reviewer','management'));
 DELETE FROM public.rbac_roles WHERE code IN ('qa_reviewer','management');
@@ -129,3 +138,5 @@ USING (reviewer_id=auth.uid() AND EXISTS(SELECT 1 FROM public.review_assignments
        AND (public.has_permission(auth.uid(),'academy.review') OR public.has_permission(auth.uid(),'academy.verify') OR public.has_rbac_role(auth.uid(),'admin') OR public.has_rbac_role(auth.uid(),'super_admin')))
 WITH CHECK (reviewer_id=auth.uid() AND EXISTS(SELECT 1 FROM public.review_assignments a WHERE a.id=assignment_id AND a.reviewer_id=auth.uid() AND a.status='active')
        AND (public.has_permission(auth.uid(),'academy.review') OR public.has_permission(auth.uid(),'academy.verify') OR public.has_rbac_role(auth.uid(),'admin') OR public.has_rbac_role(auth.uid(),'super_admin')));
+
+COMMIT;
