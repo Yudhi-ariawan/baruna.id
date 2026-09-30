@@ -345,6 +345,9 @@ export type ExpertApplication = {
   keyProjects: string;
   publications: string;
   languages: string;
+  structuredLanguages?: ExpertLanguageItem[];
+  structuredProjects?: ExpertProjectItem[];
+  structuredPublications?: ExpertPublicationItem[];
   // Section 5 — Documents
   cv: FileMeta | null;
   photo: FileMeta | null;
@@ -355,6 +358,32 @@ export type ExpertApplication = {
   available: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type LanguageProficiency = "native" | "fluent" | "professional" | "intermediate" | "basic";
+
+export type ExpertLanguageItem = {
+  id?: string;
+  language: string;
+  proficiency: LanguageProficiency;
+};
+
+export type ExpertProjectItem = {
+  id?: string;
+  name: string;
+  institution?: string;
+  role?: string;
+  period?: string;
+  description?: string;
+  url?: string;
+};
+
+export type ExpertPublicationItem = {
+  id?: string;
+  title: string;
+  venue?: string;
+  year?: string;
+  url?: string;
 };
 
 export type ExpertApplicationDraft = Omit<
@@ -378,6 +407,9 @@ export const emptyExpertApplication: ExpertApplicationDraft = {
   keyProjects: "",
   publications: "",
   languages: "",
+  structuredLanguages: [],
+  structuredProjects: [],
+  structuredPublications: [],
   cv: null,
   photo: null,
   certifications: null,

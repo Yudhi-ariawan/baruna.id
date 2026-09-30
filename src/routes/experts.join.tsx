@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { ProfessionalProfileSection } from "@/components/baruna/experts/ProfessionalProfileSection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -39,8 +40,13 @@ import {
   MAX_BYTES,
   emptyExpertApplication,
   formatBytes,
+  genId,
   type ExpertApplicationDraft,
   type ExpertRole,
+  type ExpertLanguageItem,
+  type ExpertProjectItem,
+  type ExpertPublicationItem,
+  type LanguageProficiency,
 } from "@/lib/experts";
 
 const EXPERT_APPLICATION_ACCEPT = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp";
@@ -154,7 +160,33 @@ function JoinExpertPage() {
           setIsRevision(revReq);
           setLatestDecision(draft.latestDecision ?? null);
           setDocuments(payload.documents ?? []);
-          setForm({ ...emptyExpertApplication, ...payload });
+
+          // Auto-migrate legacy string fields into structured arrays if not yet present
+          const rawLangs: ExpertLanguageItem[] =
+            Array.isArray(payload.structuredLanguages) && payload.structuredLanguages.length > 0
+              ? payload.structuredLanguages
+              : typeof payload.languages === "string" && payload.languages.trim()
+              ? payload.languages
+                  .split(",")
+                  .map((l: string) => ({
+                    id: genId("lang"),
+                    language: l.trim().replace(/\s*\(.*\)$/, ""),
+                    proficiency: "fluent" as const,
+                  }))
+                  .filter((l) => Boolean(l.language))
+              : [];
+
+          setForm({
+            ...emptyExpertApplication,
+            ...payload,
+            structuredLanguages: rawLangs,
+            structuredProjects: Array.isArray(payload.structuredProjects)
+              ? payload.structuredProjects
+              : [],
+            structuredPublications: Array.isArray(payload.structuredPublications)
+              ? payload.structuredPublications
+              : [],
+          });
           if (revReq) {
             setNotice(
               "Pengajuan ini membutuhkan revisi dokumen sesuai catatan verifikator admin. Silakan periksa berkas, unggah penggantinya, lalu kirim ulang.",
@@ -621,56 +653,12 @@ function JoinExpertPage() {
             </div>
           </SectionCard>
 
-          <SectionCard icon={BookOpen} n={4} title="Professional Profile">
-            <div className="grid gap-4">
-              <div>
-                <FieldLabel required>Professional Biography</FieldLabel>
-                <textarea
-                  className={`${inputClass} min-h-[120px] resize-y`}
-                  value={form.biography}
-                  maxLength={2500}
-                  onChange={(e) => set("biography", e.target.value)}
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <FieldLabel>Years of Experience</FieldLabel>
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={0}
-                    value={form.yearsExperience}
-                    onChange={(e) => set("yearsExperience", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Languages Spoken</FieldLabel>
-                  <input
-                    className={inputClass}
-                    value={form.languages}
-                    onChange={(e) => set("languages", e.target.value)}
-                    placeholder="e.g. English, French"
-                  />
-                </div>
-              </div>
-              <div>
-                <FieldLabel>Key Projects</FieldLabel>
-                <textarea
-                  className={`${inputClass} min-h-[80px] resize-y`}
-                  value={form.keyProjects}
-                  onChange={(e) => set("keyProjects", e.target.value)}
-                />
-              </div>
-              <div>
-                <FieldLabel>Publications</FieldLabel>
-                <textarea
-                  className={`${inputClass} min-h-[80px] resize-y`}
-                  value={form.publications}
-                  onChange={(e) => set("publications", e.target.value)}
-                />
-              </div>
-            </div>
-          </SectionCard>
+          <ProfessionalProfileSection
+            form={form}
+            set={set}
+            setForm={setForm}
+            inputClass={inputClass}
+          />
 
           <SectionCard icon={Upload} n={5} title="Upload Documents">
             <div className="grid gap-4 sm:grid-cols-2">

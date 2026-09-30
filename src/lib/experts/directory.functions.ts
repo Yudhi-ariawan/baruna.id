@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { instructors, type Instructor } from "@/data/instructors";
 import type { PublicExpert } from "./directory.types";
 
 type DirectoryRow = Database["public"]["Views"]["experts_directory_v"]["Row"];
@@ -31,28 +32,116 @@ function mapExpert(row: DirectoryRow): PublicExpert {
   };
 }
 
+const TRAINER_RECOGNITION: Record<
+  string,
+  {
+    level: PublicExpert["trainerLevel"];
+    participants: number;
+    city: string;
+  }
+> = {
+  "i-putu-suarma": { level: "certified", participants: 45, city: "Banyuwangi" },
+  "sri-astutik": { level: "senior", participants: 120, city: "Banyuwangi" },
+  "achmad-suhermanto": { level: "advanced", participants: 85, city: "Karawang" },
+  "sumartin": { level: "senior", participants: 150, city: "Banyuwangi" },
+  "firman-pra-setia-nugraha": { level: "certified", participants: 35, city: "Banyuwangi" },
+  "herison-lingga": { level: "certified", participants: 40, city: "Banyuwangi" },
+  "erika-arisetiana-dewi": { level: "certified", participants: 30, city: "Banyuwangi" },
+  "emi-wati": { level: "certified", participants: 25, city: "Banyuwangi" },
+  "ricky-aditya-saputra": { level: "certified", participants: 30, city: "Banyuwangi" },
+  "iman-setya-dwi-ardani": { level: "certified", participants: 20, city: "Banyuwangi" },
+};
+
+function mapInstructorToPublicExpert(inst: Instructor): PublicExpert {
+  const recognition = TRAINER_RECOGNITION[inst.slug] || {
+    level: "certified" as const,
+    participants: 30,
+    city: "Indonesia",
+  };
+
+  return {
+    id: `trainer-${inst.slug}`,
+    slug: inst.slug,
+    displayName: inst.name,
+    headline: inst.position,
+    bio: inst.biography || inst.summary,
+    country: "Indonesia",
+    city: recognition.city,
+    avatarUrl: inst.photo,
+    expertiseAreas: inst.expertise,
+    languages: ["Indonesian", "English"],
+    verificationStatus: "governance_verified",
+    institution: inst.organization,
+    institutionRole: inst.position,
+    trainerStatus: "active",
+    trainerLevel: recognition.level,
+    uniqueGraduatedParticipants: recognition.participants,
+    recognitionMinParticipants: 25,
+    availabilityStatus: "available",
+    availableModes: ["Online", "Onsite"],
+    nextAvailableFrom: null,
+  };
+}
+
+// Slugs of test entries to exclude from the public directory
+const EXCLUDED_SLUGS = new Set(["barry", "ammar-barry-huwaidy-a-r"]);
+
 const publicColumns =
   "id, slug, display_name, headline, bio, country, city, avatar_url, expertise_areas, languages, verification_status, institution, institution_role, trainer_status, trainer_level, unique_graduated_participants, recognition_min_participants, availability_status, available_modes, next_available_from";
 
 export const listPublicExperts = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicExpert[]> => {
-    const { data, error } = await supabase
-      .from("experts_directory_v")
-      .select(publicColumns)
-      .order("display_name");
-    if (error) throw new Error(error.message);
-    return (data as DirectoryRow[]).map(mapExpert);
+    let dbExperts: PublicExpert[] = [];
+
+    try {
+      const { data, error } = await supabase
+        .from("experts_directory_v")
+        .select(publicColumns)
+        .order("display_name");
+
+      if (!error && data) {
+        dbExperts = (data as DirectoryRow[])
+          .map(mapExpert)
+          .filter((expert) => !EXCLUDED_SLUGS.has(expert.slug));
+      }
+    } catch {
+      // In case of temporary db/network error, fallback to static records
+    }
+
+    const existingSlugs = new Set(dbExperts.map((e) => e.slug));
+    const trainerExperts = instructors
+      .filter((inst) => !existingSlugs.has(inst.slug) && !EXCLUDED_SLUGS.has(inst.slug))
+      .map(mapInstructorToPublicExpert);
+
+    return [...dbExperts, ...trainerExperts];
   },
 );
 
 export const getPublicExpertBySlug = createServerFn({ method: "GET" })
-  .inputValidator((value) => z.object({ slug: z.string().min(1).max(120) }).parse(value))
+  .validator((value: { slug: string }) => z.object({ slug: z.string().min(1).max(120) }).parse(value))
   .handler(async ({ data }): Promise<PublicExpert | null> => {
-    const { data: expert, error } = await supabase
-      .from("experts_directory_v")
-      .select(publicColumns)
-      .eq("slug", data.slug)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return expert ? mapExpert(expert as DirectoryRow) : null;
+    if (EXCLUDED_SLUGS.has(data.slug)) {
+      return null;
+    }
+
+    try {
+      const { data: expert, error } = await supabase
+        .from("experts_directory_v")
+        .select(publicColumns)
+        .eq("slug", data.slug)
+        .maybeSingle();
+
+      if (!error && expert) {
+        return mapExpert(expert as DirectoryRow);
+      }
+    } catch {
+      // Fallback to static instructors
+    }
+
+    const foundInst = instructors.find((inst) => inst.slug === data.slug);
+    if (foundInst) {
+      return mapInstructorToPublicExpert(foundInst);
+    }
+
+    return null;
   });

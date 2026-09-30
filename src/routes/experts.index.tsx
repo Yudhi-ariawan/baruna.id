@@ -24,7 +24,7 @@ import { PageShell } from "@/components/baruna/page/PageShell";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader, Tag } from "@/components/baruna/page/primitives";
 import { pageImages, expertImages } from "@/data/pages";
-import { instructors, type Instructor } from "@/data/instructors";
+import { instructors, instructorBySlug, type Instructor } from "@/data/instructors";
 import { ExpertInstructorCard } from "@/components/baruna/InstructorDirectory";
 import { DEMO_EXPERTS, DEMO_CATEGORIES, LEVEL_LABEL } from "@/data/demo";
 import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
@@ -141,13 +141,14 @@ function ExpertsPage() {
         exp.headline || exp.bio || "Verified marine & fisheries expert registered on the BARUNA platform.",
       biography: exp.bio || "",
       programRole: exp.trainerStatus === "active" ? "BARUNA Trainer" : "Expert",
-      email: undefined,
+      email: instructorBySlug[exp.slug]?.email,
       photo:
-        exp.avatarUrl && !exp.avatarUrl.toLowerCase().endsWith(".pdf")
+        instructorBySlug[exp.slug]?.photo ||
+        (exp.avatarUrl && !exp.avatarUrl.toLowerCase().endsWith(".pdf")
           ? exp.avatarUrl
-          : defaultExpertAvatar,
-      group: "Lead Instructors",
-      programs: [],
+          : defaultExpertAvatar),
+      group: instructorBySlug[exp.slug]?.group || "Lead Instructors",
+      programs: instructorBySlug[exp.slug]?.programs || [],
     }));
 
     const existingSlugs = new Set(fromDb.map((i) => i.slug));
