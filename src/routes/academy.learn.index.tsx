@@ -50,6 +50,20 @@ function learningProgress(app: Application): number {
   return Math.min(100, Math.round((done / totalSteps) * 100));
 }
 
+function categoryLabel(category?: string): string {
+  if (!category) return "Self-Paced Course";
+
+  const normalized = category.trim().toUpperCase();
+  const translations: Record<string, string> = {
+    "IMPLEMENTASI WEBSITE": "WEBSITE IMPLEMENTATION",
+    "PEMBELAJARAN MANDIRI": "SELF-PACED LEARNING",
+    "PENGEMBANGAN KAPASITAS": "CAPACITY DEVELOPMENT",
+    "TATA KELOLA": "GOVERNANCE",
+  };
+
+  return translations[normalized] ?? category;
+}
+
 function MyLearning() {
   const navigate = useNavigate();
   const apps = useApplications();
@@ -89,14 +103,14 @@ function MyLearning() {
 
   const handleDownloadShortCourseCert = (code: string, title: string) => {
     downloadCertificatePdf({
-      name: "Peserta BARUNA",
+      name: "BARUNA Participant",
       country: "Indonesia",
       program: title,
       dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
       certNo: `BARUNA-MOD-${code.slice(0, 8).toUpperCase()}-2026`,
       verifyUrl: `https://baruna.kkp.go.id/verify/${code}`,
     });
-    barunaToast("Sertifikat kelulusan modul berhasil diunduh!");
+    barunaToast("Module completion certificate downloaded successfully!");
   };
 
   return (
@@ -111,7 +125,7 @@ function MyLearning() {
         <div>
           <h1 className="font-display text-3xl font-extrabold text-navy">My Learning</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Akses modul pembelajaran mandiri, program pelatihan, dan sertifikat kelulusan resmi Anda di BARUNA Academy.
+            Access your self-paced modules, training programs, and official certificates of completion at BARUNA Academy.
           </p>
         </div>
 
@@ -121,23 +135,23 @@ function MyLearning() {
               <GraduationCap className="h-7 w-7" />
             </span>
             <h2 className="mt-4 font-display text-lg font-bold text-navy">
-              Belum Ada Program Pelatihan yang Diikuti
+              No Training Programs Yet
             </h2>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-              Daftar pelatihan atau modul ajar yang Anda ikuti akan otomatis tampil di sini setelah Anda mendaftar program atau modul.
+              Training programs and learning modules will appear here automatically after you enroll.
             </p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               <Link
                 to="/academy/programs"
                 className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marine/90 shadow-sm"
               >
-                Jelajahi Program &amp; Modul <ArrowRight className="h-4 w-4" />
+                Explore Programs &amp; Modules <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/academy/applications"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
               >
-                Lihat Pengajuan Saya
+                View My Applications
               </Link>
             </div>
           </div>
@@ -149,23 +163,23 @@ function MyLearning() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-display text-xl font-bold text-navy">
-                      Pelatihan Mandiri &amp; Modul Ajar ({shortCourses.length})
+                      Self-Paced Training &amp; Learning Modules ({shortCourses.length})
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Modul karya instruktur dan pakar terverifikasi BARUNA yang sedang Anda ikuti.
+                      Modules by verified BARUNA instructors and experts you are currently enrolled in.
                     </p>
                   </div>
                   <Link
                     to="/academy/programs"
                     className="text-xs font-semibold text-marine hover:underline inline-flex items-center gap-1"
                   >
-                    Jelajahi Modul Lainnya <ArrowRight className="h-3 w-3" />
+                    Explore More Modules <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   {shortCourses.map((sc) => {
-                    const title = sc.title || masterByCode[sc.code]?.title || `Modul ${sc.code}`;
+                    const title = sc.title || masterByCode[sc.code]?.title || `Module ${sc.code}`;
                     const instructor = sc.instructor || "BARUNA Trainer";
                     const hours = sc.hours || masterByCode[sc.code]?.hours || 2;
                     const isDone = sc.completed;
@@ -190,15 +204,15 @@ function MyLearning() {
                         <div>
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <span className="rounded-full bg-marine/10 px-2.5 py-0.5 text-[11px] font-bold text-marine uppercase tracking-wide">
-                              {sc.category || "Self-Paced Course"}
+                              {categoryLabel(sc.category)}
                             </span>
                             {isDone ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-                                <CheckCircle2 className="h-3 w-3" /> Selesai 100%
+                                <CheckCircle2 className="h-3 w-3" /> 100% Completed
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
-                                <Clock className="h-3 w-3" /> Aktif Belajar
+                                <Clock className="h-3 w-3" /> Learning in Progress
                               </span>
                             )}
                           </div>
@@ -207,15 +221,15 @@ function MyLearning() {
                             {title}
                           </h3>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Instruktur: <span className="font-medium text-navy">{instructor}</span> • {hours} Jam Belajar
+                            Instructor: <span className="font-medium text-navy">{instructor}</span> • {hours} Learning Hours
                           </p>
 
                           {/* Progress bar */}
                           <div className="mt-3">
                             <div className="flex items-center justify-between text-[11px] font-semibold">
-                              <span className="text-muted-foreground">Progress Pembelajaran</span>
+                              <span className="text-muted-foreground">Learning Progress</span>
                               <span className={isDone ? "text-emerald-700 font-bold" : "text-marine font-bold"}>
-                                {isDone ? "100% Selesai" : `${progressPercent}% Selesai`}
+                                {isDone ? "100% Completed" : `${progressPercent}% Completed`}
                               </span>
                             </div>
                             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -235,7 +249,7 @@ function MyLearning() {
                             params={{ code: sc.code }}
                             className="text-[11px] text-muted-foreground hover:text-navy hover:underline"
                           >
-                            Lihat Silabus Modul
+                            View Module Syllabus
                           </Link>
                           <div className="flex items-center gap-2">
                             {isDone && (
@@ -243,7 +257,7 @@ function MyLearning() {
                                 onClick={() => handleDownloadShortCourseCert(sc.code, title)}
                                 className="inline-flex items-center gap-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
                               >
-                                <Download className="h-3.5 w-3.5" /> Sertifikat
+                                <Download className="h-3.5 w-3.5" /> Certificate
                               </button>
                             )}
                             <Link
@@ -251,7 +265,7 @@ function MyLearning() {
                               params={{ id: sc.code }}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
                             >
-                              <PlayCircle className="h-3.5 w-3.5" /> {isDone ? "Tinjau Modul" : "Lanjutkan Belajar"}
+                              <PlayCircle className="h-3.5 w-3.5" /> {isDone ? "Review Module" : "Continue Learning"}
                             </Link>
                           </div>
                         </div>
@@ -268,10 +282,10 @@ function MyLearning() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-display text-xl font-bold text-navy">
-                      Program Pelatihan Terstruktur ({enrolled.length})
+                      Structured Training Programs ({enrolled.length})
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Program pelatihan berbasis kohort interaktif BARUNA Academy.
+                      Interactive cohort-based training programs from BARUNA Academy.
                     </p>
                   </div>
                 </div>
@@ -312,12 +326,12 @@ function MyLearning() {
                         <button
                           onClick={() => {
                             deleteApplication(app.id);
-                            barunaToast("Program pelatihan berhasil dihapus dari My Learning.");
+                            barunaToast("Training program removed from My Learning.");
                           }}
                           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition px-2 py-1 rounded-md hover:bg-destructive/10"
-                          title="Hapus program ini dari My Learning"
+                          title="Remove this program from My Learning"
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Hapus
+                          <Trash2 className="h-3.5 w-3.5" /> Remove
                         </button>
                       </div>
 
