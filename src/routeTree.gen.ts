@@ -40,12 +40,14 @@ import { Route as AcademyEdition2024RouteImport } from './routes/academy.edition
 import { Route as AcademyLearnRouteImport } from './routes/academy.learn'
 import { Route as AcademyProgramsRouteImport } from './routes/academy.programs'
 import { Route as AcademyRequestTrainingRouteImport } from './routes/academy.request-training'
+import { Route as AcademySelfPacedRouteImport } from './routes/academy.self-paced'
 import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
 import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
 import { Route as AdminModulesRouteImport } from './routes/admin.modules'
+import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
@@ -74,6 +76,7 @@ import { Route as ExpertsRequestRouteImport } from './routes/experts.request'
 import { Route as ExpertsServicesRouteImport } from './routes/experts.services'
 import { Route as GovernanceIndexRouteImport } from './routes/governance.index'
 import { Route as GovernanceDecisionsRouteImport } from './routes/governance.decisions'
+import { Route as GovernancePublicationsRouteImport } from './routes/governance.publications'
 import { Route as GovernanceQueueRouteImport } from './routes/governance.queue'
 import { Route as GovernanceRolesRouteImport } from './routes/governance.roles'
 import { Route as KnowledgeHubTypeRouteImport } from './routes/knowledge-hub_.$type'
@@ -109,6 +112,7 @@ import { Route as EventsCategorySlugRouteImport } from './routes/events.category
 import { Route as ExpertsPortalIndexRouteImport } from './routes/experts.portal.index'
 import { Route as ExpertsPortalAnalyticsRouteImport } from './routes/experts.portal.analytics'
 import { Route as ExpertsPortalCertificatesRouteImport } from './routes/experts.portal.certificates'
+import { Route as ExpertsPortalModuleReviewStatusRouteImport } from './routes/experts.portal.module-review-status'
 import { Route as ExpertsPortalPortfolioRouteImport } from './routes/experts.portal.portfolio'
 import { Route as ExpertsPortalRecognitionRouteImport } from './routes/experts.portal.recognition'
 import { Route as ExpertsPortalReviewStatusRouteImport } from './routes/experts.portal.review-status'
@@ -277,6 +281,11 @@ const AcademyRequestTrainingRoute = AcademyRequestTrainingRouteImport.update({
   path: '/request-training',
   getParentRoute: () => AcademyRoute,
 } as any)
+const AcademySelfPacedRoute = AcademySelfPacedRouteImport.update({
+  id: '/self-paced',
+  path: '/self-paced',
+  getParentRoute: () => AcademyRoute,
+} as any)
 const AcademyWebinarRoute = AcademyWebinarRouteImport.update({
   id: '/webinar',
   path: '/webinar',
@@ -305,6 +314,11 @@ const AdminExpertsRoute = AdminExpertsRouteImport.update({
 const AdminModulesRoute = AdminModulesRouteImport.update({
   id: '/modules',
   path: '/modules',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReviewsRoute = AdminReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -447,6 +461,11 @@ const GovernanceDecisionsRoute = GovernanceDecisionsRouteImport.update({
   path: '/decisions',
   getParentRoute: () => GovernanceRoute,
 } as any)
+const GovernancePublicationsRoute = GovernancePublicationsRouteImport.update({
+  id: '/publications',
+  path: '/publications',
+  getParentRoute: () => GovernanceRoute,
+} as any)
 const GovernanceQueueRoute = GovernanceQueueRouteImport.update({
   id: '/queue',
   path: '/queue',
@@ -560,14 +579,14 @@ const AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute =
     } as any,
   )
 const AcademySelfPacedIndexRoute = AcademySelfPacedIndexRouteImport.update({
-  id: '/self-paced/',
-  path: '/self-paced/',
-  getParentRoute: () => AcademyRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AcademySelfPacedRoute,
 } as any)
 const AcademySelfPacedCodeRoute = AcademySelfPacedCodeRouteImport.update({
-  id: '/self-paced/$code',
-  path: '/self-paced/$code',
-  getParentRoute: () => AcademyRoute,
+  id: '/$code',
+  path: '/$code',
+  getParentRoute: () => AcademySelfPacedRoute,
 } as any)
 const AcademyShortCoursesIndexRoute =
   AcademyShortCoursesIndexRouteImport.update({
@@ -632,6 +651,12 @@ const ExpertsPortalCertificatesRoute =
   ExpertsPortalCertificatesRouteImport.update({
     id: '/certificates',
     path: '/certificates',
+    getParentRoute: () => ExpertsPortalRoute,
+  } as any)
+const ExpertsPortalModuleReviewStatusRoute =
+  ExpertsPortalModuleReviewStatusRouteImport.update({
+    id: '/module-review-status',
+    path: '/module-review-status',
     getParentRoute: () => ExpertsPortalRoute,
   } as any)
 const ExpertsPortalPortfolioRoute = ExpertsPortalPortfolioRouteImport.update({
@@ -732,11 +757,13 @@ export interface FileRoutesByFullPath {
   '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
+  '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -762,6 +789,7 @@ export interface FileRoutesByFullPath {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
+  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub/$type': typeof KnowledgeHubTypeRoute
@@ -793,6 +821,7 @@ export interface FileRoutesByFullPath {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
+  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -844,6 +873,7 @@ export interface FileRoutesByTo {
   '/account/profile': typeof AccountProfileRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -868,6 +898,7 @@ export interface FileRoutesByTo {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
+  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub/$type': typeof KnowledgeHubTypeRoute
@@ -899,6 +930,7 @@ export interface FileRoutesByTo {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
+  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -953,11 +985,13 @@ export interface FileRoutesById {
   '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
+  '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -983,6 +1017,7 @@ export interface FileRoutesById {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
+  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub_/$type': typeof KnowledgeHubTypeRoute
@@ -1014,6 +1049,7 @@ export interface FileRoutesById {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
+  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -1069,11 +1105,13 @@ export interface FileRouteTypes {
     | '/academy/learn'
     | '/academy/programs'
     | '/academy/request-training'
+    | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
     | '/admin/experts'
     | '/admin/modules'
+    | '/admin/reviews'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1099,6 +1137,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
+    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub/$type'
@@ -1130,6 +1169,7 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
+    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1181,6 +1221,7 @@ export interface FileRouteTypes {
     | '/account/profile'
     | '/admin/experts'
     | '/admin/modules'
+    | '/admin/reviews'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1205,6 +1246,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
+    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub/$type'
@@ -1236,6 +1278,7 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
+    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1289,11 +1332,13 @@ export interface FileRouteTypes {
     | '/academy/learn'
     | '/academy/programs'
     | '/academy/request-training'
+    | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
     | '/admin/experts'
     | '/admin/modules'
+    | '/admin/reviews'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1319,6 +1364,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
+    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub_/$type'
@@ -1350,6 +1396,7 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
+    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1622,6 +1669,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcademyRequestTrainingRouteImport
       parentRoute: typeof AcademyRoute
     }
+    '/academy/self-paced': {
+      id: '/academy/self-paced'
+      path: '/self-paced'
+      fullPath: '/academy/self-paced'
+      preLoaderRoute: typeof AcademySelfPacedRouteImport
+      parentRoute: typeof AcademyRoute
+    }
     '/academy/webinar': {
       id: '/academy/webinar'
       path: '/webinar'
@@ -1662,6 +1716,13 @@ declare module '@tanstack/react-router' {
       path: '/modules'
       fullPath: '/admin/modules'
       preLoaderRoute: typeof AdminModulesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reviews': {
+      id: '/admin/reviews'
+      path: '/reviews'
+      fullPath: '/admin/reviews'
+      preLoaderRoute: typeof AdminReviewsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/users': {
@@ -1860,6 +1921,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GovernanceDecisionsRouteImport
       parentRoute: typeof GovernanceRoute
     }
+    '/governance/publications': {
+      id: '/governance/publications'
+      path: '/publications'
+      fullPath: '/governance/publications'
+      preLoaderRoute: typeof GovernancePublicationsRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
     '/governance/queue': {
       id: '/governance/queue'
       path: '/queue'
@@ -2009,17 +2077,17 @@ declare module '@tanstack/react-router' {
     }
     '/academy/self-paced/': {
       id: '/academy/self-paced/'
-      path: '/self-paced'
+      path: '/'
       fullPath: '/academy/self-paced/'
       preLoaderRoute: typeof AcademySelfPacedIndexRouteImport
-      parentRoute: typeof AcademyRoute
+      parentRoute: typeof AcademySelfPacedRoute
     }
     '/academy/self-paced/$code': {
       id: '/academy/self-paced/$code'
-      path: '/self-paced/$code'
+      path: '/$code'
       fullPath: '/academy/self-paced/$code'
       preLoaderRoute: typeof AcademySelfPacedCodeRouteImport
-      parentRoute: typeof AcademyRoute
+      parentRoute: typeof AcademySelfPacedRoute
     }
     '/academy/short-courses/': {
       id: '/academy/short-courses/'
@@ -2103,6 +2171,13 @@ declare module '@tanstack/react-router' {
       path: '/certificates'
       fullPath: '/experts/portal/certificates'
       preLoaderRoute: typeof ExpertsPortalCertificatesRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/module-review-status': {
+      id: '/experts/portal/module-review-status'
+      path: '/module-review-status'
+      fullPath: '/experts/portal/module-review-status'
+      preLoaderRoute: typeof ExpertsPortalModuleReviewStatusRouteImport
       parentRoute: typeof ExpertsPortalRoute
     }
     '/experts/portal/portfolio': {
@@ -2209,6 +2284,19 @@ const AcademyLearnRouteWithChildren = AcademyLearnRoute._addFileChildren(
   AcademyLearnRouteChildren,
 )
 
+interface AcademySelfPacedRouteChildren {
+  AcademySelfPacedCodeRoute: typeof AcademySelfPacedCodeRoute
+  AcademySelfPacedIndexRoute: typeof AcademySelfPacedIndexRoute
+}
+
+const AcademySelfPacedRouteChildren: AcademySelfPacedRouteChildren = {
+  AcademySelfPacedCodeRoute: AcademySelfPacedCodeRoute,
+  AcademySelfPacedIndexRoute: AcademySelfPacedIndexRoute,
+}
+
+const AcademySelfPacedRouteWithChildren =
+  AcademySelfPacedRoute._addFileChildren(AcademySelfPacedRouteChildren)
+
 interface AcademyRouteChildren {
   AcademyAlumniNetworkRoute: typeof AcademyAlumniNetworkRoute
   AcademyArchiveRoute: typeof AcademyArchiveRoute
@@ -2217,6 +2305,7 @@ interface AcademyRouteChildren {
   AcademyLearnRoute: typeof AcademyLearnRouteWithChildren
   AcademyProgramsRoute: typeof AcademyProgramsRoute
   AcademyRequestTrainingRoute: typeof AcademyRequestTrainingRoute
+  AcademySelfPacedRoute: typeof AcademySelfPacedRouteWithChildren
   AcademyWebinarRoute: typeof AcademyWebinarRoute
   AcademyWorkshopRoute: typeof AcademyWorkshopRoute
   AcademyIndexRoute: typeof AcademyIndexRoute
@@ -2227,7 +2316,6 @@ interface AcademyRouteChildren {
   AcademyCourseOfferingIdRoute: typeof AcademyCourseOfferingIdRoute
   AcademyPathwaysSlugRoute: typeof AcademyPathwaysSlugRoute
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute: typeof AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute
-  AcademySelfPacedCodeRoute: typeof AcademySelfPacedCodeRoute
   AcademyShortCoursesCodeRoute: typeof AcademyShortCoursesCodeRoute
   AcademyTrainingRequestsIdRoute: typeof AcademyTrainingRequestsIdRoute
   AcademyTrainingSlugRoute: typeof AcademyTrainingSlugRoute
@@ -2235,7 +2323,6 @@ interface AcademyRouteChildren {
   AcademyAlumniIndexRoute: typeof AcademyAlumniIndexRoute
   AcademyApplicationsIndexRoute: typeof AcademyApplicationsIndexRoute
   AcademyPathwaysIndexRoute: typeof AcademyPathwaysIndexRoute
-  AcademySelfPacedIndexRoute: typeof AcademySelfPacedIndexRoute
   AcademyShortCoursesIndexRoute: typeof AcademyShortCoursesIndexRoute
   AcademyTrainingRequestsIndexRoute: typeof AcademyTrainingRequestsIndexRoute
   AcademyTrainingIndexRoute: typeof AcademyTrainingIndexRoute
@@ -2249,6 +2336,7 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyLearnRoute: AcademyLearnRouteWithChildren,
   AcademyProgramsRoute: AcademyProgramsRoute,
   AcademyRequestTrainingRoute: AcademyRequestTrainingRoute,
+  AcademySelfPacedRoute: AcademySelfPacedRouteWithChildren,
   AcademyWebinarRoute: AcademyWebinarRoute,
   AcademyWorkshopRoute: AcademyWorkshopRoute,
   AcademyIndexRoute: AcademyIndexRoute,
@@ -2260,7 +2348,6 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyPathwaysSlugRoute: AcademyPathwaysSlugRoute,
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute:
     AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute,
-  AcademySelfPacedCodeRoute: AcademySelfPacedCodeRoute,
   AcademyShortCoursesCodeRoute: AcademyShortCoursesCodeRoute,
   AcademyTrainingRequestsIdRoute: AcademyTrainingRequestsIdRoute,
   AcademyTrainingSlugRoute: AcademyTrainingSlugRoute,
@@ -2269,7 +2356,6 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyAlumniIndexRoute: AcademyAlumniIndexRoute,
   AcademyApplicationsIndexRoute: AcademyApplicationsIndexRoute,
   AcademyPathwaysIndexRoute: AcademyPathwaysIndexRoute,
-  AcademySelfPacedIndexRoute: AcademySelfPacedIndexRoute,
   AcademyShortCoursesIndexRoute: AcademyShortCoursesIndexRoute,
   AcademyTrainingRequestsIndexRoute: AcademyTrainingRequestsIndexRoute,
   AcademyTrainingIndexRoute: AcademyTrainingIndexRoute,
@@ -2292,6 +2378,7 @@ const AccountRouteWithChildren =
 interface AdminRouteChildren {
   AdminExpertsRoute: typeof AdminExpertsRoute
   AdminModulesRoute: typeof AdminModulesRoute
+  AdminReviewsRoute: typeof AdminReviewsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -2299,6 +2386,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminExpertsRoute: AdminExpertsRoute,
   AdminModulesRoute: AdminModulesRoute,
+  AdminReviewsRoute: AdminReviewsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -2345,6 +2433,7 @@ const EventsRouteWithChildren =
 interface ExpertsPortalRouteChildren {
   ExpertsPortalAnalyticsRoute: typeof ExpertsPortalAnalyticsRoute
   ExpertsPortalCertificatesRoute: typeof ExpertsPortalCertificatesRoute
+  ExpertsPortalModuleReviewStatusRoute: typeof ExpertsPortalModuleReviewStatusRoute
   ExpertsPortalPortfolioRoute: typeof ExpertsPortalPortfolioRoute
   ExpertsPortalRecognitionRoute: typeof ExpertsPortalRecognitionRoute
   ExpertsPortalReviewStatusRoute: typeof ExpertsPortalReviewStatusRoute
@@ -2356,6 +2445,7 @@ interface ExpertsPortalRouteChildren {
 const ExpertsPortalRouteChildren: ExpertsPortalRouteChildren = {
   ExpertsPortalAnalyticsRoute: ExpertsPortalAnalyticsRoute,
   ExpertsPortalCertificatesRoute: ExpertsPortalCertificatesRoute,
+  ExpertsPortalModuleReviewStatusRoute: ExpertsPortalModuleReviewStatusRoute,
   ExpertsPortalPortfolioRoute: ExpertsPortalPortfolioRoute,
   ExpertsPortalRecognitionRoute: ExpertsPortalRecognitionRoute,
   ExpertsPortalReviewStatusRoute: ExpertsPortalReviewStatusRoute,
@@ -2405,6 +2495,7 @@ const ExpertsRouteWithChildren =
 
 interface GovernanceRouteChildren {
   GovernanceDecisionsRoute: typeof GovernanceDecisionsRoute
+  GovernancePublicationsRoute: typeof GovernancePublicationsRoute
   GovernanceQueueRoute: typeof GovernanceQueueRoute
   GovernanceRolesRoute: typeof GovernanceRolesRoute
   GovernanceIndexRoute: typeof GovernanceIndexRoute
@@ -2418,6 +2509,7 @@ interface GovernanceRouteChildren {
 
 const GovernanceRouteChildren: GovernanceRouteChildren = {
   GovernanceDecisionsRoute: GovernanceDecisionsRoute,
+  GovernancePublicationsRoute: GovernancePublicationsRoute,
   GovernanceQueueRoute: GovernanceQueueRoute,
   GovernanceRolesRoute: GovernanceRolesRoute,
   GovernanceIndexRoute: GovernanceIndexRoute,
