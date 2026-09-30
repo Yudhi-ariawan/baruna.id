@@ -50,7 +50,7 @@ const RESOURCE_ICONS: Record<ResourceKind, typeof PlayCircle> = {
   reading: BookOpen,
   quiz: ListChecks,
 };
-const RESOURCE_ORDER: ResourceKind[] = ["video", "pdf", "ppt", "reading", "quiz"];
+const RESOURCE_ORDER: ResourceKind[] = ["pdf", "ppt", "video", "reading", "quiz"];
 
 export function MasterModuleLmsPlayer({
   master,
