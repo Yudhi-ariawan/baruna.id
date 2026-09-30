@@ -11,8 +11,9 @@
 import { useEffect, useState } from "react";
 import { LMS_MODULES, LMS_ASSIGNMENTS } from "@/data/lms";
 import { QUIZ_PASS_PERCENT, hasQuizBank } from "@/data/quizzes";
+import { getUserScopedKey, subscribeToAuthChange } from "@/lib/authSession";
 
-const STORE_KEY = "baruna:applications";
+const STORE_PREFIX = "baruna:applications";
 const EVENT = "baruna:applications";
 
 export const APP_STATUSES = ["Submitted", "Under Review", "Shortlisted", "Accepted"] as const;
@@ -995,7 +996,7 @@ export const emptyProfessional: ProfessionalInfo = {
 export function loadApplications(): Application[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = localStorage.getItem(getUserScopedKey(STORE_PREFIX));
     return raw ? (JSON.parse(raw) as Application[]) : [];
   } catch {
     return [];
@@ -1004,7 +1005,7 @@ export function loadApplications(): Application[] {
 
 function persist(list: Application[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORE_KEY, JSON.stringify(list));
+  localStorage.setItem(getUserScopedKey(STORE_PREFIX), JSON.stringify(list));
   window.dispatchEvent(new CustomEvent(EVENT));
 }
 
@@ -1054,6 +1055,11 @@ export function updateApplication(id: string, patch: Partial<Application>) {
   persist(list);
 }
 
+export function deleteApplication(id: string) {
+  const list = loadApplications().filter((a) => a.id !== id);
+  persist(list);
+}
+
 export function getApplication(id: string): Application | undefined {
   return loadApplications().find((a) => a.id === id);
 }
@@ -1073,9 +1079,11 @@ export function useApplications(): Application[] {
     refresh();
     window.addEventListener(EVENT, refresh);
     window.addEventListener("storage", refresh);
+    const unsubAuth = subscribeToAuthChange(refresh);
     return () => {
       window.removeEventListener(EVENT, refresh);
       window.removeEventListener("storage", refresh);
+      unsubAuth();
     };
   }, []);
   // The synthetic Self-Paced learner record is internal — never surface it in
@@ -1090,9 +1098,11 @@ export function useApplication(id: string): Application | undefined {
     refresh();
     window.addEventListener(EVENT, refresh);
     window.addEventListener("storage", refresh);
+    const unsubAuth = subscribeToAuthChange(refresh);
     return () => {
       window.removeEventListener(EVENT, refresh);
       window.removeEventListener("storage", refresh);
+      unsubAuth();
     };
   }, [id]);
   return app;
@@ -1105,6 +1115,52 @@ export function useApplication(id: string): Application | undefined {
  * credit inside any Full Training Program via {@link creditedLmsIds}.
  */
 export const SELF_PACED_APP_ID = "BARUNA-SELF-PACED";
+
+export function getOrCreateDemoFullTrainingApp(): Application {
+  const existing = loadApplications().find(
+    (a) =>
+      a.slug === "international-training-fisheries-african-countries" ||
+      a.id.startsWith("BARUNA-AFRICA"),
+  );
+  if (existing) {
+    if (existing.status !== "Accepted" || !existing.participationConfirmed) {
+      updateApplication(existing.id, {
+        status: "Accepted",
+        participationConfirmed: true,
+      });
+      return getApplication(existing.id) || existing;
+    }
+    return existing;
+  }
+  const app = createApplication({
+    slug: "international-training-fisheries-african-countries",
+    title: "International Training on Fisheries for African Countries",
+    english: "Advanced",
+    motivation: "Demonstration participant for BARUNA Academy LMS evaluation.",
+    personal: {
+      fullName: "Peserta BARUNA",
+      gender: "Male",
+      nationality: "Indonesia",
+      dob: "1995-05-15",
+      passportNumber: "B12345678",
+      email: "peserta@baruna.kkp.go.id",
+      phone: "+6281234567890",
+    },
+    professional: {
+      organization: "Kementerian Kelautan dan Perikanan",
+      position: "Fisheries Officer",
+      country: "Indonesia",
+      experience: "5 Years",
+      sector: "Marine & Fisheries",
+    },
+    documents: {},
+  });
+  updateApplication(app.id, {
+    status: "Accepted",
+    participationConfirmed: true,
+  });
+  return getApplication(app.id) || app;
+}
 
 export function getOrCreateSelfPacedApp(): Application {
   const existing = getApplication(SELF_PACED_APP_ID);

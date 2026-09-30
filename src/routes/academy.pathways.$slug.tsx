@@ -51,11 +51,11 @@ export const Route = createFileRoute("/academy/pathways/$slug")({
       </div>
     </AcademyShell>
   ),
-  errorComponent: ({ error }) => (
+  errorComponent: ({ error }: { error: any }) => (
     <AcademyShell active="pathways">
       <div role="alert" className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
         <h1 className="font-display text-2xl font-bold text-navy">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{error?.message || String(error)}</p>
       </div>
     </AcademyShell>
   ),

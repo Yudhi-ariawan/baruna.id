@@ -27,6 +27,12 @@ export type ExpertApplicationStatus = {
   createdAt: string;
   updatedAt: string;
   payload: ExpertDraftPayload;
+  latestDecision?: {
+    id: string;
+    decision: string;
+    rationale: string | null;
+    createdAt: string;
+  } | null;
 };
 
 export type ExpertApplicationBootstrap = {

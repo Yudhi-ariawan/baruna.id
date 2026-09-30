@@ -23,6 +23,9 @@ dist-ssr
 
 # Generated browser-test artifacts
 screenshots/
+# Large binary presentations (>100MB exceeds GitHub limits) and videos
+dokumen/*.pptx
+*.mp4
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -38,3 +41,7 @@ screenshots/
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase CLI internal cache & scratch dumps
+supabase/.temp/
+supabase/combined_migrations.sql

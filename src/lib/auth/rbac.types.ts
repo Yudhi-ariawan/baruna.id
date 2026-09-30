@@ -24,6 +24,8 @@ export const BUSINESS_ACTIONS = [
 export const RBAC_ROLE_CODES = [
   "super_admin",
   "admin",
+  "management",
+  "qa_reviewer",
   "registered_user",
   "participant",
   "expert",

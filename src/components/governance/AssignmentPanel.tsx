@@ -167,7 +167,7 @@ export function AssignmentPanel({
         <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide">Assign reviewer</h4>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col text-xs">
-            <span className="mb-1 text-muted-foreground">Reviewer / Verifier</span>
+            <span className="mb-1 text-muted-foreground">Reviewer (qa_reviewer)</span>
             <select
               value={reviewerId}
               onChange={(e) => setReviewerId(e.target.value)}
@@ -176,7 +176,7 @@ export function AssignmentPanel({
               <option value="">Select…</option>
               {reviewerOptions.map((r) => (
                 <option key={r.user_id} value={r.user_id}>
-                  {r.user_id.slice(0, 8)}… · {r.role}
+                  {r.user_id.slice(0, 8)}…
                 </option>
               ))}
             </select>

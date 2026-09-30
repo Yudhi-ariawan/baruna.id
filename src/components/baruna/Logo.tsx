@@ -14,7 +14,7 @@ const ALT =
  *   mobile collapsed menu, loading screens, and notification icons.
  */
 export function Logo({
-  className = "",
+  className = "h-14 sm:h-16",
   variant = "full",
 }: {
   className?: string;
@@ -38,7 +38,7 @@ export function Logo({
       alt={ALT}
       width={1453}
       height={288}
-      className={`h-14 w-auto object-contain sm:h-16 ${className}`}
+      className={`w-auto object-contain ${className}`}
     />
   );
 }

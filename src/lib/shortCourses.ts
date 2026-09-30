@@ -11,13 +11,14 @@
 import { useEffect, useState } from "react";
 import { MASTER_MODULES, masterByCode, type MasterModule } from "@/data/masterModules";
 import { loadApplications } from "@/lib/application";
+import { getUserScopedKey, subscribeToAuthChange } from "@/lib/authSession";
 
-const STORE_KEY = "baruna:short-courses";
+const STORE_PREFIX = "baruna:short-courses";
 const EVENT = "baruna:short-courses";
 const APPS_EVENT = "baruna:applications";
 
 export type ShortCourseEnrollment = {
-  code: string;                // Self-Paced / Master Module code (BARUNA-SC-AQ-001…)
+  code: string;                // Self-Paced / Master Module code or dynamic module id
   enrolledAt: number;
   completed: boolean;
   completedAt?: number;
@@ -25,6 +26,17 @@ export type ShortCourseEnrollment = {
   score?: number;
   /** How this credit was earned. */
   source?: "self-paced" | "full-training-program";
+  /** Optional metadata for dynamic modules from module_registry */
+  title?: string;
+  hours?: number | string;
+  instructor?: string;
+  category?: string;
+  completedSteps?: {
+    video?: boolean;
+    pdf?: boolean;
+    ppt?: boolean;
+    quiz?: boolean;
+  };
 };
 
 type Store = Record<string, ShortCourseEnrollment>;
@@ -32,7 +44,7 @@ type Store = Record<string, ShortCourseEnrollment>;
 function readStore(): Store {
   if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+    return JSON.parse(localStorage.getItem(getUserScopedKey(STORE_PREFIX)) || "{}");
   } catch {
     return {};
   }
@@ -40,7 +52,7 @@ function readStore(): Store {
 
 function writeStore(store: Store) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORE_KEY, JSON.stringify(store));
+  localStorage.setItem(getUserScopedKey(STORE_PREFIX), JSON.stringify(store));
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -72,15 +84,48 @@ export function getShortCourse(code: string): ShortCourseEnrollment | undefined 
   return readStore()[code];
 }
 
-export function enrollShortCourse(code: string): ShortCourseEnrollment {
-  if (!masterByCode[code]) throw new Error(`Unknown module code: ${code}`);
+export function enrollShortCourse(
+  code: string,
+  meta?: { title?: string; hours?: number | string; instructor?: string; category?: string },
+): ShortCourseEnrollment {
   const store = readStore();
   if (!store[code]) {
     store[code] = {
-      code, enrolledAt: Date.now(), completed: false, source: "self-paced",
+      code,
+      enrolledAt: Date.now(),
+      completed: false,
+      source: "self-paced",
+      title: meta?.title,
+      hours: meta?.hours,
+      instructor: meta?.instructor,
+      category: meta?.category,
+      completedSteps: { video: false, pdf: false, ppt: false, quiz: false },
     };
     writeStore(store);
   }
+  return store[code];
+}
+
+export function updateShortCourseSteps(
+  code: string,
+  steps: { video?: boolean; pdf?: boolean; ppt?: boolean; quiz?: boolean },
+): ShortCourseEnrollment {
+  const store = readStore();
+  const existing = store[code] ?? {
+    code,
+    enrolledAt: Date.now(),
+    completed: false,
+    source: "self-paced",
+  };
+  const updatedSteps = {
+    ...(existing.completedSteps ?? {}),
+    ...steps,
+  };
+  store[code] = {
+    ...existing,
+    completedSteps: updatedSteps,
+  };
+  writeStore(store);
   return store[code];
 }
 
@@ -92,8 +137,18 @@ export function completeShortCourse(
   const store = readStore();
   const existing = store[code] ?? { code, enrolledAt: Date.now(), completed: false };
   store[code] = {
-    ...existing, completed: true, completedAt: Date.now(), score,
+    ...existing,
+    completed: true,
+    completedAt: Date.now(),
+    score,
     source: existing.source ?? source,
+    completedSteps: {
+      ...(existing.completedSteps ?? {}),
+      video: true,
+      pdf: true,
+      ppt: true,
+      quiz: true,
+    },
   };
   writeStore(store);
   return store[code];
@@ -139,10 +194,12 @@ export function useShortCourses() {
     window.addEventListener(EVENT, sync);
     window.addEventListener(APPS_EVENT, sync);
     window.addEventListener("storage", sync);
+    const unsubAuth = subscribeToAuthChange(sync);
     return () => {
       window.removeEventListener(EVENT, sync);
       window.removeEventListener(APPS_EVENT, sync);
       window.removeEventListener("storage", sync);
+      unsubAuth();
     };
   }, []);
 

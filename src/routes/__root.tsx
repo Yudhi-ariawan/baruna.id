@@ -14,6 +14,7 @@ import favicon from "@/assets/baruna-icon.png";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PresentationMode } from "@/components/baruna/PresentationMode";
 import { HomeExperienceProvider } from "@/components/baruna/HomeExperienceProvider";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -37,11 +38,11 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportLovableError(error as Error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -141,6 +142,7 @@ function RootComponent() {
         <Outlet />
         {/* Global single-flag Presentation / Demo Mode control + banner. */}
         <PresentationMode />
+        <Toaster position="top-right" richColors />
       </HomeExperienceProvider>
     </QueryClientProvider>
   );

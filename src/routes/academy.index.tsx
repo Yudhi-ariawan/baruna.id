@@ -18,7 +18,19 @@ import { academyImages } from "@/data/academy";
 import { pathways as learningPathways } from "@/data/pathways";
 import { categories as browseCategories, accentFor } from "@/data/categories";
 
+import { supabase } from "@/integrations/supabase/client";
+import defaultCover from "@/assets/self-paced/m01.jpg";
+
 export const Route = createFileRoute("/academy/")({
+  loader: async () => {
+    const { data: dbModules } = await supabase
+      .from("module_registry")
+      .select("id, title, summary, language, estimated_learning_hours, created_at")
+      .eq("current_status", "published")
+      .order("created_at", { ascending: false });
+
+    return { dbModules: dbModules ?? [] };
+  },
   head: () => ({
     meta: [
       { title: "Academy — BARUNA" },
@@ -46,20 +58,17 @@ type Program = {
   reviews: number;
   mode: string;
   image: string;
+  href?: string;
 };
 
 const featured: Program[] = [
-  { badge: "TRAINING", title: "Sustainable Fisheries Management", meta: "3 Weeks", level: "Intermediate", rating: 4.7, reviews: 98, mode: "In-person", image: academyImages.seaTurtle },
-  { badge: "WEBINAR", title: "Climate Change and Oceans", meta: "24 Jul 2026 · 1.5 Hours", level: "Beginner", rating: 4.6, reviews: 76, mode: "Online", image: academyImages.fishingSunset },
-  { badge: "WORKSHOP", title: "Marine Spatial Planning", meta: "6–31 Aug 2026", level: "Advanced", rating: 4.9, reviews: 54, mode: "Blended", image: academyImages.marineSpatial },
-  { badge: "CERTIFICATION", title: "Fish Processing and Value Addition", meta: "7–28 Aug 2026", level: "Intermediate", rating: 4.6, reviews: 37, mode: "In-person", image: academyImages.fishProcessing },
-  { badge: "TRAINING", title: "Blue Economy Fundamentals", meta: "14 Jul – 18 Aug 2026", level: "Beginner", rating: 4.8, reviews: 120, mode: "Online", image: academyImages.offshoreWind },
-  { badge: "WEBINAR", title: "Mangrove Ecosystem Conservation", meta: "30 Jul 2026 · 1.5 Hours", level: "Beginner", rating: 4.5, reviews: 65, mode: "Online", image: academyImages.mangrove },
+  { badge: "TRAINING", title: "Sustainable Fisheries Management", meta: "3 Weeks", level: "Intermediate", rating: 4.7, reviews: 98, mode: "In-person", image: academyImages.seaTurtle, href: "/academy/training" },
+  { badge: "WEBINAR", title: "Climate Change and Oceans", meta: "24 Jul 2026 · 1.5 Hours", level: "Beginner", rating: 4.6, reviews: 76, mode: "Online", image: academyImages.fishingSunset, href: "/academy/webinars" },
+  { badge: "WORKSHOP", title: "Marine Spatial Planning", meta: "6–31 Aug 2026", level: "Advanced", rating: 4.9, reviews: 54, mode: "Blended", image: academyImages.marineSpatial, href: "/academy/workshops" },
+  { badge: "CERTIFICATION", title: "Fish Processing and Value Addition", meta: "7–28 Aug 2026", level: "Intermediate", rating: 4.6, reviews: 37, mode: "In-person", image: academyImages.fishProcessing, href: "/academy/certifications" },
+  { badge: "TRAINING", title: "Blue Economy Fundamentals", meta: "14 Jul – 18 Aug 2026", level: "Beginner", rating: 4.8, reviews: 120, mode: "Online", image: academyImages.offshoreWind, href: "/academy/training" },
+  { badge: "WEBINAR", title: "Mangrove Ecosystem Conservation", meta: "30 Jul 2026 · 1.5 Hours", level: "Beginner", rating: 4.5, reviews: 65, mode: "Online", image: academyImages.mangrove, href: "/academy/webinars" },
 ];
-
-
-
-
 
 const upcoming = [
   { month: "JUL", day: "20", year: "2026", title: "International Conference on Blue Economy and Ocean Sustainability", location: "Bali, Indonesia", type: "Blended" },
@@ -93,7 +102,7 @@ function CircularProgress({ value }: { value: number }) {
 }
 
 function ProgramCard({ p }: { p: Program }) {
-  return (
+  const cardBody = (
     <article className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
       <div className="relative h-32 overflow-hidden">
         <img src={p.image} alt={p.title} loading="lazy" width={768} height={512} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
@@ -114,9 +123,35 @@ function ProgramCard({ p }: { p: Program }) {
       </div>
     </article>
   );
+
+  if (p.href) {
+    return (
+      <Link to={p.href} className="block shrink-0">
+        {cardBody}
+      </Link>
+    );
+  }
+
+  return cardBody;
 }
 
 function AcademyOverview() {
+  const { dbModules } = Route.useLoaderData();
+
+  const dynamicFeatured: Program[] = (dbModules ?? []).map((m) => ({
+    badge: "SELF-PACED",
+    title: m.title,
+    meta: `${m.estimated_learning_hours || 2} Hours`,
+    level: "Intermediate",
+    rating: 5.0,
+    reviews: 1,
+    mode: "Online",
+    image: defaultCover,
+    href: `/academy/self-paced/${m.id}`,
+  }));
+
+  const allFeatured = [...dynamicFeatured, ...featured];
+
   return (
     <AcademyShell active="overview">
       <div className="space-y-6">
@@ -149,10 +184,15 @@ function AcademyOverview() {
         />
 
         <section>
-          <SectionHeader title="Featured Programs" action="View all programs" />
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {featured.map((p) => (
-              <ProgramCard key={p.title} p={p} />
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold text-navy sm:text-xl">Featured Programs & Modules</h2>
+            <Link to="/academy/programs" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy">
+              View all programs <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <div className="mt-3 flex gap-4 overflow-x-auto pb-2">
+            {allFeatured.map((p) => (
+              <ProgramCard key={p.title + p.badge} p={p} />
             ))}
           </div>
         </section>

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Users,
@@ -23,13 +24,16 @@ import { PageShell } from "@/components/baruna/page/PageShell";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader, Tag } from "@/components/baruna/page/primitives";
 import { pageImages, expertImages } from "@/data/pages";
-import { instructors } from "@/data/instructors";
+import { instructors, instructorBySlug, type Instructor } from "@/data/instructors";
 import { ExpertInstructorCard } from "@/components/baruna/InstructorDirectory";
 import { DEMO_EXPERTS, DEMO_CATEGORIES, LEVEL_LABEL } from "@/data/demo";
+import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
+import { listPublicExperts } from "@/lib/experts/directory.functions";
 
 import { publicExpertsNav } from "@/data/expertsNav";
 
 export const Route = createFileRoute("/experts/")({
+  loader: async () => ({ dbExperts: await listPublicExperts().catch(() => []) }),
   head: () => ({
     meta: [
       { title: "Experts Directory — BARUNA" },
@@ -122,6 +126,36 @@ function ExpertCard({ e }: { e: Expert }) {
 }
 
 function ExpertsPage() {
+  const { dbExperts } = Route.useLoaderData();
+
+  const combinedInstructors = useMemo(() => {
+    const fromDb: Instructor[] = (dbExperts ?? []).map((exp) => ({
+      slug: exp.slug,
+      name: exp.displayName,
+      position:
+        exp.institutionRole ||
+        (exp.trainerStatus === "active" ? "BARUNA Approved Trainer" : "Verified Marine Expert"),
+      organization: exp.institution || "Marine & Fisheries Specialist",
+      expertise: exp.expertiseAreas.length ? exp.expertiseAreas : ["Marine & Fisheries"],
+      summary:
+        exp.headline || exp.bio || "Verified marine & fisheries expert registered on the BARUNA platform.",
+      biography: exp.bio || "",
+      programRole: exp.trainerStatus === "active" ? "BARUNA Trainer" : "Expert",
+      email: instructorBySlug[exp.slug]?.email,
+      photo:
+        instructorBySlug[exp.slug]?.photo ||
+        (exp.avatarUrl && !exp.avatarUrl.toLowerCase().endsWith(".pdf")
+          ? exp.avatarUrl
+          : defaultExpertAvatar),
+      group: instructorBySlug[exp.slug]?.group || "Lead Instructors",
+      programs: instructorBySlug[exp.slug]?.programs || [],
+    }));
+
+    const existingSlugs = new Set(fromDb.map((i) => i.slug));
+    const remaining = instructors.filter((i) => !existingSlugs.has(i.slug));
+    return [...fromDb, ...remaining];
+  }, [dbExperts]);
+
   return (
     <PageShell
       sidebar={{
@@ -224,7 +258,7 @@ function ExpertsPage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
-            {instructors.map((i) => (
+            {combinedInstructors.map((i) => (
               <ExpertInstructorCard key={i.slug} instructor={i} />
             ))}
           </div>
@@ -232,7 +266,15 @@ function ExpertsPage() {
 
         <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
           <section>
-            <SectionHeader title="All Experts" action="View all experts" />
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="font-display text-lg font-bold text-navy sm:text-xl">All Experts</h2>
+              <Link
+                to="/experts/directory"
+                className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy"
+              >
+                View full directory <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {experts.map((e) => (
                 <ExpertCard key={e.name} e={e} />

@@ -27,7 +27,8 @@ function GovernanceLanding() {
       <section className="rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold">Governance workspace</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Rollups reflect only what your roles can see. Review, verification, final approval, and publication use separate official roles.
+          Rollups reflect only what your roles can see. Recommendations are advisory; final decisions rest with
+          admin/management.
         </p>
       </section>
 

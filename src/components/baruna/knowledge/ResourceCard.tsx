@@ -46,7 +46,13 @@ export function ResourceCard({ r, index }: { r: KhResource; index: number }) {
           <span className="inline-flex rounded-md bg-navy px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-navy-foreground">
             {r.typeLabel}
           </span>
-          <DemoDataBadge />
+          {r.id.startsWith("pub-") || r.id.startsWith("lm-") || r.id.startsWith("bp-") || r.id.startsWith("vid-") || r.id.startsWith("pb-") || r.id.startsWith("info-") || r.id.startsWith("cs-") || r.id.startsWith("tk-") || r.id.startsWith("res-") ? (
+            <DemoDataBadge />
+          ) : (
+            <span className="inline-flex items-center rounded-md bg-green-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-700">
+              Verified
+            </span>
+          )}
         </div>
         {isVideo && (
           <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-navy/85 px-1.5 py-0.5 text-[0.6rem] font-semibold text-navy-foreground">

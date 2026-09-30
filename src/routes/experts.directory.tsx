@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { publicExpertsNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
+import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
 import { listPublicExperts } from "@/lib/experts/directory.functions";
 import { TRAINER_LEVEL_LABEL, type PublicExpert } from "@/lib/experts/directory.types";
 
@@ -173,7 +174,7 @@ function DirectoryPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {results.length} expert{results.length === 1 ? "" : "s"} found
         </p>
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {results.map((expert) => (
             <ExpertCard key={expert.id} expert={expert} />
           ))}
@@ -197,76 +198,82 @@ function DirectoryPage() {
 
 function ExpertCard({ expert }: { expert: PublicExpert }) {
   const isTrainer = expert.trainerStatus === "active";
+  const isImageAvatar = Boolean(
+    expert.avatarUrl && !expert.avatarUrl.toLowerCase().endsWith(".pdf"),
+  );
+  const photoSrc = isImageAvatar ? expert.avatarUrl! : defaultExpertAvatar;
+
   return (
-    <article className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
-      <div className="relative overflow-hidden rounded-xl bg-secondary/40">
-        {expert.avatarUrl ? (
-          <img
-            src={expert.avatarUrl}
-            alt={`Portrait of ${expert.displayName}`}
-            loading="lazy"
-            width={600}
-            height={800}
-            className="aspect-[3/4] w-full object-cover object-center"
-          />
-        ) : (
-          <div className="grid aspect-[3/4] w-full place-items-center text-muted-foreground">
-            <UserRound className="h-16 w-16" />
-          </div>
-        )}
-        <div className="absolute right-2 top-2 flex flex-col items-end gap-1">
-          <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/90 px-2 py-0.5 text-[0.6rem] font-bold uppercase text-white shadow-soft">
-            <BadgeCheck className="h-3 w-3" /> Verified Expert
+    <article className="group flex h-full gap-4 rounded-2xl border border-border bg-card p-4 shadow-soft transition-all hover:-translate-y-1 hover:border-marine/40 hover:shadow-hover">
+      <div className="relative aspect-[3/4] w-[76px] sm:w-[88px] shrink-0 self-start overflow-hidden rounded-xl bg-secondary/40">
+        <img
+          src={photoSrc}
+          alt={`Portrait of ${expert.displayName}`}
+          loading="lazy"
+          width={240}
+          height={320}
+          className="h-full w-full object-cover object-center"
+        />
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Badges */}
+        <div className="mb-1 flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/90 px-1.5 py-0.5 text-[0.58rem] font-bold uppercase text-white shadow-soft">
+            <BadgeCheck className="h-2.5 w-2.5" /> Verified
           </span>
           {isTrainer && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-marine px-2 py-0.5 text-[0.6rem] font-bold uppercase text-white shadow-soft">
-              <GraduationCap className="h-3 w-3" /> BARUNA Trainer
+            <span className="inline-flex items-center gap-1 rounded-full bg-marine px-1.5 py-0.5 text-[0.58rem] font-bold uppercase text-white shadow-soft">
+              <GraduationCap className="h-2.5 w-2.5" /> Trainer
             </span>
           )}
         </div>
-      </div>
-      <h2 className="mt-3 font-display text-base font-bold leading-tight text-navy">
-        {expert.displayName}
-      </h2>
-      <p className="mt-0.5 text-xs font-semibold text-marine">{expert.headline}</p>
-      {expert.institution && (
-        <p className="mt-0.5 text-[0.7rem] text-muted-foreground">{expert.institution}</p>
-      )}
-      <div className="mt-2 flex flex-wrap gap-1.5 text-[0.65rem]">
-        {expert.country && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 font-medium text-navy">
-            <Globe className="h-3 w-3" /> {expert.country}
-          </span>
+
+        <h2 className="font-display text-sm font-bold leading-tight text-navy">
+          {expert.displayName}
+        </h2>
+        <p className="mt-0.5 text-xs font-semibold text-marine line-clamp-1">{expert.headline}</p>
+        {expert.institution && (
+          <p className="mt-0.5 text-[0.7rem] leading-snug text-muted-foreground line-clamp-1">
+            {expert.institution}
+          </p>
         )}
-        {expert.expertiseAreas.slice(0, 3).map((item) => (
-          <span key={item} className="rounded-md bg-secondary px-2 py-0.5 font-medium text-navy">
-            {item}
-          </span>
-        ))}
-      </div>
-      {isTrainer && (
-        <span
-          className={`mt-2 inline-flex items-center gap-1 self-start rounded-md px-2 py-0.5 text-[0.65rem] font-bold ${LEVEL_BADGE[expert.trainerLevel]}`}
-        >
-          <Award className="h-3 w-3" /> {TRAINER_LEVEL_LABEL[expert.trainerLevel]}
-        </span>
-      )}
-      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-foreground/70">{expert.bio}</p>
-      <div className="mt-3 flex items-center gap-2">
-        <Link
-          to="/experts/$slug"
-          params={{ slug: expert.slug }}
-          className="flex-1 rounded-lg bg-marine px-3 py-2 text-center text-xs font-semibold text-marine-foreground hover:bg-navy"
-        >
-          View Profile
-        </Link>
-        <Link
-          to="/experts/request"
-          search={{ type: isTrainer ? "trainer" : "technical", expert: expert.slug }}
-          className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-navy hover:bg-muted"
-        >
-          Request
-        </Link>
+
+        <div className="mt-2 flex flex-wrap gap-1 text-[0.65rem]">
+          {expert.country && (
+            <span className="inline-flex items-center gap-0.5 rounded-md bg-secondary px-1.5 py-0.5 font-medium text-navy">
+              <Globe className="h-2.5 w-2.5" /> {expert.country}
+            </span>
+          )}
+          {expert.expertiseAreas.slice(0, 3).map((item) => (
+            <span key={item} className="rounded-md bg-secondary px-1.5 py-0.5 font-medium text-navy">
+              {item}
+            </span>
+          ))}
+        </div>
+
+        {expert.bio && (
+          <p className="mt-2 line-clamp-2 text-[0.72rem] leading-relaxed text-foreground/70">
+            {expert.bio}
+          </p>
+        )}
+
+        <div className="mt-auto flex items-center justify-between gap-2 pt-3 border-t border-border/40">
+          <Link
+            to="/experts/$slug"
+            params={{ slug: expert.slug }}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy"
+          >
+            View Profile <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+          <Link
+            to="/experts/request"
+            search={{ type: isTrainer ? "trainer" : "technical", expert: expert.slug }}
+            className="rounded-lg border border-border px-2.5 py-1 text-[0.7rem] font-semibold text-navy hover:bg-muted transition-colors"
+          >
+            Request
+          </Link>
+        </div>
       </div>
     </article>
   );

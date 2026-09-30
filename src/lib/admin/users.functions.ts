@@ -10,6 +10,8 @@ import { hasPermission, requirePermission } from "@/lib/auth/permissions.server"
 const RoleCode = z.enum([
   "super_admin",
   "admin",
+  "management",
+  "qa_reviewer",
   "registered_user",
   "participant",
   "expert",
@@ -44,9 +46,6 @@ export type AdminAccess = {
   canSuspendUsers: boolean;
   canAssignRoles: boolean;
   canReadAudit: boolean;
-  canReviewModules: boolean;
-  canVerifyModules: boolean;
-  canApproveModules: boolean;
 };
 
 export type AdminRole = { code: string; name: string; description: string | null };
@@ -100,9 +99,6 @@ export const getAdminAccess = createServerFn({ method: "GET" })
     canSuspendUsers: await hasPermission(context, "users.suspend"),
     canAssignRoles: await hasPermission(context, "users.assign_role"),
     canReadAudit: await hasPermission(context, "audit.read"),
-    canReviewModules: await hasPermission(context, "academy.review"),
-    canVerifyModules: await hasPermission(context, "academy.verify"),
-    canApproveModules: await hasPermission(context, "academy.approve"),
   }));
 
 export const listUsers = createServerFn({ method: "GET" })
@@ -223,6 +219,85 @@ export const inviteUser = createServerFn({ method: "POST" })
     });
     return { id: invited.user.id, email: invited.user.email ?? data.email };
   });
+
+export const createUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        email: z.string().trim().email("Invalid email address").max(254),
+        password: z.string().min(8, "Password must be at least 8 characters").max(128),
+        displayName: z.string().trim().min(2, "Full name must be at least 2 characters").max(120),
+        organization: z.string().trim().max(160).optional(),
+        jobTitle: z.string().trim().max(120).optional(),
+        phone: z.string().trim().max(40).optional(),
+        roles: z.array(RoleCode).min(1, "Select at least one role"),
+        emailConfirm: z.boolean().default(true),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await requirePermission(context, "users.invite");
+    const admin = await loadAdmin();
+    const db = admin as any;
+
+    const org = data.organization?.trim() || "BARUNA";
+    const title = data.jobTitle?.trim() || "Staff";
+    const tel = data.phone?.trim() || "-";
+
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: data.emailConfirm,
+      user_metadata: {
+        display_name: data.displayName,
+        full_name: data.displayName,
+        organization: org,
+        job_title: title,
+        phone: tel,
+      },
+    });
+
+    if (createError) throw new Error(createError.message);
+    if (!created.user) throw new Error("user_creation_failed");
+
+    const targetUserId = created.user.id;
+
+    // Ensure profile reflects any supplied fields accurately
+    await db
+      .from("profiles")
+      .update({
+        display_name: data.displayName,
+        organization: data.organization?.trim() || null,
+        job_title: data.jobTitle?.trim() || null,
+        phone: data.phone?.trim() || null,
+        is_active: true,
+      })
+      .eq("id", targetUserId);
+
+    // Assign all selected roles to the newly created user
+    for (const role of data.roles) {
+      const { error: roleError } = await context.supabase.rpc(
+        "assign_rbac_role" as never,
+        {
+          _target_user_id: targetUserId,
+          _role_code: role,
+        } as never,
+      );
+      if (roleError) {
+        console.error(`[createUser] Failed assigning role ${role} to ${targetUserId}:`, roleError);
+      }
+    }
+
+    await writeAudit(context.userId, targetUserId, "user_created", null, {
+      email: data.email,
+      display_name: data.displayName,
+      roles: data.roles,
+    });
+
+    return { id: targetUserId, email: created.user.email ?? data.email, roles: data.roles };
+  });
+
 
 export const updateUserProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

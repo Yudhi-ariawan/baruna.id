@@ -36,19 +36,44 @@ async function readApplications(context: {
   const subjectIds = (drafts ?? [])
     .map((draft: { linked_subject_id: string | null }) => draft.linked_subject_id)
     .filter((id: string | null): id is string => Boolean(id));
-  const subjects = subjectIds.length
-    ? await context.supabase
-        .from("review_subjects")
-        .select("id, current_status")
-        .in("id", subjectIds)
-    : { data: [], error: null };
-  if (subjects.error) throw new Error(subjects.error.message);
+
+  const [{ data: subjects }, { data: decisions }] = await Promise.all([
+    subjectIds.length
+      ? context.supabase
+          .from("review_subjects")
+          .select("id, current_status")
+          .in("id", subjectIds)
+      : Promise.resolve({ data: [] }),
+    subjectIds.length
+      ? context.supabase
+          .from("review_decisions")
+          .select("id, subject_id, decision, rationale, created_at")
+          .in("subject_id", subjectIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ]);
+
   const statuses = new Map<string, string>(
-    (subjects.data ?? []).map((subject: { id: string; current_status: string }) => [
+    (subjects ?? []).map((subject: { id: string; current_status: string }) => [
       subject.id,
       subject.current_status,
     ]),
   );
+
+  const decisionMap = new Map<
+    string,
+    { id: string; decision: string; rationale: string | null; createdAt: string }
+  >();
+  (decisions ?? []).forEach((dec: { id: string; subject_id: string; decision: string; rationale: string | null; created_at: string }) => {
+    if (!decisionMap.has(dec.subject_id)) {
+      decisionMap.set(dec.subject_id, {
+        id: dec.id,
+        decision: dec.decision,
+        rationale: dec.rationale,
+        createdAt: dec.created_at,
+      });
+    }
+  });
 
   return (drafts ?? []).map(
     (draft: {
@@ -70,6 +95,9 @@ async function readApplications(context: {
       createdAt: draft.created_at,
       updatedAt: draft.updated_at,
       payload: asPayload(draft.payload),
+      latestDecision: draft.linked_subject_id
+        ? (decisionMap.get(draft.linked_subject_id) ?? null)
+        : null,
     }),
   );
 }
@@ -100,7 +128,11 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
         phone: profile.phone ?? "",
       },
       editableDraft:
-        applications.find((application) => application.draftStatus === "draft") ?? null,
+        applications.find(
+          (application) =>
+            application.draftStatus === "draft" ||
+            application.reviewStatus === "revision_requested",
+        ) ?? null,
     };
   });
 
@@ -138,4 +170,75 @@ export const submitExpertApplication = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { draftId: data.draftId, subjectId: subjectId as string };
+  });
+
+export const resubmitExpertApplicationRevision = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        draftId: z.string().uuid(),
+        subjectId: z.string().uuid(),
+        displayName: z.string().min(1).max(160),
+        payload: DraftPayload,
+        notes: z.string().max(2000).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data: input, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Verify subject ownership
+    const { data: subj, error: subjErr } = await supabaseAdmin
+      .from("review_subjects")
+      .select("id, submitted_by, current_status")
+      .eq("id", input.subjectId)
+      .single();
+
+    if (subjErr || !subj || subj.submitted_by !== context.userId) {
+      throw new Error("Pengajuan tidak ditemukan atau Anda tidak memiliki akses.");
+    }
+
+    // 2. Update draft payload with revised files
+    await supabaseAdmin
+      .from("review_drafts")
+      .update({
+        payload: input.payload as never,
+        status: "submitted",
+        title: input.displayName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.draftId)
+      .eq("submitter_id", context.userId);
+
+    // 3. Reset subject status back to "pending" to reappear in Admin's verification queue
+    await supabaseAdmin
+      .from("review_subjects")
+      .update({
+        current_status: "pending",
+        title: input.displayName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.subjectId);
+
+    // 4. Record a revision snapshot in review_subject_revisions
+    const { count } = await supabaseAdmin
+      .from("review_subject_revisions")
+      .select("*", { count: "exact", head: true })
+      .eq("subject_id", input.subjectId);
+
+    const revNum = (count ?? 0) + 1;
+    await supabaseAdmin.from("review_subject_revisions").insert({
+      subject_id: input.subjectId,
+      draft_id: input.draftId,
+      revision: revNum,
+      snapshot: {
+        payload: input.payload,
+        resubmitted_at: new Date().toISOString(),
+        notes: input.notes || "Dokumen revisi dikirimkan ulang oleh calon expert.",
+      } as unknown as Json,
+      content_hash: `rev-exp-${revNum}-${Date.now()}`,
+    });
+
+    return { success: true, subjectId: input.subjectId, revision: revNum };
   });

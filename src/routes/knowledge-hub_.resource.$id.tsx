@@ -20,12 +20,71 @@ import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge, AccessBadge } from "@/components/baruna/knowledge/ResourceCard";
 import { toggleSaved, useIsSaved, shareResource } from "@/lib/khSaved";
 import { courseImages } from "@/data/pages";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
-  loader: ({ params }) => {
-    const r = getResourceById(params.id);
-    if (!r) throw notFound();
-    return { resource: r };
+  loader: async ({ params }) => {
+    const demoResource = getResourceById(params.id);
+    if (demoResource) return { resource: demoResource };
+
+    const { data: m } = await supabase
+      .from("module_registry")
+      .select("*")
+      .eq("id", params.id)
+      .maybeSingle();
+
+    if (m) {
+      let authorName = "BARUNA Trainer";
+      if (m.author_expert_id) {
+        const { data: exp } = await supabase
+          .from("experts_directory_v")
+          .select("display_name")
+          .eq("id", m.author_expert_id)
+          .maybeSingle();
+        if (exp?.display_name) authorName = exp.display_name;
+        else {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", m.author_expert_id)
+            .maybeSingle();
+          if (prof?.display_name) authorName = prof.display_name;
+        }
+      }
+
+      const resource: any = {
+        id: m.id,
+        type: "learning-modules",
+        typeLabel: "Learning Module",
+        title: m.title,
+        category: "fisheries-management",
+        summary: m.summary || "Approved BARUNA learning module connected to Self-Paced Courses.",
+        abstract: m.summary || "Approved BARUNA learning module.",
+        author: authorName,
+        contributor: "BARUNA Academy",
+        organization: "BARUNA Network",
+        year: new Date(m.created_at).getFullYear(),
+        language: m.language || "English",
+        country: "Indonesia",
+        keywords: ["Learning Module", "Self-Paced", m.title.toLowerCase()],
+        access: "Completion Required",
+        status: "Published",
+        fileType: "Module Package",
+        pages: (m.estimated_learning_hours || 2) * 12,
+        version: "1.0",
+        moduleCode: "BARUNA-MOD-01",
+        shortCourseCode: m.id,
+        expertId: m.author_expert_id || "",
+        metrics: { views: 42, uniqueViewers: 18, downloads: 12, saves: 4, shares: 2 },
+        citation: `${authorName} (${new Date(m.created_at).getFullYear()}). ${m.title}. BARUNA Knowledge Hub.`,
+        createdAt: m.created_at,
+        updatedAt: m.created_at,
+      };
+
+      return { resource };
+    }
+
+    throw notFound();
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -49,10 +108,10 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
       <Link to="/knowledge-hub/$type" params={{ type: "library" }} className="mt-4 inline-flex rounded-xl bg-marine px-4 py-2 text-sm font-semibold text-marine-foreground">Browse the Resource Library</Link>
     </div>
   ),
-  errorComponent: ({ error }) => (
+  errorComponent: ({ error }: { error: any }) => (
     <div className="mx-auto max-w-2xl p-10 text-center">
       <h1 className="font-display text-2xl font-bold text-navy">Something went wrong</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{error?.message || String(error)}</p>
     </div>
   ),
   component: ResourceDetailPage,
@@ -132,7 +191,13 @@ function ResourceDetailPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-navy/85 to-transparent" />
                 <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
                   <span className="inline-flex rounded-md bg-navy px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-navy-foreground">{r.typeLabel}</span>
-                  <DemoDataBadge />
+                  {r.id.startsWith("pub-") || r.id.startsWith("lm-") || r.id.startsWith("bp-") || r.id.startsWith("vid-") || r.id.startsWith("pb-") || r.id.startsWith("info-") || r.id.startsWith("cs-") || r.id.startsWith("tk-") || r.id.startsWith("res-") ? (
+                    <DemoDataBadge />
+                  ) : (
+                    <span className="inline-flex items-center rounded-md bg-green-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-700">
+                      Verified Module
+                    </span>
+                  )}
                 </div>
                 <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 text-navy-foreground">
                   <h1 className="font-display text-2xl font-extrabold sm:text-3xl">{r.title}</h1>
@@ -179,8 +244,8 @@ function ResourceDetailPage() {
                         <Lock className="h-3.5 w-3.5" /> Start Module
                       </button>
                     )
-                  ) : r.type === "learning-modules" && course ? (
-                    <Link to="/academy/self-paced/$code" params={{ code: course.code }} className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground">
+                  ) : r.type === "learning-modules" ? (
+                    <Link to="/academy/self-paced/$code" params={{ code: r.shortCourseCode || (course ? course.code : r.id) }} className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground">
                       <GraduationCap className="h-3.5 w-3.5" /> Take the Self-Paced Course
                     </Link>
                   ) : canDownload ? (

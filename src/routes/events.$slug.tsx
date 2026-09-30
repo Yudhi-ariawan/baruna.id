@@ -49,10 +49,10 @@ export const Route = createFileRoute("/events/$slug")({
     };
   },
   component: EventDetail,
-  errorComponent: ({ error }) => (
+  errorComponent: ({ error }: { error: any }) => (
     <EventsShell>
       <div role="alert" className="rounded-2xl border border-border bg-card p-8 text-center">
-        <p className="text-navy">{error.message}</p>
+        <p className="text-navy">{error?.message || String(error)}</p>
       </div>
     </EventsShell>
   ),

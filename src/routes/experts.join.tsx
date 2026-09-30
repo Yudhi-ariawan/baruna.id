@@ -12,21 +12,27 @@ import {
   BookOpen,
   Upload,
   FileText,
+  RotateCcw,
+  ExternalLink,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { ProfessionalProfileSection } from "@/components/baruna/experts/ProfessionalProfileSection";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   getExpertApplicationBootstrap,
   saveExpertApplicationDraft,
   submitExpertApplication,
+  resubmitExpertApplicationRevision,
 } from "@/lib/experts/application.functions";
 import {
   EXPERT_APPLICATION_BUCKET,
   type ExpertApplicationDocument,
   type ExpertDocumentCategory,
 } from "@/lib/experts/application.types";
+import { resolveFileContentType } from "@/lib/storage/mime";
 import {
   EXPERTISE_AREAS,
   EXPERT_ROLES,
@@ -34,8 +40,13 @@ import {
   MAX_BYTES,
   emptyExpertApplication,
   formatBytes,
+  genId,
   type ExpertApplicationDraft,
   type ExpertRole,
+  type ExpertLanguageItem,
+  type ExpertProjectItem,
+  type ExpertPublicationItem,
+  type LanguageProficiency,
 } from "@/lib/experts";
 
 const EXPERT_APPLICATION_ACCEPT = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp";
@@ -101,11 +112,23 @@ function JoinExpertPage() {
   const bootstrapFn = useServerFn(getExpertApplicationBootstrap);
   const saveDraftFn = useServerFn(saveExpertApplicationDraft);
   const submitFn = useServerFn(submitExpertApplication);
+  const resubmitRevisionFn = useServerFn(resubmitExpertApplicationRevision);
   const [form, setForm] = useState<ExpertApplicationDraft>({ ...emptyExpertApplication });
   const [submitted, setSubmitted] = useState(false);
+  const [isRevisionSubmitted, setIsRevisionSubmitted] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [draftId, setDraftId] = useState<string | undefined>();
+  const [subjectId, setSubjectId] = useState<string | null>(null);
+  const [isRevision, setIsRevision] = useState(false);
+  const [latestDecision, setLatestDecision] = useState<{
+    id?: string;
+    decision?: string;
+    action?: string;
+    rationale: string | null;
+    createdAt: string;
+  } | null>(null);
+  const [revisionNotes, setRevisionNotes] = useState("");
   const [userId, setUserId] = useState("");
   const [documents, setDocuments] = useState<ExpertApplicationDocument[]>([]);
   const [files, setFiles] = useState<Partial<Record<ExpertDocumentCategory, File>>>({});
@@ -129,11 +152,48 @@ function JoinExpertPage() {
         if (!active) return;
         setUserId(bootstrap.userId);
         if (bootstrap.editableDraft) {
-          const payload = bootstrap.editableDraft.payload;
-          setDraftId(bootstrap.editableDraft.draftId);
+          const draft = bootstrap.editableDraft;
+          const payload = draft.payload;
+          setDraftId(draft.draftId);
+          setSubjectId(draft.subjectId ?? null);
+          const revReq = draft.reviewStatus === "revision_requested";
+          setIsRevision(revReq);
+          setLatestDecision(draft.latestDecision ?? null);
           setDocuments(payload.documents ?? []);
-          setForm({ ...emptyExpertApplication, ...payload });
-          setNotice("Your existing draft has been restored.");
+
+          // Auto-migrate legacy string fields into structured arrays if not yet present
+          const rawLangs: ExpertLanguageItem[] =
+            Array.isArray(payload.structuredLanguages) && payload.structuredLanguages.length > 0
+              ? payload.structuredLanguages
+              : typeof payload.languages === "string" && payload.languages.trim()
+              ? payload.languages
+                  .split(",")
+                  .map((l: string) => ({
+                    id: genId("lang"),
+                    language: l.trim().replace(/\s*\(.*\)$/, ""),
+                    proficiency: "fluent" as const,
+                  }))
+                  .filter((l) => Boolean(l.language))
+              : [];
+
+          setForm({
+            ...emptyExpertApplication,
+            ...payload,
+            structuredLanguages: rawLangs,
+            structuredProjects: Array.isArray(payload.structuredProjects)
+              ? payload.structuredProjects
+              : [],
+            structuredPublications: Array.isArray(payload.structuredPublications)
+              ? payload.structuredPublications
+              : [],
+          });
+          if (revReq) {
+            setNotice(
+              "Pengajuan ini membutuhkan revisi dokumen sesuai catatan verifikator admin. Silakan periksa berkas, unggah penggantinya, lalu kirim ulang.",
+            );
+          } else {
+            setNotice("Draf pengajuan Anda berhasil dimuat kembali.");
+          }
         } else {
           setForm((current) => ({
             ...current,
@@ -180,19 +240,27 @@ function JoinExpertPage() {
       !form.country.trim() ||
       !form.email.trim()
     ) {
-      setError("Please complete the required personal information fields.");
+      const msg = "Please complete the required personal information fields.";
+      setError(msg);
+      toast.error(msg);
       return false;
     }
     if (form.expertise.length === 0) {
-      setError("Please select at least one area of expertise.");
+      const msg = "Please select at least one area of expertise.";
+      setError(msg);
+      toast.error(msg);
       return false;
     }
     if (form.roles.length === 0) {
-      setError("Please select at least one available role.");
+      const msg = "Please select at least one available role.";
+      setError(msg);
+      toast.error(msg);
       return false;
     }
     if (!form.biography.trim()) {
-      setError("Please provide a professional biography.");
+      const msg = "Please provide a professional biography.";
+      setError(msg);
+      toast.error(msg);
       return false;
     }
     return true;
@@ -203,16 +271,17 @@ function JoinExpertPage() {
     for (const [category, file] of Object.entries(files) as [ExpertDocumentCategory, File][]) {
       const safeName = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
       const path = `users/${userId}/${id}/${category}-${Date.now()}-${safeName}`;
+      const contentType = resolveFileContentType(file.name, file.type);
       const { error: uploadError } = await supabase.storage
         .from(EXPERT_APPLICATION_BUCKET)
-        .upload(path, file, { contentType: file.type, upsert: false });
+        .upload(path, file, { contentType, upsert: true });
       if (uploadError) throw uploadError;
       const document: ExpertApplicationDocument = {
         category,
         path,
         name: file.name,
         size: file.size,
-        type: file.type || "application/octet-stream",
+        type: contentType,
         uploadedAt: new Date().toISOString(),
       };
       const existingIndex = uploaded.findIndex((item) => item.category === category);
@@ -224,16 +293,41 @@ function JoinExpertPage() {
     return uploaded;
   };
 
+  const removeStored = (category: ExpertDocumentCategory) => {
+    setDocuments((current) => current.filter((item) => item.category !== category));
+  };
+
   const persist = async (shouldSubmit: boolean) => {
     if (shouldSubmit && !validate()) return;
     if (!form.fullName.trim()) {
-      setError("Full name is required before saving a draft.");
+      const msg = "Full name is required before saving a draft.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
+      // 1. Revision resubmission flow when admin requested changes
+      if (shouldSubmit && isRevision && subjectId && draftId) {
+        const uploaded = await uploadSelectedFiles(draftId);
+        await resubmitRevisionFn({
+          data: {
+            draftId,
+            subjectId,
+            displayName: form.fullName,
+            payload: { ...form, documents: uploaded, schemaVersion: 1 },
+            notes: revisionNotes.trim() || undefined,
+          },
+        });
+        toast.success("Revisi dokumen berhasil dikirimkan!");
+        setIsRevisionSubmitted(true);
+        setSubmitted(true);
+        return;
+      }
+
+      // 2. Standard draft save or initial submission
       const initial = await saveDraftFn({
         data: {
           draftId,
@@ -252,12 +346,17 @@ function JoinExpertPage() {
       });
       if (shouldSubmit) {
         await submitFn({ data: { draftId: initial.draftId } });
+        toast.success("Aplikasi pendaftaran berhasil dikirim!");
         setSubmitted(true);
       } else {
-        setNotice("Draft saved securely to your BARUNA account.");
+        const msg = "Draft saved securely to your BARUNA account.";
+        setNotice(msg);
+        toast.success(msg);
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save the application.");
+      const msg = cause instanceof Error ? cause.message : "Unable to save the application.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -275,6 +374,40 @@ function JoinExpertPage() {
   }
 
   if (submitted) {
+    if (isRevisionSubmitted) {
+      return (
+        <div className="min-h-screen bg-background">
+          <Navbar />
+          <main className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-amber-500/15 text-amber-600">
+              <CheckCircle2 className="h-9 w-9" />
+            </div>
+            <h1 className="mt-6 font-display text-2xl font-extrabold text-navy">
+              Revisi Dokumen Berhasil Dikirimkan
+            </h1>
+            <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
+              Dokumen perbaikan telah diteruskan ke tim kurasi dan verifikator BARUNA. Status
+              pengajuan profil Anda kini kembali menjadi <strong>Menunggu Verifikasi (Pending)</strong>.
+            </p>
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <Link
+                to="/experts/profile"
+                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy"
+              >
+                Lihat Status Pengajuan Saya <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/notifications"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-navy transition-colors hover:bg-muted"
+              >
+                Lihat Notifikasi
+              </Link>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -342,6 +475,54 @@ function JoinExpertPage() {
             </div>
           ))}
         </div>
+
+        {/* Banner Revisi jika ada permintaan perbaikan dari verifikator */}
+        {isRevision && (
+          <div className="mt-6 rounded-2xl border-2 border-amber-400 bg-amber-50/95 p-5 shadow-sm">
+            <div className="flex items-start gap-3.5">
+              <span className="rounded-xl bg-amber-200 p-2.5 text-amber-900 shrink-0 mt-0.5">
+                <RotateCcw className="h-5 w-5 text-amber-800" />
+              </span>
+              <div className="flex-1 min-w-0">
+                <span className="inline-block rounded-full bg-amber-200/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-900">
+                  Permintaan Revisi Dokumen dari Admin
+                </span>
+                <h2 className="font-display text-base font-bold text-navy mt-1.5">
+                  Pengajuan Profil Expert Memerlukan Perbaikan Dokumen
+                </h2>
+                {latestDecision?.rationale ? (
+                  <div className="mt-2.5 rounded-xl border border-amber-300 bg-white/95 p-3.5 text-xs text-slate-800">
+                    <span className="font-bold text-amber-900 block mb-1 uppercase tracking-wide text-[11px]">
+                      Catatan / Evaluasi dari Verifikator:
+                    </span>
+                    <span className="italic leading-relaxed">&quot;{latestDecision.rationale}&quot;</span>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-amber-900">
+                    Tim verifikator meminta Anda mengganti atau melengkapi dokumen pendukung pada pengajuan ini.
+                  </p>
+                )}
+                <p className="mt-2.5 text-xs text-amber-900/90 leading-relaxed">
+                  Silakan periksa dan perbarui berkas pada <strong>Section 5 (Upload Documents)</strong> di bawah. Anda dapat mengunggah berkas pengganti untuk CV, Sertifikat, atau Dokumen Pendukung lainnya.
+                </p>
+
+                {/* Kolom pesan balasan opsional */}
+                <div className="mt-3.5 pt-3 border-t border-amber-200">
+                  <label className="block text-xs font-bold text-amber-950 mb-1">
+                    Catatan Tanggapan untuk Verifikator (Opsional):
+                  </label>
+                  <input
+                    type="text"
+                    value={revisionNotes}
+                    onChange={(e) => setRevisionNotes(e.target.value)}
+                    placeholder="Contoh: Berkas CV dan sertifikasi kompetensi terbaru telah diperbarui..."
+                    className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-muted-foreground outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 space-y-5">
           <SectionCard icon={User} n={1} title="Personal Information">
@@ -472,56 +653,12 @@ function JoinExpertPage() {
             </div>
           </SectionCard>
 
-          <SectionCard icon={BookOpen} n={4} title="Professional Profile">
-            <div className="grid gap-4">
-              <div>
-                <FieldLabel required>Professional Biography</FieldLabel>
-                <textarea
-                  className={`${inputClass} min-h-[120px] resize-y`}
-                  value={form.biography}
-                  maxLength={2500}
-                  onChange={(e) => set("biography", e.target.value)}
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <FieldLabel>Years of Experience</FieldLabel>
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min={0}
-                    value={form.yearsExperience}
-                    onChange={(e) => set("yearsExperience", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Languages Spoken</FieldLabel>
-                  <input
-                    className={inputClass}
-                    value={form.languages}
-                    onChange={(e) => set("languages", e.target.value)}
-                    placeholder="e.g. English, French"
-                  />
-                </div>
-              </div>
-              <div>
-                <FieldLabel>Key Projects</FieldLabel>
-                <textarea
-                  className={`${inputClass} min-h-[80px] resize-y`}
-                  value={form.keyProjects}
-                  onChange={(e) => set("keyProjects", e.target.value)}
-                />
-              </div>
-              <div>
-                <FieldLabel>Publications</FieldLabel>
-                <textarea
-                  className={`${inputClass} min-h-[80px] resize-y`}
-                  value={form.publications}
-                  onChange={(e) => set("publications", e.target.value)}
-                />
-              </div>
-            </div>
-          </SectionCard>
+          <ProfessionalProfileSection
+            form={form}
+            set={set}
+            setForm={setForm}
+            inputClass={inputClass}
+          />
 
           <SectionCard icon={Upload} n={5} title="Upload Documents">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -530,12 +667,14 @@ function JoinExpertPage() {
                 file={files.cv ?? null}
                 stored={documents.find((item) => item.category === "cv") ?? null}
                 onFile={(file) => setFiles((current) => ({ ...current, cv: file ?? undefined }))}
+                onRemoveStored={() => removeStored("cv")}
               />
               <FileUpload
                 label="Professional Photo"
                 file={files.photo ?? null}
                 stored={documents.find((item) => item.category === "photo") ?? null}
                 onFile={(file) => setFiles((current) => ({ ...current, photo: file ?? undefined }))}
+                onRemoveStored={() => removeStored("photo")}
               />
               <FileUpload
                 label="Certifications"
@@ -544,6 +683,7 @@ function JoinExpertPage() {
                 onFile={(file) =>
                   setFiles((current) => ({ ...current, certifications: file ?? undefined }))
                 }
+                onRemoveStored={() => removeStored("certifications")}
               />
               <FileUpload
                 label="Supporting Documents"
@@ -552,11 +692,12 @@ function JoinExpertPage() {
                 onFile={(file) =>
                   setFiles((current) => ({ ...current, supporting: file ?? undefined }))
                 }
+                onRemoveStored={() => removeStored("supporting")}
               />
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
               Files are stored in a private bucket and are visible only to you and authorized BARUNA
-              reviewers.
+              reviewers. Dokumen dapat dibuka langsung di tab browser dan diganti kapan saja bila verifikator meminta revisi.
             </p>
           </SectionCard>
 
@@ -590,9 +731,23 @@ function JoinExpertPage() {
               type="button"
               disabled={busy}
               onClick={() => void persist(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
+              className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                isRevision
+                  ? "bg-amber-600 text-white shadow-xs hover:bg-amber-700"
+                  : "bg-accent text-accent-foreground hover:bg-accent/90"
+              }`}
             >
-              {busy ? "Submitting…" : "Submit Application"} <Check className="h-4 w-4" />
+              {busy ? (
+                "Memproses…"
+              ) : isRevision ? (
+                <>
+                  <RotateCcw className="h-4 w-4" /> Kirim Ulang Revisi Dokumen
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" /> Submit Application
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -606,11 +761,13 @@ function FileUpload({
   file,
   stored,
   onFile,
+  onRemoveStored,
 }: {
   label: string;
   file: File | null;
   stored: ExpertApplicationDocument | null;
   onFile: (file: File | null) => void;
+  onRemoveStored?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -625,36 +782,89 @@ function FileUpload({
     onFile(f);
   };
 
-  const shown = file
-    ? { name: file.name, size: file.size }
-    : stored
-      ? { name: stored.name, size: stored.size }
-      : null;
+  const handleOpenStored = async () => {
+    if (!stored?.path) return;
+    try {
+      const { data, error } = await supabase.storage
+        .from(EXPERT_APPLICATION_BUCKET)
+        .createSignedUrl(stored.path, 3600);
+      if (error || !data?.signedUrl) {
+        setErr("Gagal membuat tautan akses berkas.");
+        return;
+      }
+      const viewerUrl = `/document-viewer?url=${encodeURIComponent(data.signedUrl)}&title=${encodeURIComponent(stored.name)}`;
+      window.open(viewerUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      setErr("Gagal membuka dokumen.");
+    }
+  };
 
   return (
-    <div>
-      <FieldLabel>{label}</FieldLabel>
-      {shown ? (
-        <div className="flex items-center gap-3 rounded-xl border border-eco-community/40 bg-eco-community/5 p-3">
-          <FileText className="h-5 w-5 shrink-0 text-eco-community" />
+    <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+      <div className="mb-2 flex items-center justify-between">
+        <FieldLabel>{label}</FieldLabel>
+        {file ? (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">
+            Berkas Baru / Pengganti
+          </span>
+        ) : stored ? (
+          <span className="rounded-full bg-eco-community/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-eco-community">
+            Berkas Tersimpan
+          </span>
+        ) : null}
+      </div>
+
+      {file ? (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50/50 p-2.5">
+          <FileText className="h-5 w-5 shrink-0 text-amber-700" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-navy">{shown.name}</p>
-            <p className="text-xs text-muted-foreground">{formatBytes(shown.size)}</p>
+            <p className="truncate text-xs font-semibold text-navy">{file.name}</p>
+            <p className="text-[11px] text-muted-foreground">{formatBytes(file.size)}</p>
           </div>
-          {file ? (
+          <button
+            type="button"
+            onClick={() => onFile(null)}
+            title="Batal ganti berkas"
+            className="grid h-7 w-7 place-items-center rounded-full border border-border bg-white text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : stored ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 rounded-lg border border-eco-community/30 bg-eco-community/5 p-2.5">
+            <FileText className="h-5 w-5 shrink-0 text-eco-community" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-navy">{stored.name}</p>
+              <p className="text-[11px] text-muted-foreground">{formatBytes(stored.size)}</p>
+            </div>
+            {onRemoveStored && (
+              <button
+                type="button"
+                onClick={onRemoveStored}
+                title="Hapus berkas tersimpan"
+                className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => onFile(null)}
-              aria-label="Remove file"
-              className="grid h-7 w-7 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+              onClick={handleOpenStored}
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-marine transition-colors hover:bg-muted"
             >
-              <X className="h-3.5 w-3.5" />
+              <ExternalLink className="h-3 w-3" /> Buka di Tab
             </button>
-          ) : (
-            <span className="text-[0.65rem] font-semibold uppercase text-eco-community">
-              Stored
-            </span>
-          )}
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-500/20"
+            >
+              <Upload className="h-3 w-3" /> Ganti Berkas
+            </button>
+          </div>
         </div>
       ) : (
         <button
@@ -662,9 +872,10 @@ function FileUpload({
           onClick={() => inputRef.current?.click()}
           className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border px-3 py-3 text-sm font-semibold text-marine transition-colors hover:border-marine/50 hover:bg-muted"
         >
-          <Upload className="h-4 w-4" /> Upload {label}
+          <Upload className="h-4 w-4" /> Unggah {label}
         </button>
       )}
+
       <input
         ref={inputRef}
         type="file"

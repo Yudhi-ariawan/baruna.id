@@ -9,217 +9,122 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as SavedRouteImport } from './routes/saved'
-import { Route as PartnershipRouteImport } from './routes/partnership'
-import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as MySubmissionsRouteImport } from './routes/my-submissions'
-import { Route as KnowledgeHubRouteImport } from './routes/knowledge-hub'
-import { Route as HelpRouteImport } from './routes/help'
-import { Route as GovernanceRouteImport } from './routes/governance'
-import { Route as FellowshipRouteImport } from './routes/fellowship'
-import { Route as ExpertsRouteImport } from './routes/experts'
-import { Route as EventsRouteImport } from './routes/events'
-import { Route as DemoRouteImport } from './routes/demo'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CommunityRouteImport } from './routes/community'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AccountRouteImport } from './routes/account'
-import { Route as AcademyRouteImport } from './routes/academy'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as MySubmissionsIndexRouteImport } from './routes/my-submissions.index'
-import { Route as GovernanceIndexRouteImport } from './routes/governance.index'
-import { Route as ExpertsIndexRouteImport } from './routes/experts.index'
-import { Route as EventsIndexRouteImport } from './routes/events.index'
-import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AcademyRouteImport } from './routes/academy'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CommunityRouteImport } from './routes/community'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DemoRouteImport } from './routes/demo'
+import { Route as DocumentViewerRouteImport } from './routes/document-viewer'
+import { Route as EventsRouteImport } from './routes/events'
+import { Route as ExpertsRouteImport } from './routes/experts'
+import { Route as FellowshipRouteImport } from './routes/fellowship'
+import { Route as GovernanceRouteImport } from './routes/governance'
+import { Route as HelpRouteImport } from './routes/help'
+import { Route as KnowledgeHubRouteImport } from './routes/knowledge-hub'
+import { Route as MySubmissionsRouteImport } from './routes/my-submissions'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as PartnershipRouteImport } from './routes/partnership'
+import { Route as SavedRouteImport } from './routes/saved'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AcademyIndexRouteImport } from './routes/academy.index'
-import { Route as MySubmissionsNewRouteImport } from './routes/my-submissions.new'
-import { Route as MySubmissionsIdRouteImport } from './routes/my-submissions.$id'
-import { Route as KnowledgeHubSubmitResourceRouteImport } from './routes/knowledge-hub_.submit-resource'
-import { Route as KnowledgeHubMyContributionsRouteImport } from './routes/knowledge-hub_.my-contributions'
-import { Route as KnowledgeHubTypeRouteImport } from './routes/knowledge-hub_.$type'
-import { Route as GovernanceRolesRouteImport } from './routes/governance.roles'
-import { Route as GovernanceQueueRouteImport } from './routes/governance.queue'
-import { Route as GovernancePublicationsRouteImport } from './routes/governance.publications'
-import { Route as GovernanceDecisionsRouteImport } from './routes/governance.decisions'
-import { Route as ExpertsServicesRouteImport } from './routes/experts.services'
-import { Route as ExpertsRequestRouteImport } from './routes/experts.request'
-import { Route as ExpertsRecognitionRouteImport } from './routes/experts.recognition'
-import { Route as ExpertsProfileRouteImport } from './routes/experts.profile'
-import { Route as ExpertsPortalRouteImport } from './routes/experts.portal'
-import { Route as ExpertsMyRequestsRouteImport } from './routes/experts.my-requests'
-import { Route as ExpertsJoinRouteImport } from './routes/experts.join'
-import { Route as ExpertsFaqsRouteImport } from './routes/experts.faqs'
-import { Route as ExpertsDirectoryRouteImport } from './routes/experts.directory'
-import { Route as ExpertsContributionsRouteImport } from './routes/experts.contributions'
-import { Route as ExpertsBecomeTrainerRouteImport } from './routes/experts.become-trainer'
-import { Route as ExpertsSlugRouteImport } from './routes/experts.$slug'
-import { Route as EventsSubmitRouteImport } from './routes/events.submit'
-import { Route as EventsScheduleRouteImport } from './routes/events.schedule'
-import { Route as EventsSavedRouteImport } from './routes/events.saved'
-import { Route as EventsRegistrationsRouteImport } from './routes/events.registrations'
-import { Route as EventsPastRouteImport } from './routes/events.past'
-import { Route as EventsHostRouteImport } from './routes/events.host'
-import { Route as EventsFollowingRouteImport } from './routes/events.following'
-import { Route as EventsCategoriesRouteImport } from './routes/events.categories'
-import { Route as EventsCalendarRouteImport } from './routes/events.calendar'
-import { Route as EventsAllRouteImport } from './routes/events.all'
-import { Route as EventsSlugRouteImport } from './routes/events.$slug'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
-import { Route as AccountProfileRouteImport } from './routes/account.profile'
-import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
-import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
-import { Route as AcademySelfPacedRouteImport } from './routes/academy.self-paced'
-import { Route as AcademyRequestTrainingRouteImport } from './routes/academy.request-training'
-import { Route as AcademyProgramsRouteImport } from './routes/academy.programs'
-import { Route as AcademyLearnRouteImport } from './routes/academy.learn'
-import { Route as AcademyEdition2024RouteImport } from './routes/academy.edition-2024'
-import { Route as AcademyCertificationRouteImport } from './routes/academy.certification'
-import { Route as AcademyArchiveRouteImport } from './routes/academy.archive'
 import { Route as AcademyAlumniNetworkRouteImport } from './routes/academy.alumni-network'
-import { Route as GovernanceTemplatesIndexRouteImport } from './routes/governance.templates.index'
-import { Route as GovernanceSubjectsIndexRouteImport } from './routes/governance.subjects.index'
-import { Route as ExpertsPortalIndexRouteImport } from './routes/experts.portal.index'
-import { Route as AcademyTrainingIndexRouteImport } from './routes/academy.training.index'
-import { Route as AcademyTrainingRequestsIndexRouteImport } from './routes/academy.training-requests.index'
-import { Route as AcademyShortCoursesIndexRouteImport } from './routes/academy.short-courses.index'
-import { Route as AcademyPathwaysIndexRouteImport } from './routes/academy.pathways.index'
-import { Route as AcademyLearnIndexRouteImport } from './routes/academy.learn.index'
-import { Route as AcademyApplicationsIndexRouteImport } from './routes/academy.applications.index'
+import { Route as AcademyArchiveRouteImport } from './routes/academy.archive'
+import { Route as AcademyCertificationRouteImport } from './routes/academy.certification'
+import { Route as AcademyEdition2024RouteImport } from './routes/academy.edition-2024'
+import { Route as AcademyLearnRouteImport } from './routes/academy.learn'
+import { Route as AcademyProgramsRouteImport } from './routes/academy.programs'
+import { Route as AcademyRequestTrainingRouteImport } from './routes/academy.request-training'
+import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
+import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
+import { Route as AccountProfileRouteImport } from './routes/account.profile'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
+import { Route as AdminModulesRouteImport } from './routes/admin.modules'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as EventsIndexRouteImport } from './routes/events.index'
+import { Route as EventsSlugRouteImport } from './routes/events.$slug'
+import { Route as EventsAllRouteImport } from './routes/events.all'
+import { Route as EventsCalendarRouteImport } from './routes/events.calendar'
+import { Route as EventsCategoriesRouteImport } from './routes/events.categories'
+import { Route as EventsFollowingRouteImport } from './routes/events.following'
+import { Route as EventsHostRouteImport } from './routes/events.host'
+import { Route as EventsPastRouteImport } from './routes/events.past'
+import { Route as EventsRegistrationsRouteImport } from './routes/events.registrations'
+import { Route as EventsSavedRouteImport } from './routes/events.saved'
+import { Route as EventsScheduleRouteImport } from './routes/events.schedule'
+import { Route as EventsSubmitRouteImport } from './routes/events.submit'
+import { Route as ExpertsIndexRouteImport } from './routes/experts.index'
+import { Route as ExpertsSlugRouteImport } from './routes/experts.$slug'
+import { Route as ExpertsBecomeTrainerRouteImport } from './routes/experts.become-trainer'
+import { Route as ExpertsContributionsRouteImport } from './routes/experts.contributions'
+import { Route as ExpertsDirectoryRouteImport } from './routes/experts.directory'
+import { Route as ExpertsFaqsRouteImport } from './routes/experts.faqs'
+import { Route as ExpertsJoinRouteImport } from './routes/experts.join'
+import { Route as ExpertsMyRequestsRouteImport } from './routes/experts.my-requests'
+import { Route as ExpertsPortalRouteImport } from './routes/experts.portal'
+import { Route as ExpertsProfileRouteImport } from './routes/experts.profile'
+import { Route as ExpertsRecognitionRouteImport } from './routes/experts.recognition'
+import { Route as ExpertsRequestRouteImport } from './routes/experts.request'
+import { Route as ExpertsServicesRouteImport } from './routes/experts.services'
+import { Route as GovernanceIndexRouteImport } from './routes/governance.index'
+import { Route as GovernanceDecisionsRouteImport } from './routes/governance.decisions'
+import { Route as GovernanceQueueRouteImport } from './routes/governance.queue'
+import { Route as GovernanceRolesRouteImport } from './routes/governance.roles'
+import { Route as KnowledgeHubTypeRouteImport } from './routes/knowledge-hub_.$type'
+import { Route as KnowledgeHubMyContributionsRouteImport } from './routes/knowledge-hub_.my-contributions'
+import { Route as KnowledgeHubSubmitResourceRouteImport } from './routes/knowledge-hub_.submit-resource'
+import { Route as MySubmissionsIndexRouteImport } from './routes/my-submissions.index'
+import { Route as MySubmissionsIdRouteImport } from './routes/my-submissions.$id'
+import { Route as MySubmissionsNewRouteImport } from './routes/my-submissions.new'
 import { Route as AcademyAlumniIndexRouteImport } from './routes/academy.alumni.index'
-import { Route as KnowledgeHubResourceIdRouteImport } from './routes/knowledge-hub_.resource.$id'
-import { Route as GovernanceTemplatesIdRouteImport } from './routes/governance.templates.$id'
-import { Route as GovernanceSubjectsIdRouteImport } from './routes/governance.subjects.$id'
-import { Route as GovernanceSubjectIdRouteImport } from './routes/governance.subject.$id'
-import { Route as GovernanceAuditSubjectIdRouteImport } from './routes/governance.audit.$subjectId'
-import { Route as ExpertsPortalSubmitModuleRouteImport } from './routes/experts.portal.submit-module'
-import { Route as ExpertsPortalServiceRequestsRouteImport } from './routes/experts.portal.service-requests'
-import { Route as ExpertsPortalReviewStatusRouteImport } from './routes/experts.portal.review-status'
-import { Route as ExpertsPortalRecognitionRouteImport } from './routes/experts.portal.recognition'
-import { Route as ExpertsPortalPortfolioRouteImport } from './routes/experts.portal.portfolio'
-import { Route as ExpertsPortalModuleReviewStatusRouteImport } from './routes/experts.portal.module-review-status'
-import { Route as ExpertsPortalCertificatesRouteImport } from './routes/experts.portal.certificates'
-import { Route as ExpertsPortalAnalyticsRouteImport } from './routes/experts.portal.analytics'
-import { Route as EventsCategorySlugRouteImport } from './routes/events.category.$slug'
-import { Route as EventsCallsSlugRouteImport } from './routes/events.calls.$slug'
-import { Route as AcademyTrainingAllocatedZonesForAquacultureRouteImport } from './routes/academy.training.allocated-zones-for-aquaculture'
-import { Route as AcademyTrainingSlugRouteImport } from './routes/academy.training.$slug'
-import { Route as AcademyTrainingRequestsIdRouteImport } from './routes/academy.training-requests.$id'
-import { Route as AcademyShortCoursesCodeRouteImport } from './routes/academy.short-courses.$code'
-import { Route as AcademySelfPacedCodeRouteImport } from './routes/academy.self-paced.$code'
-import { Route as AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRouteImport } from './routes/academy.preview.international-training-fisheries-african-countries'
-import { Route as AcademyPathwaysSlugRouteImport } from './routes/academy.pathways.$slug'
-import { Route as AcademyLearnAllocatedZonesForAquacultureRouteImport } from './routes/academy.learn.allocated-zones-for-aquaculture'
-import { Route as AcademyLearnIdRouteImport } from './routes/academy.learn.$id'
-import { Route as AcademyCourseOfferingIdRouteImport } from './routes/academy.course.$offeringId'
-import { Route as AcademyCategorySlugRouteImport } from './routes/academy.category.$slug'
-import { Route as AcademyApplySlugRouteImport } from './routes/academy.apply.$slug'
-import { Route as AcademyApplicationsIdRouteImport } from './routes/academy.applications.$id'
 import { Route as AcademyAlumniIdRouteImport } from './routes/academy.alumni.$id'
+import { Route as AcademyApplicationsIndexRouteImport } from './routes/academy.applications.index'
+import { Route as AcademyApplicationsIdRouteImport } from './routes/academy.applications.$id'
+import { Route as AcademyApplySlugRouteImport } from './routes/academy.apply.$slug'
+import { Route as AcademyCategorySlugRouteImport } from './routes/academy.category.$slug'
+import { Route as AcademyCourseOfferingIdRouteImport } from './routes/academy.course.$offeringId'
+import { Route as AcademyLearnIndexRouteImport } from './routes/academy.learn.index'
+import { Route as AcademyLearnIdRouteImport } from './routes/academy.learn.$id'
+import { Route as AcademyLearnAllocatedZonesForAquacultureRouteImport } from './routes/academy.learn.allocated-zones-for-aquaculture'
+import { Route as AcademyPathwaysIndexRouteImport } from './routes/academy.pathways.index'
+import { Route as AcademyPathwaysSlugRouteImport } from './routes/academy.pathways.$slug'
+import { Route as AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRouteImport } from './routes/academy.preview.international-training-fisheries-african-countries'
+import { Route as AcademySelfPacedIndexRouteImport } from './routes/academy.self-paced.index'
+import { Route as AcademySelfPacedCodeRouteImport } from './routes/academy.self-paced.$code'
+import { Route as AcademyShortCoursesIndexRouteImport } from './routes/academy.short-courses.index'
+import { Route as AcademyShortCoursesCodeRouteImport } from './routes/academy.short-courses.$code'
+import { Route as AcademyTrainingRequestsIndexRouteImport } from './routes/academy.training-requests.index'
+import { Route as AcademyTrainingRequestsIdRouteImport } from './routes/academy.training-requests.$id'
+import { Route as AcademyTrainingIndexRouteImport } from './routes/academy.training.index'
+import { Route as AcademyTrainingSlugRouteImport } from './routes/academy.training.$slug'
+import { Route as AcademyTrainingAllocatedZonesForAquacultureRouteImport } from './routes/academy.training.allocated-zones-for-aquaculture'
+import { Route as EventsCallsSlugRouteImport } from './routes/events.calls.$slug'
+import { Route as EventsCategorySlugRouteImport } from './routes/events.category.$slug'
+import { Route as ExpertsPortalIndexRouteImport } from './routes/experts.portal.index'
+import { Route as ExpertsPortalAnalyticsRouteImport } from './routes/experts.portal.analytics'
+import { Route as ExpertsPortalCertificatesRouteImport } from './routes/experts.portal.certificates'
+import { Route as ExpertsPortalPortfolioRouteImport } from './routes/experts.portal.portfolio'
+import { Route as ExpertsPortalRecognitionRouteImport } from './routes/experts.portal.recognition'
+import { Route as ExpertsPortalReviewStatusRouteImport } from './routes/experts.portal.review-status'
+import { Route as ExpertsPortalServiceRequestsRouteImport } from './routes/experts.portal.service-requests'
+import { Route as ExpertsPortalSubmitModuleRouteImport } from './routes/experts.portal.submit-module'
+import { Route as GovernanceAuditSubjectIdRouteImport } from './routes/governance.audit.$subjectId'
+import { Route as GovernanceSubjectIdRouteImport } from './routes/governance.subject.$id'
+import { Route as GovernanceSubjectsIndexRouteImport } from './routes/governance.subjects.index'
+import { Route as GovernanceSubjectsIdRouteImport } from './routes/governance.subjects.$id'
+import { Route as GovernanceTemplatesIndexRouteImport } from './routes/governance.templates.index'
+import { Route as GovernanceTemplatesIdRouteImport } from './routes/governance.templates.$id'
+import { Route as KnowledgeHubResourceIdRouteImport } from './routes/knowledge-hub_.resource.$id'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SavedRoute = SavedRouteImport.update({
-  id: '/saved',
-  path: '/saved',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PartnershipRoute = PartnershipRouteImport.update({
-  id: '/partnership',
-  path: '/partnership',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotificationsRoute = NotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MySubmissionsRoute = MySubmissionsRouteImport.update({
-  id: '/my-submissions',
-  path: '/my-submissions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KnowledgeHubRoute = KnowledgeHubRouteImport.update({
-  id: '/knowledge-hub',
-  path: '/knowledge-hub',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HelpRoute = HelpRouteImport.update({
-  id: '/help',
-  path: '/help',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GovernanceRoute = GovernanceRouteImport.update({
-  id: '/governance',
-  path: '/governance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FellowshipRoute = FellowshipRouteImport.update({
-  id: '/fellowship',
-  path: '/fellowship',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExpertsRoute = ExpertsRouteImport.update({
-  id: '/experts',
-  path: '/experts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EventsRoute = EventsRouteImport.update({
-  id: '/events',
-  path: '/events',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoRoute = DemoRouteImport.update({
-  id: '/demo',
-  path: '/demo',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CommunityRoute = CommunityRouteImport.update({
-  id: '/community',
-  path: '/community',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AnalyticsRoute = AnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountRoute = AccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AcademyRoute = AcademyRouteImport.update({
-  id: '/academy',
-  path: '/academy',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -227,261 +132,114 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AcademyRoute = AcademyRouteImport.update({
+  id: '/academy',
+  path: '/academy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MySubmissionsIndexRoute = MySubmissionsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => MySubmissionsRoute,
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const GovernanceIndexRoute = GovernanceIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => GovernanceRoute,
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ExpertsIndexRoute = ExpertsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ExpertsRoute,
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const EventsIndexRoute = EventsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => EventsRoute,
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRoute,
+const CommunityRoute = CommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentViewerRoute = DocumentViewerRouteImport.update({
+  id: '/document-viewer',
+  path: '/document-viewer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsRoute = EventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExpertsRoute = ExpertsRouteImport.update({
+  id: '/experts',
+  path: '/experts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FellowshipRoute = FellowshipRouteImport.update({
+  id: '/fellowship',
+  path: '/fellowship',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GovernanceRoute = GovernanceRouteImport.update({
+  id: '/governance',
+  path: '/governance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KnowledgeHubRoute = KnowledgeHubRouteImport.update({
+  id: '/knowledge-hub',
+  path: '/knowledge-hub',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MySubmissionsRoute = MySubmissionsRouteImport.update({
+  id: '/my-submissions',
+  path: '/my-submissions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartnershipRoute = PartnershipRouteImport.update({
+  id: '/partnership',
+  path: '/partnership',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SavedRoute = SavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AcademyIndexRoute = AcademyIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const MySubmissionsNewRoute = MySubmissionsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => MySubmissionsRoute,
-} as any)
-const MySubmissionsIdRoute = MySubmissionsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => MySubmissionsRoute,
-} as any)
-const KnowledgeHubSubmitResourceRoute =
-  KnowledgeHubSubmitResourceRouteImport.update({
-    id: '/knowledge-hub_/submit-resource',
-    path: '/knowledge-hub/submit-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const KnowledgeHubMyContributionsRoute =
-  KnowledgeHubMyContributionsRouteImport.update({
-    id: '/knowledge-hub_/my-contributions',
-    path: '/knowledge-hub/my-contributions',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const KnowledgeHubTypeRoute = KnowledgeHubTypeRouteImport.update({
-  id: '/knowledge-hub_/$type',
-  path: '/knowledge-hub/$type',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GovernanceRolesRoute = GovernanceRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
-  getParentRoute: () => GovernanceRoute,
-} as any)
-const GovernanceQueueRoute = GovernanceQueueRouteImport.update({
-  id: '/queue',
-  path: '/queue',
-  getParentRoute: () => GovernanceRoute,
-} as any)
-const GovernancePublicationsRoute = GovernancePublicationsRouteImport.update({
-  id: '/publications',
-  path: '/publications',
-  getParentRoute: () => GovernanceRoute,
-} as any)
-const GovernanceDecisionsRoute = GovernanceDecisionsRouteImport.update({
-  id: '/decisions',
-  path: '/decisions',
-  getParentRoute: () => GovernanceRoute,
-} as any)
-const ExpertsServicesRoute = ExpertsServicesRouteImport.update({
-  id: '/services',
-  path: '/services',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsRequestRoute = ExpertsRequestRouteImport.update({
-  id: '/request',
-  path: '/request',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsRecognitionRoute = ExpertsRecognitionRouteImport.update({
-  id: '/recognition',
-  path: '/recognition',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsProfileRoute = ExpertsProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsPortalRoute = ExpertsPortalRouteImport.update({
-  id: '/portal',
-  path: '/portal',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsMyRequestsRoute = ExpertsMyRequestsRouteImport.update({
-  id: '/my-requests',
-  path: '/my-requests',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsJoinRoute = ExpertsJoinRouteImport.update({
-  id: '/join',
-  path: '/join',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsFaqsRoute = ExpertsFaqsRouteImport.update({
-  id: '/faqs',
-  path: '/faqs',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsDirectoryRoute = ExpertsDirectoryRouteImport.update({
-  id: '/directory',
-  path: '/directory',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsContributionsRoute = ExpertsContributionsRouteImport.update({
-  id: '/contributions',
-  path: '/contributions',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsBecomeTrainerRoute = ExpertsBecomeTrainerRouteImport.update({
-  id: '/become-trainer',
-  path: '/become-trainer',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const ExpertsSlugRoute = ExpertsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => ExpertsRoute,
-} as any)
-const EventsSubmitRoute = EventsSubmitRouteImport.update({
-  id: '/submit',
-  path: '/submit',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsScheduleRoute = EventsScheduleRouteImport.update({
-  id: '/schedule',
-  path: '/schedule',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsSavedRoute = EventsSavedRouteImport.update({
-  id: '/saved',
-  path: '/saved',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsRegistrationsRoute = EventsRegistrationsRouteImport.update({
-  id: '/registrations',
-  path: '/registrations',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsPastRoute = EventsPastRouteImport.update({
-  id: '/past',
-  path: '/past',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsHostRoute = EventsHostRouteImport.update({
-  id: '/host',
-  path: '/host',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsFollowingRoute = EventsFollowingRouteImport.update({
-  id: '/following',
-  path: '/following',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsCategoriesRoute = EventsCategoriesRouteImport.update({
-  id: '/categories',
-  path: '/categories',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsCalendarRoute = EventsCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsAllRoute = EventsAllRouteImport.update({
-  id: '/all',
-  path: '/all',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsSlugRoute = EventsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => EventsRoute,
-} as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminReviewsRoute = AdminReviewsRouteImport.update({
-  id: '/reviews',
-  path: '/reviews',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AccountProfileRoute = AccountProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AccountRoute,
-} as any)
-const AcademyWorkshopRoute = AcademyWorkshopRouteImport.update({
-  id: '/workshop',
-  path: '/workshop',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademyWebinarRoute = AcademyWebinarRouteImport.update({
-  id: '/webinar',
-  path: '/webinar',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademySelfPacedRoute = AcademySelfPacedRouteImport.update({
-  id: '/self-paced',
-  path: '/self-paced',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademyRequestTrainingRoute = AcademyRequestTrainingRouteImport.update({
-  id: '/request-training',
-  path: '/request-training',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademyProgramsRoute = AcademyProgramsRouteImport.update({
-  id: '/programs',
-  path: '/programs',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademyLearnRoute = AcademyLearnRouteImport.update({
-  id: '/learn',
-  path: '/learn',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademyEdition2024Route = AcademyEdition2024RouteImport.update({
-  id: '/edition-2024',
-  path: '/edition-2024',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademyCertificationRoute = AcademyCertificationRouteImport.update({
-  id: '/certification',
-  path: '/certification',
-  getParentRoute: () => AcademyRoute,
-} as any)
-const AcademyArchiveRoute = AcademyArchiveRouteImport.update({
-  id: '/archive',
-  path: '/archive',
   getParentRoute: () => AcademyRoute,
 } as any)
 const AcademyAlumniNetworkRoute = AcademyAlumniNetworkRouteImport.update({
@@ -489,48 +247,257 @@ const AcademyAlumniNetworkRoute = AcademyAlumniNetworkRouteImport.update({
   path: '/alumni-network',
   getParentRoute: () => AcademyRoute,
 } as any)
-const GovernanceTemplatesIndexRoute =
-  GovernanceTemplatesIndexRouteImport.update({
-    id: '/templates/',
-    path: '/templates/',
-    getParentRoute: () => GovernanceRoute,
-  } as any)
-const GovernanceSubjectsIndexRoute = GovernanceSubjectsIndexRouteImport.update({
-  id: '/subjects/',
-  path: '/subjects/',
+const AcademyArchiveRoute = AcademyArchiveRouteImport.update({
+  id: '/archive',
+  path: '/archive',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyCertificationRoute = AcademyCertificationRouteImport.update({
+  id: '/certification',
+  path: '/certification',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyEdition2024Route = AcademyEdition2024RouteImport.update({
+  id: '/edition-2024',
+  path: '/edition-2024',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyLearnRoute = AcademyLearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyProgramsRoute = AcademyProgramsRouteImport.update({
+  id: '/programs',
+  path: '/programs',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyRequestTrainingRoute = AcademyRequestTrainingRouteImport.update({
+  id: '/request-training',
+  path: '/request-training',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyWebinarRoute = AcademyWebinarRouteImport.update({
+  id: '/webinar',
+  path: '/webinar',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyWorkshopRoute = AcademyWorkshopRouteImport.update({
+  id: '/workshop',
+  path: '/workshop',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AccountProfileRoute = AccountProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminExpertsRoute = AdminExpertsRouteImport.update({
+  id: '/experts',
+  path: '/experts',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminModulesRoute = AdminModulesRouteImport.update({
+  id: '/modules',
+  path: '/modules',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const EventsIndexRoute = EventsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsSlugRoute = EventsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsAllRoute = EventsAllRouteImport.update({
+  id: '/all',
+  path: '/all',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsCalendarRoute = EventsCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsCategoriesRoute = EventsCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsFollowingRoute = EventsFollowingRouteImport.update({
+  id: '/following',
+  path: '/following',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsHostRoute = EventsHostRouteImport.update({
+  id: '/host',
+  path: '/host',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsPastRoute = EventsPastRouteImport.update({
+  id: '/past',
+  path: '/past',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsRegistrationsRoute = EventsRegistrationsRouteImport.update({
+  id: '/registrations',
+  path: '/registrations',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsSavedRoute = EventsSavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsScheduleRoute = EventsScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsSubmitRoute = EventsSubmitRouteImport.update({
+  id: '/submit',
+  path: '/submit',
+  getParentRoute: () => EventsRoute,
+} as any)
+const ExpertsIndexRoute = ExpertsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsSlugRoute = ExpertsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsBecomeTrainerRoute = ExpertsBecomeTrainerRouteImport.update({
+  id: '/become-trainer',
+  path: '/become-trainer',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsContributionsRoute = ExpertsContributionsRouteImport.update({
+  id: '/contributions',
+  path: '/contributions',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsDirectoryRoute = ExpertsDirectoryRouteImport.update({
+  id: '/directory',
+  path: '/directory',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsFaqsRoute = ExpertsFaqsRouteImport.update({
+  id: '/faqs',
+  path: '/faqs',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsJoinRoute = ExpertsJoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsMyRequestsRoute = ExpertsMyRequestsRouteImport.update({
+  id: '/my-requests',
+  path: '/my-requests',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsPortalRoute = ExpertsPortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsProfileRoute = ExpertsProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsRecognitionRoute = ExpertsRecognitionRouteImport.update({
+  id: '/recognition',
+  path: '/recognition',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsRequestRoute = ExpertsRequestRouteImport.update({
+  id: '/request',
+  path: '/request',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const ExpertsServicesRoute = ExpertsServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => ExpertsRoute,
+} as any)
+const GovernanceIndexRoute = GovernanceIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => GovernanceRoute,
 } as any)
-const ExpertsPortalIndexRoute = ExpertsPortalIndexRouteImport.update({
+const GovernanceDecisionsRoute = GovernanceDecisionsRouteImport.update({
+  id: '/decisions',
+  path: '/decisions',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const GovernanceQueueRoute = GovernanceQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const GovernanceRolesRoute = GovernanceRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const KnowledgeHubTypeRoute = KnowledgeHubTypeRouteImport.update({
+  id: '/knowledge-hub_/$type',
+  path: '/knowledge-hub/$type',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KnowledgeHubMyContributionsRoute =
+  KnowledgeHubMyContributionsRouteImport.update({
+    id: '/knowledge-hub_/my-contributions',
+    path: '/knowledge-hub/my-contributions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const KnowledgeHubSubmitResourceRoute =
+  KnowledgeHubSubmitResourceRouteImport.update({
+    id: '/knowledge-hub_/submit-resource',
+    path: '/knowledge-hub/submit-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MySubmissionsIndexRoute = MySubmissionsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ExpertsPortalRoute,
+  getParentRoute: () => MySubmissionsRoute,
 } as any)
-const AcademyTrainingIndexRoute = AcademyTrainingIndexRouteImport.update({
-  id: '/training/',
-  path: '/training/',
+const MySubmissionsIdRoute = MySubmissionsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => MySubmissionsRoute,
+} as any)
+const MySubmissionsNewRoute = MySubmissionsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => MySubmissionsRoute,
+} as any)
+const AcademyAlumniIndexRoute = AcademyAlumniIndexRouteImport.update({
+  id: '/alumni/',
+  path: '/alumni/',
   getParentRoute: () => AcademyRoute,
 } as any)
-const AcademyTrainingRequestsIndexRoute =
-  AcademyTrainingRequestsIndexRouteImport.update({
-    id: '/training-requests/',
-    path: '/training-requests/',
-    getParentRoute: () => AcademyRoute,
-  } as any)
-const AcademyShortCoursesIndexRoute =
-  AcademyShortCoursesIndexRouteImport.update({
-    id: '/short-courses/',
-    path: '/short-courses/',
-    getParentRoute: () => AcademyRoute,
-  } as any)
-const AcademyPathwaysIndexRoute = AcademyPathwaysIndexRouteImport.update({
-  id: '/pathways/',
-  path: '/pathways/',
+const AcademyAlumniIdRoute = AcademyAlumniIdRouteImport.update({
+  id: '/alumni/$id',
+  path: '/alumni/$id',
   getParentRoute: () => AcademyRoute,
-} as any)
-const AcademyLearnIndexRoute = AcademyLearnIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AcademyLearnRoute,
 } as any)
 const AcademyApplicationsIndexRoute =
   AcademyApplicationsIndexRouteImport.update({
@@ -538,119 +505,51 @@ const AcademyApplicationsIndexRoute =
     path: '/applications/',
     getParentRoute: () => AcademyRoute,
   } as any)
-const AcademyAlumniIndexRoute = AcademyAlumniIndexRouteImport.update({
-  id: '/alumni/',
-  path: '/alumni/',
+const AcademyApplicationsIdRoute = AcademyApplicationsIdRouteImport.update({
+  id: '/applications/$id',
+  path: '/applications/$id',
   getParentRoute: () => AcademyRoute,
 } as any)
-const KnowledgeHubResourceIdRoute = KnowledgeHubResourceIdRouteImport.update({
-  id: '/knowledge-hub_/resource/$id',
-  path: '/knowledge-hub/resource/$id',
-  getParentRoute: () => rootRouteImport,
+const AcademyApplySlugRoute = AcademyApplySlugRouteImport.update({
+  id: '/apply/$slug',
+  path: '/apply/$slug',
+  getParentRoute: () => AcademyRoute,
 } as any)
-const GovernanceTemplatesIdRoute = GovernanceTemplatesIdRouteImport.update({
-  id: '/templates/$id',
-  path: '/templates/$id',
-  getParentRoute: () => GovernanceRoute,
-} as any)
-const GovernanceSubjectsIdRoute = GovernanceSubjectsIdRouteImport.update({
-  id: '/subjects/$id',
-  path: '/subjects/$id',
-  getParentRoute: () => GovernanceRoute,
-} as any)
-const GovernanceSubjectIdRoute = GovernanceSubjectIdRouteImport.update({
-  id: '/subject/$id',
-  path: '/subject/$id',
-  getParentRoute: () => GovernanceRoute,
-} as any)
-const GovernanceAuditSubjectIdRoute =
-  GovernanceAuditSubjectIdRouteImport.update({
-    id: '/audit/$subjectId',
-    path: '/audit/$subjectId',
-    getParentRoute: () => GovernanceRoute,
-  } as any)
-const ExpertsPortalSubmitModuleRoute =
-  ExpertsPortalSubmitModuleRouteImport.update({
-    id: '/submit-module',
-    path: '/submit-module',
-    getParentRoute: () => ExpertsPortalRoute,
-  } as any)
-const ExpertsPortalServiceRequestsRoute =
-  ExpertsPortalServiceRequestsRouteImport.update({
-    id: '/service-requests',
-    path: '/service-requests',
-    getParentRoute: () => ExpertsPortalRoute,
-  } as any)
-const ExpertsPortalReviewStatusRoute =
-  ExpertsPortalReviewStatusRouteImport.update({
-    id: '/review-status',
-    path: '/review-status',
-    getParentRoute: () => ExpertsPortalRoute,
-  } as any)
-const ExpertsPortalRecognitionRoute =
-  ExpertsPortalRecognitionRouteImport.update({
-    id: '/recognition',
-    path: '/recognition',
-    getParentRoute: () => ExpertsPortalRoute,
-  } as any)
-const ExpertsPortalPortfolioRoute = ExpertsPortalPortfolioRouteImport.update({
-  id: '/portfolio',
-  path: '/portfolio',
-  getParentRoute: () => ExpertsPortalRoute,
-} as any)
-const ExpertsPortalModuleReviewStatusRoute =
-  ExpertsPortalModuleReviewStatusRouteImport.update({
-    id: '/module-review-status',
-    path: '/module-review-status',
-    getParentRoute: () => ExpertsPortalRoute,
-  } as any)
-const ExpertsPortalCertificatesRoute =
-  ExpertsPortalCertificatesRouteImport.update({
-    id: '/certificates',
-    path: '/certificates',
-    getParentRoute: () => ExpertsPortalRoute,
-  } as any)
-const ExpertsPortalAnalyticsRoute = ExpertsPortalAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => ExpertsPortalRoute,
-} as any)
-const EventsCategorySlugRoute = EventsCategorySlugRouteImport.update({
+const AcademyCategorySlugRoute = AcademyCategorySlugRouteImport.update({
   id: '/category/$slug',
   path: '/category/$slug',
-  getParentRoute: () => EventsRoute,
-} as any)
-const EventsCallsSlugRoute = EventsCallsSlugRouteImport.update({
-  id: '/calls/$slug',
-  path: '/calls/$slug',
-  getParentRoute: () => EventsRoute,
-} as any)
-const AcademyTrainingAllocatedZonesForAquacultureRoute =
-  AcademyTrainingAllocatedZonesForAquacultureRouteImport.update({
-    id: '/training/allocated-zones-for-aquaculture',
-    path: '/training/allocated-zones-for-aquaculture',
-    getParentRoute: () => AcademyRoute,
-  } as any)
-const AcademyTrainingSlugRoute = AcademyTrainingSlugRouteImport.update({
-  id: '/training/$slug',
-  path: '/training/$slug',
   getParentRoute: () => AcademyRoute,
 } as any)
-const AcademyTrainingRequestsIdRoute =
-  AcademyTrainingRequestsIdRouteImport.update({
-    id: '/training-requests/$id',
-    path: '/training-requests/$id',
-    getParentRoute: () => AcademyRoute,
-  } as any)
-const AcademyShortCoursesCodeRoute = AcademyShortCoursesCodeRouteImport.update({
-  id: '/short-courses/$code',
-  path: '/short-courses/$code',
+const AcademyCourseOfferingIdRoute = AcademyCourseOfferingIdRouteImport.update({
+  id: '/course/$offeringId',
+  path: '/course/$offeringId',
   getParentRoute: () => AcademyRoute,
 } as any)
-const AcademySelfPacedCodeRoute = AcademySelfPacedCodeRouteImport.update({
-  id: '/$code',
-  path: '/$code',
-  getParentRoute: () => AcademySelfPacedRoute,
+const AcademyLearnIndexRoute = AcademyLearnIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AcademyLearnRoute,
+} as any)
+const AcademyLearnIdRoute = AcademyLearnIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AcademyLearnRoute,
+} as any)
+const AcademyLearnAllocatedZonesForAquacultureRoute =
+  AcademyLearnAllocatedZonesForAquacultureRouteImport.update({
+    id: '/allocated-zones-for-aquaculture',
+    path: '/allocated-zones-for-aquaculture',
+    getParentRoute: () => AcademyLearnRoute,
+  } as any)
+const AcademyPathwaysIndexRoute = AcademyPathwaysIndexRouteImport.update({
+  id: '/pathways/',
+  path: '/pathways/',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyPathwaysSlugRoute = AcademyPathwaysSlugRouteImport.update({
+  id: '/pathways/$slug',
+  path: '/pathways/$slug',
+  getParentRoute: () => AcademyRoute,
 } as any)
 const AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute =
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRouteImport.update(
@@ -660,46 +559,146 @@ const AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute =
       getParentRoute: () => AcademyRoute,
     } as any,
   )
-const AcademyPathwaysSlugRoute = AcademyPathwaysSlugRouteImport.update({
-  id: '/pathways/$slug',
-  path: '/pathways/$slug',
+const AcademySelfPacedIndexRoute = AcademySelfPacedIndexRouteImport.update({
+  id: '/self-paced/',
+  path: '/self-paced/',
   getParentRoute: () => AcademyRoute,
 } as any)
-const AcademyLearnAllocatedZonesForAquacultureRoute =
-  AcademyLearnAllocatedZonesForAquacultureRouteImport.update({
-    id: '/allocated-zones-for-aquaculture',
-    path: '/allocated-zones-for-aquaculture',
-    getParentRoute: () => AcademyLearnRoute,
+const AcademySelfPacedCodeRoute = AcademySelfPacedCodeRouteImport.update({
+  id: '/self-paced/$code',
+  path: '/self-paced/$code',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyShortCoursesIndexRoute =
+  AcademyShortCoursesIndexRouteImport.update({
+    id: '/short-courses/',
+    path: '/short-courses/',
+    getParentRoute: () => AcademyRoute,
   } as any)
-const AcademyLearnIdRoute = AcademyLearnIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AcademyLearnRoute,
-} as any)
-const AcademyCourseOfferingIdRoute = AcademyCourseOfferingIdRouteImport.update({
-  id: '/course/$offeringId',
-  path: '/course/$offeringId',
+const AcademyShortCoursesCodeRoute = AcademyShortCoursesCodeRouteImport.update({
+  id: '/short-courses/$code',
+  path: '/short-courses/$code',
   getParentRoute: () => AcademyRoute,
 } as any)
-const AcademyCategorySlugRoute = AcademyCategorySlugRouteImport.update({
+const AcademyTrainingRequestsIndexRoute =
+  AcademyTrainingRequestsIndexRouteImport.update({
+    id: '/training-requests/',
+    path: '/training-requests/',
+    getParentRoute: () => AcademyRoute,
+  } as any)
+const AcademyTrainingRequestsIdRoute =
+  AcademyTrainingRequestsIdRouteImport.update({
+    id: '/training-requests/$id',
+    path: '/training-requests/$id',
+    getParentRoute: () => AcademyRoute,
+  } as any)
+const AcademyTrainingIndexRoute = AcademyTrainingIndexRouteImport.update({
+  id: '/training/',
+  path: '/training/',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyTrainingSlugRoute = AcademyTrainingSlugRouteImport.update({
+  id: '/training/$slug',
+  path: '/training/$slug',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyTrainingAllocatedZonesForAquacultureRoute =
+  AcademyTrainingAllocatedZonesForAquacultureRouteImport.update({
+    id: '/training/allocated-zones-for-aquaculture',
+    path: '/training/allocated-zones-for-aquaculture',
+    getParentRoute: () => AcademyRoute,
+  } as any)
+const EventsCallsSlugRoute = EventsCallsSlugRouteImport.update({
+  id: '/calls/$slug',
+  path: '/calls/$slug',
+  getParentRoute: () => EventsRoute,
+} as any)
+const EventsCategorySlugRoute = EventsCategorySlugRouteImport.update({
   id: '/category/$slug',
   path: '/category/$slug',
-  getParentRoute: () => AcademyRoute,
+  getParentRoute: () => EventsRoute,
 } as any)
-const AcademyApplySlugRoute = AcademyApplySlugRouteImport.update({
-  id: '/apply/$slug',
-  path: '/apply/$slug',
-  getParentRoute: () => AcademyRoute,
+const ExpertsPortalIndexRoute = ExpertsPortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ExpertsPortalRoute,
 } as any)
-const AcademyApplicationsIdRoute = AcademyApplicationsIdRouteImport.update({
-  id: '/applications/$id',
-  path: '/applications/$id',
-  getParentRoute: () => AcademyRoute,
+const ExpertsPortalAnalyticsRoute = ExpertsPortalAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => ExpertsPortalRoute,
 } as any)
-const AcademyAlumniIdRoute = AcademyAlumniIdRouteImport.update({
-  id: '/alumni/$id',
-  path: '/alumni/$id',
-  getParentRoute: () => AcademyRoute,
+const ExpertsPortalCertificatesRoute =
+  ExpertsPortalCertificatesRouteImport.update({
+    id: '/certificates',
+    path: '/certificates',
+    getParentRoute: () => ExpertsPortalRoute,
+  } as any)
+const ExpertsPortalPortfolioRoute = ExpertsPortalPortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
+  getParentRoute: () => ExpertsPortalRoute,
+} as any)
+const ExpertsPortalRecognitionRoute =
+  ExpertsPortalRecognitionRouteImport.update({
+    id: '/recognition',
+    path: '/recognition',
+    getParentRoute: () => ExpertsPortalRoute,
+  } as any)
+const ExpertsPortalReviewStatusRoute =
+  ExpertsPortalReviewStatusRouteImport.update({
+    id: '/review-status',
+    path: '/review-status',
+    getParentRoute: () => ExpertsPortalRoute,
+  } as any)
+const ExpertsPortalServiceRequestsRoute =
+  ExpertsPortalServiceRequestsRouteImport.update({
+    id: '/service-requests',
+    path: '/service-requests',
+    getParentRoute: () => ExpertsPortalRoute,
+  } as any)
+const ExpertsPortalSubmitModuleRoute =
+  ExpertsPortalSubmitModuleRouteImport.update({
+    id: '/submit-module',
+    path: '/submit-module',
+    getParentRoute: () => ExpertsPortalRoute,
+  } as any)
+const GovernanceAuditSubjectIdRoute =
+  GovernanceAuditSubjectIdRouteImport.update({
+    id: '/audit/$subjectId',
+    path: '/audit/$subjectId',
+    getParentRoute: () => GovernanceRoute,
+  } as any)
+const GovernanceSubjectIdRoute = GovernanceSubjectIdRouteImport.update({
+  id: '/subject/$id',
+  path: '/subject/$id',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const GovernanceSubjectsIndexRoute = GovernanceSubjectsIndexRouteImport.update({
+  id: '/subjects/',
+  path: '/subjects/',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const GovernanceSubjectsIdRoute = GovernanceSubjectsIdRouteImport.update({
+  id: '/subjects/$id',
+  path: '/subjects/$id',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const GovernanceTemplatesIndexRoute =
+  GovernanceTemplatesIndexRouteImport.update({
+    id: '/templates/',
+    path: '/templates/',
+    getParentRoute: () => GovernanceRoute,
+  } as any)
+const GovernanceTemplatesIdRoute = GovernanceTemplatesIdRouteImport.update({
+  id: '/templates/$id',
+  path: '/templates/$id',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const KnowledgeHubResourceIdRoute = KnowledgeHubResourceIdRouteImport.update({
+  id: '/knowledge-hub_/resource/$id',
+  path: '/knowledge-hub/resource/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -713,6 +712,7 @@ export interface FileRoutesByFullPath {
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
+  '/document-viewer': typeof DocumentViewerRoute
   '/events': typeof EventsRouteWithChildren
   '/experts': typeof ExpertsRouteWithChildren
   '/fellowship': typeof FellowshipRoute
@@ -732,11 +732,11 @@ export interface FileRoutesByFullPath {
   '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
-  '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
-  '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/experts': typeof AdminExpertsRoute
+  '/admin/modules': typeof AdminModulesRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -762,7 +762,6 @@ export interface FileRoutesByFullPath {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
-  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub/$type': typeof KnowledgeHubTypeRoute
@@ -794,7 +793,6 @@ export interface FileRoutesByFullPath {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
-  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -809,6 +807,7 @@ export interface FileRoutesByFullPath {
   '/academy/applications/': typeof AcademyApplicationsIndexRoute
   '/academy/learn/': typeof AcademyLearnIndexRoute
   '/academy/pathways/': typeof AcademyPathwaysIndexRoute
+  '/academy/self-paced/': typeof AcademySelfPacedIndexRoute
   '/academy/short-courses/': typeof AcademyShortCoursesIndexRoute
   '/academy/training-requests/': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training/': typeof AcademyTrainingIndexRoute
@@ -825,6 +824,7 @@ export interface FileRoutesByTo {
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
+  '/document-viewer': typeof DocumentViewerRoute
   '/fellowship': typeof FellowshipRoute
   '/help': typeof HelpRoute
   '/knowledge-hub': typeof KnowledgeHubRoute
@@ -839,11 +839,11 @@ export interface FileRoutesByTo {
   '/academy/edition-2024': typeof AcademyEdition2024Route
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
-  '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
-  '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/experts': typeof AdminExpertsRoute
+  '/admin/modules': typeof AdminModulesRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -868,7 +868,6 @@ export interface FileRoutesByTo {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
-  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub/$type': typeof KnowledgeHubTypeRoute
@@ -900,7 +899,6 @@ export interface FileRoutesByTo {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
-  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -915,6 +913,7 @@ export interface FileRoutesByTo {
   '/academy/applications': typeof AcademyApplicationsIndexRoute
   '/academy/learn': typeof AcademyLearnIndexRoute
   '/academy/pathways': typeof AcademyPathwaysIndexRoute
+  '/academy/self-paced': typeof AcademySelfPacedIndexRoute
   '/academy/short-courses': typeof AcademyShortCoursesIndexRoute
   '/academy/training-requests': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training': typeof AcademyTrainingIndexRoute
@@ -934,6 +933,7 @@ export interface FileRoutesById {
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
+  '/document-viewer': typeof DocumentViewerRoute
   '/events': typeof EventsRouteWithChildren
   '/experts': typeof ExpertsRouteWithChildren
   '/fellowship': typeof FellowshipRoute
@@ -953,11 +953,11 @@ export interface FileRoutesById {
   '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
-  '/academy/self-paced': typeof AcademySelfPacedRouteWithChildren
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
-  '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/experts': typeof AdminExpertsRoute
+  '/admin/modules': typeof AdminModulesRoute
   '/admin/users': typeof AdminUsersRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
@@ -983,7 +983,6 @@ export interface FileRoutesById {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
-  '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/roles': typeof GovernanceRolesRoute
   '/knowledge-hub_/$type': typeof KnowledgeHubTypeRoute
@@ -1015,7 +1014,6 @@ export interface FileRoutesById {
   '/events/category/$slug': typeof EventsCategorySlugRoute
   '/experts/portal/analytics': typeof ExpertsPortalAnalyticsRoute
   '/experts/portal/certificates': typeof ExpertsPortalCertificatesRoute
-  '/experts/portal/module-review-status': typeof ExpertsPortalModuleReviewStatusRoute
   '/experts/portal/portfolio': typeof ExpertsPortalPortfolioRoute
   '/experts/portal/recognition': typeof ExpertsPortalRecognitionRoute
   '/experts/portal/review-status': typeof ExpertsPortalReviewStatusRoute
@@ -1030,6 +1028,7 @@ export interface FileRoutesById {
   '/academy/applications/': typeof AcademyApplicationsIndexRoute
   '/academy/learn/': typeof AcademyLearnIndexRoute
   '/academy/pathways/': typeof AcademyPathwaysIndexRoute
+  '/academy/self-paced/': typeof AcademySelfPacedIndexRoute
   '/academy/short-courses/': typeof AcademyShortCoursesIndexRoute
   '/academy/training-requests/': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training/': typeof AcademyTrainingIndexRoute
@@ -1050,6 +1049,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/dashboard'
     | '/demo'
+    | '/document-viewer'
     | '/events'
     | '/experts'
     | '/fellowship'
@@ -1069,11 +1069,11 @@ export interface FileRouteTypes {
     | '/academy/learn'
     | '/academy/programs'
     | '/academy/request-training'
-    | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
-    | '/admin/reviews'
+    | '/admin/experts'
+    | '/admin/modules'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1099,7 +1099,6 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
-    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub/$type'
@@ -1131,7 +1130,6 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
-    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1146,6 +1144,7 @@ export interface FileRouteTypes {
     | '/academy/applications/'
     | '/academy/learn/'
     | '/academy/pathways/'
+    | '/academy/self-paced/'
     | '/academy/short-courses/'
     | '/academy/training-requests/'
     | '/academy/training/'
@@ -1162,6 +1161,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/dashboard'
     | '/demo'
+    | '/document-viewer'
     | '/fellowship'
     | '/help'
     | '/knowledge-hub'
@@ -1176,11 +1176,11 @@ export interface FileRouteTypes {
     | '/academy/edition-2024'
     | '/academy/programs'
     | '/academy/request-training'
-    | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
-    | '/admin/reviews'
+    | '/admin/experts'
+    | '/admin/modules'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1205,7 +1205,6 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
-    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub/$type'
@@ -1237,7 +1236,6 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
-    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1252,6 +1250,7 @@ export interface FileRouteTypes {
     | '/academy/applications'
     | '/academy/learn'
     | '/academy/pathways'
+    | '/academy/self-paced'
     | '/academy/short-courses'
     | '/academy/training-requests'
     | '/academy/training'
@@ -1270,6 +1269,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/dashboard'
     | '/demo'
+    | '/document-viewer'
     | '/events'
     | '/experts'
     | '/fellowship'
@@ -1289,11 +1289,11 @@ export interface FileRouteTypes {
     | '/academy/learn'
     | '/academy/programs'
     | '/academy/request-training'
-    | '/academy/self-paced'
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
-    | '/admin/reviews'
+    | '/admin/experts'
+    | '/admin/modules'
     | '/admin/users'
     | '/events/$slug'
     | '/events/all'
@@ -1319,7 +1319,6 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/governance/decisions'
-    | '/governance/publications'
     | '/governance/queue'
     | '/governance/roles'
     | '/knowledge-hub_/$type'
@@ -1351,7 +1350,6 @@ export interface FileRouteTypes {
     | '/events/category/$slug'
     | '/experts/portal/analytics'
     | '/experts/portal/certificates'
-    | '/experts/portal/module-review-status'
     | '/experts/portal/portfolio'
     | '/experts/portal/recognition'
     | '/experts/portal/review-status'
@@ -1366,6 +1364,7 @@ export interface FileRouteTypes {
     | '/academy/applications/'
     | '/academy/learn/'
     | '/academy/pathways/'
+    | '/academy/self-paced/'
     | '/academy/short-courses/'
     | '/academy/training-requests/'
     | '/academy/training/'
@@ -1385,6 +1384,7 @@ export interface RootRouteChildren {
   CommunityRoute: typeof CommunityRoute
   DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRoute
+  DocumentViewerRoute: typeof DocumentViewerRoute
   EventsRoute: typeof EventsRouteWithChildren
   ExpertsRoute: typeof ExpertsRouteWithChildren
   FellowshipRoute: typeof FellowshipRoute
@@ -1405,144 +1405,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/saved': {
-      id: '/saved'
-      path: '/saved'
-      fullPath: '/saved'
-      preLoaderRoute: typeof SavedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/partnership': {
-      id: '/partnership'
-      path: '/partnership'
-      fullPath: '/partnership'
-      preLoaderRoute: typeof PartnershipRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/notifications': {
-      id: '/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof NotificationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-submissions': {
-      id: '/my-submissions'
-      path: '/my-submissions'
-      fullPath: '/my-submissions'
-      preLoaderRoute: typeof MySubmissionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/knowledge-hub': {
-      id: '/knowledge-hub'
-      path: '/knowledge-hub'
-      fullPath: '/knowledge-hub'
-      preLoaderRoute: typeof KnowledgeHubRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/help': {
-      id: '/help'
-      path: '/help'
-      fullPath: '/help'
-      preLoaderRoute: typeof HelpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/governance': {
-      id: '/governance'
-      path: '/governance'
-      fullPath: '/governance'
-      preLoaderRoute: typeof GovernanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fellowship': {
-      id: '/fellowship'
-      path: '/fellowship'
-      fullPath: '/fellowship'
-      preLoaderRoute: typeof FellowshipRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/experts': {
-      id: '/experts'
-      path: '/experts'
-      fullPath: '/experts'
-      preLoaderRoute: typeof ExpertsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/events': {
-      id: '/events'
-      path: '/events'
-      fullPath: '/events'
-      preLoaderRoute: typeof EventsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo': {
-      id: '/demo'
-      path: '/demo'
-      fullPath: '/demo'
-      preLoaderRoute: typeof DemoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/community': {
-      id: '/community'
-      path: '/community'
-      fullPath: '/community'
-      preLoaderRoute: typeof CommunityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/analytics': {
-      id: '/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AnalyticsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account': {
-      id: '/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AccountRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/academy': {
-      id: '/academy'
-      path: '/academy'
-      fullPath: '/academy'
-      preLoaderRoute: typeof AcademyRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -1552,361 +1419,158 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/academy': {
+      id: '/academy'
+      path: '/academy'
+      fullPath: '/academy'
+      preLoaderRoute: typeof AcademyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/my-submissions/': {
-      id: '/my-submissions/'
-      path: '/'
-      fullPath: '/my-submissions/'
-      preLoaderRoute: typeof MySubmissionsIndexRouteImport
-      parentRoute: typeof MySubmissionsRoute
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/governance/': {
-      id: '/governance/'
-      path: '/'
-      fullPath: '/governance/'
-      preLoaderRoute: typeof GovernanceIndexRouteImport
-      parentRoute: typeof GovernanceRoute
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/experts/': {
-      id: '/experts/'
-      path: '/'
-      fullPath: '/experts/'
-      preLoaderRoute: typeof ExpertsIndexRouteImport
-      parentRoute: typeof ExpertsRoute
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/events/': {
-      id: '/events/'
-      path: '/'
-      fullPath: '/events/'
-      preLoaderRoute: typeof EventsIndexRouteImport
-      parentRoute: typeof EventsRoute
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/document-viewer': {
+      id: '/document-viewer'
+      path: '/document-viewer'
+      fullPath: '/document-viewer'
+      preLoaderRoute: typeof DocumentViewerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events': {
+      id: '/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/experts': {
+      id: '/experts'
+      path: '/experts'
+      fullPath: '/experts'
+      preLoaderRoute: typeof ExpertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fellowship': {
+      id: '/fellowship'
+      path: '/fellowship'
+      fullPath: '/fellowship'
+      preLoaderRoute: typeof FellowshipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/governance': {
+      id: '/governance'
+      path: '/governance'
+      fullPath: '/governance'
+      preLoaderRoute: typeof GovernanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/knowledge-hub': {
+      id: '/knowledge-hub'
+      path: '/knowledge-hub'
+      fullPath: '/knowledge-hub'
+      preLoaderRoute: typeof KnowledgeHubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-submissions': {
+      id: '/my-submissions'
+      path: '/my-submissions'
+      fullPath: '/my-submissions'
+      preLoaderRoute: typeof MySubmissionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/partnership': {
+      id: '/partnership'
+      path: '/partnership'
+      fullPath: '/partnership'
+      preLoaderRoute: typeof PartnershipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saved': {
+      id: '/saved'
+      path: '/saved'
+      fullPath: '/saved'
+      preLoaderRoute: typeof SavedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/academy/': {
       id: '/academy/'
       path: '/'
       fullPath: '/academy/'
       preLoaderRoute: typeof AcademyIndexRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/my-submissions/new': {
-      id: '/my-submissions/new'
-      path: '/new'
-      fullPath: '/my-submissions/new'
-      preLoaderRoute: typeof MySubmissionsNewRouteImport
-      parentRoute: typeof MySubmissionsRoute
-    }
-    '/my-submissions/$id': {
-      id: '/my-submissions/$id'
-      path: '/$id'
-      fullPath: '/my-submissions/$id'
-      preLoaderRoute: typeof MySubmissionsIdRouteImport
-      parentRoute: typeof MySubmissionsRoute
-    }
-    '/knowledge-hub_/submit-resource': {
-      id: '/knowledge-hub_/submit-resource'
-      path: '/knowledge-hub/submit-resource'
-      fullPath: '/knowledge-hub/submit-resource'
-      preLoaderRoute: typeof KnowledgeHubSubmitResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/knowledge-hub_/my-contributions': {
-      id: '/knowledge-hub_/my-contributions'
-      path: '/knowledge-hub/my-contributions'
-      fullPath: '/knowledge-hub/my-contributions'
-      preLoaderRoute: typeof KnowledgeHubMyContributionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/knowledge-hub_/$type': {
-      id: '/knowledge-hub_/$type'
-      path: '/knowledge-hub/$type'
-      fullPath: '/knowledge-hub/$type'
-      preLoaderRoute: typeof KnowledgeHubTypeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/governance/roles': {
-      id: '/governance/roles'
-      path: '/roles'
-      fullPath: '/governance/roles'
-      preLoaderRoute: typeof GovernanceRolesRouteImport
-      parentRoute: typeof GovernanceRoute
-    }
-    '/governance/queue': {
-      id: '/governance/queue'
-      path: '/queue'
-      fullPath: '/governance/queue'
-      preLoaderRoute: typeof GovernanceQueueRouteImport
-      parentRoute: typeof GovernanceRoute
-    }
-    '/governance/publications': {
-      id: '/governance/publications'
-      path: '/publications'
-      fullPath: '/governance/publications'
-      preLoaderRoute: typeof GovernancePublicationsRouteImport
-      parentRoute: typeof GovernanceRoute
-    }
-    '/governance/decisions': {
-      id: '/governance/decisions'
-      path: '/decisions'
-      fullPath: '/governance/decisions'
-      preLoaderRoute: typeof GovernanceDecisionsRouteImport
-      parentRoute: typeof GovernanceRoute
-    }
-    '/experts/services': {
-      id: '/experts/services'
-      path: '/services'
-      fullPath: '/experts/services'
-      preLoaderRoute: typeof ExpertsServicesRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/request': {
-      id: '/experts/request'
-      path: '/request'
-      fullPath: '/experts/request'
-      preLoaderRoute: typeof ExpertsRequestRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/recognition': {
-      id: '/experts/recognition'
-      path: '/recognition'
-      fullPath: '/experts/recognition'
-      preLoaderRoute: typeof ExpertsRecognitionRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/profile': {
-      id: '/experts/profile'
-      path: '/profile'
-      fullPath: '/experts/profile'
-      preLoaderRoute: typeof ExpertsProfileRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/portal': {
-      id: '/experts/portal'
-      path: '/portal'
-      fullPath: '/experts/portal'
-      preLoaderRoute: typeof ExpertsPortalRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/my-requests': {
-      id: '/experts/my-requests'
-      path: '/my-requests'
-      fullPath: '/experts/my-requests'
-      preLoaderRoute: typeof ExpertsMyRequestsRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/join': {
-      id: '/experts/join'
-      path: '/join'
-      fullPath: '/experts/join'
-      preLoaderRoute: typeof ExpertsJoinRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/faqs': {
-      id: '/experts/faqs'
-      path: '/faqs'
-      fullPath: '/experts/faqs'
-      preLoaderRoute: typeof ExpertsFaqsRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/directory': {
-      id: '/experts/directory'
-      path: '/directory'
-      fullPath: '/experts/directory'
-      preLoaderRoute: typeof ExpertsDirectoryRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/contributions': {
-      id: '/experts/contributions'
-      path: '/contributions'
-      fullPath: '/experts/contributions'
-      preLoaderRoute: typeof ExpertsContributionsRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/become-trainer': {
-      id: '/experts/become-trainer'
-      path: '/become-trainer'
-      fullPath: '/experts/become-trainer'
-      preLoaderRoute: typeof ExpertsBecomeTrainerRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/experts/$slug': {
-      id: '/experts/$slug'
-      path: '/$slug'
-      fullPath: '/experts/$slug'
-      preLoaderRoute: typeof ExpertsSlugRouteImport
-      parentRoute: typeof ExpertsRoute
-    }
-    '/events/submit': {
-      id: '/events/submit'
-      path: '/submit'
-      fullPath: '/events/submit'
-      preLoaderRoute: typeof EventsSubmitRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/schedule': {
-      id: '/events/schedule'
-      path: '/schedule'
-      fullPath: '/events/schedule'
-      preLoaderRoute: typeof EventsScheduleRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/saved': {
-      id: '/events/saved'
-      path: '/saved'
-      fullPath: '/events/saved'
-      preLoaderRoute: typeof EventsSavedRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/registrations': {
-      id: '/events/registrations'
-      path: '/registrations'
-      fullPath: '/events/registrations'
-      preLoaderRoute: typeof EventsRegistrationsRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/past': {
-      id: '/events/past'
-      path: '/past'
-      fullPath: '/events/past'
-      preLoaderRoute: typeof EventsPastRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/host': {
-      id: '/events/host'
-      path: '/host'
-      fullPath: '/events/host'
-      preLoaderRoute: typeof EventsHostRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/following': {
-      id: '/events/following'
-      path: '/following'
-      fullPath: '/events/following'
-      preLoaderRoute: typeof EventsFollowingRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/categories': {
-      id: '/events/categories'
-      path: '/categories'
-      fullPath: '/events/categories'
-      preLoaderRoute: typeof EventsCategoriesRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/calendar': {
-      id: '/events/calendar'
-      path: '/calendar'
-      fullPath: '/events/calendar'
-      preLoaderRoute: typeof EventsCalendarRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/all': {
-      id: '/events/all'
-      path: '/all'
-      fullPath: '/events/all'
-      preLoaderRoute: typeof EventsAllRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/$slug': {
-      id: '/events/$slug'
-      path: '/$slug'
-      fullPath: '/events/$slug'
-      preLoaderRoute: typeof EventsSlugRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/reviews': {
-      id: '/admin/reviews'
-      path: '/reviews'
-      fullPath: '/admin/reviews'
-      preLoaderRoute: typeof AdminReviewsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/account/profile': {
-      id: '/account/profile'
-      path: '/profile'
-      fullPath: '/account/profile'
-      preLoaderRoute: typeof AccountProfileRouteImport
-      parentRoute: typeof AccountRoute
-    }
-    '/academy/workshop': {
-      id: '/academy/workshop'
-      path: '/workshop'
-      fullPath: '/academy/workshop'
-      preLoaderRoute: typeof AcademyWorkshopRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/webinar': {
-      id: '/academy/webinar'
-      path: '/webinar'
-      fullPath: '/academy/webinar'
-      preLoaderRoute: typeof AcademyWebinarRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/self-paced': {
-      id: '/academy/self-paced'
-      path: '/self-paced'
-      fullPath: '/academy/self-paced'
-      preLoaderRoute: typeof AcademySelfPacedRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/request-training': {
-      id: '/academy/request-training'
-      path: '/request-training'
-      fullPath: '/academy/request-training'
-      preLoaderRoute: typeof AcademyRequestTrainingRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/programs': {
-      id: '/academy/programs'
-      path: '/programs'
-      fullPath: '/academy/programs'
-      preLoaderRoute: typeof AcademyProgramsRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/learn': {
-      id: '/academy/learn'
-      path: '/learn'
-      fullPath: '/academy/learn'
-      preLoaderRoute: typeof AcademyLearnRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/edition-2024': {
-      id: '/academy/edition-2024'
-      path: '/edition-2024'
-      fullPath: '/academy/edition-2024'
-      preLoaderRoute: typeof AcademyEdition2024RouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/certification': {
-      id: '/academy/certification'
-      path: '/certification'
-      fullPath: '/academy/certification'
-      preLoaderRoute: typeof AcademyCertificationRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/archive': {
-      id: '/academy/archive'
-      path: '/archive'
-      fullPath: '/academy/archive'
-      preLoaderRoute: typeof AcademyArchiveRouteImport
       parentRoute: typeof AcademyRoute
     }
     '/academy/alumni-network': {
@@ -1916,68 +1580,341 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcademyAlumniNetworkRouteImport
       parentRoute: typeof AcademyRoute
     }
-    '/governance/templates/': {
-      id: '/governance/templates/'
-      path: '/templates'
-      fullPath: '/governance/templates/'
-      preLoaderRoute: typeof GovernanceTemplatesIndexRouteImport
+    '/academy/archive': {
+      id: '/academy/archive'
+      path: '/archive'
+      fullPath: '/academy/archive'
+      preLoaderRoute: typeof AcademyArchiveRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/certification': {
+      id: '/academy/certification'
+      path: '/certification'
+      fullPath: '/academy/certification'
+      preLoaderRoute: typeof AcademyCertificationRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/edition-2024': {
+      id: '/academy/edition-2024'
+      path: '/edition-2024'
+      fullPath: '/academy/edition-2024'
+      preLoaderRoute: typeof AcademyEdition2024RouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/learn': {
+      id: '/academy/learn'
+      path: '/learn'
+      fullPath: '/academy/learn'
+      preLoaderRoute: typeof AcademyLearnRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/programs': {
+      id: '/academy/programs'
+      path: '/programs'
+      fullPath: '/academy/programs'
+      preLoaderRoute: typeof AcademyProgramsRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/request-training': {
+      id: '/academy/request-training'
+      path: '/request-training'
+      fullPath: '/academy/request-training'
+      preLoaderRoute: typeof AcademyRequestTrainingRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/webinar': {
+      id: '/academy/webinar'
+      path: '/webinar'
+      fullPath: '/academy/webinar'
+      preLoaderRoute: typeof AcademyWebinarRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/workshop': {
+      id: '/academy/workshop'
+      path: '/workshop'
+      fullPath: '/academy/workshop'
+      preLoaderRoute: typeof AcademyWorkshopRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/account/profile': {
+      id: '/account/profile'
+      path: '/profile'
+      fullPath: '/account/profile'
+      preLoaderRoute: typeof AccountProfileRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/experts': {
+      id: '/admin/experts'
+      path: '/experts'
+      fullPath: '/admin/experts'
+      preLoaderRoute: typeof AdminExpertsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/modules': {
+      id: '/admin/modules'
+      path: '/modules'
+      fullPath: '/admin/modules'
+      preLoaderRoute: typeof AdminModulesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/events/': {
+      id: '/events/'
+      path: '/'
+      fullPath: '/events/'
+      preLoaderRoute: typeof EventsIndexRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/$slug': {
+      id: '/events/$slug'
+      path: '/$slug'
+      fullPath: '/events/$slug'
+      preLoaderRoute: typeof EventsSlugRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/all': {
+      id: '/events/all'
+      path: '/all'
+      fullPath: '/events/all'
+      preLoaderRoute: typeof EventsAllRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/calendar': {
+      id: '/events/calendar'
+      path: '/calendar'
+      fullPath: '/events/calendar'
+      preLoaderRoute: typeof EventsCalendarRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/categories': {
+      id: '/events/categories'
+      path: '/categories'
+      fullPath: '/events/categories'
+      preLoaderRoute: typeof EventsCategoriesRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/following': {
+      id: '/events/following'
+      path: '/following'
+      fullPath: '/events/following'
+      preLoaderRoute: typeof EventsFollowingRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/host': {
+      id: '/events/host'
+      path: '/host'
+      fullPath: '/events/host'
+      preLoaderRoute: typeof EventsHostRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/past': {
+      id: '/events/past'
+      path: '/past'
+      fullPath: '/events/past'
+      preLoaderRoute: typeof EventsPastRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/registrations': {
+      id: '/events/registrations'
+      path: '/registrations'
+      fullPath: '/events/registrations'
+      preLoaderRoute: typeof EventsRegistrationsRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/saved': {
+      id: '/events/saved'
+      path: '/saved'
+      fullPath: '/events/saved'
+      preLoaderRoute: typeof EventsSavedRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/schedule': {
+      id: '/events/schedule'
+      path: '/schedule'
+      fullPath: '/events/schedule'
+      preLoaderRoute: typeof EventsScheduleRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/submit': {
+      id: '/events/submit'
+      path: '/submit'
+      fullPath: '/events/submit'
+      preLoaderRoute: typeof EventsSubmitRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/experts/': {
+      id: '/experts/'
+      path: '/'
+      fullPath: '/experts/'
+      preLoaderRoute: typeof ExpertsIndexRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/$slug': {
+      id: '/experts/$slug'
+      path: '/$slug'
+      fullPath: '/experts/$slug'
+      preLoaderRoute: typeof ExpertsSlugRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/become-trainer': {
+      id: '/experts/become-trainer'
+      path: '/become-trainer'
+      fullPath: '/experts/become-trainer'
+      preLoaderRoute: typeof ExpertsBecomeTrainerRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/contributions': {
+      id: '/experts/contributions'
+      path: '/contributions'
+      fullPath: '/experts/contributions'
+      preLoaderRoute: typeof ExpertsContributionsRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/directory': {
+      id: '/experts/directory'
+      path: '/directory'
+      fullPath: '/experts/directory'
+      preLoaderRoute: typeof ExpertsDirectoryRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/faqs': {
+      id: '/experts/faqs'
+      path: '/faqs'
+      fullPath: '/experts/faqs'
+      preLoaderRoute: typeof ExpertsFaqsRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/join': {
+      id: '/experts/join'
+      path: '/join'
+      fullPath: '/experts/join'
+      preLoaderRoute: typeof ExpertsJoinRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/my-requests': {
+      id: '/experts/my-requests'
+      path: '/my-requests'
+      fullPath: '/experts/my-requests'
+      preLoaderRoute: typeof ExpertsMyRequestsRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/portal': {
+      id: '/experts/portal'
+      path: '/portal'
+      fullPath: '/experts/portal'
+      preLoaderRoute: typeof ExpertsPortalRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/profile': {
+      id: '/experts/profile'
+      path: '/profile'
+      fullPath: '/experts/profile'
+      preLoaderRoute: typeof ExpertsProfileRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/recognition': {
+      id: '/experts/recognition'
+      path: '/recognition'
+      fullPath: '/experts/recognition'
+      preLoaderRoute: typeof ExpertsRecognitionRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/request': {
+      id: '/experts/request'
+      path: '/request'
+      fullPath: '/experts/request'
+      preLoaderRoute: typeof ExpertsRequestRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/services': {
+      id: '/experts/services'
+      path: '/services'
+      fullPath: '/experts/services'
+      preLoaderRoute: typeof ExpertsServicesRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/governance/': {
+      id: '/governance/'
+      path: '/'
+      fullPath: '/governance/'
+      preLoaderRoute: typeof GovernanceIndexRouteImport
       parentRoute: typeof GovernanceRoute
     }
-    '/governance/subjects/': {
-      id: '/governance/subjects/'
-      path: '/subjects'
-      fullPath: '/governance/subjects/'
-      preLoaderRoute: typeof GovernanceSubjectsIndexRouteImport
+    '/governance/decisions': {
+      id: '/governance/decisions'
+      path: '/decisions'
+      fullPath: '/governance/decisions'
+      preLoaderRoute: typeof GovernanceDecisionsRouteImport
       parentRoute: typeof GovernanceRoute
     }
-    '/experts/portal/': {
-      id: '/experts/portal/'
+    '/governance/queue': {
+      id: '/governance/queue'
+      path: '/queue'
+      fullPath: '/governance/queue'
+      preLoaderRoute: typeof GovernanceQueueRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/roles': {
+      id: '/governance/roles'
+      path: '/roles'
+      fullPath: '/governance/roles'
+      preLoaderRoute: typeof GovernanceRolesRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/knowledge-hub_/$type': {
+      id: '/knowledge-hub_/$type'
+      path: '/knowledge-hub/$type'
+      fullPath: '/knowledge-hub/$type'
+      preLoaderRoute: typeof KnowledgeHubTypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/knowledge-hub_/my-contributions': {
+      id: '/knowledge-hub_/my-contributions'
+      path: '/knowledge-hub/my-contributions'
+      fullPath: '/knowledge-hub/my-contributions'
+      preLoaderRoute: typeof KnowledgeHubMyContributionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/knowledge-hub_/submit-resource': {
+      id: '/knowledge-hub_/submit-resource'
+      path: '/knowledge-hub/submit-resource'
+      fullPath: '/knowledge-hub/submit-resource'
+      preLoaderRoute: typeof KnowledgeHubSubmitResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-submissions/': {
+      id: '/my-submissions/'
       path: '/'
-      fullPath: '/experts/portal/'
-      preLoaderRoute: typeof ExpertsPortalIndexRouteImport
-      parentRoute: typeof ExpertsPortalRoute
+      fullPath: '/my-submissions/'
+      preLoaderRoute: typeof MySubmissionsIndexRouteImport
+      parentRoute: typeof MySubmissionsRoute
     }
-    '/academy/training/': {
-      id: '/academy/training/'
-      path: '/training'
-      fullPath: '/academy/training/'
-      preLoaderRoute: typeof AcademyTrainingIndexRouteImport
-      parentRoute: typeof AcademyRoute
+    '/my-submissions/$id': {
+      id: '/my-submissions/$id'
+      path: '/$id'
+      fullPath: '/my-submissions/$id'
+      preLoaderRoute: typeof MySubmissionsIdRouteImport
+      parentRoute: typeof MySubmissionsRoute
     }
-    '/academy/training-requests/': {
-      id: '/academy/training-requests/'
-      path: '/training-requests'
-      fullPath: '/academy/training-requests/'
-      preLoaderRoute: typeof AcademyTrainingRequestsIndexRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/short-courses/': {
-      id: '/academy/short-courses/'
-      path: '/short-courses'
-      fullPath: '/academy/short-courses/'
-      preLoaderRoute: typeof AcademyShortCoursesIndexRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/pathways/': {
-      id: '/academy/pathways/'
-      path: '/pathways'
-      fullPath: '/academy/pathways/'
-      preLoaderRoute: typeof AcademyPathwaysIndexRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/learn/': {
-      id: '/academy/learn/'
-      path: '/'
-      fullPath: '/academy/learn/'
-      preLoaderRoute: typeof AcademyLearnIndexRouteImport
-      parentRoute: typeof AcademyLearnRoute
-    }
-    '/academy/applications/': {
-      id: '/academy/applications/'
-      path: '/applications'
-      fullPath: '/academy/applications/'
-      preLoaderRoute: typeof AcademyApplicationsIndexRouteImport
-      parentRoute: typeof AcademyRoute
+    '/my-submissions/new': {
+      id: '/my-submissions/new'
+      path: '/new'
+      fullPath: '/my-submissions/new'
+      preLoaderRoute: typeof MySubmissionsNewRouteImport
+      parentRoute: typeof MySubmissionsRoute
     }
     '/academy/alumni/': {
       id: '/academy/alumni/'
@@ -1986,193 +1923,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcademyAlumniIndexRouteImport
       parentRoute: typeof AcademyRoute
     }
-    '/knowledge-hub_/resource/$id': {
-      id: '/knowledge-hub_/resource/$id'
-      path: '/knowledge-hub/resource/$id'
-      fullPath: '/knowledge-hub/resource/$id'
-      preLoaderRoute: typeof KnowledgeHubResourceIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/governance/templates/$id': {
-      id: '/governance/templates/$id'
-      path: '/templates/$id'
-      fullPath: '/governance/templates/$id'
-      preLoaderRoute: typeof GovernanceTemplatesIdRouteImport
-      parentRoute: typeof GovernanceRoute
-    }
-    '/governance/subjects/$id': {
-      id: '/governance/subjects/$id'
-      path: '/subjects/$id'
-      fullPath: '/governance/subjects/$id'
-      preLoaderRoute: typeof GovernanceSubjectsIdRouteImport
-      parentRoute: typeof GovernanceRoute
-    }
-    '/governance/subject/$id': {
-      id: '/governance/subject/$id'
-      path: '/subject/$id'
-      fullPath: '/governance/subject/$id'
-      preLoaderRoute: typeof GovernanceSubjectIdRouteImport
-      parentRoute: typeof GovernanceRoute
-    }
-    '/governance/audit/$subjectId': {
-      id: '/governance/audit/$subjectId'
-      path: '/audit/$subjectId'
-      fullPath: '/governance/audit/$subjectId'
-      preLoaderRoute: typeof GovernanceAuditSubjectIdRouteImport
-      parentRoute: typeof GovernanceRoute
-    }
-    '/experts/portal/submit-module': {
-      id: '/experts/portal/submit-module'
-      path: '/submit-module'
-      fullPath: '/experts/portal/submit-module'
-      preLoaderRoute: typeof ExpertsPortalSubmitModuleRouteImport
-      parentRoute: typeof ExpertsPortalRoute
-    }
-    '/experts/portal/service-requests': {
-      id: '/experts/portal/service-requests'
-      path: '/service-requests'
-      fullPath: '/experts/portal/service-requests'
-      preLoaderRoute: typeof ExpertsPortalServiceRequestsRouteImport
-      parentRoute: typeof ExpertsPortalRoute
-    }
-    '/experts/portal/review-status': {
-      id: '/experts/portal/review-status'
-      path: '/review-status'
-      fullPath: '/experts/portal/review-status'
-      preLoaderRoute: typeof ExpertsPortalReviewStatusRouteImport
-      parentRoute: typeof ExpertsPortalRoute
-    }
-    '/experts/portal/recognition': {
-      id: '/experts/portal/recognition'
-      path: '/recognition'
-      fullPath: '/experts/portal/recognition'
-      preLoaderRoute: typeof ExpertsPortalRecognitionRouteImport
-      parentRoute: typeof ExpertsPortalRoute
-    }
-    '/experts/portal/portfolio': {
-      id: '/experts/portal/portfolio'
-      path: '/portfolio'
-      fullPath: '/experts/portal/portfolio'
-      preLoaderRoute: typeof ExpertsPortalPortfolioRouteImport
-      parentRoute: typeof ExpertsPortalRoute
-    }
-    '/experts/portal/module-review-status': {
-      id: '/experts/portal/module-review-status'
-      path: '/module-review-status'
-      fullPath: '/experts/portal/module-review-status'
-      preLoaderRoute: typeof ExpertsPortalModuleReviewStatusRouteImport
-      parentRoute: typeof ExpertsPortalRoute
-    }
-    '/experts/portal/certificates': {
-      id: '/experts/portal/certificates'
-      path: '/certificates'
-      fullPath: '/experts/portal/certificates'
-      preLoaderRoute: typeof ExpertsPortalCertificatesRouteImport
-      parentRoute: typeof ExpertsPortalRoute
-    }
-    '/experts/portal/analytics': {
-      id: '/experts/portal/analytics'
-      path: '/analytics'
-      fullPath: '/experts/portal/analytics'
-      preLoaderRoute: typeof ExpertsPortalAnalyticsRouteImport
-      parentRoute: typeof ExpertsPortalRoute
-    }
-    '/events/category/$slug': {
-      id: '/events/category/$slug'
-      path: '/category/$slug'
-      fullPath: '/events/category/$slug'
-      preLoaderRoute: typeof EventsCategorySlugRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/events/calls/$slug': {
-      id: '/events/calls/$slug'
-      path: '/calls/$slug'
-      fullPath: '/events/calls/$slug'
-      preLoaderRoute: typeof EventsCallsSlugRouteImport
-      parentRoute: typeof EventsRoute
-    }
-    '/academy/training/allocated-zones-for-aquaculture': {
-      id: '/academy/training/allocated-zones-for-aquaculture'
-      path: '/training/allocated-zones-for-aquaculture'
-      fullPath: '/academy/training/allocated-zones-for-aquaculture'
-      preLoaderRoute: typeof AcademyTrainingAllocatedZonesForAquacultureRouteImport
+    '/academy/alumni/$id': {
+      id: '/academy/alumni/$id'
+      path: '/alumni/$id'
+      fullPath: '/academy/alumni/$id'
+      preLoaderRoute: typeof AcademyAlumniIdRouteImport
       parentRoute: typeof AcademyRoute
     }
-    '/academy/training/$slug': {
-      id: '/academy/training/$slug'
-      path: '/training/$slug'
-      fullPath: '/academy/training/$slug'
-      preLoaderRoute: typeof AcademyTrainingSlugRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/training-requests/$id': {
-      id: '/academy/training-requests/$id'
-      path: '/training-requests/$id'
-      fullPath: '/academy/training-requests/$id'
-      preLoaderRoute: typeof AcademyTrainingRequestsIdRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/short-courses/$code': {
-      id: '/academy/short-courses/$code'
-      path: '/short-courses/$code'
-      fullPath: '/academy/short-courses/$code'
-      preLoaderRoute: typeof AcademyShortCoursesCodeRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/self-paced/$code': {
-      id: '/academy/self-paced/$code'
-      path: '/$code'
-      fullPath: '/academy/self-paced/$code'
-      preLoaderRoute: typeof AcademySelfPacedCodeRouteImport
-      parentRoute: typeof AcademySelfPacedRoute
-    }
-    '/academy/preview/international-training-fisheries-african-countries': {
-      id: '/academy/preview/international-training-fisheries-african-countries'
-      path: '/preview/international-training-fisheries-african-countries'
-      fullPath: '/academy/preview/international-training-fisheries-african-countries'
-      preLoaderRoute: typeof AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/pathways/$slug': {
-      id: '/academy/pathways/$slug'
-      path: '/pathways/$slug'
-      fullPath: '/academy/pathways/$slug'
-      preLoaderRoute: typeof AcademyPathwaysSlugRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/learn/allocated-zones-for-aquaculture': {
-      id: '/academy/learn/allocated-zones-for-aquaculture'
-      path: '/allocated-zones-for-aquaculture'
-      fullPath: '/academy/learn/allocated-zones-for-aquaculture'
-      preLoaderRoute: typeof AcademyLearnAllocatedZonesForAquacultureRouteImport
-      parentRoute: typeof AcademyLearnRoute
-    }
-    '/academy/learn/$id': {
-      id: '/academy/learn/$id'
-      path: '/$id'
-      fullPath: '/academy/learn/$id'
-      preLoaderRoute: typeof AcademyLearnIdRouteImport
-      parentRoute: typeof AcademyLearnRoute
-    }
-    '/academy/course/$offeringId': {
-      id: '/academy/course/$offeringId'
-      path: '/course/$offeringId'
-      fullPath: '/academy/course/$offeringId'
-      preLoaderRoute: typeof AcademyCourseOfferingIdRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/category/$slug': {
-      id: '/academy/category/$slug'
-      path: '/category/$slug'
-      fullPath: '/academy/category/$slug'
-      preLoaderRoute: typeof AcademyCategorySlugRouteImport
-      parentRoute: typeof AcademyRoute
-    }
-    '/academy/apply/$slug': {
-      id: '/academy/apply/$slug'
-      path: '/apply/$slug'
-      fullPath: '/academy/apply/$slug'
-      preLoaderRoute: typeof AcademyApplySlugRouteImport
+    '/academy/applications/': {
+      id: '/academy/applications/'
+      path: '/applications'
+      fullPath: '/academy/applications/'
+      preLoaderRoute: typeof AcademyApplicationsIndexRouteImport
       parentRoute: typeof AcademyRoute
     }
     '/academy/applications/$id': {
@@ -2182,12 +1944,250 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcademyApplicationsIdRouteImport
       parentRoute: typeof AcademyRoute
     }
-    '/academy/alumni/$id': {
-      id: '/academy/alumni/$id'
-      path: '/alumni/$id'
-      fullPath: '/academy/alumni/$id'
-      preLoaderRoute: typeof AcademyAlumniIdRouteImport
+    '/academy/apply/$slug': {
+      id: '/academy/apply/$slug'
+      path: '/apply/$slug'
+      fullPath: '/academy/apply/$slug'
+      preLoaderRoute: typeof AcademyApplySlugRouteImport
       parentRoute: typeof AcademyRoute
+    }
+    '/academy/category/$slug': {
+      id: '/academy/category/$slug'
+      path: '/category/$slug'
+      fullPath: '/academy/category/$slug'
+      preLoaderRoute: typeof AcademyCategorySlugRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/course/$offeringId': {
+      id: '/academy/course/$offeringId'
+      path: '/course/$offeringId'
+      fullPath: '/academy/course/$offeringId'
+      preLoaderRoute: typeof AcademyCourseOfferingIdRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/learn/': {
+      id: '/academy/learn/'
+      path: '/'
+      fullPath: '/academy/learn/'
+      preLoaderRoute: typeof AcademyLearnIndexRouteImport
+      parentRoute: typeof AcademyLearnRoute
+    }
+    '/academy/learn/$id': {
+      id: '/academy/learn/$id'
+      path: '/$id'
+      fullPath: '/academy/learn/$id'
+      preLoaderRoute: typeof AcademyLearnIdRouteImport
+      parentRoute: typeof AcademyLearnRoute
+    }
+    '/academy/learn/allocated-zones-for-aquaculture': {
+      id: '/academy/learn/allocated-zones-for-aquaculture'
+      path: '/allocated-zones-for-aquaculture'
+      fullPath: '/academy/learn/allocated-zones-for-aquaculture'
+      preLoaderRoute: typeof AcademyLearnAllocatedZonesForAquacultureRouteImport
+      parentRoute: typeof AcademyLearnRoute
+    }
+    '/academy/pathways/': {
+      id: '/academy/pathways/'
+      path: '/pathways'
+      fullPath: '/academy/pathways/'
+      preLoaderRoute: typeof AcademyPathwaysIndexRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/pathways/$slug': {
+      id: '/academy/pathways/$slug'
+      path: '/pathways/$slug'
+      fullPath: '/academy/pathways/$slug'
+      preLoaderRoute: typeof AcademyPathwaysSlugRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/preview/international-training-fisheries-african-countries': {
+      id: '/academy/preview/international-training-fisheries-african-countries'
+      path: '/preview/international-training-fisheries-african-countries'
+      fullPath: '/academy/preview/international-training-fisheries-african-countries'
+      preLoaderRoute: typeof AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/self-paced/': {
+      id: '/academy/self-paced/'
+      path: '/self-paced'
+      fullPath: '/academy/self-paced/'
+      preLoaderRoute: typeof AcademySelfPacedIndexRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/self-paced/$code': {
+      id: '/academy/self-paced/$code'
+      path: '/self-paced/$code'
+      fullPath: '/academy/self-paced/$code'
+      preLoaderRoute: typeof AcademySelfPacedCodeRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/short-courses/': {
+      id: '/academy/short-courses/'
+      path: '/short-courses'
+      fullPath: '/academy/short-courses/'
+      preLoaderRoute: typeof AcademyShortCoursesIndexRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/short-courses/$code': {
+      id: '/academy/short-courses/$code'
+      path: '/short-courses/$code'
+      fullPath: '/academy/short-courses/$code'
+      preLoaderRoute: typeof AcademyShortCoursesCodeRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/training-requests/': {
+      id: '/academy/training-requests/'
+      path: '/training-requests'
+      fullPath: '/academy/training-requests/'
+      preLoaderRoute: typeof AcademyTrainingRequestsIndexRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/training-requests/$id': {
+      id: '/academy/training-requests/$id'
+      path: '/training-requests/$id'
+      fullPath: '/academy/training-requests/$id'
+      preLoaderRoute: typeof AcademyTrainingRequestsIdRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/training/': {
+      id: '/academy/training/'
+      path: '/training'
+      fullPath: '/academy/training/'
+      preLoaderRoute: typeof AcademyTrainingIndexRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/training/$slug': {
+      id: '/academy/training/$slug'
+      path: '/training/$slug'
+      fullPath: '/academy/training/$slug'
+      preLoaderRoute: typeof AcademyTrainingSlugRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/training/allocated-zones-for-aquaculture': {
+      id: '/academy/training/allocated-zones-for-aquaculture'
+      path: '/training/allocated-zones-for-aquaculture'
+      fullPath: '/academy/training/allocated-zones-for-aquaculture'
+      preLoaderRoute: typeof AcademyTrainingAllocatedZonesForAquacultureRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/events/calls/$slug': {
+      id: '/events/calls/$slug'
+      path: '/calls/$slug'
+      fullPath: '/events/calls/$slug'
+      preLoaderRoute: typeof EventsCallsSlugRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/events/category/$slug': {
+      id: '/events/category/$slug'
+      path: '/category/$slug'
+      fullPath: '/events/category/$slug'
+      preLoaderRoute: typeof EventsCategorySlugRouteImport
+      parentRoute: typeof EventsRoute
+    }
+    '/experts/portal/': {
+      id: '/experts/portal/'
+      path: '/'
+      fullPath: '/experts/portal/'
+      preLoaderRoute: typeof ExpertsPortalIndexRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/analytics': {
+      id: '/experts/portal/analytics'
+      path: '/analytics'
+      fullPath: '/experts/portal/analytics'
+      preLoaderRoute: typeof ExpertsPortalAnalyticsRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/certificates': {
+      id: '/experts/portal/certificates'
+      path: '/certificates'
+      fullPath: '/experts/portal/certificates'
+      preLoaderRoute: typeof ExpertsPortalCertificatesRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/portfolio': {
+      id: '/experts/portal/portfolio'
+      path: '/portfolio'
+      fullPath: '/experts/portal/portfolio'
+      preLoaderRoute: typeof ExpertsPortalPortfolioRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/recognition': {
+      id: '/experts/portal/recognition'
+      path: '/recognition'
+      fullPath: '/experts/portal/recognition'
+      preLoaderRoute: typeof ExpertsPortalRecognitionRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/review-status': {
+      id: '/experts/portal/review-status'
+      path: '/review-status'
+      fullPath: '/experts/portal/review-status'
+      preLoaderRoute: typeof ExpertsPortalReviewStatusRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/service-requests': {
+      id: '/experts/portal/service-requests'
+      path: '/service-requests'
+      fullPath: '/experts/portal/service-requests'
+      preLoaderRoute: typeof ExpertsPortalServiceRequestsRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/experts/portal/submit-module': {
+      id: '/experts/portal/submit-module'
+      path: '/submit-module'
+      fullPath: '/experts/portal/submit-module'
+      preLoaderRoute: typeof ExpertsPortalSubmitModuleRouteImport
+      parentRoute: typeof ExpertsPortalRoute
+    }
+    '/governance/audit/$subjectId': {
+      id: '/governance/audit/$subjectId'
+      path: '/audit/$subjectId'
+      fullPath: '/governance/audit/$subjectId'
+      preLoaderRoute: typeof GovernanceAuditSubjectIdRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/subject/$id': {
+      id: '/governance/subject/$id'
+      path: '/subject/$id'
+      fullPath: '/governance/subject/$id'
+      preLoaderRoute: typeof GovernanceSubjectIdRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/subjects/': {
+      id: '/governance/subjects/'
+      path: '/subjects'
+      fullPath: '/governance/subjects/'
+      preLoaderRoute: typeof GovernanceSubjectsIndexRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/subjects/$id': {
+      id: '/governance/subjects/$id'
+      path: '/subjects/$id'
+      fullPath: '/governance/subjects/$id'
+      preLoaderRoute: typeof GovernanceSubjectsIdRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/templates/': {
+      id: '/governance/templates/'
+      path: '/templates'
+      fullPath: '/governance/templates/'
+      preLoaderRoute: typeof GovernanceTemplatesIndexRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/templates/$id': {
+      id: '/governance/templates/$id'
+      path: '/templates/$id'
+      fullPath: '/governance/templates/$id'
+      preLoaderRoute: typeof GovernanceTemplatesIdRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/knowledge-hub_/resource/$id': {
+      id: '/knowledge-hub_/resource/$id'
+      path: '/knowledge-hub/resource/$id'
+      fullPath: '/knowledge-hub/resource/$id'
+      preLoaderRoute: typeof KnowledgeHubResourceIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -2209,17 +2209,6 @@ const AcademyLearnRouteWithChildren = AcademyLearnRoute._addFileChildren(
   AcademyLearnRouteChildren,
 )
 
-interface AcademySelfPacedRouteChildren {
-  AcademySelfPacedCodeRoute: typeof AcademySelfPacedCodeRoute
-}
-
-const AcademySelfPacedRouteChildren: AcademySelfPacedRouteChildren = {
-  AcademySelfPacedCodeRoute: AcademySelfPacedCodeRoute,
-}
-
-const AcademySelfPacedRouteWithChildren =
-  AcademySelfPacedRoute._addFileChildren(AcademySelfPacedRouteChildren)
-
 interface AcademyRouteChildren {
   AcademyAlumniNetworkRoute: typeof AcademyAlumniNetworkRoute
   AcademyArchiveRoute: typeof AcademyArchiveRoute
@@ -2228,7 +2217,6 @@ interface AcademyRouteChildren {
   AcademyLearnRoute: typeof AcademyLearnRouteWithChildren
   AcademyProgramsRoute: typeof AcademyProgramsRoute
   AcademyRequestTrainingRoute: typeof AcademyRequestTrainingRoute
-  AcademySelfPacedRoute: typeof AcademySelfPacedRouteWithChildren
   AcademyWebinarRoute: typeof AcademyWebinarRoute
   AcademyWorkshopRoute: typeof AcademyWorkshopRoute
   AcademyIndexRoute: typeof AcademyIndexRoute
@@ -2239,6 +2227,7 @@ interface AcademyRouteChildren {
   AcademyCourseOfferingIdRoute: typeof AcademyCourseOfferingIdRoute
   AcademyPathwaysSlugRoute: typeof AcademyPathwaysSlugRoute
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute: typeof AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute
+  AcademySelfPacedCodeRoute: typeof AcademySelfPacedCodeRoute
   AcademyShortCoursesCodeRoute: typeof AcademyShortCoursesCodeRoute
   AcademyTrainingRequestsIdRoute: typeof AcademyTrainingRequestsIdRoute
   AcademyTrainingSlugRoute: typeof AcademyTrainingSlugRoute
@@ -2246,6 +2235,7 @@ interface AcademyRouteChildren {
   AcademyAlumniIndexRoute: typeof AcademyAlumniIndexRoute
   AcademyApplicationsIndexRoute: typeof AcademyApplicationsIndexRoute
   AcademyPathwaysIndexRoute: typeof AcademyPathwaysIndexRoute
+  AcademySelfPacedIndexRoute: typeof AcademySelfPacedIndexRoute
   AcademyShortCoursesIndexRoute: typeof AcademyShortCoursesIndexRoute
   AcademyTrainingRequestsIndexRoute: typeof AcademyTrainingRequestsIndexRoute
   AcademyTrainingIndexRoute: typeof AcademyTrainingIndexRoute
@@ -2259,7 +2249,6 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyLearnRoute: AcademyLearnRouteWithChildren,
   AcademyProgramsRoute: AcademyProgramsRoute,
   AcademyRequestTrainingRoute: AcademyRequestTrainingRoute,
-  AcademySelfPacedRoute: AcademySelfPacedRouteWithChildren,
   AcademyWebinarRoute: AcademyWebinarRoute,
   AcademyWorkshopRoute: AcademyWorkshopRoute,
   AcademyIndexRoute: AcademyIndexRoute,
@@ -2271,6 +2260,7 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyPathwaysSlugRoute: AcademyPathwaysSlugRoute,
   AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute:
     AcademyPreviewInternationalTrainingFisheriesAfricanCountriesRoute,
+  AcademySelfPacedCodeRoute: AcademySelfPacedCodeRoute,
   AcademyShortCoursesCodeRoute: AcademyShortCoursesCodeRoute,
   AcademyTrainingRequestsIdRoute: AcademyTrainingRequestsIdRoute,
   AcademyTrainingSlugRoute: AcademyTrainingSlugRoute,
@@ -2279,6 +2269,7 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyAlumniIndexRoute: AcademyAlumniIndexRoute,
   AcademyApplicationsIndexRoute: AcademyApplicationsIndexRoute,
   AcademyPathwaysIndexRoute: AcademyPathwaysIndexRoute,
+  AcademySelfPacedIndexRoute: AcademySelfPacedIndexRoute,
   AcademyShortCoursesIndexRoute: AcademyShortCoursesIndexRoute,
   AcademyTrainingRequestsIndexRoute: AcademyTrainingRequestsIndexRoute,
   AcademyTrainingIndexRoute: AcademyTrainingIndexRoute,
@@ -2299,13 +2290,15 @@ const AccountRouteWithChildren =
   AccountRoute._addFileChildren(AccountRouteChildren)
 
 interface AdminRouteChildren {
-  AdminReviewsRoute: typeof AdminReviewsRoute
+  AdminExpertsRoute: typeof AdminExpertsRoute
+  AdminModulesRoute: typeof AdminModulesRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminReviewsRoute: AdminReviewsRoute,
+  AdminExpertsRoute: AdminExpertsRoute,
+  AdminModulesRoute: AdminModulesRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -2352,7 +2345,6 @@ const EventsRouteWithChildren =
 interface ExpertsPortalRouteChildren {
   ExpertsPortalAnalyticsRoute: typeof ExpertsPortalAnalyticsRoute
   ExpertsPortalCertificatesRoute: typeof ExpertsPortalCertificatesRoute
-  ExpertsPortalModuleReviewStatusRoute: typeof ExpertsPortalModuleReviewStatusRoute
   ExpertsPortalPortfolioRoute: typeof ExpertsPortalPortfolioRoute
   ExpertsPortalRecognitionRoute: typeof ExpertsPortalRecognitionRoute
   ExpertsPortalReviewStatusRoute: typeof ExpertsPortalReviewStatusRoute
@@ -2364,7 +2356,6 @@ interface ExpertsPortalRouteChildren {
 const ExpertsPortalRouteChildren: ExpertsPortalRouteChildren = {
   ExpertsPortalAnalyticsRoute: ExpertsPortalAnalyticsRoute,
   ExpertsPortalCertificatesRoute: ExpertsPortalCertificatesRoute,
-  ExpertsPortalModuleReviewStatusRoute: ExpertsPortalModuleReviewStatusRoute,
   ExpertsPortalPortfolioRoute: ExpertsPortalPortfolioRoute,
   ExpertsPortalRecognitionRoute: ExpertsPortalRecognitionRoute,
   ExpertsPortalReviewStatusRoute: ExpertsPortalReviewStatusRoute,
@@ -2414,7 +2405,6 @@ const ExpertsRouteWithChildren =
 
 interface GovernanceRouteChildren {
   GovernanceDecisionsRoute: typeof GovernanceDecisionsRoute
-  GovernancePublicationsRoute: typeof GovernancePublicationsRoute
   GovernanceQueueRoute: typeof GovernanceQueueRoute
   GovernanceRolesRoute: typeof GovernanceRolesRoute
   GovernanceIndexRoute: typeof GovernanceIndexRoute
@@ -2428,7 +2418,6 @@ interface GovernanceRouteChildren {
 
 const GovernanceRouteChildren: GovernanceRouteChildren = {
   GovernanceDecisionsRoute: GovernanceDecisionsRoute,
-  GovernancePublicationsRoute: GovernancePublicationsRoute,
   GovernanceQueueRoute: GovernanceQueueRoute,
   GovernanceRolesRoute: GovernanceRolesRoute,
   GovernanceIndexRoute: GovernanceIndexRoute,
@@ -2471,6 +2460,7 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityRoute: CommunityRoute,
   DashboardRoute: DashboardRoute,
   DemoRoute: DemoRoute,
+  DocumentViewerRoute: DocumentViewerRoute,
   EventsRoute: EventsRouteWithChildren,
   ExpertsRoute: ExpertsRouteWithChildren,
   FellowshipRoute: FellowshipRoute,

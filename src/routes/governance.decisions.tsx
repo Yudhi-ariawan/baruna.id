@@ -6,9 +6,7 @@ import {
   listPendingDecisions,
   listSubmittedRecommendations,
   recordFinalDecision,
-  getModuleReviewPacket,
 } from "@/lib/governance/governance.functions";
-import { ModuleReviewPacket } from "@/components/governance/ModuleReviewPacket";
 
 export const Route = createFileRoute("/governance/decisions")({
   component: DecisionsPage,
@@ -68,8 +66,6 @@ function DecisionPanel({ subjectId }: { subjectId: string }) {
     queryKey: ["governance", "recs", subjectId],
     queryFn: () => recsFn({ data: { subjectId } }),
   });
-  const packetFn = useServerFn(getModuleReviewPacket);
-  const packetQ = useQuery({ queryKey: ["governance", "module-packet", subjectId], queryFn: () => packetFn({ data: { subjectId } }) });
   const [rationale, setRationale] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const m = useMutation({
@@ -85,7 +81,6 @@ function DecisionPanel({ subjectId }: { subjectId: string }) {
 
   return (
     <div className="mt-4 space-y-3 border-t border-border pt-4">
-      <ModuleReviewPacket packet={packetQ.data} />
       <h4 className="text-sm font-semibold">Submitted recommendations</h4>
       {q.isLoading ? (
         <p className="text-xs text-muted-foreground">Loading…</p>
@@ -109,19 +104,19 @@ function DecisionPanel({ subjectId }: { subjectId: string }) {
       <textarea
         value={rationale}
         onChange={(e) => setRationale(e.target.value)}
-        placeholder="Decision rationale (required)"
+        placeholder="Decision rationale (optional)"
         className="w-full rounded border border-border bg-background p-2 text-sm"
         rows={3}
       />
       <div className="flex flex-wrap gap-2">
-        <button disabled={!rationale.trim() || m.isPending} onClick={() => m.mutate("approve")} className="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+        <button onClick={() => m.mutate("approve")} className="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white">
           Approve
         </button>
-        <button disabled={!rationale.trim() || m.isPending} onClick={() => m.mutate("reject")} className="rounded bg-red-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+        <button onClick={() => m.mutate("reject")} className="rounded bg-red-600 px-3 py-1.5 text-sm text-white">
           Reject
         </button>
-        <button disabled={!rationale.trim() || m.isPending} onClick={() => m.mutate("return_for_revision")} className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50">
-          Request Revision
+        <button onClick={() => m.mutate("return_for_revision")} className="rounded border border-border px-3 py-1.5 text-sm">
+          Return for revision
         </button>
       </div>
       {msg ? <p className="text-xs text-muted-foreground">{msg}</p> : null}

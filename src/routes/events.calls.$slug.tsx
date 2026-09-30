@@ -23,10 +23,10 @@ export const Route = createFileRoute("/events/calls/$slug")({
     ],
   }),
   component: CallsPage,
-  errorComponent: ({ error }) => (
+  errorComponent: ({ error }: { error: any }) => (
     <EventsShell>
       <div role="alert" className="rounded-2xl border border-border bg-card p-8 text-center text-navy">
-        {error.message}
+        {error?.message || String(error)}
       </div>
     </EventsShell>
   ),

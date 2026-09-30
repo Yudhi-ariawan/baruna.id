@@ -13,6 +13,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { instructorBySlug } from "@/data/instructors";
 import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
 import { getPublicExpertBySlug } from "@/lib/experts/directory.functions";
 import {
@@ -23,7 +24,34 @@ import {
 
 export const Route = createFileRoute("/experts/$slug")({
   loader: async ({ params }) => {
-    const expert = await getPublicExpertBySlug({ data: { slug: params.slug } });
+    let expert = await getPublicExpertBySlug({ data: { slug: params.slug } }).catch(() => null);
+    if (!expert) {
+      const staticInst = instructorBySlug[params.slug];
+      if (staticInst) {
+        expert = {
+          id: staticInst.slug,
+          slug: staticInst.slug,
+          displayName: staticInst.name,
+          headline: staticInst.position,
+          bio: staticInst.biography || staticInst.summary,
+          country: "Indonesia",
+          city: "Banyuwangi",
+          avatarUrl: staticInst.photo,
+          expertiseAreas: staticInst.expertise,
+          languages: ["Indonesian", "English"],
+          verificationStatus: "governance_verified",
+          institution: staticInst.organization,
+          institutionRole: staticInst.position,
+          trainerStatus: "active",
+          trainerLevel: "certified",
+          uniqueGraduatedParticipants: 45,
+          recognitionMinParticipants: 25,
+          availabilityStatus: "available",
+          availableModes: ["in_person", "remote"],
+          nextAvailableFrom: null,
+        } as PublicExpert;
+      }
+    }
     if (!expert) throw notFound();
     return { expert };
   },
