@@ -43,69 +43,69 @@ import type { PublishedModuleDetail } from "@/lib/learning/learning.functions";
 function getDynamicModuleSlides(module: PublishedModuleDetail) {
   const slides = [];
 
-  // Slide 1: Pendahuluan & Ringkasan Modul
+  // Slide 1: Pendahuluan & Module Summary
   slides.push({
     title: `1. ${module.title}`,
-    subtitle: `Disusun oleh ${module.trainer.name} • ${module.hours} Jam Belajar (JP)`,
+    subtitle: `Prepared by ${module.trainer.name} • ${module.hours} learning hours (JP)`,
     bullets: [
       `Gambaran Umum: ${module.summary || "Pelatihan terstruktur berbasis kompetensi BARUNA Academy."}`,
       `Bidang Kajian / Topik: ${module.topic || "Pengembangan Kapasitas & Standar Profesional"}`,
-      `Bidang Kompetensi: ${module.competency || "Penerapan metodologi, instrumen, dan standar terapan"}`,
-      `Bahasa Pengantar: ${module.language || "Bahasa Indonesia"}`,
+      `Competency Area: ${module.competency || "Application of practical methodologies, tools, and standards"}`,
+      `Language: ${module.language || "Indonesian"}`,
     ],
-    badge: "Ringkasan Modul",
+    badge: "Module Summary",
   });
 
   // Slide 2: Target Peserta & Prasyarat
   slides.push({
-    title: "2. Target Peserta & Prasyarat",
-    subtitle: "Kualifikasi dan sasaran peserta pelatihan",
+    title: "2. Target Participants & Prerequisites",
+    subtitle: "Participant qualifications and target audience",
     bullets: [
-      `Profil Target Peserta: ${module.targetParticipants || "Praktisi, akademisi, peneliti, dan profesional terkait."}`,
+      `Target Participant Profile: ${module.targetParticipants || "Practitioners, academics, researchers, and related professionals."}`,
       `Format Pembelajaran: Pembelajaran Mandiri Interaktif (Self-Paced Learning).`,
       `Standar Kelulusan: Wajib membaca modul, menelaah materi slide, dan lulus kuis (Passing Grade: ${module.passingScore}%).`,
     ],
-    badge: "Sasaran Pembelajaran",
+    badge: "Learning Goals",
   });
 
-  // Slide 3: Tujuan Pembelajaran (Learning Objectives)
+  // Slide 3: Learning Objectives (Learning Objectives)
   const objBullets =
     module.learningObjectives.length > 0
       ? module.learningObjectives.map((obj, i) => `${i + 1}. ${obj}`)
       : [
-          "1. Memahami fondasi konseptual dan kerangka kerja modul.",
-          "2. Menguasai implementasi teknis dan instrumen pendukung.",
-          "3. Mampu menganalisis dan memecahkan studi kasus riil.",
+          "1. Understand the module’s conceptual foundation and framework.",
+          "2. Master technical implementation and supporting tools.",
+          "3. Analyze and solve real-world case studies.",
         ];
   slides.push({
-    title: "3. Tujuan & Sasaran Pembelajaran",
-    subtitle: "Kompetensi spesifik yang ditargetkan dalam materi ini",
+    title: "3. Learning Goals & Objectives",
+    subtitle: "Specific competencies targeted by this material",
     bullets: objBullets,
-    badge: "Tujuan Pembelajaran",
+    badge: "Learning Objectives",
   });
 
   // Slide 4: Capaian Hasil Kompetensi (Competency Outcomes)
   slides.push({
-    title: "4. Capaian Hasil Kompetensi (Outcomes)",
-    subtitle: "Keluaran terukur dan aplikasi praktis hasil pelatihan",
+    title: "4. Competency Outcomes",
+    subtitle: "Measurable outcomes and practical application of the training",
     bullets: [
-      `Capaian Akhir: ${module.competencyOutcomes || "Peserta mampu mengaplikasikan pengetahuan dan keterampilan yang dipelajari secara mandiri dan profesional."}`,
-      `Metode Evaluasi: ${module.assessmentMethod || "Kuis Pemahaman & Evaluasi Mandiri"}`,
-      `Akreditasi Digital: Sertifikat kompetensi resmi diterbitkan otomatis setelah verifikasi kelulusan kuis.`,
+      `Expected Outcome: ${module.competencyOutcomes || "Participants can independently and professionally apply the knowledge and skills learned."}`,
+      `Assessment Method: ${module.assessmentMethod || "Knowledge Quiz & Self-Assessment"}`,
+      `Digital Credential: An official competency certificate is automatically issued after the assessment result is verified.`,
     ],
     badge: "Hasil Kompetensi",
   });
 
-  // Slide 5: Panduan Belajar & Evaluasi Kuis
+  // Slide 5: Learning Guide & Evaluasi Kuis
   slides.push({
-    title: "5. Panduan Belajar & Evaluasi Akhir",
-    subtitle: "Persiapan pengerjaan Kuis Kelulusan untuk klaim Sertifikat",
+    title: "5. Learning Guide & Final Assessment",
+    subtitle: "Preparation for the assessment quiz and certificate eligibility",
     bullets: [
-      "Pelajari naskah modul komprehensif pada bagian dokumen di bawah untuk pendalaman materi.",
-      "Lanjutkan ke Tab 3 (Slide PPT) untuk menelaah slide presentasi visual dari instruktur.",
-      `Kerjakan Kuis Kelulusan pada Tab 4 untuk menguji pemahaman Anda dan meraih nilai minimal ${module.passingScore}%.`,
+      "Study the comprehensive module document below for deeper understanding.",
+      "Continue to Tab 3 (Presentation Slides) to review the trainer’s visual materials.",
+      `Complete the Assessment Quiz in Tab 4 to test your understanding and achieve a minimum score of ${module.passingScore}%.`,
     ],
-    badge: "Panduan Belajar",
+    badge: "Learning Guide",
   });
 
   return slides;
@@ -115,68 +115,68 @@ function getDynamicModuleQuiz(module: PublishedModuleDetail) {
   const objectives =
     module.learningObjectives.length > 0
       ? module.learningObjectives
-      : ["Penguasaan konsep dasar dan implementasi terstandar"];
+      : ["Mastery of core concepts and standardized implementation"];
 
   return [
     {
       id: 1,
-      question: `Berdasarkan modul "${module.title}", apa tujuan utama yang ingin dicapai melalui materi ini?`,
+      question: `Based on the module "${module.title}", what is the primary objective of this material?`,
       options: [
-        objectives[0] || "Memahami prinsip dasar dan kerangka kerja modul secara komprehensif",
+        objectives[0] || "Understand the module’s fundamental principles and framework comprehensively",
         "Menghafal teori tanpa melakukan implementasi lapangan",
-        "Mengabaikan standar dan regulasi yang berlaku",
-        "Menunda pelaksanaan evaluasi dan penyusunan laporan",
+        "Ignore applicable standards and regulations",
+        "Delay evaluation and report preparation",
       ],
       correctAnswer: 0,
-      explanation: `Tujuan utama pembelajaran modul ini adalah: ${objectives[0] || "Memahami prinsip dasar dan kerangka kerja modul secara komprehensif"}.`,
+      explanation: `The primary learning objective of this module is: ${objectives[0] || "Understand the module’s fundamental principles and framework comprehensively"}.`,
     },
     {
       id: 2,
       question: `Bidang kajian atau topik utama yang dibahas secara mendalam dalam modul ini adalah...`,
       options: [
-        module.topic || "Pengembangan Kapasitas & Tata Kelola Berkelanjutan",
+        module.topic || "Capacity Development & Sustainable Governance",
         "Pemberian subsidi tanpa evaluasi kinerja",
         "Eksploitasi sumber daya tanpa batas kuota",
         "Penutupan akses informasi bagi publik",
       ],
       correctAnswer: 0,
-      explanation: `Modul ini secara spesifik mengkaji bidang: ${module.topic || "Pengembangan Kapasitas & Tata Kelola Berkelanjutan"}.`,
+      explanation: `This module specifically covers: ${module.topic || "Capacity Development & Sustainable Governance"}.`,
     },
     {
       id: 3,
       question: `Berapa batas nilai minimum (Passing Grade) yang ditetapkan untuk dinyatakan lulus pada modul ini?`,
       options: [
         `${module.passingScore}% (Standar Kelulusan Kurikulum BARUNA)`,
-        "40% (Tanpa kriteria kelulusan)",
-        "50% (Nilai dasar)",
+        "40% (No passing requirement)",
+        "50% (Basic score)",
         "100% (Harus sempurna tanpa salah)",
       ],
       correctAnswer: 0,
-      explanation: `Passing grade resmi untuk modul "${module.title}" adalah ${module.passingScore}%.`,
+      explanation: `The official passing score for the module "${module.title}" is ${module.passingScore}%.`,
     },
     {
       id: 4,
-      question: `Manakah capaian hasil kompetensi (outcomes) yang diharapkan setelah peserta menuntaskan pembelajaran?`,
+      question: `Which competency outcome is expected after participants complete the learning activities?`,
       options: [
-        module.competencyOutcomes || "Peserta mampu mengimplementasikan keterampilan teknis dan menyelesaikan tantangan profesional di bidangnya",
-        "Peserta hanya membaca materi tanpa memahami penerapannya",
-        "Peserta tidak diperkenankan menerapkan materi yang telah dipelajari",
-        "Peserta menghentikan seluruh aktivitas peningkatan kapasitas",
+        module.competencyOutcomes || "Participants can apply technical skills and address professional challenges in their field",
+        "Participants only read the material without understanding its application",
+        "Participants are not permitted to apply the material learned",
+        "Participants discontinue all capacity-development activities",
       ],
       correctAnswer: 0,
-      explanation: `Capaian kompetensi modul: ${module.competencyOutcomes || "Mampu mengimplementasikan keterampilan teknis di bidangnya"}.`,
+      explanation: `Module competency outcome: ${module.competencyOutcomes || "Able to apply technical skills in their field"}.`,
     },
     {
       id: 5,
-      question: `Bagaimana alur peserta untuk mendapatkan sertifikat digital resmi setelah mempelajari seluruh materi?`,
+      question: `How can participants earn the official digital certificate after completing all materials?`,
       options: [
-        "Menyelesaikan materi video, membaca modul pembelajaran, menelaah slide PPT, dan lulus kuis evaluasi",
-        "Hanya membuka halaman utama tanpa membaca materi",
-        "Meminta sertifikat langsung tanpa mengikuti evaluasi kuis",
+        "Complete the video lecture, read the module material, review the presentation slides, and pass the assessment quiz",
+        "Only open the main page without studying the material",
+        "Request a certificate without completing the assessment quiz",
         "Menunggu proses manual selama 6 bulan",
       ],
       correctAnswer: 0,
-      explanation: "Sertifikat diterbitkan secara otomatis dan terverifikasi setelah seluruh aktivitas pembelajaran diselesaikan dan kuis kelulusan terpenuhi.",
+      explanation: "The certificate is automatically issued and verified after all learning activities and the passing requirement are completed.",
     },
   ];
 }
@@ -250,7 +250,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
     const nextState = !completedSteps[step];
     setCompletedSteps((prev) => ({ ...prev, [step]: nextState }));
     updateShortCourseSteps(module.id, { [step]: nextState });
-    barunaToast(nextState ? `Aktivitas ${step.toUpperCase()} ditandai selesai!` : `Status ${step.toUpperCase()} diperbarui.`);
+    barunaToast(nextState ? `Activity ${step.toUpperCase()} marked as completed!` : `${step.toUpperCase()} status updated.`);
   };
 
   const handleSubmitQuiz = () => {
@@ -264,15 +264,15 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
     const score = Math.round((correct / dynamicQuizQuestions.length) * 100);
     setQuizScore(score);
     setQuizSubmitted(true);
-    barunaToast(`Nilai Kuis: ${score}%`);
+    barunaToast(`Quiz score: ${score}%`);
 
     if (score >= module.passingScore) {
       completeShortCourse(module.id, score, "self-paced");
       setCompletedSteps((prev) => ({ ...prev, quiz: true, video: true, pdf: true, ppt: true }));
-      barunaToast(`🎉 Selamat! Anda LULUS dengan nilai ${score}% (Passing Grade: ${module.passingScore}%). Sertifikat terbuka!`);
+      barunaToast(`🎉 Congratulations! You passed with a score of ${score}% (Passing Grade: ${module.passingScore}%); your certificate is now available!`);
       setActiveTab("certificate");
     } else {
-      barunaToast(`Nilai Anda ${score}%. Belum memenuhi passing grade ${module.passingScore}%. Silakan coba lagi.`);
+      barunaToast(`Your score is ${score}%. below the passing score of ${module.passingScore}%. Please try again.`);
     }
   };
 
@@ -284,14 +284,14 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
 
   const handleDownloadCertificate = () => {
     downloadCertificatePdf({
-      name: "Peserta BARUNA",
+      name: "BARUNA Participant",
       country: "Indonesia",
       program: module.title,
       dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
       certNo: `BARUNA-MOD-${module.id.slice(0, 8).toUpperCase()}-2026`,
       verifyUrl: `https://baruna.kkp.go.id/verify/${module.id}`,
     });
-    barunaToast("Sertifikat kelulusan berhasil diunduh!");
+    barunaToast("Completion certificate downloaded successfully!");
   };
 
   const topic = module.topic;
@@ -392,7 +392,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
           </span>
           {done ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="h-3 w-3" /> Selesai 100%
+              <CheckCircle2 className="h-3 w-3" /> COMPLETED 100%
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-marine/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine">
@@ -401,12 +401,12 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
           )}
         </div>
 
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Progres Ruang Belajar</h3>
+        <h3 className="mt-3 font-display text-base font-bold text-navy">Learning Progress</h3>
 
         {/* Progress Bar */}
         <div className="mt-3">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-            <span>{stepsDoneCount} dari {totalSteps} Aktivitas Selesai</span>
+            <span>{stepsDoneCount} of {totalSteps} Activities Completed</span>
             <span className="font-bold text-marine">{progressPct}%</span>
           </div>
           <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
@@ -428,7 +428,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
             }`}
           >
             <span className="flex items-center gap-2">
-              <Video className="h-3.5 w-3.5" /> 1. Video Materi
+              <Video className="h-3.5 w-3.5" /> 1. Video Lecture
             </span>
             {completedSteps.video ? (
               <CheckCircle2 className="h-3.5 w-3.5 text-success" />
@@ -444,7 +444,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
             }`}
           >
             <span className="flex items-center gap-2">
-              <FileText className="h-3.5 w-3.5" /> 2. Modul
+              <FileText className="h-3.5 w-3.5" /> 2. Module Material
             </span>
             {completedSteps.pdf ? (
               <CheckCircle2 className="h-3.5 w-3.5 text-success" />
@@ -460,7 +460,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
             }`}
           >
             <span className="flex items-center gap-2">
-              <Presentation className="h-3.5 w-3.5" /> 3. Slide PPT
+              <Presentation className="h-3.5 w-3.5" /> 3. Presentation Slides
             </span>
             {completedSteps.ppt ? (
               <CheckCircle2 className="h-3.5 w-3.5 text-success" />
@@ -476,7 +476,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
             }`}
           >
             <span className="flex items-center gap-2">
-              <ListChecks className="h-3.5 w-3.5" /> 4. Kuis Kelulusan
+              <ListChecks className="h-3.5 w-3.5" /> 4. Assessment Quiz
             </span>
             {done || completedSteps.quiz ? (
               <CheckCircle2 className="h-3.5 w-3.5 text-success" />
@@ -492,12 +492,12 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
             }`}
           >
             <span className="flex items-center gap-2">
-              <Award className="h-3.5 w-3.5" /> 5. Sertifikat
+              <Award className="h-3.5 w-3.5" /> 5. Certificate
             </span>
             {done ? (
               <Trophy className="h-3.5 w-3.5 text-amber-500" />
             ) : (
-              <span className="text-[10px] text-muted-foreground">Terkunci</span>
+              <span className="text-[10px] text-muted-foreground">Locked</span>
             )}
           </button>
         </div>
@@ -506,16 +506,16 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
           {done ? (
             <div className="rounded-xl border border-success/40 bg-success/5 p-3 text-xs text-success">
               <p className="flex items-center gap-1.5 font-bold">
-                <Award className="h-4 w-4" /> Modul Telah Selesai
+                <Award className="h-4 w-4" /> Module Completed
               </p>
               <p className="mt-1 text-success/80">
-                Nilai kelulusan: <strong>{quizScore ?? 100}%</strong>. Sertifikat resmi telah diterbitkan.
+                Passing score: <strong>{quizScore ?? 100}%</strong>. Official certificate has been issued.
               </p>
               <button
                 onClick={handleDownloadCertificate}
                 className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
               >
-                <Download className="h-3.5 w-3.5" /> Unduh Sertifikat (PDF)
+                <Download className="h-3.5 w-3.5" /> Download Certificate (PDF)
               </button>
             </div>
           ) : (
@@ -523,7 +523,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               to="/academy/learn"
               className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted"
             >
-              ← Kembali ke My Learning
+              ← Back to My Learning
             </Link>
           )}
           <Link
@@ -531,7 +531,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
             params={{ code: module.id }}
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2 text-xs font-semibold text-muted-foreground hover:text-navy"
           >
-            Lihat Ringkasan &amp; Silabus Modul
+            View Summary &amp; Syllabus
           </Link>
         </div>
       </div>
@@ -539,7 +539,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
       {/* Trainer Profile Card */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <span className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-          Instruktur Modul
+          MODULE INSTRUCTOR
         </span>
         <div className="mt-3 flex items-start gap-3">
           {module.trainer.avatarUrl ? (
@@ -592,7 +592,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md bg-marine/10 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-marine">
-                  Ruang Belajar Mandiri
+                  SELF-PACED LEARNING
                 </span>
                 <span className="rounded-md bg-muted px-2 py-1 font-mono text-[0.65rem] font-bold text-foreground/70">
                   MOD-{module.id.slice(0, 8).toUpperCase()}
@@ -603,7 +603,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-blue-700">
-                    <Clock className="h-3 w-3" /> Aktif Belajar
+                    <Clock className="h-3 w-3" /> LEARNING IN PROGRESS
                   </span>
                 )}
               </div>
@@ -611,7 +611,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                 {module.title}
               </h1>
               <p className="mt-2 text-xs text-muted-foreground">
-                Disusun oleh <span className="font-semibold text-navy">{module.trainer.name}</span> • {module.hours} Jam Belajar (JP) • Passing Grade {passingScore}%
+                Prepared by <span className="font-semibold text-navy">{module.trainer.name}</span> • {module.hours} learning hours (JP) • Passing Grade {passingScore}%
               </p>
             </div>
 
@@ -620,7 +620,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               params={{ code: module.id }}
               className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted transition"
             >
-              <BookOpen className="h-3.5 w-3.5" /> Lihat Ringkasan Modul
+              <BookOpen className="h-3.5 w-3.5" /> View Module Summary
             </Link>
           </div>
         </div>
@@ -637,7 +637,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               }`}
             >
               <Video className="h-4 w-4 shrink-0" />
-              <span>1. Video Materi</span>
+              <span>1. Video Lecture</span>
               {completedSteps.video && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />}
             </button>
 
@@ -650,7 +650,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               }`}
             >
               <FileText className="h-4 w-4 shrink-0" />
-              <span>2. Modul</span>
+              <span>2. Module Material</span>
               {completedSteps.pdf && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />}
             </button>
 
@@ -663,7 +663,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               }`}
             >
               <Presentation className="h-4 w-4 shrink-0" />
-              <span>3. Slide PPT</span>
+              <span>3. Presentation Slides</span>
               {completedSteps.ppt && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />}
             </button>
 
@@ -676,7 +676,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               }`}
             >
               <ListChecks className="h-4 w-4 shrink-0" />
-              <span>4. Kuis Kelulusan</span>
+              <span>4. Assessment Quiz</span>
               {(done || completedSteps.quiz) && <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />}
             </button>
 
@@ -691,7 +691,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               }`}
             >
               <Award className="h-4 w-4 shrink-0" />
-              <span>5. Sertifikat</span>
+              <span>5. Certificate</span>
               {done && <Trophy className="h-3 w-3 text-amber-300 shrink-0 ml-1" />}
             </button>
           </div>
@@ -704,7 +704,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="font-display text-lg font-bold text-navy">
-                    Video Pembelajaran Utama
+                    Main Learning Video
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Paparan materi interaktif oleh {module.trainer.name}.
@@ -719,7 +719,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   }`}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  {completedSteps.video ? "Selesai Ditonton ✓" : "Tandai Telah Menonton"}
+                  {completedSteps.video ? "Completed ✓" : "Mark as Watched"}
                 </button>
               </div>
 
@@ -758,7 +758,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-marine/20 text-marine animate-pulse mb-4">
                       <Play className="h-8 w-8 ml-1" />
                     </div>
-                    <p className="text-sm font-bold text-white">Memutar Materi Video Pembelajaran...</p>
+                    <p className="text-sm font-bold text-white">Playing the learning video...</p>
                     <p className="text-xs text-slate-400 mt-2">
                       Sesi 1: Introduksi Standar &amp; Terminologi Pembelajaran.
                     </p>
@@ -781,13 +781,13 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                       {module.title}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">
-                      Durasi Video Pengantar: ~{module.hours * 30} Menit • Video Edukasi Mandiri
+                      Introductory video duration: ~{module.hours * 30} Minutes • Self-Paced Learning Video
                     </p>
                     <button
                       onClick={() => setIsVideoPlaying(true)}
                       className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white px-4 py-2 text-xs font-semibold backdrop-blur transition"
                     >
-                      <PlayCircle className="h-4 w-4" /> Mulai Tonton Video
+                      <PlayCircle className="h-4 w-4" /> Watch Video
                     </button>
                   </div>
                 )}
@@ -796,7 +796,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               {/* Video Chapters Outline */}
               <div className="mt-6 pt-6 border-t border-border">
                 <h3 className="font-display text-sm font-bold text-navy mb-3">
-                  Silabus &amp; Bab Pembahasan Video
+                  Video Syllabus &amp; Chapters
                 </h3>
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {module.learningObjectives.length > 0 ? (
@@ -813,7 +813,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     ))
                   ) : (
                     <div className="p-3 rounded-xl border border-border bg-muted/20 text-xs text-muted-foreground">
-                      Materi mencakup pengenalan konsep, studi kasus riil, dan persiapan kuis kelulusan.
+                      The material covers core concepts, real-world case studies, and assessment preparation.
                     </div>
                   )}
                 </div>
@@ -827,7 +827,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   }}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
                 >
-                  Lanjut ke Modul <ArrowRight className="h-4 w-4" />
+                  Continue to Module Material <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -841,10 +841,10 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                 <div>
                   <h2 className="font-display text-lg font-bold text-navy">
-                    Naskah &amp; Modul Pembelajaran
+                    Learning Module &amp; Materials
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Ringkasan kurikulum, silabus, dan dokumen naskah modul lengkap resmi.
+                    Official curriculum summary, syllabus, and complete module document.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -855,7 +855,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-xl border border-marine bg-card px-3.5 py-2 text-xs font-bold text-marine hover:bg-marine hover:text-white transition shadow-2xs"
                     >
-                      <Download className="h-3.5 w-3.5" /> Unduh Dokumen ({formatBytes(moduleDoc.size)})
+                      <Download className="h-3.5 w-3.5" /> Download Document ({formatBytes(moduleDoc.size)})
                     </a>
                   )}
                   <button
@@ -867,7 +867,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     }`}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    {completedSteps.pdf ? "Selesai Membaca ✓" : "Tandai Telah Membaca Modul"}
+                    {completedSteps.pdf ? "Completed ✓" : "Mark Module as Read"}
                   </button>
                 </div>
               </div>
@@ -877,10 +877,10 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                 <div>
                   <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
                     <span className="rounded-full bg-marine/30 text-marine px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                      {dynamicSlides[overviewSlide]?.badge || "Ringkasan Modul"}
+                      {dynamicSlides[overviewSlide]?.badge || "Module Summary"}
                     </span>
                     <span className="text-xs text-slate-400 font-mono">
-                      Halaman {overviewSlide + 1} dari {dynamicSlides.length}
+                      Page {overviewSlide + 1} of {dynamicSlides.length}
                     </span>
                   </div>
 
@@ -907,7 +907,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     onClick={() => setOverviewSlide((prev) => Math.max(0, prev - 1))}
                     className="inline-flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none transition"
                   >
-                    <ChevronLeft className="h-4 w-4" /> Sebelumnya
+                    <ChevronLeft className="h-4 w-4" /> Previous
                   </button>
                   <div className="flex items-center gap-1">
                     {dynamicSlides.map((_, idx) => (
@@ -917,7 +917,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                         className={`h-2 rounded-full transition-all ${
                           overviewSlide === idx ? "w-6 bg-marine" : "w-2 bg-slate-700"
                         }`}
-                        title={`Halaman ${idx + 1}`}
+                        title={`Page ${idx + 1}`}
                       />
                     ))}
                   </div>
@@ -939,13 +939,13 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   </div>
                   <div className="min-w-0 flex-1">
                     <span className="inline-block rounded-md bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive uppercase tracking-wider mb-1">
-                      Naskah Modul Terverifikasi
+                      Verified Module Document
                     </span>
                     <h3 className="font-display text-base font-bold text-navy">
-                      {moduleDoc?.name || `Naskah Modul: ${module.title}.pdf`}
+                      {moduleDoc?.name || `Module Document: ${module.title}.pdf`}
                     </h3>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Ukuran: {formatBytes(moduleDoc?.size ?? 0)} • Disusun oleh {module.trainer.name}
+                      File Size: {formatBytes(moduleDoc?.size ?? 0)} • Prepared by {module.trainer.name}
                     </p>
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       {moduleDoc?.downloadUrl ? (
@@ -957,7 +957,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-xs font-bold text-white hover:bg-navy/90 transition shadow-2xs"
                           >
-                            <Download className="h-3.5 w-3.5" /> Unduh Naskah Modul (PDF)
+                            <Download className="h-3.5 w-3.5" /> Download Module Document (PDF)
                           </a>
                           <a
                             href={moduleDoc.downloadUrl}
@@ -970,7 +970,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                         </>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 rounded-lg bg-marine/10 text-marine px-3 py-1.5 text-xs font-medium">
-                          Naskah modul siap diakses dalam pembelajaran
+                          Module document is ready for learning access
                         </span>
                       )}
                     </div>
@@ -981,14 +981,14 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                 {(trainerGuideDoc || evaluationDoc) && (
                   <div className="mt-6 pt-5 border-t border-border/80">
                     <h4 className="font-display text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                      <FileCheck className="h-4 w-4 text-marine" /> Berkas Pendukung Modul
+                      <FileCheck className="h-4 w-4 text-marine" /> Supporting Module Files
                     </h4>
                     <div className="grid gap-2.5 sm:grid-cols-2">
                       {trainerGuideDoc && (
                         <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
                           <div className="min-w-0 flex-1 pr-2">
                             <p className="text-xs font-bold text-navy truncate">{trainerGuideDoc.name}</p>
-                            <p className="text-[11px] text-muted-foreground">Panduan Pengajar ({formatBytes(trainerGuideDoc.size)})</p>
+                            <p className="text-[11px] text-muted-foreground">Trainer Guide ({formatBytes(trainerGuideDoc.size)})</p>
                           </div>
                           {trainerGuideDoc.downloadUrl && (
                             <a
@@ -996,7 +996,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                               target="_blank"
                               rel="noopener noreferrer"
                               className="shrink-0 p-1.5 rounded-lg bg-muted hover:bg-marine hover:text-white text-muted-foreground transition"
-                              title="Unduh Panduan Pengajar"
+                              title="Download Trainer Guide"
                             >
                               <Download className="h-3.5 w-3.5" />
                             </a>
@@ -1007,7 +1007,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                         <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
                           <div className="min-w-0 flex-1 pr-2">
                             <p className="text-xs font-bold text-navy truncate">{evaluationDoc.name}</p>
-                            <p className="text-[11px] text-muted-foreground">Formulir Evaluasi ({formatBytes(evaluationDoc.size)})</p>
+                            <p className="text-[11px] text-muted-foreground">Evaluation Form ({formatBytes(evaluationDoc.size)})</p>
                           </div>
                           {evaluationDoc.downloadUrl && (
                             <a
@@ -1015,7 +1015,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                               target="_blank"
                               rel="noopener noreferrer"
                               className="shrink-0 p-1.5 rounded-lg bg-muted hover:bg-marine hover:text-white text-muted-foreground transition"
-                              title="Unduh Formulir Evaluasi"
+                              title="Download Evaluation Form"
                             >
                               <Download className="h-3.5 w-3.5" />
                             </a>
@@ -1032,7 +1032,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   onClick={() => setActiveTab("video")}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-navy"
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Video
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Video
                 </button>
                 <button
                   onClick={() => {
@@ -1041,7 +1041,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   }}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
                 >
-                  Lanjut ke Slide PPT <ArrowRight className="h-4 w-4" />
+                  Continue to Presentation Slides <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -1055,10 +1055,10 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                 <div>
                   <h2 className="font-display text-lg font-bold text-navy">
-                    Slide Presentasi &amp; Materi Tayang
+                    Presentation Slides &amp; Materials
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Slide materi tayang instruktur untuk presentasi dan penelaahan mandiri.
+                    Trainer presentation slides for guided and independent study.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1069,7 +1069,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-xl border border-amber-600/30 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-700 hover:bg-amber-100 transition shadow-2xs"
                     >
-                      <Download className="h-3.5 w-3.5" /> Unduh Berkas Slide ({formatBytes(pptDoc.size)})
+                      <Download className="h-3.5 w-3.5" /> Download Slides ({formatBytes(pptDoc.size)})
                     </a>
                   )}
                   <button
@@ -1081,7 +1081,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     }`}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    {completedSteps.ppt ? "Selesai Ditelaah ✓" : "Tandai Telah Menelaah Slide"}
+                    {completedSteps.ppt ? "Completed ✓" : "Mark Slides as Reviewed"}
                   </button>
                 </div>
               </div>
@@ -1096,13 +1096,13 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                       </span>
                       <div>
                         <span className="inline-block rounded-md bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                          Berkas Slide Presentasi Resmi
+                          Official Presentation Slides
                         </span>
                         <h3 className="font-display text-base font-bold text-navy">
-                          {pptDoc.name || `Slide: ${module.title}.pptx`}
+                          {pptDoc.name || `Slides: ${module.title}.pptx`}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Ukuran Berkas: {formatBytes(pptDoc.size)} • Disusun oleh {module.trainer.name}
+                          File Size: {formatBytes(pptDoc.size)} • Prepared by {module.trainer.name}
                         </p>
                       </div>
                     </div>
@@ -1116,7 +1116,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-amber-700 transition shadow-2xs"
                           >
-                            <Download className="h-3.5 w-3.5" /> Unduh Berkas Slide
+                            <Download className="h-3.5 w-3.5" /> Download Slides
                           </a>
                           <a
                             href={pptDoc.downloadUrl}
@@ -1124,7 +1124,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-white px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition shadow-2xs"
                           >
-                            <ExternalLink className="h-3.5 w-3.5" /> Buka Berkas
+                            <ExternalLink className="h-3.5 w-3.5" /> Open File
                           </a>
                         </>
                       )}
@@ -1138,7 +1138,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                 <div className="overflow-hidden rounded-xl border border-border bg-white shadow-inner">
                   <div className="bg-muted/60 px-4 py-2 text-xs font-semibold text-navy flex items-center justify-between border-b border-border">
                     <span className="flex items-center gap-1.5">
-                      <Presentation className="h-4 w-4 text-marine" /> Lembar Pembaca Slide PDF Interaktif:
+                      <Presentation className="h-4 w-4 text-marine" /> Interactive PDF Slide Viewer:
                     </span>
                     <a
                       href={pptDoc.downloadUrl}
@@ -1161,18 +1161,18 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">
-                        Format Berkas Slide Presentasi (.PPTX)
+                        Presentation File Format (.PPTX)
                       </h4>
                       <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-                        Berkas presentasi di atas berformat Microsoft PowerPoint (<code>.pptx</code>). Berkas ini dapat langsung diunduh dan dibuka menggunakan aplikasi PowerPoint, Google Slides, atau WPS Office.
+                        The presentation file above is in Microsoft PowerPoint format (<code>.pptx</code>). It can be downloaded and opened with PowerPoint, Google Slides, or WPS Office.
                       </p>
                       {isPptVerySmall && (
                         <p className="mt-2 text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                          ⚠️ <strong>Catatan Pengujian:</strong> Berkas <code>{pptDoc?.name}</code> yang diunggah berukuran 50 B (file teks mock/placeholder), sehingga aplikasi PowerPoint akan mendeteksinya bukan sebagai slide utuh. Pada produksi nyata, pastikan mengunggah file PPTX asli atau file PDF slide.
+                          ⚠️ <strong>Testing Note:</strong> The uploaded <code>{pptDoc?.name}</code> file is a 50 B mock/placeholder text file, so PowerPoint will not recognize it as a complete presentation. In production, upload a valid PPTX file or a PDF slide deck.
                         </p>
                       )}
                       <p className="mt-2 text-[11px] text-slate-500">
-                        💡 <em>Tips Instruktur:</em> Untuk menampilkan lembar slide langsung di layar ruang belajar tanpa perlu diunduh peserta, instruktur dapat mengekspor slide presentasi ke format <strong>PDF</strong> saat pengajuan modul.
+                        💡 <em>Trainer Tip:</em> To display slides directly in the learning space without requiring a download, trainers can export the presentation to <strong>PDF</strong> when submitting the module.
                       </p>
                     </div>
                   </div>
@@ -1182,24 +1182,24 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               {/* 3. KEY TAKEAWAYS / POIN KRUSIAL MATERI TAYANG */}
               <div className="mt-6 rounded-xl border border-border bg-card p-5">
                 <h4 className="font-display text-xs font-bold uppercase tracking-wider text-navy mb-3 flex items-center gap-1.5">
-                  <BookOpen className="h-4 w-4 text-marine" /> Poin Kunci Materi Tayang Sebelum Mengikuti Kuis
+                  <BookOpen className="h-4 w-4 text-marine" /> Key Points Before Taking the Assessment
                 </h4>
                 <div className="grid gap-2.5 sm:grid-cols-2 text-xs text-muted-foreground">
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/60">
-                    <span className="font-semibold text-navy block mb-1">1. Penguasaan Konsep Dasar</span>
-                    Pahami definisi, prinsip kerja, dan standar acuan yang diuraikan dalam naskah modul dan video pembelajaran.
+                    <span className="font-semibold text-navy block mb-1">1. Core Concept Mastery</span>
+                    Review the definitions, operating principles, and reference standards presented in the module and learning video.
                   </div>
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/60">
-                    <span className="font-semibold text-navy block mb-1">2. Target Capaian Kompetensi</span>
-                    Pastikan seluruh target capaian ({module.competencyOutcomes || "penguasaan kompetensi terapan"}) telah dipahami dengan baik.
+                    <span className="font-semibold text-navy block mb-1">2. Competency Outcomes</span>
+                    Ensure all competency outcomes ({module.competencyOutcomes || "applied competency mastery"}) have been fully understood.
                   </div>
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/60">
-                    <span className="font-semibold text-navy block mb-1">3. Evaluasi &amp; Passing Grade</span>
-                    Kuis kelulusan mensyaratkan nilai minimal <strong>{passingScore}%</strong> untuk membuka sertifikat digital.
+                    <span className="font-semibold text-navy block mb-1">3. Assessment &amp; Passing Score</span>
+                    The assessment requires a minimum score of <strong>{passingScore}%</strong> to unlock the digital certificate.
                   </div>
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/60">
-                    <span className="font-semibold text-navy block mb-1">4. Kesempatan Ulang Kuis</span>
-                    Jika belum mencapai passing grade, Anda dapat meninjau kembali modul dan mengulang pengerjaan kuis kapan saja.
+                    <span className="font-semibold text-navy block mb-1">4. Retake Opportunities</span>
+                    If you do not reach the passing score, you may review the module and retake the assessment at any time.
                   </div>
                 </div>
               </div>
@@ -1209,7 +1209,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   onClick={() => setActiveTab("pdf")}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-navy"
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Modul
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Module Material
                 </button>
                 <button
                   onClick={() => {
@@ -1218,7 +1218,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   }}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
                 >
-                  Lanjut ke Kuis Kelulusan <ArrowRight className="h-4 w-4" />
+                  Continue to Assessment Quiz <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -1232,7 +1232,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                 <div>
                   <h2 className="font-display text-lg font-bold text-navy">
-                    Kuis Evaluasi &amp; Kelulusan Modul
+                    Module Assessment Quiz
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Passing Grade: <strong>{passingScore}%</strong> • {dynamicQuizQuestions.length} Soal Pilihan Ganda
@@ -1248,13 +1248,13 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                       }`}
                     >
                       {quizScore >= passingScore ? <CheckCircle2 className="h-4 w-4" /> : null}
-                      Nilai Anda: {quizScore}% {quizScore >= passingScore ? "(LULUS)" : "(BELUM LULUS)"}
+                      Your Score: {quizScore}% {quizScore >= passingScore ? "(PASSED)" : "(NOT PASSED)"}
                     </span>
                     <button
                       onClick={handleRetakeQuiz}
                       className="inline-flex items-center gap-1 rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                     >
-                      <RotateCcw className="h-3 w-3" /> Ulangi Kuis
+                      <RotateCcw className="h-3 w-3" /> Retake Quiz
                     </button>
                   </div>
                 )}
@@ -1325,7 +1325,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                   onClick={() => setActiveTab("ppt")}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-navy"
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Slide PPT
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Presentation Slides
                 </button>
 
                 {!quizSubmitted ? (
@@ -1334,21 +1334,21 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     onClick={handleSubmitQuiz}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-6 py-2.5 text-xs font-bold text-white hover:bg-marine/90 disabled:opacity-50 disabled:pointer-events-none transition shadow-xs"
                   >
-                    Kirim Jawaban Kuis <CheckCircle2 className="h-4 w-4" />
+                    Submit Quiz Answers <CheckCircle2 className="h-4 w-4" />
                   </button>
                 ) : quizScore !== null && quizScore >= passingScore ? (
                   <button
                     onClick={() => setActiveTab("certificate")}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-amber-700 transition shadow-xs"
                   >
-                    Buka Sertifikat Kelulusan <Award className="h-4 w-4" />
+                    Open Certificate <Award className="h-4 w-4" />
                   </button>
                 ) : (
                   <button
                     onClick={handleRetakeQuiz}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-6 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
                   >
-                    <RotateCcw className="h-4 w-4" /> Coba Kuis Lagi
+                    <RotateCcw className="h-4 w-4" /> Retake Quiz
                   </button>
                 )}
               </div>
@@ -1366,10 +1366,10 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     <Trophy className="h-9 w-9" />
                   </div>
                   <h2 className="font-display text-2xl font-extrabold text-navy">
-                    Selamat Atas Kelulusan Anda!
+                    Congratulations on Completing the Module!
                   </h2>
                   <p className="mx-auto mt-1.5 max-w-lg text-xs text-muted-foreground leading-relaxed">
-                    Anda telah menyelesaikan seluruh aktivitas pembelajaran dan lulus kuis evaluasi modul ini. Sertifikat kelulusan resmi Anda telah diterbitkan.
+                    You have completed all learning activities and passed the module assessment. Your official certificate has been issued.
                   </p>
 
                   {/* Certificate Mock Card */}
@@ -1386,7 +1386,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
 
                     <div className="my-5">
                       <p className="text-[11px] text-muted-foreground">Diberikan kepada:</p>
-                      <h3 className="font-display text-lg font-bold text-navy">Peserta Terverifikasi BARUNA</h3>
+                      <h3 className="font-display text-lg font-bold text-navy">Verified BARUNA Participant</h3>
                       <p className="mt-2 text-xs text-foreground/80">
                         Atas keberhasilan menyelesaikan modul pelatihan mandiri:
                       </p>
@@ -1394,12 +1394,12 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                         {module.title}
                       </h4>
                       <p className="mt-2 text-[11px] text-muted-foreground">
-                        Instruktur: <span className="font-semibold text-navy">{module.trainer.name}</span> • Beban Belajar: {module.hours} JP
+                        Instructor: <span className="font-semibold text-navy">{module.trainer.name}</span> • Learning Load: {module.hours} JP
                       </p>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-500/20 pt-4 text-[11px] text-muted-foreground">
-                      <span>No. Sertifikat: <strong className="font-mono text-navy">BARUNA-MOD-{module.id.slice(0, 8).toUpperCase()}-2026</strong></span>
+                      <span>Certificate No.: <strong className="font-mono text-navy">BARUNA-MOD-{module.id.slice(0, 8).toUpperCase()}-2026</strong></span>
                       <span className="text-emerald-700 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" /> Terverifikasi Resmi
                       </span>
@@ -1411,13 +1411,13 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                       onClick={handleDownloadCertificate}
                       className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
                     >
-                      <Download className="h-4 w-4" /> Unduh Sertifikat Resmi (PDF)
+                      <Download className="h-4 w-4" /> Download Official Certificate (PDF)
                     </button>
                     <Link
                       to="/academy/learn"
                       className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-3 text-xs font-bold text-foreground hover:bg-muted transition"
                     >
-                      Kembali ke Dashboard My Learning
+                      Back to My Learning Dashboard
                     </Link>
                   </div>
                 </div>
@@ -1427,16 +1427,16 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     <Award className="h-7 w-7" />
                   </div>
                   <h2 className="font-display text-lg font-bold text-navy">
-                    Sertifikat Belum Terbuka
+                    Certificate Not Yet Available
                   </h2>
                   <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-                    Selesaikan semua langkah materi pembelajaran (Video, Modul, Slide PPT) dan capai nilai kuis minimal <strong>{passingScore}%</strong> untuk menerbitkan sertifikat kelulusan.
+                    Complete all learning activities (Video, Module Material, Presentation Slides) and achieve a minimum assessment score of <strong>{passingScore}%</strong> to issue your completion certificate.
                   </p>
                   <button
                     onClick={() => setActiveTab("quiz")}
                     className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
                   >
-                    Buka Kuis Kelulusan Sekarang <ArrowRight className="h-4 w-4" />
+                    Open Assessment Quiz Now <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
               )}

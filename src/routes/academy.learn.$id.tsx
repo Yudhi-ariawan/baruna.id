@@ -133,19 +133,19 @@ export const Route = createFileRoute("/academy/learn/$id")({
   },
   head: () => ({
     meta: [
-      { title: "Ruang Belajar — Academy — BARUNA" },
-      { name: "description", content: "Ruang pembelajaran mandiri dan program pelatihan interaktif BARUNA Academy." },
+      { title: "Learning Space — Academy — BARUNA" },
+      { name: "description", content: "BARUNA Academy self-paced learning space and interactive training programs." },
     ],
   }),
   errorComponent: ({ error }: { error: any }) => (
     <AcademyShell active="my-learning">
       <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
-        <h1 className="font-display text-2xl font-bold text-navy">Kendala Memuat Ruang Belajar</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">Unable to Load Learning Space</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          {String(error?.message || error || "Terjadi kendala saat memuat ruang belajar. Silakan coba kembali atau kembali ke menu My Learning.")}
+          {String(error?.message || error || "An error occurred while loading the learning space. Please try again or return to My Learning.")}
         </p>
         <Link to="/academy/learn" className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-white">
-          Kembali ke My Learning
+          Back to My Learning
         </Link>
       </div>
     </AcademyShell>
@@ -153,9 +153,9 @@ export const Route = createFileRoute("/academy/learn/$id")({
   notFoundComponent: () => (
     <AcademyShell active="my-learning">
       <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
-        <h1 className="font-display text-2xl font-bold text-navy">Ruang belajar tidak ditemukan</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">Learning space not found</h1>
         <Link to="/academy/learn" className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-white">
-          Kembali ke My Learning
+          Back to My Learning
         </Link>
       </div>
     </AcademyShell>
@@ -232,22 +232,22 @@ function LearningDashboard() {
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-muted text-muted-foreground">
             <Lock className="h-7 w-7" />
           </span>
-          <h1 className="mt-4 font-display text-2xl font-bold text-navy">Ruang Belajar Tidak Ditemukan</h1>
+          <h1 className="mt-4 font-display text-2xl font-bold text-navy">Learning Space Not Found</h1>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Modul atau program pelatihan dengan ID &quot;{id}&quot; belum terdaftar atau masih dalam proses penelaahan.
+            No module or training program with ID &quot;{id}&quot; is currently available or it may still be under review.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/academy/learn"
               className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-white hover:bg-marine/90"
             >
-              Kembali ke My Learning
+              Back to My Learning
             </Link>
             <Link
               to="/academy/self-paced"
               className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-navy hover:bg-muted"
             >
-              Jelajahi Modul Mandiri
+              Browse Self-Paced Modules
             </Link>
           </div>
         </div>

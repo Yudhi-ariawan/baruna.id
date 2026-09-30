@@ -107,14 +107,14 @@ export function MasterModuleLmsPlayer({
 
   const handleDownloadCertificate = () => {
     downloadCertificatePdf({
-      name: "Peserta BARUNA",
+      name: "BARUNA Participant",
       country: "Indonesia",
       program: master.title,
       dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
       certNo: `BARUNA-MOD-${master.code.replace(/[^A-Z0-9]/gi, "").toUpperCase()}-2026`,
       verifyUrl: `https://baruna.kkp.go.id/verify/${master.code}`,
     });
-    barunaToast("Sertifikat kelulusan modul berhasil diunduh!");
+    barunaToast("Module completion certificate downloaded successfully!");
   };
 
   const aside = (
@@ -126,14 +126,14 @@ export function MasterModuleLmsPlayer({
           </span>
           {isWorkspaceComplete && (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="h-3 w-3" /> Selesai 100%
+              <CheckCircle2 className="h-3 w-3" /> COMPLETED 100%
             </span>
           )}
         </div>
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
+        <h3 className="mt-3 font-display text-base font-bold text-navy">Module Information</h3>
         <ul className="mt-3 space-y-2 text-sm">
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Durasi</span>
+            <span className="text-muted-foreground">Duration</span>
             <span className="font-semibold text-navy">{master.hours} Jam ({master.jp} JP)</span>
           </li>
           <li className="flex items-center justify-between">
@@ -141,11 +141,11 @@ export function MasterModuleLmsPlayer({
             <span className="font-semibold text-navy">{master.level}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Instruktur</span>
+            <span className="text-muted-foreground">Instructor</span>
             <span className="font-semibold text-navy">{instructor?.name ?? master.instructorSlug}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Sertifikat</span>
+            <span className="text-muted-foreground">Certificate</span>
             <span className="font-semibold text-navy">Certificate of Completion</span>
           </li>
         </ul>
@@ -153,16 +153,16 @@ export function MasterModuleLmsPlayer({
         {isWorkspaceComplete ? (
           <div className="mt-4 rounded-xl border border-success/40 bg-success/5 p-3 text-xs text-success">
             <p className="flex items-center gap-1.5 font-bold">
-              <Award className="h-3.5 w-3.5" /> Modul Telah Selesai
+              <Award className="h-3.5 w-3.5" /> Module Completed
             </p>
             <p className="mt-1 text-success/80">
-              Sertifikat kelulusan tersedia. Kredit diakui di seluruh Program Pelatihan BARUNA.
+              Your completion certificate is available. Credit is recognized across BARUNA Training Programs.
             </p>
             <button
               onClick={handleDownloadCertificate}
               className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
             >
-              <Download className="h-3.5 w-3.5" /> Unduh Sertifikat (PDF)
+              <Download className="h-3.5 w-3.5" /> Download Certificate (PDF)
             </button>
           </div>
         ) : null}
@@ -172,14 +172,14 @@ export function MasterModuleLmsPlayer({
             to="/academy/learn"
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted"
           >
-            ← Kembali ke My Learning
+            ← Back to My Learning
           </Link>
           <Link
             to="/academy/self-paced/$code"
             params={{ code: master.code }}
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2 text-xs font-semibold text-muted-foreground hover:text-navy"
           >
-            Lihat Ringkasan &amp; Silabus
+            View Summary &amp; Syllabus
           </Link>
         </div>
       </div>
@@ -244,12 +244,12 @@ export function MasterModuleLmsPlayer({
               <p className="font-display text-sm font-bold text-navy">Progres Pembelajaran</p>
               <p className="text-xs text-muted-foreground">
                 {resourcesDone}/{RESOURCE_ORDER.length} langkah selesai
-                {quizRec?.passed && ` · Nilai kuis terbaik: ${quizRec.bestScore}%`}
+                {quizRec?.passed && ` · Best quiz score: ${quizRec.bestScore}%`}
               </p>
             </div>
             {isWorkspaceComplete && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-bold text-success">
-                <Trophy className="h-3.5 w-3.5" /> Sertifikat Tersedia
+                <Trophy className="h-3.5 w-3.5" /> Certificate Tersedia
               </span>
             )}
           </div>
@@ -268,9 +268,9 @@ export function MasterModuleLmsPlayer({
         {/* Resources List */}
         {lmsModule && app && moduleProgress && (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-            <h2 className="font-display text-base font-bold text-navy">Materi &amp; Asesmen Modul</h2>
+            <h2 className="font-display text-base font-bold text-navy">Module Materials &amp; Assessment</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Pelajari materi video, handbook modul, slide tayang, dan selesaikan kuis kelulusan.
+              Study the video lecture, module handbook, and presentation slides, then complete the assessment quiz.
             </p>
             <div className="mt-4 space-y-2.5">
               {RESOURCE_ORDER.map((kind) => {
@@ -285,7 +285,7 @@ export function MasterModuleLmsPlayer({
                     ? `${res.meta} · Passing mark ${QUIZ_PASS_PERCENT}%${
                         attempts ? ` · Best score ${quizRec?.bestScore ?? 0}%` : ""
                       }`
-                    : `${res.meta} · Evaluasi mandiri`;
+                    : `${res.meta} · Self-assessment`;
                   return (
                     <div
                       key={kind}
@@ -321,12 +321,12 @@ export function MasterModuleLmsPlayer({
                           }`}
                         >
                           {!bank
-                            ? "Lihat Kuis"
+                            ? "View Quiz"
                             : quizRec?.passed
-                              ? "Tinjau Kuis"
+                              ? "Review Quiz"
                               : attempts > 0
-                                ? "Lanjutkan Kuis"
-                                : "Kerjakan Kuis"}
+                                ? "Continue Quiz"
+                                : "Take Quiz"}
                         </button>
                       </div>
                     </div>
@@ -380,7 +380,7 @@ export function MasterModuleLmsPlayer({
                             <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
                           </>
                         ) : (
-                          "Tandai Selesai"
+                          "Mark as Completed"
                         )}
                       </button>
                     </div>
