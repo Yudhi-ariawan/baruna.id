@@ -56,6 +56,7 @@ export function Navbar() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { authState, viewer, signOut } = useHomeExperience();
+  const { t } = useLanguage();
   const isAdmin =
     viewer?.variant === "admin" ||
     ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(

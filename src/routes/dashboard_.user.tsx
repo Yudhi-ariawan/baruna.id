@@ -6,3 +6,4 @@ export const Route = createFileRoute("/dashboard_/user")({
   },
   component: () => null,
 });
+
