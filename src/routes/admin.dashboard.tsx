@@ -4,4 +4,6 @@ export const Route = createFileRoute("/admin/dashboard")({
   beforeLoad: () => {
     throw redirect({ to: "/admin", replace: true });
   },
+  component: () => null,
 });
+

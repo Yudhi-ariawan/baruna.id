@@ -286,10 +286,19 @@ export async function publishApprovedExpert({
       if (!item.language || typeof item.language !== "string") continue;
       const langName = item.language.trim();
       const langCode = langName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 10) || "lang";
-      const validProficiencies = ["native", "fluent", "professional", "intermediate", "basic"] as const;
-      const profLevel = validProficiencies.includes(item.proficiency as (typeof validProficiencies)[number])
-        ? (item.proficiency as (typeof validProficiencies)[number])
-        : "fluent";
+      const rawProf = (item.proficiency || "").trim();
+      const validEnums = ["A1", "A2", "B1", "B2", "C1", "C2", "native"] as const;
+      let profLevel: (typeof validEnums)[number] = "C1";
+      if (validEnums.includes(rawProf as (typeof validEnums)[number])) {
+        profLevel = rawProf as (typeof validEnums)[number];
+      } else {
+        const lower = rawProf.toLowerCase();
+        if (lower === "native") profLevel = "native";
+        else if (lower === "fluent" || lower === "bilingual") profLevel = "C2";
+        else if (lower === "professional" || lower === "advanced") profLevel = "C1";
+        else if (lower === "intermediate" || lower === "conversational") profLevel = "B2";
+        else if (lower === "basic" || lower === "beginner") profLevel = "A2";
+      }
 
       await supabaseAdmin.from("expert_languages").upsert(
         {

@@ -53,7 +53,11 @@ function AdminOverviewPage() {
 
   const totalUsers = usersQuery.data?.users?.length ?? 0;
   const expertUsers =
-    usersQuery.data?.users?.filter((u) => u.roles.some((r) => r.code === "expert")).length ?? 0;
+    usersQuery.data?.users?.filter((u) =>
+      u.roles?.some((r) =>
+        typeof r === "string" ? r === "expert" : (r as unknown as { code?: string })?.code === "expert",
+      ),
+    ).length ?? 0;
 
   const expertApps = expertsQuery.data?.items ?? [];
   const pendingExpertApps = expertApps.filter(

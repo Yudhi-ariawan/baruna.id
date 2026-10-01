@@ -50,8 +50,8 @@ import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
 import { Route as AdminModulesRouteImport } from './routes/admin.modules'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
-import { Route as DashboardUserRouteImport } from './routes/dashboard.user'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard_.admin'
+import { Route as DashboardUserRouteImport } from './routes/dashboard_.user'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as EventsAllRouteImport } from './routes/events.all'
@@ -335,14 +335,14 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   getParentRoute: () => AdminRoute,
 } as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => DashboardRoute,
+  id: '/dashboard_/admin',
+  path: '/dashboard/admin',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardUserRoute = DashboardUserRouteImport.update({
-  id: '/user',
-  path: '/user',
-  getParentRoute: () => DashboardRoute,
+  id: '/dashboard_/user',
+  path: '/dashboard/user',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EventsIndexRoute = EventsIndexRouteImport.update({
   id: '/',
@@ -753,7 +753,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
-  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/document-viewer': typeof DocumentViewerRoute
   '/events': typeof EventsRouteWithChildren
@@ -872,7 +872,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
-  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/document-viewer': typeof DocumentViewerRoute
   '/fellowship': typeof FellowshipRoute
@@ -987,7 +987,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
-  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/document-viewer': typeof DocumentViewerRoute
   '/events': typeof EventsRouteWithChildren
@@ -1018,8 +1018,8 @@ export interface FileRoutesById {
   '/admin/modules': typeof AdminModulesRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
-  '/dashboard/admin': typeof DashboardAdminRoute
-  '/dashboard/user': typeof DashboardUserRoute
+  '/dashboard_/admin': typeof DashboardAdminRoute
+  '/dashboard_/user': typeof DashboardUserRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
   '/events/calendar': typeof EventsCalendarRoute
@@ -1374,8 +1374,8 @@ export interface FileRouteTypes {
     | '/admin/modules'
     | '/admin/reviews'
     | '/admin/users'
-    | '/dashboard/admin'
-    | '/dashboard/user'
+    | '/dashboard_/admin'
+    | '/dashboard_/user'
     | '/events/$slug'
     | '/events/all'
     | '/events/calendar'
@@ -1465,7 +1465,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   AuthRoute: typeof AuthRoute
   CommunityRoute: typeof CommunityRoute
-  DashboardRoute: typeof DashboardRouteWithChildren
+  DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRoute
   DocumentViewerRoute: typeof DocumentViewerRoute
   EventsRoute: typeof EventsRouteWithChildren
@@ -1480,6 +1480,8 @@ export interface RootRouteChildren {
   SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  DashboardAdminRoute: typeof DashboardAdminRoute
+  DashboardUserRoute: typeof DashboardUserRoute
   KnowledgeHubTypeRoute: typeof KnowledgeHubTypeRoute
   KnowledgeHubMyContributionsRoute: typeof KnowledgeHubMyContributionsRoute
   KnowledgeHubSubmitResourceRoute: typeof KnowledgeHubSubmitResourceRoute
@@ -1775,19 +1777,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/dashboard/admin': {
-      id: '/dashboard/admin'
-      path: '/admin'
+    '/dashboard_/admin': {
+      id: '/dashboard_/admin'
+      path: '/dashboard/admin'
       fullPath: '/dashboard/admin'
       preLoaderRoute: typeof DashboardAdminRouteImport
-      parentRoute: typeof DashboardRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/dashboard/user': {
-      id: '/dashboard/user'
-      path: '/user'
+    '/dashboard_/user': {
+      id: '/dashboard_/user'
+      path: '/dashboard/user'
       fullPath: '/dashboard/user'
       preLoaderRoute: typeof DashboardUserRouteImport
-      parentRoute: typeof DashboardRoute
+      parentRoute: typeof rootRouteImport
     }
     '/events/': {
       id: '/events/'
@@ -2452,20 +2454,6 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
-interface DashboardRouteChildren {
-  DashboardAdminRoute: typeof DashboardAdminRoute
-  DashboardUserRoute: typeof DashboardUserRoute
-}
-
-const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardAdminRoute: DashboardAdminRoute,
-  DashboardUserRoute: DashboardUserRoute,
-}
-
-const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
-  DashboardRouteChildren,
-)
-
 interface EventsRouteChildren {
   EventsSlugRoute: typeof EventsSlugRoute
   EventsAllRoute: typeof EventsAllRoute
@@ -2623,7 +2611,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   AuthRoute: AuthRoute,
   CommunityRoute: CommunityRoute,
-  DashboardRoute: DashboardRouteWithChildren,
+  DashboardRoute: DashboardRoute,
   DemoRoute: DemoRoute,
   DocumentViewerRoute: DocumentViewerRoute,
   EventsRoute: EventsRouteWithChildren,
@@ -2638,6 +2626,8 @@ const rootRouteChildren: RootRouteChildren = {
   SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  DashboardAdminRoute: DashboardAdminRoute,
+  DashboardUserRoute: DashboardUserRoute,
   KnowledgeHubTypeRoute: KnowledgeHubTypeRoute,
   KnowledgeHubMyContributionsRoute: KnowledgeHubMyContributionsRoute,
   KnowledgeHubSubmitResourceRoute: KnowledgeHubSubmitResourceRoute,
