@@ -158,8 +158,9 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
     );
     const hasPublishedExpert = Boolean(
       existingExpert &&
-        (existingExpert.current_status === "published" ||
-          existingExpert.current_status === "active"),
+        (existingExpert.current_status === "approved" ||
+          (existingExpert.current_status as string) === "published" ||
+          (existingExpert.current_status as string) === "active"),
     );
     const hasExpertRbacRole = Boolean(expertRbac?.id);
 

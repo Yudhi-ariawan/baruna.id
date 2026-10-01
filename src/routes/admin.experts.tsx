@@ -55,6 +55,20 @@ export const Route = createFileRoute("/admin/experts")({
     ],
   }),
   component: AdminExpertsPage,
+  errorComponent: ({ error, reset }) => (
+    <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-800 space-y-3">
+      <h2 className="text-lg font-bold">Terjadi Kendala Memuat Data Verifikasi Expert</h2>
+      <p className="text-xs text-red-600 font-mono">
+        {error instanceof Error ? error.message : String(error)}
+      </p>
+      <button
+        onClick={() => reset()}
+        className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition"
+      >
+        Coba Lagi
+      </button>
+    </div>
+  ),
 });
 
 function formatDate(dateStr: string) {

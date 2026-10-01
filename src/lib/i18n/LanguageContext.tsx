@@ -14,6 +14,7 @@ export type TranslationKey = TranslationKeyPath<TranslationSchema>;
 
 interface LanguageContextValue {
   language: Language;
+  isId: boolean;
   setLanguage: (lang: Language) => void;
   t: (key: TranslationKey | string, fallback?: string) => string;
 }
@@ -85,6 +86,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<LanguageContextValue>(
     () => ({
       language,
+      isId: language === "id",
       setLanguage,
       t,
     }),

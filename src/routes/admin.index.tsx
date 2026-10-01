@@ -15,8 +15,8 @@ import {
   Users,
 } from "lucide-react";
 import { listUsers } from "@/lib/admin/users.functions";
-import { listAdminExpertApplications } from "@/lib/admin/experts.functions";
-import { listAdminModuleSubmissions } from "@/lib/admin/modules.functions";
+import { listAdminExpertApplications, type AdminExpertItem } from "@/lib/admin/experts.functions";
+import { listAdminModuleSubmissions, type AdminModuleItem } from "@/lib/admin/modules.functions";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -26,6 +26,20 @@ export const Route = createFileRoute("/admin/")({
     ],
   }),
   component: AdminOverviewPage,
+  errorComponent: ({ error, reset }) => (
+    <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-800 space-y-3">
+      <h2 className="text-lg font-bold">Terjadi Kendala Memuat Dashboard Admin</h2>
+      <p className="text-xs text-red-600 font-mono">
+        {error instanceof Error ? error.message : String(error)}
+      </p>
+      <button
+        onClick={() => reset()}
+        className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition"
+      >
+        Coba Lagi
+      </button>
+    </div>
+  ),
 });
 
 function AdminOverviewPage() {
@@ -59,14 +73,14 @@ function AdminOverviewPage() {
       ),
     ).length ?? 0;
 
-  const expertApps = expertsQuery.data?.items ?? [];
+  const expertApps: AdminExpertItem[] = Array.isArray(expertsQuery.data) ? expertsQuery.data : [];
   const pendingExpertApps = expertApps.filter(
-    (a) => a.status === "pending" || a.status === "resubmitted" || a.status === "in_review"
+    (a: AdminExpertItem) => a.status === "pending" || a.status === "resubmitted" || a.status === "in_review" || a.status === "under_review"
   );
 
-  const moduleItems = modulesQuery.data ?? [];
+  const moduleItems: AdminModuleItem[] = Array.isArray(modulesQuery.data) ? modulesQuery.data : [];
   const pendingModules = moduleItems.filter(
-    (m) => m.status === "pending_review" || m.status === "resubmitted" || m.status === "submitted" || m.status === "pending" || m.status === "under_review"
+    (m: AdminModuleItem) => m.status === "pending_review" || m.status === "resubmitted" || m.status === "submitted" || m.status === "pending" || m.status === "under_review"
   );
 
   return (
@@ -223,10 +237,10 @@ function AdminOverviewPage() {
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {pendingExpertApps.slice(0, 4).map((app) => (
-                  <div key={app.id} className="py-3 flex items-center justify-between gap-4">
+                {pendingExpertApps.slice(0, 4).map((app: AdminExpertItem) => (
+                  <div key={app.subjectId} className="py-3 flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-xs text-navy truncate">{app.fullName}</p>
+                      <p className="font-bold text-xs text-navy truncate">{app.applicantName}</p>
                       <p className="text-[11px] text-muted-foreground truncate">
                         {app.institution} • {app.country || "Indonesia"}
                       </p>
@@ -277,12 +291,12 @@ function AdminOverviewPage() {
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {pendingModules.slice(0, 4).map((mod) => (
-                  <div key={mod.id} className="py-3 flex items-center justify-between gap-4">
+                {pendingModules.slice(0, 4).map((mod: AdminModuleItem) => (
+                  <div key={mod.subjectId} className="py-3 flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-xs text-navy truncate">{mod.title}</p>
                       <p className="text-[11px] text-muted-foreground truncate">
-                        {mod.category || "Pelatihan Maritim"}
+                        {mod.topic || mod.moduleType || "Pelatihan Maritim"}
                       </p>
                     </div>
                     <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 uppercase tracking-wider">

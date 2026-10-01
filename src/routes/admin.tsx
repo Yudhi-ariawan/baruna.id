@@ -16,11 +16,25 @@ import {
   UserCheck,
   Users,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getAdminAccess } from "@/lib/admin/users.functions";
 import { toast } from "sonner";
+
+interface AdminNavItem {
+  label: string;
+  to: string;
+  icon: LucideIcon;
+  description?: string;
+  exact?: boolean;
+}
+
+interface AdminNavGroup {
+  group: string;
+  items: AdminNavItem[];
+}
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -30,6 +44,33 @@ export const Route = createFileRoute("/admin")({
     ],
   }),
   component: AdminShell,
+  errorComponent: ({ error, reset }) => (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <div className="max-w-md text-center rounded-2xl border border-red-200 bg-white p-8 shadow-lg space-y-4">
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-red-100 text-red-600">
+          <ShieldAlert className="h-6 w-6" />
+        </div>
+        <h2 className="font-display text-xl font-bold text-navy">Kendala Memuat Panel Admin</h2>
+        <p className="text-xs text-muted-foreground">
+          {error instanceof Error ? error.message : "Terjadi kesalahan sistem saat memuat modul admin."}
+        </p>
+        <div className="flex justify-center gap-2 pt-2">
+          <button
+            onClick={() => reset()}
+            className="rounded-xl bg-navy px-4 py-2 text-xs font-bold text-white hover:bg-navy/90 transition"
+          >
+            Coba Lagi
+          </button>
+          <a
+            href="/"
+            className="rounded-xl border border-border px-4 py-2 text-xs font-bold text-foreground hover:bg-slate-50 transition"
+          >
+            Ke Beranda
+          </a>
+        </div>
+      </div>
+    </div>
+  ),
 });
 
 function AdminShell() {
@@ -126,7 +167,7 @@ function AdminShell() {
     );
   }
 
-  const navItems = [
+  const navItems: AdminNavGroup[] = [
     {
       group: "Overview",
       items: [

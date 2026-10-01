@@ -11,6 +11,7 @@ import {
   Shield,
   UserPlus,
   UserRound,
+  Users,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -34,7 +35,23 @@ import type {
   AdminUser,
 } from "@/lib/admin/users.functions";
 
-export const Route = createFileRoute("/admin/users")({ component: UsersPage });
+export const Route = createFileRoute("/admin/users")({
+  component: UsersPage,
+  errorComponent: ({ error, reset }) => (
+    <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-800 space-y-3">
+      <h2 className="text-lg font-bold">Terjadi Kendala Memuat Data Pengguna</h2>
+      <p className="text-xs text-red-600 font-mono">
+        {error instanceof Error ? error.message : String(error)}
+      </p>
+      <button
+        onClick={() => reset()}
+        className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition"
+      >
+        Coba Lagi
+      </button>
+    </div>
+  ),
+});
 
 type UserRow = AdminUser;
 
@@ -50,9 +67,13 @@ function messageOf(error: unknown) {
 
 function formatDate(value: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(value),
-  );
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return "—";
+    return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
+  } catch {
+    return "—";
+  }
 }
 
 function roleCodeOf(role: unknown): string {
@@ -870,7 +891,7 @@ function UserDialog({
             <SectionTitle icon={<Shield className="h-4 w-4" />} text="Roles" />
             <div className="grid gap-2 sm:grid-cols-2">
               {roles.map((role) => {
-                const assigned = user.roles.includes(role);
+                const assigned = (user.roles || []).map(roleCodeOf).includes(role);
                 return (
                   <label
                     key={role}

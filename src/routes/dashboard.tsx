@@ -36,6 +36,22 @@ export const Route = createFileRoute("/dashboard")({
     ],
   }),
   component: DashboardPage,
+  errorComponent: ({ error, reset }) => (
+    <div className="flex min-h-[60vh] items-center justify-center p-6 text-center">
+      <div className="max-w-md rounded-2xl border border-border bg-card p-8 shadow-soft space-y-4">
+        <h2 className="font-display text-xl font-bold text-navy">Kendala Memuat Dashboard</h2>
+        <p className="text-xs text-muted-foreground">
+          {error instanceof Error ? error.message : "Terjadi kesalahan saat memuat aktivitas pelatihan."}
+        </p>
+        <button
+          onClick={() => reset()}
+          className="rounded-xl bg-marine px-4 py-2 text-xs font-bold text-white hover:bg-navy transition"
+        >
+          Muat Ulang
+        </button>
+      </div>
+    </div>
+  ),
 });
 
 function DashboardPage() {
