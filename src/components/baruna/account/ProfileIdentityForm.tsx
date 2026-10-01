@@ -15,6 +15,7 @@ import { updateAccountProfile } from "@/lib/account/account.functions";
 import type { AccountProfile } from "@/lib/account/account.types";
 import { useLanguage } from "@/lib/i18n";
 import { CountrySelect } from "@/components/ui/country-select";
+import { PhoneCountryInput } from "@/components/ui/phone-country-input";
 import { toast } from "sonner";
 
 const inputClass =
@@ -180,12 +181,19 @@ export function ProfileIdentityForm({ profile }: { profile: AccountProfile }) {
           onChange={(jobTitle) => setForm((current) => ({ ...current, jobTitle }))}
         />
 
-        <ProfileField
-          label={isId ? "Nomor Telepon / WhatsApp" : "Phone Number / WhatsApp"}
-          type="tel"
-          value={form.phone}
-          onChange={(phone) => setForm((current) => ({ ...current, phone }))}
-        />
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-navy">
+            {isId ? "Nomor Telepon / WhatsApp" : "Phone Number / WhatsApp"}
+          </label>
+          <div className="mt-1">
+            <PhoneCountryInput
+              value={form.phone ?? ""}
+              onChange={(phone) => setForm((current) => ({ ...current, phone }))}
+              placeholder={isId ? "812 3456 7890" : "812 3456 7890"}
+              isId={isId}
+            />
+          </div>
+        </div>
 
         {/* Country */}
         <div className="space-y-1">

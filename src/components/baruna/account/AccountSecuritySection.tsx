@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { useNavigate } from "@tanstack/react-router";
+import { PasswordStrengthMeter } from "@/components/ui/password-strength-meter";
 
 export function AccountSecuritySection({ currentEmail }: { currentEmail: string }) {
   const { isId } = useLanguage();
@@ -230,23 +231,16 @@ export function AccountSecuritySection({ currentEmail }: { currentEmail: string 
               />
             </div>
 
-            {/* Validation indicators */}
+            {/* Live Password Strength Meter with Green Checkmarks */}
             {newPassword && (
-              <div className="space-y-1 text-[11px] pt-1">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2
-                    className={`h-3.5 w-3.5 ${isPasswordValid ? "text-emerald-600" : "text-muted-foreground/50"}`}
-                  />
-                  <span className={isPasswordValid ? "text-emerald-700 font-medium" : "text-muted-foreground"}>
-                    {isId ? "Minimal 6 karakter" : "Minimum 6 characters"}
-                  </span>
-                </div>
+              <div className="space-y-2 pt-1 border-t border-slate-100">
+                <PasswordStrengthMeter password={newPassword} isId={isId} />
                 {confirmPassword && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 text-xs pt-1">
                     <CheckCircle2
                       className={`h-3.5 w-3.5 ${isPasswordMatching ? "text-emerald-600" : "text-destructive"}`}
                     />
-                    <span className={isPasswordMatching ? "text-emerald-700 font-medium" : "text-destructive"}>
+                    <span className={isPasswordMatching ? "text-emerald-700 font-medium" : "text-destructive font-medium"}>
                       {isPasswordMatching
                         ? isId
                           ? "Kata sandi cocok"
