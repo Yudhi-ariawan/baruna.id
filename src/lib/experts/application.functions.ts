@@ -106,18 +106,88 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ExpertApplicationBootstrap> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: profile, error }, { data: identity, error: identityError }, applications] =
-      await Promise.all([
-        supabaseAdmin
-          .from("profiles")
-          .select("display_name, organization, job_title, phone")
-          .eq("id", context.userId)
-          .single(),
-        supabaseAdmin.auth.admin.getUserById(context.userId),
-        readApplications(context),
-      ]);
+
+    const [
+      { data: profile, error },
+      { data: identity, error: identityError },
+      applications,
+      existingExpert,
+      expertRbac,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("display_name, organization, job_title, phone")
+        .eq("id", context.userId)
+        .single(),
+      supabaseAdmin.auth.admin.getUserById(context.userId),
+      readApplications(context),
+      (async () => {
+        try {
+          const { data } = await supabaseAdmin
+            .from("experts")
+            .select("id, slug, display_name, current_status")
+            .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          return data;
+        } catch {
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { data } = await supabaseAdmin
+            .from("rbac_user_roles")
+            .select("id, rbac_roles!inner(code)")
+            .eq("user_id", context.userId)
+            .eq("rbac_roles.code", "expert")
+            .limit(1)
+            .maybeSingle();
+          return data;
+        } catch {
+          return null;
+        }
+      })(),
+    ]);
     if (error || !profile) throw new Error(error?.message ?? "profile_not_found");
     if (identityError || !identity.user) throw new Error("user_identity_not_found");
+
+    const hasApprovedApplication = applications.some(
+      (app) => app.reviewStatus === "approved" || app.draftStatus === "approved",
+    );
+    const hasPublishedExpert = Boolean(
+      existingExpert &&
+        (existingExpert.current_status === "published" ||
+          existingExpert.current_status === "active"),
+    );
+    const hasExpertRbacRole = Boolean(expertRbac?.id);
+
+    const isAlreadyExpert = Boolean(
+      existingExpert || hasApprovedApplication || hasExpertRbacRole,
+    );
+
+    const pendingApplication = !isAlreadyExpert
+      ? applications.find(
+          (app) =>
+            app.draftStatus === "submitted" &&
+            (app.reviewStatus === "pending" ||
+              app.reviewStatus === "under_review" ||
+              app.reviewStatus === "decision_pending" ||
+              !app.reviewStatus),
+        ) ?? null
+      : null;
+
+    const editableDraft = !isAlreadyExpert && !pendingApplication
+      ? applications.find(
+          (application) =>
+            application.draftStatus === "draft" ||
+            application.reviewStatus === "revision_requested",
+        ) ?? null
+      : applications.find(
+          (application) => application.reviewStatus === "revision_requested",
+        ) ?? null;
+
     return {
       userId: context.userId,
       profile: {
@@ -127,12 +197,11 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
         title: profile.job_title ?? "",
         phone: profile.phone ?? "",
       },
-      editableDraft:
-        applications.find(
-          (application) =>
-            application.draftStatus === "draft" ||
-            application.reviewStatus === "revision_requested",
-        ) ?? null,
+      isAlreadyExpert,
+      expertSlug: existingExpert?.slug ?? null,
+      expertName: existingExpert?.display_name ?? profile.display_name ?? null,
+      pendingApplication,
+      editableDraft,
     };
   });
 

@@ -87,6 +87,22 @@ function MyExpertProfilePage() {
   if (!signedIn) return null;
 
   const rows = applications.data ?? [];
+  const hasApproved = rows.some(
+    (row) => row.reviewStatus === "approved" || row.draftStatus === "approved",
+  );
+  const hasRevision = rows.some(
+    (row) => row.reviewStatus === "revision_requested",
+  );
+  const hasPending = rows.some(
+    (row) =>
+      row.draftStatus === "submitted" &&
+      (row.reviewStatus === "pending" ||
+        row.reviewStatus === "under_review" ||
+        row.reviewStatus === "decision_pending" ||
+        !row.reviewStatus),
+  );
+  const hasDraft = rows.some((row) => row.draftStatus === "draft");
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -104,13 +120,39 @@ function MyExpertProfilePage() {
               Track your application from draft through governance review and approval.
             </p>
           </div>
-          <Link
-            to="/experts/join"
-            className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground hover:bg-navy"
-          >
-            <UserPlus className="h-4 w-4" />{" "}
-            {rows.some((row) => row.draftStatus === "draft") ? "Continue Draft" : "New Application"}
-          </Link>
+          {hasApproved ? (
+            <Link
+              to="/experts/portal"
+              className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-white shadow-soft hover:bg-navy"
+            >
+              <CheckCircle2 className="h-4 w-4" /> Buka Portal Expert <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : hasPending ? (
+            <div className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-semibold text-blue-800">
+              <Clock3 className="h-4 w-4 text-blue-600" /> Pengajuan Sedang Ditinjau
+            </div>
+          ) : hasRevision ? (
+            <Link
+              to="/experts/join"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white shadow-soft hover:bg-amber-700"
+            >
+              <RotateCcw className="h-4 w-4" /> Lengkapi Revisi Berkas
+            </Link>
+          ) : hasDraft ? (
+            <Link
+              to="/experts/join"
+              className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-white hover:bg-navy"
+            >
+              <FilePenLine className="h-4 w-4" /> Lanjutkan Draf
+            </Link>
+          ) : (
+            <Link
+              to="/experts/join"
+              className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-white hover:bg-navy"
+            >
+              <UserPlus className="h-4 w-4" /> Daftar sebagai Expert
+            </Link>
+          )}
         </div>
 
         {applications.isError ? (

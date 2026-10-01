@@ -18,6 +18,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { AlreadyExpertNotice } from "@/components/baruna/experts/AlreadyExpertNotice";
+import { ApplicationPendingNotice } from "@/components/baruna/experts/ApplicationPendingNotice";
 import { ProfessionalProfileSection } from "@/components/baruna/experts/ProfessionalProfileSection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -29,6 +31,7 @@ import {
 } from "@/lib/experts/application.functions";
 import {
   EXPERT_APPLICATION_BUCKET,
+  type ExpertApplicationBootstrap,
   type ExpertApplicationDocument,
   type ExpertDocumentCategory,
 } from "@/lib/experts/application.types";
@@ -117,6 +120,7 @@ function JoinExpertPage() {
   const [submitted, setSubmitted] = useState(false);
   const [isRevisionSubmitted, setIsRevisionSubmitted] = useState(false);
   const [ready, setReady] = useState(false);
+  const [bootstrapData, setBootstrapData] = useState<ExpertApplicationBootstrap | null>(null);
   const [busy, setBusy] = useState(false);
   const [draftId, setDraftId] = useState<string | undefined>();
   const [subjectId, setSubjectId] = useState<string | null>(null);
@@ -151,6 +155,7 @@ function JoinExpertPage() {
         const bootstrap = await bootstrapFn();
         if (!active) return;
         setUserId(bootstrap.userId);
+        setBootstrapData(bootstrap);
         if (bootstrap.editableDraft) {
           const draft = bootstrap.editableDraft;
           const payload = draft.payload;
@@ -369,6 +374,27 @@ function JoinExpertPage() {
         <main className="mx-auto max-w-4xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
           Loading your expert application…
         </main>
+      </div>
+    );
+  }
+
+  if (bootstrapData?.isAlreadyExpert) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <AlreadyExpertNotice
+          expertName={bootstrapData.expertName}
+          expertSlug={bootstrapData.expertSlug}
+        />
+      </div>
+    );
+  }
+
+  if (bootstrapData?.pendingApplication) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <ApplicationPendingNotice application={bootstrapData.pendingApplication} />
       </div>
     );
   }

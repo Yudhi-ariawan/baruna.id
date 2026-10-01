@@ -44,5 +44,9 @@ export type ExpertApplicationBootstrap = {
     title: string;
     phone: string;
   };
+  isAlreadyExpert: boolean;
+  expertSlug?: string | null;
+  expertName?: string | null;
+  pendingApplication: ExpertApplicationStatus | null;
   editableDraft: ExpertApplicationStatus | null;
 };
