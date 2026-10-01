@@ -136,13 +136,42 @@ export const listPublicExperts = createServerFn({ method: "GET" }).handler(
 
       if (!error && data) {
         const rows = data as DirectoryRow[];
-        dbExperts = await Promise.all(
-          rows.map(async (r) => {
-            const mapped = mapExpert(r);
-            mapped.avatarUrl = await resolveAvatarUrl(r.avatar_url, supabaseAdmin);
-            return mapped;
-          }),
-        );
+        const pathsToSign: { index: number; path: string }[] = [];
+        const mappedList: PublicExpert[] = rows.map((r, index) => {
+          const mapped = mapExpert(r);
+          if (r.avatar_url && !r.avatar_url.startsWith("http://") && !r.avatar_url.startsWith("https://")) {
+            pathsToSign.push({ index, path: r.avatar_url.trim() });
+          } else if (r.avatar_url?.includes("/expert-applications/")) {
+            const match = r.avatar_url.match(/\/expert-applications\/(.+?)(\?|$)/);
+            if (match && match[1]) {
+              pathsToSign.push({ index, path: decodeURIComponent(match[1]) });
+            }
+          }
+          return mapped;
+        });
+
+        if (pathsToSign.length > 0) {
+          try {
+            const { data: signedList } = await supabaseAdmin.storage
+              .from("expert-applications")
+              .createSignedUrls(
+                pathsToSign.map((p) => p.path),
+                86400,
+              );
+            if (signedList) {
+              signedList.forEach((s, idx) => {
+                const original = pathsToSign[idx];
+                if (original && s?.signedUrl) {
+                  mappedList[original.index].avatarUrl = s.signedUrl;
+                }
+              });
+            }
+          } catch (e) {
+            console.warn("Batch sign avatars failed:", e);
+          }
+        }
+
+        dbExperts = mappedList;
       }
     } catch (err) {
       console.warn("Failed to load experts from db:", err);

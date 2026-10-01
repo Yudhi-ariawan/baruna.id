@@ -53,8 +53,21 @@ async function assertAdminOrReviewer(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: { supabase: any; userId: string },
 ) {
-  const roles = ["super_admin", "admin", "management", "qa_reviewer", "verifier", "approver"];
-  for (const role of roles) {
+  const allowed = ["super_admin", "admin", "management", "qa_reviewer", "verifier", "approver"];
+  const now = new Date().toISOString();
+  const { data: assignments } = await context.supabase
+    .from("rbac_user_roles")
+    .select("rbac_roles!inner(code)")
+    .eq("user_id", context.userId)
+    .eq("status", "active")
+    .lte("valid_from", now)
+    .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .in("rbac_roles.code", allowed)
+    .limit(1);
+
+  if (assignments && assignments.length > 0) return true;
+
+  for (const role of allowed.slice(0, 2)) {
     const { data } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
       _role: role,

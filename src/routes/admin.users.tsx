@@ -55,17 +55,25 @@ function formatDate(value: string | null) {
   );
 }
 
-function initials(user: UserRow) {
-  const source = user.displayName || user.email;
-  return source
-    .split(/\s+|@/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
+function roleCodeOf(role: unknown): string {
+  if (!role) return "";
+  if (typeof role === "string") return role;
+  return (role as { code?: string })?.code || (role as { name?: string })?.name || String(role || "");
 }
 
-function getRoleBadgeStyle(role: string) {
-  const r = role.toLowerCase();
+function initials(user: UserRow) {
+  const source = (user.displayName || user.email || "User").trim();
+  return (
+    source
+      .split(/\s+|@/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "U"
+  );
+}
+
+function getRoleBadgeStyle(rawRole: unknown) {
+  const r = roleCodeOf(rawRole).toLowerCase();
   if (r === "expert") return "bg-teal-50 text-teal-800 border-teal-200";
   if (r === "admin" || r === "super_admin") return "bg-indigo-50 text-indigo-800 border-indigo-200";
   if (r === "reviewer" || r === "verifier" || r === "approver") return "bg-amber-50 text-amber-800 border-amber-200";
@@ -106,11 +114,9 @@ function UsersPage() {
 
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
+      const uRoles = (u.roles || []).map(roleCodeOf);
       if (roleFilter !== "all") {
-        const hasRole = u.roles.some((r) =>
-          typeof r === "string" ? r === roleFilter : (r as unknown as { code?: string }).code === roleFilter
-        );
-        if (!hasRole) return false;
+        if (!uRoles.includes(roleFilter)) return false;
       }
       if (statusFilter === "active" && !u.isActive) return false;
       if (statusFilter === "suspended" && u.isActive) return false;
@@ -136,13 +142,13 @@ function UsersPage() {
   // Quick stats
   const totalCount = users.length;
   const expertCount = users.filter((u) =>
-    u.roles.some((r) => (typeof r === "string" ? r === "expert" : (r as unknown as { code?: string }).code === "expert"))
+    (u.roles || []).some((r) => roleCodeOf(r) === "expert"),
   ).length;
   const adminCount = users.filter((u) =>
-    u.roles.some((r) => {
-      const code = typeof r === "string" ? r : (r as unknown as { code?: string }).code;
+    (u.roles || []).some((r) => {
+      const code = roleCodeOf(r);
       return code === "admin" || code === "super_admin";
-    })
+    }),
   ).length;
   const activeCount = users.filter((u) => u.isActive).length;
 
@@ -337,15 +343,18 @@ function UsersPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    {user.roles.length ? (
-                      user.roles.map((role) => (
-                        <span
-                          key={role}
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeStyle(role)}`}
-                        >
-                          {role}
-                        </span>
-                      ))
+                    {(user.roles || []).length ? (
+                      user.roles.map((rawRole, idx) => {
+                        const role = roleCodeOf(rawRole);
+                        return (
+                          <span
+                            key={role || idx}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeStyle(role)}`}
+                          >
+                            {role}
+                          </span>
+                        );
+                      })
                     ) : (
                       <span className="text-[11px] text-muted-foreground italic">No role</span>
                     )}
@@ -396,15 +405,18 @@ function UsersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex max-w-xs flex-wrap gap-1">
-                          {user.roles.length ? (
-                            user.roles.map((role) => (
-                              <span
-                                key={role}
-                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeStyle(role)}`}
-                              >
-                                {role}
-                              </span>
-                            ))
+                          {(user.roles || []).length ? (
+                            user.roles.map((rawRole, idx) => {
+                              const role = roleCodeOf(rawRole);
+                              return (
+                                <span
+                                  key={role || idx}
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeStyle(role)}`}
+                                >
+                                  {role}
+                                </span>
+                              );
+                            })
                           ) : (
                             <span className="text-xs text-muted-foreground italic">Tanpa peran</span>
                           )}
