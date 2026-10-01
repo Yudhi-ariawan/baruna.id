@@ -15,6 +15,8 @@ import {
   RotateCcw,
   ExternalLink,
   X,
+  Bookmark,
+  Eye,
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
@@ -51,8 +53,54 @@ import {
   type ExpertPublicationItem,
   type LanguageProficiency,
 } from "@/lib/experts";
+import { useLanguage } from "@/lib/i18n";
+import { CountrySelect } from "@/components/ui/country-select";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const EXPERT_APPLICATION_ACCEPT = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp";
+
+const STEPS = [
+  {
+    n: 1,
+    titleEn: "Personal Info",
+    titleId: "Data Diri",
+    descEn: "Identity & contact details",
+    descId: "Identitas & kontak",
+    icon: User,
+  },
+  {
+    n: 2,
+    titleEn: "Expertise & Roles",
+    titleId: "Keahlian & Peran",
+    descEn: "Domains & participation",
+    descId: "Bidang & peran",
+    icon: Layers,
+  },
+  {
+    n: 3,
+    titleEn: "Professional Profile",
+    titleId: "Profil Profesional",
+    descEn: "Bio, languages, projects",
+    descId: "Bio, bahasa, proyek",
+    icon: BookOpen,
+  },
+  {
+    n: 4,
+    titleEn: "Documents",
+    titleId: "Dokumen Berkas",
+    descEn: "CV, photo & certificates",
+    descId: "CV, foto & sertifikat",
+    icon: Upload,
+  },
+  {
+    n: 5,
+    titleEn: "Review & Submit",
+    titleId: "Review & Kirim",
+    descEn: "Summary & final submit",
+    descId: "Ringkasan & pengajuan",
+    icon: ClipboardCheck,
+  },
+];
 
 export const Route = createFileRoute("/experts/join")({
   head: () => ({
@@ -111,11 +159,16 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 }
 
 function JoinExpertPage() {
+  const { language } = useLanguage();
+  const isId = language === "id";
+
   const navigate = useNavigate();
   const bootstrapFn = useServerFn(getExpertApplicationBootstrap);
   const saveDraftFn = useServerFn(saveExpertApplicationDraft);
   const submitFn = useServerFn(submitExpertApplication);
   const resubmitRevisionFn = useServerFn(resubmitExpertApplicationRevision);
+
+  const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<ExpertApplicationDraft>({ ...emptyExpertApplication });
   const [submitted, setSubmitted] = useState(false);
   const [isRevisionSubmitted, setIsRevisionSubmitted] = useState(false);
@@ -207,6 +260,7 @@ function JoinExpertPage() {
             institution: bootstrap.profile.institution,
             title: bootstrap.profile.title,
             phone: bootstrap.profile.phone,
+            country: current.country || "Indonesia",
           }));
         }
         setReady(true);
@@ -550,231 +604,498 @@ function JoinExpertPage() {
           </div>
         )}
 
-        <div className="mt-6 space-y-5">
-          <SectionCard icon={User} n={1} title="Personal Information">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <FieldLabel required>Full Name</FieldLabel>
-                <input
-                  className={inputClass}
-                  value={form.fullName}
-                  onChange={(e) => set("fullName", e.target.value)}
-                />
-              </div>
-              <div>
-                <FieldLabel required>Professional Title</FieldLabel>
-                <input
-                  className={inputClass}
-                  value={form.title}
-                  onChange={(e) => set("title", e.target.value)}
-                />
-              </div>
-              <div>
-                <FieldLabel required>Institution</FieldLabel>
-                <input
-                  className={inputClass}
-                  value={form.institution}
-                  onChange={(e) => set("institution", e.target.value)}
-                />
-              </div>
-              <div>
-                <FieldLabel required>Country</FieldLabel>
-                <input
-                  className={inputClass}
-                  value={form.country}
-                  onChange={(e) => set("country", e.target.value)}
-                />
-              </div>
-              <div>
-                <FieldLabel required>Email</FieldLabel>
-                <input
-                  className={inputClass}
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => set("email", e.target.value)}
-                />
-              </div>
-              <div>
-                <FieldLabel>Phone Number</FieldLabel>
-                <input
-                  className={inputClass}
-                  value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
-                />
-              </div>
-              <div>
-                <FieldLabel>LinkedIn</FieldLabel>
-                <input
-                  className={inputClass}
-                  value={form.linkedin}
-                  onChange={(e) => set("linkedin", e.target.value)}
-                  placeholder="https://linkedin.com/in/…"
-                />
-              </div>
-              <div>
-                <FieldLabel>Personal Website</FieldLabel>
-                <input
-                  className={inputClass}
-                  value={form.website}
-                  onChange={(e) => set("website", e.target.value)}
-                  placeholder="https://…"
-                />
-              </div>
-            </div>
-          </SectionCard>
+        {/* Stepper Navigation Bar */}
+        <div className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-soft">
+          <div className="flex items-center justify-between mb-3 text-xs font-semibold text-muted-foreground">
+            <span className="uppercase tracking-wider text-marine font-bold">
+              {isId ? `Langkah ${currentStep} dari ${STEPS.length}` : `Step ${currentStep} of ${STEPS.length}`}
+            </span>
+            <span>
+              {Math.round((currentStep / STEPS.length) * 100)}% {isId ? "Selesai" : "Completed"}
+            </span>
+          </div>
 
-          <SectionCard icon={Layers} n={2} title="Areas of Expertise">
-            <p className="mb-3 text-sm text-muted-foreground">Select all that apply.</p>
-            <div className="flex flex-wrap gap-2">
-              {EXPERTISE_AREAS.map((area) => {
-                const active = form.expertise.includes(area);
-                return (
-                  <button
-                    key={area}
-                    type="button"
-                    onClick={() => toggleExpertise(area)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+          {/* Step Progress Line */}
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-4">
+            <div
+              className="h-full rounded-full bg-marine transition-all duration-300"
+              style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+            />
+          </div>
+
+          {/* Stepper Buttons */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {STEPS.map((s) => {
+              const active = s.n === currentStep;
+              const isDone = s.n < currentStep;
+              const Icon = s.icon;
+
+              return (
+                <button
+                  key={s.n}
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep(s.n);
+                    setError(null);
+                  }}
+                  className={`flex items-start gap-2.5 rounded-xl p-3 text-left transition-all border cursor-pointer ${
+                    active
+                      ? "border-marine bg-marine/10 shadow-xs ring-1 ring-marine/30"
+                      : isDone
+                        ? "border-eco-community/40 bg-eco-community/5 hover:bg-eco-community/10"
+                        : "border-transparent bg-muted/40 hover:bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <span
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-bold ${
                       active
-                        ? "bg-marine text-marine-foreground"
-                        : "bg-muted text-foreground/75 hover:bg-marine/15 hover:text-marine"
+                        ? "bg-marine text-white shadow-xs"
+                        : isDone
+                          ? "bg-eco-community text-white"
+                          : "bg-background text-muted-foreground border border-border"
                     }`}
                   >
-                    {active && <Check className="mr-1 inline h-3 w-3" />}
-                    {area}
-                  </button>
-                );
-              })}
-            </div>
-          </SectionCard>
-
-          <SectionCard icon={ClipboardCheck} n={3} title="Available Roles">
-            <p className="mb-3 text-sm text-muted-foreground">You may select multiple roles.</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {EXPERT_ROLES.map((role) => {
-                const active = form.roles.includes(role);
-                return (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => toggleRole(role)}
-                    className={`flex items-center gap-2.5 rounded-xl border p-3 text-left text-sm font-semibold transition-all ${
-                      active
-                        ? "border-marine bg-marine/10 text-marine"
-                        : "border-border text-foreground/80 hover:border-marine/40 hover:bg-muted"
-                    }`}
-                  >
-                    <span
-                      className={`grid h-5 w-5 place-items-center rounded border ${
-                        active
-                          ? "border-marine bg-marine text-marine-foreground"
-                          : "border-muted-foreground/40"
+                    {isDone ? <Check className="h-4 w-4" /> : s.n}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`text-xs font-bold truncate ${
+                        active ? "text-navy" : isDone ? "text-navy" : "text-muted-foreground"
                       }`}
                     >
-                      {active && <Check className="h-3.5 w-3.5" />}
+                      {isId ? s.titleId : s.titleEn}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate hidden sm:block">
+                      {isId ? s.descId : s.descEn}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Notice & Error Messages */}
+        {notice && (
+          <div className="mt-4 rounded-xl border border-eco-community/30 bg-eco-community/10 p-3.5 text-xs font-medium text-eco-community flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>{notice}</span>
+          </div>
+        )}
+        {error && (
+          <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs font-medium text-destructive flex items-center gap-2">
+            <X className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="mt-6 space-y-5">
+          {/* STEP 1: Personal Information */}
+          {currentStep === 1 && (
+            <div className="animate-in fade-in-50 duration-200">
+              <SectionCard icon={User} n={1} title={isId ? "Data Diri & Kontak" : "Personal Information"}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel required>{isId ? "Nama Lengkap & Gelar" : "Full Name"}</FieldLabel>
+                    <input
+                      className={inputClass}
+                      value={form.fullName}
+                      onChange={(e) => set("fullName", e.target.value)}
+                      placeholder={isId ? "Contoh: Dr. Budi Santoso, M.Sc." : "e.g., Dr. Budi Santoso, M.Sc."}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required>{isId ? "Jabatan / Gelar Profesional" : "Professional Title"}</FieldLabel>
+                    <input
+                      className={inputClass}
+                      value={form.title}
+                      onChange={(e) => set("title", e.target.value)}
+                      placeholder={isId ? "Contoh: Peneliti Utama Konservasi Laut" : "e.g., Senior Marine Researcher"}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required>{isId ? "Institusi / Organisasi" : "Institution / Organization"}</FieldLabel>
+                    <input
+                      className={inputClass}
+                      value={form.institution}
+                      onChange={(e) => set("institution", e.target.value)}
+                      placeholder={isId ? "Contoh: Badan Riset dan Inovasi Nasional (BRIN)" : "e.g., Marine Research Institute"}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required>{isId ? "Negara Domisili / Tugas" : "Country"}</FieldLabel>
+                    <CountrySelect
+                      value={form.country}
+                      onChange={(countryName) => set("country", countryName)}
+                      isId={isId}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required>{isId ? "Alamat Email" : "Email Address"}</FieldLabel>
+                    <input
+                      className={inputClass}
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => set("email", e.target.value)}
+                      placeholder="name@example.com"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>{isId ? "Nomor Telepon / WhatsApp" : "Phone Number"}</FieldLabel>
+                    <PhoneInput
+                      value={form.phone}
+                      onChange={(fullPhone) => set("phone", fullPhone)}
+                      countryName={form.country || "Indonesia"}
+                      isId={isId}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>LinkedIn</FieldLabel>
+                    <input
+                      className={inputClass}
+                      value={form.linkedin}
+                      onChange={(e) => set("linkedin", e.target.value)}
+                      placeholder="https://linkedin.com/in/…"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>{isId ? "Situs Web Pribadi / Portofolio" : "Personal Website / Portfolio"}</FieldLabel>
+                    <input
+                      className={inputClass}
+                      value={form.website}
+                      onChange={(e) => set("website", e.target.value)}
+                      placeholder="https://…"
+                    />
+                  </div>
+                </div>
+              </SectionCard>
+            </div>
+          )}
+
+          {/* STEP 2: Areas of Expertise & Available Roles */}
+          {currentStep === 2 && (
+            <div className="space-y-5 animate-in fade-in-50 duration-200">
+              <SectionCard icon={Layers} n={2} title={isId ? "Bidang Keahlian Maritim" : "Areas of Expertise"}>
+                <p className="mb-3 text-xs sm:text-sm text-muted-foreground">
+                  {isId ? "Pilih semua bidang yang sesuai dengan kompetensi Anda." : "Select all domains that apply to your background."}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {EXPERTISE_AREAS.map((area) => {
+                    const active = form.expertise.includes(area);
+                    return (
+                      <button
+                        key={area}
+                        type="button"
+                        onClick={() => toggleExpertise(area)}
+                        className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                          active
+                            ? "bg-marine text-marine-foreground shadow-xs"
+                            : "bg-muted text-foreground/75 hover:bg-marine/15 hover:text-marine"
+                        }`}
+                      >
+                        {active && <Check className="mr-1 inline h-3 w-3" />}
+                        {area}
+                      </button>
+                    );
+                  })}
+                </div>
+              </SectionCard>
+
+              <SectionCard icon={ClipboardCheck} n={3} title={isId ? "Peran yang Diminati" : "Available Roles"}>
+                <p className="mb-3 text-xs sm:text-sm text-muted-foreground">
+                  {isId ? "Anda dapat memilih lebih dari satu peran kontribusi." : "You may select multiple roles."}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {EXPERT_ROLES.map((role) => {
+                    const active = form.roles.includes(role);
+                    return (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => toggleRole(role)}
+                        className={`flex items-center gap-2.5 rounded-xl border p-3 text-left text-sm font-semibold transition-all cursor-pointer ${
+                          active
+                            ? "border-marine bg-marine/10 text-marine shadow-2xs"
+                            : "border-border text-foreground/80 hover:border-marine/40 hover:bg-muted"
+                        }`}
+                      >
+                        <span
+                          className={`grid h-5 w-5 place-items-center rounded border ${
+                            active
+                              ? "border-marine bg-marine text-marine-foreground"
+                              : "border-muted-foreground/40"
+                          }`}
+                        >
+                          {active && <Check className="h-3.5 w-3.5" />}
+                        </span>
+                        {role}
+                      </button>
+                    );
+                  })}
+                </div>
+              </SectionCard>
+            </div>
+          )}
+
+          {/* STEP 3: Professional Profile */}
+          {currentStep === 3 && (
+            <div className="animate-in fade-in-50 duration-200">
+              <ProfessionalProfileSection
+                form={form}
+                set={set}
+                setForm={setForm}
+                inputClass={inputClass}
+              />
+            </div>
+          )}
+
+          {/* STEP 4: Upload Documents */}
+          {currentStep === 4 && (
+            <div className="animate-in fade-in-50 duration-200">
+              <SectionCard icon={Upload} n={4} title={isId ? "Unggah Dokumen Pendukung" : "Upload Documents"}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FileUpload
+                    label={isId ? "CV / Riwayat Hidup" : "CV / Resume"}
+                    file={files.cv ?? null}
+                    stored={documents.find((item) => item.category === "cv") ?? null}
+                    onFile={(file) => setFiles((current) => ({ ...current, cv: file ?? undefined }))}
+                    onRemoveStored={() => removeStored("cv")}
+                  />
+                  <FileUpload
+                    label={isId ? "Foto Profil Profesional" : "Professional Photo"}
+                    file={files.photo ?? null}
+                    stored={documents.find((item) => item.category === "photo") ?? null}
+                    onFile={(file) => setFiles((current) => ({ ...current, photo: file ?? undefined }))}
+                    onRemoveStored={() => removeStored("photo")}
+                    accept=".jpg,.jpeg,.png,.webp,image/*"
+                    helperText={isId ? "Format gambar: JPG, PNG, WebP (Maks. 10MB)" : "Image format: JPG, PNG, WebP (Max 10MB)"}
+                  />
+                  <FileUpload
+                    label={isId ? "Sertifikasi Kompetensi" : "Certifications"}
+                    file={files.certifications ?? null}
+                    stored={documents.find((item) => item.category === "certifications") ?? null}
+                    onFile={(file) =>
+                      setFiles((current) => ({ ...current, certifications: file ?? undefined }))
+                    }
+                    onRemoveStored={() => removeStored("certifications")}
+                  />
+                  <FileUpload
+                    label={isId ? "Dokumen Pendukung Lainnya" : "Supporting Documents"}
+                    file={files.supporting ?? null}
+                    stored={documents.find((item) => item.category === "supporting") ?? null}
+                    onFile={(file) =>
+                      setFiles((current) => ({ ...current, supporting: file ?? undefined }))
+                    }
+                    onRemoveStored={() => removeStored("supporting")}
+                  />
+                </div>
+                <p className="mt-4 text-xs text-muted-foreground leading-relaxed">
+                  {isId
+                    ? "Berkas disimpan aman di penyimpanan privat dan hanya dapat diakses oleh Anda dan tim verifikator resmi BARUNA. Dokumen dapat dibuka langsung di tab browser dan diganti kapan saja bila verifikator meminta revisi."
+                    : "Files are stored in a private bucket and are visible only to you and authorized BARUNA reviewers. Documents can be previewed or replaced whenever needed."}
+                </p>
+              </SectionCard>
+            </div>
+          )}
+
+          {/* STEP 5: Review & Submit */}
+          {currentStep === 5 && (
+            <div className="space-y-5 animate-in fade-in-50 duration-200">
+              {/* Summary Card Preview */}
+              <div className="rounded-2xl border border-marine/30 bg-marine/5 p-5 shadow-soft">
+                <div className="flex items-center gap-2 font-display text-sm font-bold text-navy mb-3">
+                  <Eye className="h-4 w-4 text-marine" />
+                  {isId ? "Pratinjau Ringkasan Profil Pakar" : "Expert Profile Summary Preview"}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="rounded-xl border border-border bg-card p-3">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                      {isId ? "Nama & Gelar" : "Name & Title"}
                     </span>
-                    {role}
-                  </button>
-                );
-              })}
-            </div>
-          </SectionCard>
+                    <p className="font-semibold text-navy truncate mt-0.5">
+                      {form.fullName || "-"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate">{form.title || "-"}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-3">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                      {isId ? "Institusi & Negara" : "Institution & Country"}
+                    </span>
+                    <p className="font-semibold text-navy truncate mt-0.5">
+                      {form.institution || "-"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate">{form.country || "-"}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-3">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                      {isId ? "Keahlian & Peran" : "Expertise & Roles"}
+                    </span>
+                    <p className="font-semibold text-navy truncate mt-0.5">
+                      {form.expertise.length} {isId ? "Keahlian" : "Domains"},{" "}
+                      {form.roles.length} {isId ? "Peran" : "Roles"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-3">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                      {isId ? "Dokumen Terlampir" : "Attached Documents"}
+                    </span>
+                    <p className="font-semibold text-navy truncate mt-0.5">
+                      {documents.length + Object.keys(files).length} {isId ? "Dokumen" : "Files"}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-          <ProfessionalProfileSection
-            form={form}
-            set={set}
-            setForm={setForm}
-            inputClass={inputClass}
-          />
-
-          <SectionCard icon={Upload} n={5} title="Upload Documents">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FileUpload
-                label="CV / Resume"
-                file={files.cv ?? null}
-                stored={documents.find((item) => item.category === "cv") ?? null}
-                onFile={(file) => setFiles((current) => ({ ...current, cv: file ?? undefined }))}
-                onRemoveStored={() => removeStored("cv")}
-              />
-              <FileUpload
-                label="Professional Photo"
-                file={files.photo ?? null}
-                stored={documents.find((item) => item.category === "photo") ?? null}
-                onFile={(file) => setFiles((current) => ({ ...current, photo: file ?? undefined }))}
-                onRemoveStored={() => removeStored("photo")}
-              />
-              <FileUpload
-                label="Certifications"
-                file={files.certifications ?? null}
-                stored={documents.find((item) => item.category === "certifications") ?? null}
-                onFile={(file) =>
-                  setFiles((current) => ({ ...current, certifications: file ?? undefined }))
-                }
-                onRemoveStored={() => removeStored("certifications")}
-              />
-              <FileUpload
-                label="Supporting Documents"
-                file={files.supporting ?? null}
-                stored={documents.find((item) => item.category === "supporting") ?? null}
-                onFile={(file) =>
-                  setFiles((current) => ({ ...current, supporting: file ?? undefined }))
-                }
-                onRemoveStored={() => removeStored("supporting")}
-              />
-            </div>
-            <p className="mt-4 text-xs text-muted-foreground">
-              Files are stored in a private bucket and are visible only to you and authorized BARUNA
-              reviewers. Dokumen dapat dibuka langsung di tab browser dan diganti kapan saja bila verifikator meminta revisi.
-            </p>
-          </SectionCard>
-
-          {notice && (
-            <p className="rounded-lg bg-eco-community/10 px-4 py-2.5 text-sm font-medium text-eco-community">
-              {notice}
-            </p>
-          )}
-          {error && (
-            <p className="rounded-lg bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive">
-              {error}
-            </p>
-          )}
-
-          <div className="flex flex-wrap justify-end gap-3">
-            <Link
-              to="/experts"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-border px-5 py-3 text-sm font-semibold text-navy transition-colors hover:bg-muted"
-            >
-              Cancel
-            </Link>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void persist(false)}
-              className="inline-flex items-center gap-2 rounded-xl border border-marine px-6 py-3 text-sm font-semibold text-marine transition-colors hover:bg-marine/5 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy ? "Saving…" : "Save Draft"} <FileText className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void persist(true)}
-              className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                isRevision
-                  ? "bg-amber-600 text-white shadow-xs hover:bg-amber-700"
-                  : "bg-accent text-accent-foreground hover:bg-accent/90"
-              }`}
-            >
-              {busy ? (
-                "Memproses…"
-              ) : isRevision ? (
-                <>
-                  <RotateCcw className="h-4 w-4" /> Kirim Ulang Revisi Dokumen
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" /> Submit Application
-                </>
+              {/* Revision Response Notes Box (if revising) */}
+              {isRevision && (
+                <div className="rounded-2xl border-2 border-amber-400 bg-amber-50/95 p-5 shadow-sm">
+                  <h3 className="font-display text-sm font-bold text-navy mb-2">
+                    {isId ? "Tanggapan untuk Tim Verifikator" : "Response for Review Team"}
+                  </h3>
+                  <p className="text-xs text-amber-900/90 mb-3">
+                    {isId
+                      ? "Tuliskan keterangan perbaikan berkas atau klarifikasi data yang telah Anda sesuaikan."
+                      : "Provide a brief note explaining the revised documents or updated profile information."}
+                  </p>
+                  <input
+                    type="text"
+                    value={revisionNotes}
+                    onChange={(e) => setRevisionNotes(e.target.value)}
+                    placeholder={
+                      isId
+                        ? "Contoh: Berkas CV dan sertifikasi kompetensi terbaru telah diperbarui..."
+                        : "e.g., Updated CV and latest competency certificate attached..."
+                    }
+                    className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-muted-foreground outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600"
+                  />
+                </div>
               )}
-            </button>
+            </div>
+          )}
+
+          {/* Stepper Bottom Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-border/80">
+            <div>
+              {currentStep > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep((s) => Math.max(1, s - 1));
+                    setError(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-navy hover:bg-muted transition shadow-2xs cursor-pointer"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {isId ? "Kembali" : "Previous Step"}
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Save Draft (always available) */}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void persist(false)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-navy hover:bg-muted transition cursor-pointer shadow-2xs disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Bookmark className="h-3.5 w-3.5" />
+                {busy
+                  ? isId
+                    ? "Menyimpan…"
+                    : "Saving…"
+                  : isId
+                    ? "Simpan sebagai Draf"
+                    : "Save Draft"}
+              </button>
+
+              {/* Next Step Button (Step 1, 2, 3, 4) */}
+              {currentStep < 5 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentStep === 1) {
+                      if (
+                        !form.fullName.trim() ||
+                        !form.title.trim() ||
+                        !form.institution.trim() ||
+                        !form.country.trim() ||
+                        !form.email.trim()
+                      ) {
+                        const msg = isId
+                          ? "Harap lengkapi semua kolom wajib di Data Diri sebelum melanjutkan."
+                          : "Please complete all required personal information fields.";
+                        setError(msg);
+                        toast.error(msg);
+                        return;
+                      }
+                    }
+                    if (currentStep === 2) {
+                      if (form.expertise.length === 0) {
+                        const msg = isId
+                          ? "Pilih minimal satu bidang keahlian."
+                          : "Please select at least one area of expertise.";
+                        setError(msg);
+                        toast.error(msg);
+                        return;
+                      }
+                      if (form.roles.length === 0) {
+                        const msg = isId
+                          ? "Pilih minimal satu peran yang diminati."
+                          : "Please select at least one available role.";
+                        setError(msg);
+                        toast.error(msg);
+                        return;
+                      }
+                    }
+                    if (currentStep === 3) {
+                      if (!form.biography.trim()) {
+                        const msg = isId
+                          ? "Harap isi ringkasan biografi profesional Anda."
+                          : "Please provide a professional biography.";
+                        setError(msg);
+                        toast.error(msg);
+                        return;
+                      }
+                    }
+                    setError(null);
+                    setCurrentStep((s) => Math.min(5, s + 1));
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-semibold text-white hover:bg-navy transition shadow-xs cursor-pointer"
+                >
+                  {isId ? "Lanjut ke Langkah Berikutnya" : "Next Step"}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : (
+                /* Final Submit (Step 5) */
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void persist(true)}
+                  className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer shadow-xs ${
+                    isRevision
+                      ? "bg-amber-600 text-white hover:bg-amber-700"
+                      : "bg-marine text-white hover:bg-navy"
+                  }`}
+                >
+                  {busy ? (
+                    isId
+                      ? "Memproses…"
+                      : "Processing…"
+                  ) : isRevision ? (
+                    <>
+                      <RotateCcw className="h-4 w-4" />{" "}
+                      {isId ? "Kirim Ulang Revisi Dokumen" : "Resubmit Revised Application"}
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4" />{" "}
+                      {isId ? "Kirim Pengajuan Pakar" : "Submit Expert Application"}
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </main>
@@ -788,12 +1109,16 @@ function FileUpload({
   stored,
   onFile,
   onRemoveStored,
+  accept = EXPERT_APPLICATION_ACCEPT,
+  helperText,
 }: {
   label: string;
   file: File | null;
   stored: ExpertApplicationDocument | null;
   onFile: (file: File | null) => void;
   onRemoveStored?: () => void;
+  accept?: string;
+  helperText?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -802,6 +1127,15 @@ function FileUpload({
     if (!f) return;
     if (f.size > MAX_BYTES) {
       setErr("File is too large (max 50 MB).");
+      return;
+    }
+    if (
+      accept.includes("image") &&
+      !accept.includes(".pdf") &&
+      !f.type.startsWith("image/") &&
+      !/\.(jpg|jpeg|png|webp)$/i.test(f.name)
+    ) {
+      setErr("Harap pilih berkas gambar (JPG, PNG, atau WebP).");
       return;
     }
     setErr(null);
@@ -902,10 +1236,14 @@ function FileUpload({
         </button>
       )}
 
+      {helperText && !file && !stored && (
+        <p className="mt-1.5 text-[11px] text-muted-foreground">{helperText}</p>
+      )}
+
       <input
         ref={inputRef}
         type="file"
-        accept={EXPERT_APPLICATION_ACCEPT}
+        accept={accept}
         className="hidden"
         onChange={(e) => handle(e.target.files?.[0] ?? null)}
       />

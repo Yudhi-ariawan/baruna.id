@@ -137,6 +137,11 @@ function ExpertProfile() {
                   width={600}
                   height={800}
                   className="h-full w-full object-cover object-center"
+                  onError={(e) => {
+                    if (e.currentTarget.src !== defaultExpertAvatar) {
+                      e.currentTarget.src = defaultExpertAvatar;
+                    }
+                  }}
                 />
               </div>
               <div className="p-5">

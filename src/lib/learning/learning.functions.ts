@@ -686,4 +686,151 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
   }
 });
 
+export type PublishedCatalogModule = {
+  id: string;
+  title: string;
+  summary: string;
+  language: string;
+  estimated_learning_hours: number;
+  created_at: string;
+  author_expert_id: string | null;
+  authorName: string;
+  authorAvatar: string | null;
+  authorSlug: string | null;
+  coverUrl: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata: Record<string, any>;
+};
+
+export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
+  .handler(async (): Promise<PublishedCatalogModule[]> => {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: dbMods, error } = await supabaseAdmin
+        .from("module_registry")
+        .select("id, title, summary, language, estimated_learning_hours, created_at, author_expert_id, metadata, current_status")
+        .eq("current_status", "published")
+        .order("created_at", { ascending: false });
+
+      if (error || !dbMods || dbMods.length === 0) return [];
+
+      const expertIds = Array.from(new Set(dbMods.map((m) => m.author_expert_id).filter(Boolean))) as string[];
+      let expertMap: Record<string, { name: string; avatarUrl: string | null; slug: string | null }> = {};
+      if (expertIds.length > 0) {
+        const { data: expList } = await supabaseAdmin
+          .from("experts_directory_v")
+          .select("id, display_name, avatar_url, slug")
+          .in("id", expertIds);
+        if (expList && expList.length > 0) {
+          expertMap = Object.fromEntries(
+            expList.map((e) => [e.id, { name: e.display_name || "BARUNA Trainer", avatarUrl: e.avatar_url, slug: e.slug }])
+          );
+        } else {
+          const { data: profList } = await supabaseAdmin
+            .from("profiles")
+            .select("id, display_name")
+            .in("id", expertIds);
+          if (profList) {
+            for (const p of profList) {
+              if (p.display_name) {
+                expertMap[p.id] = { name: p.display_name, avatarUrl: null, slug: null };
+              }
+            }
+          }
+        }
+      }
+
+      // Concurrently sign cover URLs
+      const catalog: PublishedCatalogModule[] = await Promise.all(
+        dbMods.map(async (m) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const meta = ((m.metadata as Record<string, any>) || {}) as Record<string, any>;
+          let coverUrl: string | null = null;
+
+          // 1. Direct cover_image_url
+          if (typeof meta.cover_image_url === "string" && meta.cover_image_url.trim()) {
+            const url = meta.cover_image_url.trim();
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+              coverUrl = url;
+            } else {
+              try {
+                const { data: signed } = await supabaseAdmin.storage
+                  .from("expert-applications")
+                  .createSignedUrl(url, 86400);
+                coverUrl = signed?.signedUrl ?? null;
+              } catch {
+                coverUrl = null;
+              }
+            }
+          }
+
+          // 2. Extract from attached_resources or documents
+          if (!coverUrl) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const attached: Array<Record<string, any>> = Array.isArray(meta.attached_resources)
+              ? meta.attached_resources
+              : Array.isArray(meta.documents)
+              ? meta.documents
+              : [];
+
+            const coverDoc = attached.find((item) => {
+              const type = String(item.type || item.category || "").toLowerCase();
+              const name = String(item.name || item.fileName || "").toLowerCase();
+              const isImageExt = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(name);
+              return (
+                type.includes("cover") ||
+                (type.includes("image") && isImageExt) ||
+                (isImageExt && !type.includes("doc") && !type.includes("slide") && !type.includes("pdf"))
+              );
+            });
+
+            if (coverDoc) {
+              const directUrl = typeof coverDoc.url === "string" ? coverDoc.url : "";
+              const storagePath = typeof coverDoc.path === "string" ? coverDoc.path : "";
+
+              if (directUrl && (directUrl.startsWith("http://") || directUrl.startsWith("https://"))) {
+                coverUrl = directUrl;
+              } else if (storagePath) {
+                if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+                  coverUrl = storagePath;
+                } else {
+                  try {
+                    const { data: signed } = await supabaseAdmin.storage
+                      .from("expert-applications")
+                      .createSignedUrl(storagePath, 86400);
+                    coverUrl = signed?.signedUrl ?? null;
+                  } catch {
+                    coverUrl = null;
+                  }
+                }
+              }
+            }
+          }
+
+          const exp = m.author_expert_id ? expertMap[m.author_expert_id] : null;
+          return {
+            id: String(m.id),
+            title: String(m.title),
+            summary: String(m.summary || ""),
+            language: String(m.language || "English"),
+            estimated_learning_hours: Number(m.estimated_learning_hours || 2),
+            created_at: String(m.created_at),
+            author_expert_id: m.author_expert_id ? String(m.author_expert_id) : null,
+            authorName: exp?.name || "BARUNA Trainer",
+            authorAvatar: exp?.avatarUrl || null,
+            authorSlug: exp?.slug || null,
+            coverUrl,
+            metadata: meta,
+          };
+        })
+      );
+
+      return catalog;
+    } catch (err) {
+      console.error("Error in getPublishedModulesCatalog:", err);
+      return [];
+    }
+  });
+
+
 

@@ -80,21 +80,22 @@ export async function publishApprovedExpert({
     const isImage =
       docType.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(docName);
     if (isImage) {
-      const { data: pubUrl } = supabaseAdmin.storage
-        .from("expert-applications")
-        .getPublicUrl(photoDoc.path);
-      avatarUrl = pubUrl?.publicUrl || null;
+      avatarUrl = photoDoc.path;
     }
   }
 
-  // Parse languages (support both string and array formats)
+  // Parse languages (support structured, array, and string formats)
   let languages: string[] = [];
-  if (Array.isArray(payload.languages)) {
+  if (Array.isArray(payload.structuredLanguages) && payload.structuredLanguages.length > 0) {
+    languages = (payload.structuredLanguages as Array<{ language: string }>)
+      .map((l) => (typeof l?.language === "string" ? l.language.trim() : ""))
+      .filter(Boolean);
+  } else if (Array.isArray(payload.languages)) {
     languages = (payload.languages as string[]).map(String);
   } else if (typeof payload.languages === "string" && payload.languages.trim()) {
     languages = payload.languages
       .split(",")
-      .map((s) => s.trim())
+      .map((s) => s.replace(/\s*\([^)]*\)/g, "").trim())
       .filter(Boolean);
   }
 
@@ -274,6 +275,82 @@ export async function publishApprovedExpert({
         phone: typeof payload.phone === "string" ? payload.phone : undefined,
       })
       .eq("id", subject.submitted_by);
+  }
+
+  // 7. Sync expert_languages child records if structuredLanguages provided
+  const structuredLanguages = Array.isArray(payload.structuredLanguages)
+    ? (payload.structuredLanguages as Array<{ language: string; proficiency?: string }>)
+    : [];
+  if (structuredLanguages.length > 0) {
+    for (const item of structuredLanguages) {
+      if (!item.language || typeof item.language !== "string") continue;
+      const langName = item.language.trim();
+      const langCode = langName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 10) || "lang";
+      const validProficiencies = ["native", "fluent", "professional", "intermediate", "basic"] as const;
+      const profLevel = validProficiencies.includes(item.proficiency as (typeof validProficiencies)[number])
+        ? (item.proficiency as (typeof validProficiencies)[number])
+        : "fluent";
+
+      await supabaseAdmin.from("expert_languages").upsert(
+        {
+          expert_id: expertId,
+          language_code: langCode,
+          language_name: langName,
+          proficiency_level: profLevel,
+          visibility: "public",
+        },
+        { onConflict: "expert_id, language_code" }
+      );
+    }
+  }
+
+  // 8. Sync expert_projects child records if structuredProjects provided
+  const structuredProjects = Array.isArray(payload.structuredProjects)
+    ? (payload.structuredProjects as Array<{
+        name: string;
+        institution?: string;
+        role?: string;
+        description?: string;
+        url?: string;
+      }>)
+    : [];
+  if (structuredProjects.length > 0) {
+    for (const item of structuredProjects) {
+      if (!item.name || typeof item.name !== "string") continue;
+      await supabaseAdmin.from("expert_projects").insert({
+        expert_id: expertId,
+        project_name: item.name.trim(),
+        institution_or_funder: item.institution?.trim() || null,
+        role: item.role?.trim() || null,
+        description: item.description?.trim() || null,
+        evidence_ref: item.url?.trim() || null,
+        visibility: "public",
+      });
+    }
+  }
+
+  // 9. Sync expert_publications child records if structuredPublications provided
+  const structuredPublications = Array.isArray(payload.structuredPublications)
+    ? (payload.structuredPublications as Array<{
+        title: string;
+        venue?: string;
+        year?: string | number;
+        url?: string;
+      }>)
+    : [];
+  if (structuredPublications.length > 0) {
+    for (const item of structuredPublications) {
+      if (!item.title || typeof item.title !== "string") continue;
+      const parsedYear = item.year ? parseInt(String(item.year), 10) : null;
+      await supabaseAdmin.from("expert_publications").insert({
+        expert_id: expertId,
+        title: item.title.trim(),
+        venue: item.venue?.trim() || null,
+        year: Number.isFinite(parsedYear) ? parsedYear : null,
+        url: item.url?.trim() || null,
+        visibility: "public",
+      });
+    }
   }
 
   return { expertId, slug };

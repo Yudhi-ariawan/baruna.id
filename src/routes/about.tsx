@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Info,
   Home,
@@ -22,7 +22,6 @@ import {
   Mail,
   Grid3x3,
   Layers,
-  Building2,
   Monitor,
   ArrowRight,
   Flag,
@@ -31,6 +30,7 @@ import {
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages } from "@/data/pages";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -50,33 +50,6 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-const aboutMenu = [
-  { label: "Overview", icon: Home, active: true },
-  { label: "The Inspiration Behind BARUNA", icon: Lightbulb },
-  { label: "Mission & Vision", icon: Compass },
-  { label: "Values", icon: Heart },
-  { label: "What We Do", icon: Briefcase },
-  { label: "Impact & Outcomes", icon: BarChart3 },
-  { label: "Roadmap 2026–2030", icon: MapIcon },
-  { label: "Governance & Partners", icon: Network },
-];
-
-const platform = [
-  { label: "Academy", icon: GraduationCap },
-  { label: "Knowledge Hub", icon: BookOpen },
-  { label: "Experts", icon: Users },
-  { label: "Fellowship & Exchange", icon: Globe },
-  { label: "Community", icon: MessagesSquare },
-  { label: "Events", icon: CalendarDays },
-  { label: "Partnership", icon: Handshake },
-];
-
-const resources = [
-  { label: "Executive Summary", icon: FileText },
-  { label: "Annual Report", icon: FileBarChart },
-  { label: "FAQ", icon: HelpCircle },
-];
-
 const values = [
   { letter: "B", title: "Build Capacity", desc: "Strengthening competencies, leadership, and professional talent to support the sustainable development of marine and fisheries sectors." },
   { letter: "A", title: "Advance Knowledge", desc: "Promoting knowledge creation, learning, innovation, and the sharing of good practices across institutions and communities." },
@@ -84,13 +57,6 @@ const values = [
   { letter: "U", title: "Unite Communities", desc: "Bringing together learners, experts, practitioners, institutions, and communities to learn, collaborate, and grow together." },
   { letter: "N", title: "Nurture Sustainability", desc: "Supporting the responsible stewardship of marine ecosystems and fisheries resources for present and future generations." },
   { letter: "A", title: "Accelerate Impact", desc: "Transforming knowledge, partnerships, and capacity building into meaningful outcomes that benefit people, fisheries, and the ocean." },
-];
-
-const whatWeDo: { label: string; desc: string; icon: LucideIcon }[] = [
-  { label: "Academy", desc: "High-quality learning and training to build knowledge and skills.", icon: GraduationCap },
-  { label: "Knowledge Hub", desc: "Curated resources, research, and best practices.", icon: BookOpen },
-  { label: "Experts", desc: "Connect with and access specialized knowledge.", icon: Users },
-  { label: "Fellowship & Exchange", desc: "Opportunities for learning, exchange, and professional development.", icon: Globe },
 ];
 
 const roadmap = [
@@ -101,16 +67,45 @@ const roadmap = [
   { year: "2030", title: "Global Hub", desc: "Positioning BARUNA as a recognized global hub for marine and fisheries capacity building.", icon: Flag },
 ];
 
-const outcomes: { value: string; title: string; desc: string; icon: LucideIcon }[] = [
-  { value: "7", title: "Platform Components", desc: "Integrated features for learning, sharing, and collaboration.", icon: Grid3x3 },
-  { value: "1", title: "Integrated Knowledge Network", desc: "Connecting people, knowledge, and opportunities.", icon: Network },
-  { value: "4", title: "Pilot Expert Profiles", desc: "Marine and fisheries experts onboarded.", icon: Users },
-  { value: "1", title: "Prototype Platform", desc: "BARUNA prototype launched for pilot users.", icon: Monitor },
-];
-
 const galleryImages = [courseImages[3], courseImages[6], courseImages[1], courseImages[5]];
 
 function AboutPage() {
+  const { t } = useLanguage();
+
+  const aboutMenu = [
+    { label: t("sidebar.overview"), icon: Home, active: true },
+    { label: t("sidebar.theInspiration"), icon: Lightbulb },
+    { label: t("sidebar.missionVision"), icon: Compass },
+    { label: t("sidebar.values"), icon: Heart },
+    { label: t("sidebar.whatWeDo"), icon: Briefcase },
+    { label: t("sidebar.impactOutcomes"), icon: BarChart3 },
+    { label: t("sidebar.roadmap"), icon: MapIcon },
+    { label: t("sidebar.governancePartners"), icon: Network },
+  ];
+
+  const platform = [
+    { label: t("nav.academy"), icon: GraduationCap, to: "/academy" },
+    { label: t("nav.knowledgeHub"), icon: BookOpen, to: "/knowledge-hub" },
+    { label: t("nav.experts"), icon: Users, to: "/experts" },
+    { label: t("nav.fellowship"), icon: Globe, to: "/fellowship" },
+    { label: t("nav.community"), icon: MessagesSquare, to: "/community" },
+    { label: t("nav.events"), icon: CalendarDays, to: "/events" },
+    { label: t("nav.partnership"), icon: Handshake, to: "/partnership" },
+  ];
+
+  const resources = [
+    { label: t("sidebar.executiveSummary"), icon: FileText },
+    { label: t("sidebar.annualReport"), icon: FileBarChart },
+    { label: t("sidebar.faqs"), icon: HelpCircle, to: "/help" },
+  ];
+
+  const whatWeDo: { label: string; desc: string; icon: LucideIcon }[] = [
+    { label: t("nav.academy"), desc: "High-quality learning and training to build knowledge and skills.", icon: GraduationCap },
+    { label: t("nav.knowledgeHub"), desc: "Curated resources, research, and best practices.", icon: BookOpen },
+    { label: t("nav.experts"), desc: "Connect with and access specialized knowledge.", icon: Users },
+    { label: t("nav.fellowship"), desc: "Opportunities for learning, exchange, and professional development.", icon: Globe },
+  ];
+
   return (
     <PageShell
       sidebar={{
@@ -119,28 +114,29 @@ function AboutPage() {
         subtitle: "Discover the inspiration, purpose, and values behind BARUNA and how we create impact together.",
         sections: [
           { label: "About BARUNA", items: aboutMenu },
-          { label: "Platform Components", items: platform },
+          { label: "Platform", items: platform },
           { label: "Resources", items: resources },
         ],
-        footer: { icon: Mail, label: "Contact Us" },
+        footer: { icon: Mail, label: t("footer.contactUs") },
       }}
       cta={{
         icon: Globe,
-        title: "Together, From Ocean Wisdom to Global Impact.",
-        description: "Join BARUNA and be part of a global network working for a healthy, productive, and resilient ocean and fisheries.",
-        button: "Join Our Network",
+        title: "Ready to be part of the future?",
+        description: "Join our learning community and collaborate with maritime professionals around the world.",
+        button: "Get Started",
+        href: "/auth",
       }}
     >
       <div className="space-y-6">
         <Panel className="overflow-hidden p-0">
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="p-6 sm:p-8">
-              <h1 className="font-display text-3xl font-extrabold text-navy">About BARUNA</h1>
+              <h1 className="font-display text-3xl font-extrabold text-navy">{t("about.title")}</h1>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                 BARUNA (Indonesia's Marine and Fisheries Knowledge & Capacity Building Network) is an initiative developed by the Agency for Marine and Fisheries Extension and Human Resources Development (BPPSDMKP), Ministry of Marine Affairs and Fisheries of the Republic of Indonesia.
               </p>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                BARUNA connects people, knowledge, expertise, and opportunities to strengthen human resource development in marine and fisheries sectors and to build a sustainable ocean future for Indonesia and the world.
+                {t("hero.subtitle")}
               </p>
             </div>
             <div className="relative min-h-[220px]">
@@ -154,7 +150,7 @@ function AboutPage() {
             <Panel>
               <div className="flex items-center gap-2">
                 <Lightbulb className="h-5 w-5 text-marine" />
-                <h2 className="font-display text-lg font-bold text-navy">The Inspiration Behind BARUNA</h2>
+                <h2 className="font-display text-lg font-bold text-navy">{t("sidebar.theInspiration")}</h2>
               </div>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                 The name BARUNA is inspired by the maritime heritage of the Nusantara, where Baruna has long been recognized as the guardian of the ocean. Across generations, Baruna symbolizes wisdom, responsibility, connectivity, and the enduring relationship between people and the sea.
@@ -170,7 +166,7 @@ function AboutPage() {
             </Panel>
 
             <Panel>
-              <SectionHeader title="Our Values" action={null} />
+              <SectionHeader title={t("about.valuesTitle")} action={null} />
               <div className="grid gap-4 sm:grid-cols-2">
                 {values.map((v) => (
                   <div key={v.title} className="flex gap-3">
@@ -185,80 +181,55 @@ function AboutPage() {
             </Panel>
 
             <Panel>
-              <SectionHeader title="What We Do" action={null} />
-              <p className="-mt-2 mb-4 text-sm text-muted-foreground">BARUNA provides an integrated platform and programs that empower marine and fisheries professionals worldwide.</p>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {whatWeDo.map(({ label, desc, icon: Icon }) => (
-                  <div key={label} className="rounded-xl border border-border p-4">
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-marine/10 text-marine"><Icon className="h-5 w-5" /></span>
-                    <h3 className="mt-3 text-sm font-bold text-navy">{label}</h3>
-                    <p className="mt-1 text-xs leading-snug text-muted-foreground">{desc}</p>
-                  </div>
-                ))}
+              <SectionHeader title={t("about.whatWeDoTitle")} action={null} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                {whatWeDo.map((w) => {
+                  const Icon = w.icon;
+                  return (
+                    <div key={w.label} className="flex gap-3 rounded-xl border border-border p-3.5">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-bold text-navy">{w.label}</h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{w.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </Panel>
-
-            <Panel>
-              <SectionHeader title="Roadmap 2026–2030" action={null} />
-              <ol className="grid gap-5 sm:grid-cols-3 lg:grid-cols-5">
-                {roadmap.map((r) => (
-                  <li key={r.year} className="text-center">
-                    <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-marine/10 text-marine"><r.icon className="h-5 w-5" /></div>
-                    <p className="mt-2 font-display text-base font-extrabold text-navy">{r.year}</p>
-                    <p className="text-sm font-semibold text-marine">{r.title}</p>
-                    <p className="mt-1 text-xs leading-snug text-muted-foreground">{r.desc}</p>
-                  </li>
-                ))}
-              </ol>
             </Panel>
           </div>
 
           <div className="space-y-5">
             <Panel>
-              <SectionHeader title="Impact & Outcomes (2026)" action={null} />
-              <ul className="space-y-4">
-                {outcomes.map((o) => (
-                  <li key={o.title} className="flex gap-3">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine"><o.icon className="h-5 w-5" /></span>
-                    <div>
-                      <p className="font-display text-lg font-extrabold leading-none text-navy">{o.value} <span className="text-sm font-bold">{o.title}</span></p>
-                      <p className="mt-1 text-xs leading-snug text-muted-foreground">{o.desc}</p>
-                    </div>
-                  </li>
-                ))}
-                <li className="flex gap-3">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine"><Handshake className="h-5 w-5" /></span>
-                  <div>
-                    <p className="text-sm font-bold text-navy">Growing Partnership Network</p>
-                    <p className="mt-1 text-xs leading-snug text-muted-foreground">Building initial partnerships with institutions and organizations.</p>
-                  </div>
-                </li>
-              </ul>
+              <SectionHeader title={t("about.roadmapTitle")} action={null} />
+              <ol className="space-y-3">
+                {roadmap.map((r) => {
+                  const Icon = r.icon;
+                  return (
+                    <li key={r.year} className="flex gap-3">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-marine/10 text-marine">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-display text-xs font-bold text-marine">{r.year} — {r.title}</p>
+                        <p className="text-[0.7rem] text-muted-foreground">{r.desc}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
             </Panel>
 
             <Panel>
-              <SectionHeader title="Our Commitment" action={null} />
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                We are committed to diversity, equity, inclusion, and sustainability in everything we do. Together, we can create a better future for our ocean, our fisheries, and the communities that depend on them.
+              <SectionHeader title={t("sidebar.governancePartners")} action={null} />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                BARUNA operates under the guidance of BPPSDMKP, Ministry of Marine Affairs and Fisheries, collaborating closely with regional and international marine bodies.
               </p>
-            </Panel>
-
-            <Panel>
-              <h2 className="font-display text-base font-bold text-navy">Developed by</h2>
-              <p className="mt-2 text-xs leading-snug text-muted-foreground">
-                Agency for Marine and Fisheries Extension and Human Resources Development, Ministry of Marine Affairs and Fisheries of the Republic of Indonesia.
-              </p>
-              <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-secondary/50 p-3">
-                <span className="grid h-9 w-9 place-items-center rounded-full bg-marine/10 text-marine"><Building2 className="h-4 w-4" /></span>
-                <span className="text-sm font-bold text-navy">BPPSDM KKP</span>
-              </div>
-              <h3 className="mt-5 font-display text-base font-bold text-navy">Our Partners</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Working together for ocean knowledge and capacity building.</p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {["UNESCO", "UNDP", "WorldFish"].map((p) => (
-                  <div key={p} className="flex h-12 items-center justify-center rounded-lg border border-border bg-secondary/50 text-[0.65rem] font-bold uppercase text-navy/70">{p}</div>
-                ))}
-              </div>
+              <Link to="/partnership" className="mt-4 flex w-full items-center justify-center gap-2 text-sm font-semibold text-marine">
+                {t("sidebar.ourPartners")} <ArrowRight className="h-4 w-4" />
+              </Link>
             </Panel>
           </div>
         </div>

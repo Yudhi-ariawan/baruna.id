@@ -13,6 +13,10 @@ const ProfileInput = z.object({
     .min(8)
     .max(40)
     .regex(/^\+?[0-9 ()-]+$/),
+  country: z.string().trim().max(100).optional().nullable(),
+  linkedin: z.string().trim().max(255).optional().nullable(),
+  website: z.string().trim().max(255).optional().nullable(),
+  bio: z.string().trim().max(1000).optional().nullable(),
 });
 
 const AvatarPathInput = z.object({ objectPath: z.string().trim().nullable() });
@@ -51,30 +55,57 @@ export const getAccountProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AccountProfile> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: profile, error }, { data: identity, error: identityError }] = await Promise.all([
+    const [
+      { data: profile, error },
+      { data: identity, error: identityError },
+      { data: rbacUserRoles },
+    ] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("display_name, organization, job_title, phone, avatar_url")
+        .select("display_name, organization, job_title, phone, avatar_url, created_at")
         .eq("id", context.userId)
         .single(),
       supabaseAdmin.auth.admin.getUserById(context.userId),
+      supabaseAdmin
+        .from("rbac_user_roles")
+        .select("role_id, status, rbac_roles!inner(code, name)")
+        .eq("user_id", context.userId)
+        .eq("status", "active"),
     ]);
+
     if (error || !profile) throw new Error(error?.message ?? "profile_not_found");
     if (identityError || !identity.user) throw new Error("user_identity_not_found");
+
+    const activeRoles: string[] = [];
+    if (Array.isArray(rbacUserRoles)) {
+      for (const item of rbacUserRoles) {
+        const code = (item as unknown as { rbac_roles?: { code?: string } })?.rbac_roles?.code;
+        if (code && !activeRoles.includes(code)) activeRoles.push(code);
+      }
+    }
+
+    const meta = (identity.user.user_metadata as Record<string, unknown>) ?? {};
+
     return {
       id: context.userId,
       email: identity.user.email ?? "",
-      displayName: profile.display_name ?? "",
-      organization: profile.organization ?? "",
-      jobTitle: profile.job_title ?? "",
-      phone: profile.phone ?? "",
-      avatarUrl: profile.avatar_url,
+      displayName: profile.display_name ?? (meta.display_name as string) ?? "",
+      organization: profile.organization ?? (meta.organization as string) ?? "",
+      jobTitle: profile.job_title ?? (meta.job_title as string) ?? "",
+      phone: profile.phone ?? (meta.phone as string) ?? "",
+      avatarUrl: profile.avatar_url ?? (meta.avatar_url as string) ?? null,
+      country: (meta.country as string) ?? null,
+      linkedin: (meta.linkedin as string) ?? null,
+      website: (meta.website as string) ?? null,
+      bio: (meta.bio as string) ?? null,
+      roles: activeRoles,
+      createdAt: (profile as unknown as { created_at?: string })?.created_at ?? identity.user.created_at ?? null,
     };
   });
 
 export const updateAccountProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => ProfileInput.parse(input))
+  .validator((input: unknown) => ProfileInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: before, error: beforeError } = await supabaseAdmin
@@ -91,17 +122,31 @@ export const updateAccountProfile = createServerFn({ method: "POST" })
     };
     const { error } = await supabaseAdmin.from("profiles").update(after).eq("id", context.userId);
     if (error) throw new Error(error.message);
+
+    const { data: currentUserData } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    const existingMeta = (currentUserData?.user?.user_metadata as Record<string, unknown>) ?? {};
+
+    const userMetaUpdate = {
+      ...existingMeta,
+      ...after,
+      full_name: data.displayName,
+      country: data.country ?? null,
+      linkedin: data.linkedin ?? null,
+      website: data.website ?? null,
+      bio: data.bio ?? null,
+    };
+
     const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(context.userId, {
-      user_metadata: after,
+      user_metadata: userMetaUpdate,
     });
     if (metadataError) throw new Error(metadataError.message);
-    await writeProfileAudit(context.userId, "user_profile_self_updated", before, after);
+    await writeProfileAudit(context.userId, "user_profile_self_updated", before, { ...after, ...userMetaUpdate });
     return { ok: true };
   });
 
 export const setAccountAvatar = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => AvatarPathInput.parse(input))
+  .validator((input: unknown) => AvatarPathInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const objectPath = data.objectPath;

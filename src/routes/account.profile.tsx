@@ -6,7 +6,9 @@ import { UserRound } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
 import { AvatarManager } from "@/components/baruna/account/AvatarManager";
 import { ProfileIdentityForm } from "@/components/baruna/account/ProfileIdentityForm";
+import { AccountSecuritySection } from "@/components/baruna/account/AccountSecuritySection";
 import { getAccountProfile } from "@/lib/account/account.functions";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/account/profile")({
   head: () => ({
@@ -20,6 +22,7 @@ export const Route = createFileRoute("/account/profile")({
 });
 
 function AccountProfilePage() {
+  const { isId } = useLanguage();
   const profileFn = useServerFn(getAccountProfile);
   const profileQuery = useQuery({
     queryKey: ["account", "profile"],
@@ -37,20 +40,26 @@ function AccountProfilePage() {
             <UserRound className="h-6 w-6" />
           </span>
           <div>
-            <h1 className="font-display text-3xl font-extrabold text-navy">My Profile</h1>
+            <h1 className="font-display text-3xl font-extrabold text-navy">
+              {isId ? "Profil Saya" : "My Profile"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage your account identity and profile avatar.
+              {isId
+                ? "Kelola identitas akun, avatar profil, dan keamanan kredensial Anda."
+                : "Manage your account identity, profile avatar, and security credentials."}
             </p>
           </div>
         </div>
 
         {profileQuery.isLoading ? (
           <div className="mt-8 rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
-            Loading your profile…
+            {isId ? "Memuat profil Anda…" : "Loading your profile…"}
           </div>
         ) : profileQuery.isError || !profileQuery.data ? (
           <div className="mt-8 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
-            Unable to load your profile. Please sign in again or refresh this page.
+            {isId
+              ? "Gagal memuat profil Anda. Harap masuk kembali atau muat ulang halaman ini."
+              : "Unable to load your profile. Please sign in again or refresh this page."}
           </div>
         ) : (
           <div className="mt-8 space-y-6">
@@ -63,9 +72,11 @@ function AccountProfilePage() {
               onAvatarChange={setAvatarOverride}
             />
             <ProfileIdentityForm profile={profileQuery.data} />
+            <AccountSecuritySection currentEmail={profileQuery.data.email} />
           </div>
         )}
       </main>
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Handshake,
   Home,
@@ -18,7 +18,6 @@ import {
   Calendar,
   ArrowRight,
   Plus,
-  Building2,
   Globe,
   Rocket,
   GraduationCap,
@@ -31,6 +30,7 @@ import { PageShell } from "@/components/baruna/page/PageShell";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages } from "@/data/pages";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/partnership")({
   head: () => ({
@@ -50,27 +50,6 @@ export const Route = createFileRoute("/partnership")({
   component: PartnershipPage,
 });
 
-const mainMenu = [
-  { label: "Partnership Home", icon: Home, active: true },
-  { label: "Our Partners", icon: Users },
-  { label: "Partnership Opportunities", icon: Target },
-  { label: "Active Collaborations", icon: Activity },
-  { label: "MoUs & Agreements", icon: FileSignature },
-];
-
-const explore = [
-  { label: "Sectors", icon: Grid3x3 },
-  { label: "Regions", icon: MapIcon },
-  { label: "Impact Stories", icon: Trophy },
-  { label: "Resources for Partners", icon: FolderOpen },
-];
-
-const myActivity = [
-  { label: "My Collaborations", icon: Briefcase },
-  { label: "Saved Opportunities", icon: Bookmark },
-  { label: "Following", icon: Heart },
-];
-
 type Opp = { badge: string; title: string; focus: string; partner: string; deadline: string; image: string };
 
 const opportunities: Opp[] = [
@@ -86,25 +65,48 @@ const highlights = [
   { badge: "New Initiative", title: "Coral Triangle Partnership", desc: "Expanding collaboration for coral reef conservation and restoration.", date: "1 July 2026", image: courseImages[3] },
 ];
 
-const sectors: { label: string; count: number; icon: LucideIcon }[] = [
-  { label: "Government", count: 36, icon: Landmark },
-  { label: "Academic & Research", count: 32, icon: GraduationCap },
-  { label: "International Organization", count: 24, icon: Globe },
-  { label: "NGO & Non-profit", count: 18, icon: Heart },
-  { label: "Private Sector", count: 14, icon: Briefcase },
-  { label: "Community Organization", count: 4, icon: Users2 },
-];
-
-const impact = [
-  { value: "24", label: "Projects Implemented", icon: Rocket },
-  { value: "56,230", label: "People Benefited", icon: Users },
-  { value: "18", label: "Policy Contributions", icon: FileText },
-  { value: "12", label: "Joint Publications", icon: FileSignature },
-];
-
 const keyPartners = ["SEAFDEC", "FAO", "UNEP", "WorldFish", "Australian Government", "University of Queensland"];
 
 function PartnershipPage() {
+  const { t } = useLanguage();
+
+  const mainMenu = [
+    { label: t("sidebar.partnershipHome"), icon: Home, active: true },
+    { label: t("sidebar.ourPartners"), icon: Users },
+    { label: t("sidebar.partnershipOpportunities"), icon: Target },
+    { label: t("sidebar.activeCollaborations"), icon: Activity },
+    { label: t("sidebar.mousAgreements"), icon: FileSignature },
+  ];
+
+  const explore = [
+    { label: t("sidebar.sectors"), icon: Grid3x3 },
+    { label: t("sidebar.regions"), icon: MapIcon },
+    { label: t("sidebar.impactStories"), icon: Trophy },
+    { label: t("sidebar.resourcesForPartners"), icon: FolderOpen },
+  ];
+
+  const myActivity = [
+    { label: t("sidebar.myCollaborations"), icon: Briefcase },
+    { label: t("sidebar.savedItems"), icon: Bookmark },
+    { label: t("sidebar.following"), icon: Heart },
+  ];
+
+  const sectors: { label: string; count: number; icon: LucideIcon }[] = [
+    { label: "Government", count: 36, icon: Landmark },
+    { label: "Academic & Research", count: 32, icon: GraduationCap },
+    { label: "International Organization", count: 24, icon: Globe },
+    { label: "NGO & Non-profit", count: 18, icon: Heart },
+    { label: "Private Sector", count: 14, icon: Briefcase },
+    { label: "Community Organization", count: 4, icon: Users2 },
+  ];
+
+  const impact = [
+    { value: "24", label: t("partnership.jointProjects"), icon: Rocket },
+    { value: "56,230", label: t("partnership.beneficiaries"), icon: Users },
+    { value: "18", label: t("partnership.countriesReached"), icon: FileText },
+    { value: "12", label: t("partnership.activePartners"), icon: FileSignature },
+  ];
+
   return (
     <PageShell
       sidebar={{
@@ -116,30 +118,30 @@ function PartnershipPage() {
           { label: "Explore", items: explore },
           { label: "My Activity", items: myActivity },
         ],
-        footer: { icon: Plus, label: "Propose Partnership" },
+        footer: { icon: Plus, label: t("partnership.ctaButton") },
       }}
       cta={{
         icon: Handshake,
-        title: "Partner with Us for a Better Ocean Future.",
-        description: "Together, we can build knowledge, strengthen capacity, and create sustainable solutions for the health of our ocean.",
-        button: "Explore Opportunities",
+        title: "Become a Strategic Partner",
+        description: "Join hands with BARUNA to co-design learning programs, share data, and mobilize resources for ocean sustainability.",
+        button: "Become a Partner",
       }}
     >
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-display text-3xl font-extrabold text-navy">Partnership</h1>
+            <h1 className="font-display text-3xl font-extrabold text-navy">{t("partnership.title")}</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Build strategic partnerships to strengthen capacity, drive innovation, and create lasting impact for a sustainable ocean.
+              {t("partnership.subtitle")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 shadow-soft">
               <Search className="h-4 w-4 text-muted-foreground" />
-              <input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder="Search partners, organizations, or opportunities..." />
+              <input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder={t("search.placeholder")} />
             </div>
-            <button className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy shadow-soft">
-              <SlidersHorizontal className="h-4 w-4" /> Filter
+            <button type="button" className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy shadow-soft">
+              <SlidersHorizontal className="h-4 w-4" /> {t("common.filter")}
             </button>
           </div>
         </div>
@@ -149,32 +151,34 @@ function PartnershipPage() {
             <Banner
               image={pageImages.bannerUnderwater}
               alt="Sea turtle swimming over coral reef"
-              title={<>Stronger Together<br />for a Sustainable Ocean</>}
-              description="Collaborate with global partners to share knowledge, mobilize resources, and implement solutions that benefit our ocean and communities."
+              title={t("partnership.bannerTitle")}
+              description={t("partnership.bannerDesc")}
               stats={[
-                { value: "128", label: "Partner Institutions", icon: Landmark },
-                { value: "45", label: "Active Collaborations", icon: Handshake },
-                { value: "32", label: "Countries", icon: Globe },
-                { value: "86", label: "Joint Initiatives", icon: Target },
+                { value: "128", label: t("partnership.activePartners"), icon: Landmark },
+                { value: "45", label: t("partnership.jointProjects"), icon: Handshake },
+                { value: "32", label: t("partnership.countriesReached"), icon: Globe },
+                { value: "86", label: t("partnership.beneficiaries"), icon: Target },
               ]}
             />
 
             <section>
-              <SectionHeader title="Featured Partnership Opportunities" action="View all opportunities" />
+              <SectionHeader title={t("partnership.opportunitiesTitle")} action={t("bottomGrid.viewAllPartners")} />
               <div className="grid gap-4 sm:grid-cols-2">
                 {opportunities.map((o) => (
                   <article key={o.title} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
                     <div className="relative h-32 overflow-hidden">
                       <img src={o.image} alt={o.title} loading="lazy" width={768} height={512} className="h-full w-full object-cover" />
                       <span className="absolute left-3 top-3 rounded-full bg-navy/85 px-3 py-1 text-[0.65rem] font-bold text-navy-foreground backdrop-blur">{o.badge}</span>
-                      <button aria-label="Save" className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-card/90 text-marine"><Bookmark className="h-4 w-4" /></button>
+                      <button type="button" aria-label="Save" className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-card/90 text-marine cursor-pointer"><Bookmark className="h-4 w-4" /></button>
                     </div>
                     <div className="flex flex-1 flex-col p-4">
                       <h3 className="font-display text-sm font-bold leading-snug text-navy">{o.title}</h3>
                       <p className="mt-2 text-xs leading-snug text-muted-foreground"><span className="font-semibold text-navy">Focus:</span> {o.focus}</p>
                       <p className="mt-1 text-xs leading-snug text-muted-foreground"><span className="font-semibold text-navy">Partner Type:</span> {o.partner}</p>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Calendar className="h-3.5 w-3.5" />Deadline: {o.deadline}</p>
-                      <a href="#" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-marine">View Details <ArrowRight className="h-4 w-4" /></a>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Calendar className="h-3.5 w-3.5" />{t("common.deadline")}: {o.deadline}</p>
+                      <Link to="/partnership" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-marine">
+                        {t("common.details")} <ArrowRight className="h-4 w-4" />
+                      </Link>
                     </div>
                   </article>
                 ))}
@@ -182,7 +186,7 @@ function PartnershipPage() {
             </section>
 
             <Panel>
-              <SectionHeader title="Our Key Partners" action="View all partners" />
+              <SectionHeader title={t("sidebar.ourPartners")} action={t("bottomGrid.viewAllPartners")} />
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {keyPartners.map((p) => (
                   <div key={p} className="flex h-16 items-center justify-center rounded-lg border border-border bg-secondary/50 px-2 text-center text-[0.65rem] font-bold uppercase tracking-tight text-navy/70">
@@ -195,7 +199,7 @@ function PartnershipPage() {
 
           <div className="space-y-5">
             <Panel>
-              <SectionHeader title="Partnership Highlights" action="View all" />
+              <SectionHeader title={t("partnership.recentHighlights")} action={t("common.viewAll")} />
               <ul className="space-y-4">
                 {highlights.map((h) => (
                   <li key={h.title} className="flex gap-3">
@@ -212,11 +216,11 @@ function PartnershipPage() {
             </Panel>
 
             <Panel>
-              <SectionHeader title="Our Partner Sectors" action="View all" />
+              <SectionHeader title={t("partnership.sectorsTitle")} action={t("common.viewAll")} />
               <ul className="space-y-1">
                 {sectors.map(({ label, count, icon: Icon }) => (
                   <li key={label}>
-                    <button className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-marine">
+                    <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-marine">
                       <Icon className="h-4 w-4 text-marine" />
                       <span className="flex-1 text-left">{label}</span>
                       <span className="font-semibold text-muted-foreground">{count}</span>
@@ -227,7 +231,7 @@ function PartnershipPage() {
             </Panel>
 
             <Panel>
-              <SectionHeader title="Partnership Impact (2026)" action={null} />
+              <SectionHeader title={t("partnership.title")} action={null} />
               <div className="grid grid-cols-2 gap-3">
                 {impact.map(({ value, label, icon: Icon }) => (
                   <div key={label} className="rounded-xl border border-border p-3 text-center">

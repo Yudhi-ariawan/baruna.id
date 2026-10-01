@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-r
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 const signupSchema = z
   .object({
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { redirect, mode: requestedMode } = useSearch({ from: "/auth" });
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [mode, setMode] = useState<"signin" | "signup" | "invite">(requestedMode ?? "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -109,8 +111,8 @@ function AuthPage() {
         if (error) throw error;
         setSuccess(
           data.session
-            ? "Registration successful. Your account is active and ready to use."
-            : "Registration successful. Please check your email to verify your account.",
+            ? t("auth.successSignUp")
+            : t("auth.successSignUp"),
         );
         return;
       } else {
@@ -122,7 +124,7 @@ function AuthPage() {
       if (err instanceof z.ZodError) {
         setError(err.errors[0]?.message ?? "Please complete all required registration fields.");
       } else {
-        setError(err instanceof Error ? err.message : "Authentication failed");
+        setError(err instanceof Error ? err.message : t("auth.invalidCredentials"));
       }
     } finally {
       setBusy(false);
@@ -134,39 +136,41 @@ function AuthPage() {
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-soft">
         <h1 className="font-display text-2xl font-extrabold text-navy">
           {mode === "signin"
-            ? "Sign in to BARUNA"
+            ? t("auth.signInTitle")
             : mode === "invite"
-              ? "Complete your BARUNA account"
-              : "Create your BARUNA account"}
+              ? t("auth.inviteTitle")
+              : t("auth.signUpTitle")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {mode === "invite"
-            ? "Choose a secure password to accept your invitation."
-            : "Access your enrolments, progress, and certificates."}
+            ? t("auth.inviteSubtitle")
+            : mode === "signin"
+              ? t("auth.signInSubtitle")
+              : t("auth.signUpSubtitle")}
         </p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           {mode === "signup" ? (
             <>
               <AuthField
-                label="Full Name"
+                label={t("auth.fullName")}
                 value={displayName}
                 onChange={setDisplayName}
                 placeholder="Enter your full name"
               />
               <AuthField
-                label="Institution / Organization"
+                label={t("auth.organization")}
                 value={organization}
                 onChange={setOrganization}
                 placeholder="Enter your institution or organization"
               />
               <AuthField
-                label="Job Title / Profession"
+                label={t("auth.jobTitle")}
                 value={jobTitle}
                 onChange={setJobTitle}
                 placeholder="e.g. Marine Researcher, Fisheries Officer"
               />
               <AuthField
-                label="Phone Number / WhatsApp"
+                label={t("auth.phone")}
                 type="tel"
                 value={phone}
                 onChange={setPhone}
@@ -176,26 +180,26 @@ function AuthPage() {
           ) : null}
           {mode !== "invite" ? (
             <div>
-              <label className="block text-sm font-medium text-navy">Email Address</label>
+              <label className="block text-sm font-medium text-navy">{t("auth.email")}</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
+                placeholder="name@example.com"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-marine"
               />
             </div>
           ) : null}
           <div>
-            <label className="block text-sm font-medium text-navy">Password</label>
+            <label className="block text-sm font-medium text-navy">{t("auth.password")}</label>
             <input
               type="password"
               required
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder="••••••••"
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-marine"
             />
             {(mode === "signup" || mode === "invite") && (
@@ -205,14 +209,14 @@ function AuthPage() {
           {mode === "signup" ? (
             <>
               <div>
-                <label className="block text-sm font-medium text-navy">Confirm Password</label>
+                <label className="block text-sm font-medium text-navy">{t("auth.confirmPassword")}</label>
                 <input
                   type="password"
                   required
                   minLength={8}
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  placeholder="Re-enter your password"
+                  placeholder="••••••••"
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-marine"
                 />
               </div>
@@ -224,7 +228,7 @@ function AuthPage() {
                   onChange={(event) => setAcceptedTerms(event.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-border accent-marine"
                 />
-                <span>I agree to the BARUNA Terms of Service and Privacy Policy.</span>
+                <span>{t("auth.agreeTerms")}</span>
               </label>
             </>
           ) : null}
@@ -241,27 +245,28 @@ function AuthPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-marine px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-marine/90 disabled:opacity-60"
+            className="w-full rounded-xl bg-marine px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-marine/90 disabled:opacity-60 cursor-pointer"
           >
             {busy
-              ? "Please wait…"
+              ? t("auth.submitting")
               : mode === "signin"
-                ? "Sign in"
+                ? t("auth.signInBtn")
                 : mode === "invite"
-                  ? "Set password"
-                  : "Create Account"}
+                  ? t("auth.setPassBtn")
+                  : t("auth.signUpBtn")}
           </button>
         </form>
         {mode !== "invite" ? (
           <button
+            type="button"
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="mt-4 w-full text-center text-xs text-marine underline"
+            className="mt-4 w-full text-center text-xs text-marine underline cursor-pointer"
           >
-            {mode === "signin" ? "Need an account? Create one" : "Already have an account? Sign in"}
+            {mode === "signin" ? t("auth.noAccount") : t("auth.haveAccount")}
           </button>
         ) : null}
         <div className="mt-6 text-center text-xs text-muted-foreground">
-          <Link to="/">← Back to BARUNA</Link>
+          <Link to="/">← {t("common.back")} {t("nav.home")}</Link>
         </div>
       </div>
     </div>

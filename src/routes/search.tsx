@@ -3,6 +3,7 @@ import { Search as SearchIcon, ArrowRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { DEMO_EXPERTS, DEMO_MODULES, DEMO_SHORT_COURSES, DEMO_EVENTS, DEMO_PARTNERS, DEMO_FELLOWSHIPS, DEMO_COMMUNITIES, DEMO_CATEGORIES } from "@/data/demo";
+import { useLanguage } from "@/lib/i18n";
 
 function buildHref(pattern: string, params?: Record<string, string>) {
   if (!params) return pattern;
@@ -23,21 +24,23 @@ type Hit = { kind: string; label: string; to: string; params?: Record<string, st
 
 function SearchPage() {
   const [q, setQ] = useState("");
+  const { t } = useLanguage();
+
   const hits: Hit[] = useMemo(() => {
     const term = q.trim().toLowerCase();
     const all: Hit[] = [
-      ...DEMO_EXPERTS.map((e) => ({ kind: "Expert", label: e.fullName, to: "/experts/$slug", params: { slug: e.slug }, hint: e.organization })),
-      ...DEMO_MODULES.map((m) => ({ kind: "Module", label: m.title, to: "/knowledge-hub", hint: m.code })),
-      ...DEMO_SHORT_COURSES.map((c) => ({ kind: "Self-Paced Course", label: c.title, to: "/academy/self-paced/$code", params: { code: c.code }, hint: `${c.instructionalHours} IH` })),
-      ...DEMO_EVENTS.map((e) => ({ kind: "Event", label: e.title, to: "/events/$slug", params: { slug: e.slug }, hint: e.date })),
-      ...DEMO_PARTNERS.map((p) => ({ kind: "Partner", label: p.name, to: "/partnership", hint: p.country })),
-      ...DEMO_FELLOWSHIPS.map((f) => ({ kind: "Fellowship", label: f.title, to: "/fellowship", hint: f.duration })),
-      ...DEMO_COMMUNITIES.map((c) => ({ kind: "Community", label: c.name, to: "/community", hint: `${c.members} members` })),
-      ...DEMO_CATEGORIES.map((c) => ({ kind: "Category", label: c.name, to: "/academy/category/$slug", params: { slug: c.slug }, hint: c.tagline })),
+      ...DEMO_EXPERTS.map((e) => ({ kind: t("nav.experts"), label: e.fullName, to: "/experts/$slug", params: { slug: e.slug }, hint: e.organization })),
+      ...DEMO_MODULES.map((m) => ({ kind: t("sidebar.learningModules"), label: m.title, to: "/knowledge-hub", hint: m.code })),
+      ...DEMO_SHORT_COURSES.map((c) => ({ kind: t("sidebar.selfPacedCourse"), label: c.title, to: "/academy/self-paced/$code", params: { code: c.code }, hint: `${c.instructionalHours} IH` })),
+      ...DEMO_EVENTS.map((e) => ({ kind: t("nav.events"), label: e.title, to: "/events/$slug", params: { slug: e.slug }, hint: e.date })),
+      ...DEMO_PARTNERS.map((p) => ({ kind: t("nav.partnership"), label: p.name, to: "/partnership", hint: p.country })),
+      ...DEMO_FELLOWSHIPS.map((f) => ({ kind: t("nav.fellowship"), label: f.title, to: "/fellowship", hint: f.duration })),
+      ...DEMO_COMMUNITIES.map((c) => ({ kind: t("nav.community"), label: c.name, to: "/community", hint: `${c.members} members` })),
+      ...DEMO_CATEGORIES.map((c) => ({ kind: t("sidebar.byCategory"), label: c.name, to: "/academy/category/$slug", params: { slug: c.slug }, hint: c.tagline })),
     ];
     if (!term) return all.slice(0, 20);
     return all.filter((h) => h.label.toLowerCase().includes(term) || (h.hint ?? "").toLowerCase().includes(term));
-  }, [q]);
+  }, [q, t]);
 
   return (
     <PageShell
@@ -53,16 +56,21 @@ function SearchPage() {
     >
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-navy">Search</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Type a keyword or browse by type.</p>
+          <h1 className="font-display text-3xl font-extrabold text-navy">{t("search.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("search.subtitle")}</p>
         </div>
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search experts, courses, events, partners…" className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm outline-none focus:border-marine" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t("search.placeholder")}
+            className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm outline-none focus:border-marine"
+          />
         </div>
         <div className="rounded-2xl border border-border bg-card shadow-soft">
           <ul className="divide-y divide-border">
-            {hits.length === 0 && <li className="p-6 text-sm text-muted-foreground">No results.</li>}
+            {hits.length === 0 && <li className="p-6 text-sm text-muted-foreground">{t("search.noResults")}</li>}
             {hits.map((h, i) => (
               <li key={i}>
                 <a href={buildHref(h.to, h.params)} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/60">

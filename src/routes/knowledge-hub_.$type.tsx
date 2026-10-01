@@ -7,8 +7,8 @@ import { KH_ALL, KH_TYPES, labelForType, resourcesByType, type KhResource, type 
 import { DEMO_CATEGORIES } from "@/data/demo";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge } from "@/components/baruna/knowledge/ResourceCard";
-
-import { supabase } from "@/integrations/supabase/client";
+import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
+import { courseImages } from "@/data/pages";
 
 const VALID: string[] = [...KH_TYPES.map((t) => t.slug), "library"];
 
@@ -18,55 +18,42 @@ export const Route = createFileRoute("/knowledge-hub_/$type")({
 
     let dbResources: KhResource[] = [];
     if (params.type === "learning-modules" || params.type === "library") {
-      const { data: dbMods } = await supabase
-        .from("module_registry")
-        .select("id, title, summary, language, estimated_learning_hours, created_at, author_expert_id")
-        .eq("current_status", "published")
-        .order("created_at", { ascending: false });
+      try {
+        const dbMods = await getPublishedModulesCatalog();
 
-      if (dbMods && dbMods.length > 0) {
-        const expertIds = Array.from(new Set(dbMods.map((m) => m.author_expert_id).filter(Boolean))) as string[];
-        let expertMap: Record<string, string> = {};
-        if (expertIds.length > 0) {
-          const { data: expList } = await supabase.from("experts_directory_v").select("id, display_name").in("id", expertIds);
-          if (expList && expList.length > 0) {
-            expertMap = Object.fromEntries(expList.map((e) => [e.id, e.display_name]));
-          } else {
-            const { data: profList } = await supabase.from("profiles").select("id, display_name").in("id", expertIds);
-            if (profList) {
-              for (const p of profList) if (p.display_name) expertMap[p.id] = p.display_name;
-            }
-          }
+        if (dbMods && dbMods.length > 0) {
+          dbResources = dbMods.map((m, idx) => ({
+            id: m.id,
+            type: "learning-modules" as const,
+            typeLabel: "Learning Module",
+            title: m.title,
+            category: "fisheries-management" as const,
+            summary: m.summary || "Approved BARUNA learning module connected to Self-Paced Courses.",
+            abstract: m.summary || "Approved BARUNA learning module.",
+            coverImage: m.coverUrl || courseImages[idx % courseImages.length],
+            author: m.authorName || "BARUNA Trainer",
+            contributor: "BARUNA Academy",
+            organization: "BARUNA Network",
+            year: new Date(m.created_at).getFullYear(),
+            language: m.language || "English",
+            country: "Indonesia",
+            keywords: ["Learning Module", "Self-Paced", m.title.toLowerCase()],
+            access: "Completion Required" as const,
+            status: "Published" as const,
+            fileType: "Module Package",
+            pages: (m.estimated_learning_hours || 2) * 12,
+            version: "1.0",
+            moduleCode: `BARUNA-MOD-${String(idx + 1).padStart(2, "0")}`,
+            shortCourseCode: m.id,
+            expertId: m.author_expert_id || "",
+            metrics: { views: 42, uniqueViewers: 18, downloads: 12, saves: 4, shares: 2 },
+            citation: `${m.authorName || "BARUNA Trainer"} (${new Date(m.created_at).getFullYear()}). ${m.title}. BARUNA Knowledge Hub.`,
+            createdAt: m.created_at,
+            updatedAt: m.created_at,
+          }));
         }
-
-        dbResources = dbMods.map((m, idx) => ({
-          id: m.id,
-          type: "learning-modules" as const,
-          typeLabel: "Learning Module",
-          title: m.title,
-          category: "fisheries-management" as const,
-          summary: m.summary || "Approved BARUNA learning module connected to Self-Paced Courses.",
-          abstract: m.summary || "Approved BARUNA learning module.",
-          author: (m.author_expert_id && expertMap[m.author_expert_id]) || "Barry",
-          contributor: "BARUNA Academy",
-          organization: "BARUNA Network",
-          year: new Date(m.created_at).getFullYear(),
-          language: m.language || "English",
-          country: "Indonesia",
-          keywords: ["Learning Module", "Self-Paced", m.title.toLowerCase()],
-          access: "Completion Required" as const,
-          status: "Published" as const,
-          fileType: "Module Package",
-          pages: (m.estimated_learning_hours || 2) * 12,
-          version: "1.0",
-          moduleCode: `BARUNA-MOD-${String(idx + 1).padStart(2, "0")}`,
-          shortCourseCode: m.id,
-          expertId: m.author_expert_id || "",
-          metrics: { views: 42, uniqueViewers: 18, downloads: 12, saves: 4, shares: 2 },
-          citation: `${(m.author_expert_id && expertMap[m.author_expert_id]) || "Barry"} (${new Date(m.created_at).getFullYear()}). ${m.title}. BARUNA Knowledge Hub.`,
-          createdAt: m.created_at,
-          updatedAt: m.created_at,
-        }));
+      } catch (err) {
+        console.warn("Failed to load published modules catalog:", err);
       }
     }
 

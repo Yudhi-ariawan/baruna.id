@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Globe,
   LayoutGrid,
@@ -28,6 +28,7 @@ import { PageShell } from "@/components/baruna/page/PageShell";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages } from "@/data/pages";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/fellowship")({
   head: () => ({
@@ -46,28 +47,6 @@ export const Route = createFileRoute("/fellowship")({
   }),
   component: FellowshipPage,
 });
-
-const overview = [
-  { label: "Overview", icon: LayoutGrid, active: true },
-  { label: "Opportunities", icon: Compass },
-  { label: "My Applications", icon: FileText },
-  { label: "My Exchange", icon: Repeat },
-];
-
-const explore = [
-  { label: "Fellowships", icon: Award },
-  { label: "Short-term Exchange", icon: Repeat },
-  { label: "Training & Attachment", icon: Plane },
-  { label: "Research Collaboration", icon: FlaskConical },
-  { label: "Mentorship Programs", icon: HeartHandshake },
-];
-
-const resources = [
-  { label: "Guidelines", icon: BookOpen },
-  { label: "Partner Institutions", icon: Building2 },
-  { label: "Success Stories", icon: Trophy },
-  { label: "FAQ", icon: HelpCircle },
-];
 
 type Opp = {
   badge: string;
@@ -93,22 +72,46 @@ const partners = [
   { name: "CTI-CFF", country: "Coral Triangle Initiative" },
 ];
 
-const applications = [
-  { label: "Submitted", value: 2 },
-  { label: "In Review", value: 1 },
-  { label: "Shortlisted", value: 0 },
-  { label: "Awarded", value: 0 },
-];
-
-const steps: { label: string; desc: string; icon: LucideIcon }[] = [
-  { label: "Explore", desc: "Find opportunities that match your goals and expertise.", icon: Search },
-  { label: "Apply", desc: "Submit your application and required documents.", icon: Send },
-  { label: "Review & Selection", desc: "Applications are reviewed by our partners and selection committee.", icon: Users },
-  { label: "Participate", desc: "Join the program and gain international experience.", icon: Plane },
-  { label: "Grow & Contribute", desc: "Share your knowledge and contribute to our ocean community.", icon: Sparkles },
-];
-
 function FellowshipPage() {
+  const { t } = useLanguage();
+
+  const overview = [
+    { label: t("sidebar.overview"), icon: LayoutGrid, active: true },
+    { label: t("sidebar.opportunities"), icon: Compass },
+    { label: t("sidebar.myApplications"), icon: FileText },
+    { label: t("sidebar.myExchange"), icon: Repeat },
+  ];
+
+  const explore = [
+    { label: t("sidebar.fellowships"), icon: Award },
+    { label: t("sidebar.shortTermExchange"), icon: Repeat },
+    { label: t("sidebar.trainingAttachment"), icon: Plane },
+    { label: t("sidebar.researchCollaboration"), icon: FlaskConical },
+    { label: t("sidebar.mentorshipPrograms"), icon: HeartHandshake },
+  ];
+
+  const resources = [
+    { label: t("sidebar.guidelines"), icon: BookOpen },
+    { label: t("sidebar.partnerInstitutions"), icon: Building2 },
+    { label: t("sidebar.successStories"), icon: Trophy },
+    { label: t("sidebar.faqs"), icon: HelpCircle },
+  ];
+
+  const applications = [
+    { label: "Submitted", value: 2 },
+    { label: "In Review", value: 1 },
+    { label: "Shortlisted", value: 0 },
+    { label: "Awarded", value: 0 },
+  ];
+
+  const steps: { label: string; desc: string; icon: LucideIcon }[] = [
+    { label: "Explore", desc: "Find opportunities that match your goals and expertise.", icon: Search },
+    { label: "Apply", desc: "Submit your application and required documents.", icon: Send },
+    { label: "Review & Selection", desc: "Applications are reviewed by our partners and selection committee.", icon: Users },
+    { label: "Participate", desc: "Join the program and gain international experience.", icon: Plane },
+    { label: "Grow & Contribute", desc: "Share your knowledge and contribute to our ocean community.", icon: Sparkles },
+  ];
+
   return (
     <PageShell
       sidebar={{
@@ -120,30 +123,30 @@ function FellowshipPage() {
           { label: "Explore Programs", items: explore },
           { label: "Resources", items: resources },
         ],
-        footer: { icon: FileText, label: "How to Apply" },
+        footer: { icon: FileText, label: t("sidebar.guidelines") },
       }}
       cta={{
         icon: Globe,
-        title: "Be Part of a Global Network. Make an Impact.",
-        description: "Join fellow marine and fisheries professionals in building a sustainable future for our ocean.",
-        button: "Explore Opportunities",
+        title: "Have a Fellowship Program to Offer?",
+        description: "Partner with BARUNA to promote international exchange programs and reach qualified maritime professionals.",
+        button: "Partner With Us",
       }}
     >
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-display text-3xl font-extrabold text-navy">Fellowship & Exchange</h1>
+            <h1 className="font-display text-3xl font-extrabold text-navy">{t("fellowship.title")}</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Empowering marine and fisheries professionals through global collaboration, exchange, and capacity building opportunities.
+              {t("fellowship.subtitle")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 shadow-soft">
               <Search className="h-4 w-4 text-muted-foreground" />
-              <input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder="Search opportunities, programs, or institutions..." />
+              <input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder={t("search.placeholder")} />
             </div>
-            <button className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy shadow-soft">
-              <SlidersHorizontal className="h-4 w-4" /> Filter
+            <button type="button" className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy shadow-soft">
+              <SlidersHorizontal className="h-4 w-4" /> {t("common.filter")}
             </button>
           </div>
         </div>
@@ -153,27 +156,35 @@ function FellowshipPage() {
             <Banner
               image={pageImages.bannerFellowship}
               alt="Group of marine science students collaborating"
-              title={<>Connecting Talents.<br />Expanding Horizons.</>}
-              description="Access fellowships, exchange programs, and collaborative opportunities with leading institutions worldwide."
-              cta={{ label: "Explore Opportunities" }}
+              title={t("fellowship.bannerTitle")}
+              description={t("fellowship.bannerDesc")}
+              cta={{ label: t("bottomGrid.exploreOpportunities") }}
+              stats={[
+                { value: "40+", label: t("fellowship.openOpportunities"), icon: Award },
+                { value: "35+", label: t("fellowship.partnerInstitutions"), icon: Building2 },
+                { value: "28+", label: t("fellowship.participatingCountries"), icon: Globe },
+                { value: "150+", label: t("fellowship.activeFellows"), icon: Users },
+              ]}
             />
 
             <section>
-              <SectionHeader title="Featured Opportunities" action="View all opportunities" />
+              <SectionHeader title={t("fellowship.featuredOpportunities")} action={t("bottomGrid.viewAllOpportunities")} />
               <div className="grid gap-4 sm:grid-cols-2">
                 {opportunities.map((o) => (
                   <article key={o.title} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
                     <div className="relative h-36 overflow-hidden">
                       <img src={o.image} alt={o.title} loading="lazy" width={768} height={512} className="h-full w-full object-cover" />
                       <span className="absolute left-3 top-3 rounded-full bg-navy/85 px-3 py-1 text-[0.65rem] font-bold text-navy-foreground backdrop-blur">{o.badge}</span>
-                      <button aria-label="Save" className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-card/90 text-marine"><Bookmark className="h-4 w-4" /></button>
+                      <button type="button" aria-label="Save" className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-card/90 text-marine cursor-pointer"><Bookmark className="h-4 w-4" /></button>
                     </div>
                     <div className="flex flex-1 flex-col p-4">
                       <h3 className="font-display text-sm font-bold leading-snug text-navy">{o.title}</h3>
                       <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><Building2 className="h-3.5 w-3.5" />{o.org}</p>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Calendar className="h-3.5 w-3.5" />Deadline: {o.deadline}</p>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Calendar className="h-3.5 w-3.5" />{t("common.deadline")}: {o.deadline}</p>
                       <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{o.location}</p>
-                      <a href="#" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-marine">View Details <ArrowRight className="h-4 w-4" /></a>
+                      <Link to="/fellowship" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-marine">
+                        {t("common.details")} <ArrowRight className="h-4 w-4" />
+                      </Link>
                     </div>
                   </article>
                 ))}
@@ -201,16 +212,16 @@ function FellowshipPage() {
             <Panel>
               <div className="flex items-center gap-2">
                 <Compass className="h-5 w-5 text-marine" />
-                <h2 className="font-display text-base font-bold text-navy">Find Your Opportunity</h2>
+                <h2 className="font-display text-base font-bold text-navy">{t("bottomGrid.exploreOpportunities")}</h2>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">Answer a few questions and we'll recommend programs that match your goals and expertise.</p>
-              <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-marine py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground">
-                Get Recommendations <ArrowRight className="h-4 w-4" />
+              <button type="button" className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-marine py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground cursor-pointer">
+                {t("common.learnMore")} <ArrowRight className="h-4 w-4" />
               </button>
             </Panel>
 
             <Panel>
-              <SectionHeader title="My Applications" action={null} />
+              <SectionHeader title={t("fellowship.myApplicationsStatus")} action={null} />
               <ul className="divide-y divide-border">
                 {applications.map((a) => (
                   <li key={a.label} className="flex items-center justify-between py-2.5 text-sm">
@@ -219,11 +230,13 @@ function FellowshipPage() {
                   </li>
                 ))}
               </ul>
-              <a href="#" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-marine">View all applications <ArrowRight className="h-4 w-4" /></a>
+              <Link to="/academy/applications" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-marine">
+                {t("sidebar.myApplications")} <ArrowRight className="h-4 w-4" />
+              </Link>
             </Panel>
 
             <Panel>
-              <SectionHeader title="Featured Partner Institutions" action={null} />
+              <SectionHeader title={t("fellowship.ourGlobalPartners")} action={null} />
               <ul className="space-y-3">
                 {partners.map((p) => (
                   <li key={p.name} className="flex items-center gap-3">
@@ -235,7 +248,9 @@ function FellowshipPage() {
                   </li>
                 ))}
               </ul>
-              <a href="#" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-marine">View all partners <ArrowRight className="h-4 w-4" /></a>
+              <Link to="/partnership" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-marine">
+                {t("bottomGrid.viewAllPartners")} <ArrowRight className="h-4 w-4" />
+              </Link>
             </Panel>
           </div>
         </div>

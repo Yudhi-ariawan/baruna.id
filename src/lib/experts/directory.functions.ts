@@ -83,8 +83,42 @@ function mapInstructorToPublicExpert(inst: Instructor): PublicExpert {
   };
 }
 
-// Slugs of test entries to exclude from the public directory
-const EXCLUDED_SLUGS = new Set(["barry", "ammar-barry-huwaidy-a-r"]);
+async function resolveAvatarUrl(
+  rawAvatarUrl: string | null | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adminClient: any,
+): Promise<string | null> {
+  if (!rawAvatarUrl || !rawAvatarUrl.trim()) return null;
+  const url = rawAvatarUrl.trim();
+
+  // If already a valid public HTTP(S) URL
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    if (url.includes("/expert-applications/")) {
+      const match = url.match(/\/expert-applications\/(.+?)(\?|$)/);
+      if (match && match[1]) {
+        try {
+          const { data: signed } = await adminClient.storage
+            .from("expert-applications")
+            .createSignedUrl(decodeURIComponent(match[1]), 86400);
+          return signed?.signedUrl ?? url;
+        } catch {
+          return url;
+        }
+      }
+    }
+    return url;
+  }
+
+  // If it's a storage path like "users/<uid>/..."
+  try {
+    const { data: signed } = await adminClient.storage
+      .from("expert-applications")
+      .createSignedUrl(url, 86400);
+    return signed?.signedUrl ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const publicColumns =
   "id, slug, display_name, headline, bio, country, city, avatar_url, expertise_areas, languages, verification_status, institution, institution_role, trainer_status, trainer_level, unique_graduated_participants, recognition_min_participants, availability_status, available_modes, next_available_from";
@@ -94,23 +128,29 @@ export const listPublicExperts = createServerFn({ method: "GET" }).handler(
     let dbExperts: PublicExpert[] = [];
 
     try {
-      const { data, error } = await supabase
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin
         .from("experts_directory_v")
         .select(publicColumns)
         .order("display_name");
 
       if (!error && data) {
-        dbExperts = (data as DirectoryRow[])
-          .map(mapExpert)
-          .filter((expert) => !EXCLUDED_SLUGS.has(expert.slug));
+        const rows = data as DirectoryRow[];
+        dbExperts = await Promise.all(
+          rows.map(async (r) => {
+            const mapped = mapExpert(r);
+            mapped.avatarUrl = await resolveAvatarUrl(r.avatar_url, supabaseAdmin);
+            return mapped;
+          }),
+        );
       }
-    } catch {
-      // In case of temporary db/network error, fallback to static records
+    } catch (err) {
+      console.warn("Failed to load experts from db:", err);
     }
 
     const existingSlugs = new Set(dbExperts.map((e) => e.slug));
     const trainerExperts = instructors
-      .filter((inst) => !existingSlugs.has(inst.slug) && !EXCLUDED_SLUGS.has(inst.slug))
+      .filter((inst) => !existingSlugs.has(inst.slug))
       .map(mapInstructorToPublicExpert);
 
     return [...dbExperts, ...trainerExperts];
@@ -120,22 +160,21 @@ export const listPublicExperts = createServerFn({ method: "GET" }).handler(
 export const getPublicExpertBySlug = createServerFn({ method: "GET" })
   .validator((value: { slug: string }) => z.object({ slug: z.string().min(1).max(120) }).parse(value))
   .handler(async ({ data }): Promise<PublicExpert | null> => {
-    if (EXCLUDED_SLUGS.has(data.slug)) {
-      return null;
-    }
-
     try {
-      const { data: expert, error } = await supabase
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: expert, error } = await supabaseAdmin
         .from("experts_directory_v")
         .select(publicColumns)
         .eq("slug", data.slug)
         .maybeSingle();
 
       if (!error && expert) {
-        return mapExpert(expert as DirectoryRow);
+        const mapped = mapExpert(expert as DirectoryRow);
+        mapped.avatarUrl = await resolveAvatarUrl(expert.avatar_url, supabaseAdmin);
+        return mapped;
       }
-    } catch {
-      // Fallback to static instructors
+    } catch (err) {
+      console.warn("Failed to load expert by slug:", err);
     }
 
     const foundInst = instructors.find((inst) => inst.slug === data.slug);

@@ -20,68 +20,57 @@ import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge, AccessBadge } from "@/components/baruna/knowledge/ResourceCard";
 import { toggleSaved, useIsSaved, shareResource } from "@/lib/khSaved";
 import { courseImages } from "@/data/pages";
-import { supabase } from "@/integrations/supabase/client";
+import { getPublishedModuleDetail } from "@/lib/learning/learning.functions";
 
 export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
   loader: async ({ params }) => {
     const demoResource = getResourceById(params.id);
     if (demoResource) return { resource: demoResource };
 
-    const { data: m } = await supabase
-      .from("module_registry")
-      .select("*")
-      .eq("id", params.id)
-      .maybeSingle();
+    try {
+      const pubMod = await getPublishedModuleDetail({ data: { moduleId: params.id } });
+      if (pubMod) {
+        const coverDoc = pubMod.documents.find(
+          (d) =>
+            d.type.toLowerCase().includes("cover") ||
+            d.fileType?.includes("image") ||
+            d.name.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/),
+        );
 
-    if (m) {
-      let authorName = "BARUNA Trainer";
-      if (m.author_expert_id) {
-        const { data: exp } = await supabase
-          .from("experts_directory_v")
-          .select("display_name")
-          .eq("id", m.author_expert_id)
-          .maybeSingle();
-        if (exp?.display_name) authorName = exp.display_name;
-        else {
-          const { data: prof } = await supabase
-            .from("profiles")
-            .select("display_name")
-            .eq("id", m.author_expert_id)
-            .maybeSingle();
-          if (prof?.display_name) authorName = prof.display_name;
-        }
+        const resource: any = {
+          id: pubMod.id,
+          type: "learning-modules",
+          typeLabel: "Learning Module",
+          title: pubMod.title,
+          coverImage: coverDoc?.downloadUrl || courseImages[0],
+          category: "fisheries-management",
+          summary: pubMod.summary || "Approved BARUNA learning module connected to Self-Paced Courses.",
+          abstract: pubMod.summary || "Approved BARUNA learning module.",
+          author: pubMod.trainer.name || "BARUNA Trainer",
+          contributor: "BARUNA Academy",
+          organization: "BARUNA Network",
+          year: new Date(pubMod.publishedAt).getFullYear() || 2026,
+          language: pubMod.language || "English",
+          country: "Indonesia",
+          keywords: ["Learning Module", "Self-Paced", pubMod.title.toLowerCase()],
+          access: "Completion Required",
+          status: "Published",
+          fileType: "Module Package",
+          pages: (pubMod.hours || 2) * 12,
+          version: "1.0",
+          moduleCode: `BARUNA-MOD-${pubMod.id.slice(0, 8).toUpperCase()}`,
+          shortCourseCode: pubMod.id,
+          expertId: "",
+          metrics: { views: 42, uniqueViewers: 18, downloads: 12, saves: 4, shares: 2 },
+          citation: `${pubMod.trainer.name || "BARUNA Trainer"} (${new Date(pubMod.publishedAt).getFullYear() || 2026}). ${pubMod.title}. BARUNA Knowledge Hub.`,
+          createdAt: pubMod.publishedAt,
+          updatedAt: pubMod.publishedAt,
+        };
+
+        return { resource };
       }
-
-      const resource: any = {
-        id: m.id,
-        type: "learning-modules",
-        typeLabel: "Learning Module",
-        title: m.title,
-        category: "fisheries-management",
-        summary: m.summary || "Approved BARUNA learning module connected to Self-Paced Courses.",
-        abstract: m.summary || "Approved BARUNA learning module.",
-        author: authorName,
-        contributor: "BARUNA Academy",
-        organization: "BARUNA Network",
-        year: new Date(m.created_at).getFullYear(),
-        language: m.language || "English",
-        country: "Indonesia",
-        keywords: ["Learning Module", "Self-Paced", m.title.toLowerCase()],
-        access: "Completion Required",
-        status: "Published",
-        fileType: "Module Package",
-        pages: (m.estimated_learning_hours || 2) * 12,
-        version: "1.0",
-        moduleCode: "BARUNA-MOD-01",
-        shortCourseCode: m.id,
-        expertId: m.author_expert_id || "",
-        metrics: { views: 42, uniqueViewers: 18, downloads: 12, saves: 4, shares: 2 },
-        citation: `${authorName} (${new Date(m.created_at).getFullYear()}). ${m.title}. BARUNA Knowledge Hub.`,
-        createdAt: m.created_at,
-        updatedAt: m.created_at,
-      };
-
-      return { resource };
+    } catch (err) {
+      console.warn("Failed to load module detail from database:", err);
     }
 
     throw notFound();
@@ -152,7 +141,7 @@ function ResourceDetailPage() {
   const partner = r.relatedPartnerSlug ? DEMO_PARTNERS.find((p) => p.slug === r.relatedPartnerSlug) : undefined;
   const related = useMemo(() => relatedResources(r, 4), [r]);
 
-  const cover = courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
+  const cover = r.coverImage || courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
   const canDownload = r.access === "Public Access";
 
   // Gated-access modal state (shown when a locked module action is clicked).
@@ -187,7 +176,19 @@ function ResourceDetailPage() {
           <div className="space-y-6">
             <Panel className="overflow-hidden p-0">
               <div className="relative h-56 sm:h-72">
-                <img src={cover} alt={r.title} className="h-full w-full object-cover" width={1600} height={720} />
+                <img
+                  src={cover}
+                  alt={r.title}
+                  className="h-full w-full object-cover"
+                  width={1600}
+                  height={720}
+                  onError={(e) => {
+                    const fallback = courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
+                    if (e.currentTarget.src !== fallback) {
+                      e.currentTarget.src = fallback;
+                    }
+                  }}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-navy/85 to-transparent" />
                 <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
                   <span className="inline-flex rounded-md bg-navy px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-navy-foreground">{r.typeLabel}</span>

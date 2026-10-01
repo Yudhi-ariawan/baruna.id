@@ -19,36 +19,40 @@ import {
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Badge } from "@/components/ui/badge";
 import { listMyNotifications } from "@/lib/notifications/notifications.functions";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
     meta: [
       { title: "Notifications — BARUNA" },
-      { name: "description", content: "Pemberitahuan aktivitas dan status verifikasi di BARUNA." },
+      { name: "description", content: "Notifications, activity, and verification status in BARUNA." },
     ],
   }),
   component: NotificationsPage,
 });
 
-function formatRelativeTime(dateStr: string) {
+function formatRelativeTime(dateStr: string, isId: boolean) {
   try {
     const diffMs = Date.now() - new Date(dateStr).getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return "Baru saja";
-    if (diffMins < 60) return `${diffMins} menit lalu`;
-    if (diffHours < 24) return `${diffHours} jam lalu`;
-    if (diffDays === 1) return "Kemarin";
-    if (diffDays < 7) return `${diffDays} hari lalu`;
-    return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(dateStr));
+    if (diffMins < 1) return isId ? "Baru saja" : "Just now";
+    if (diffMins < 60) return isId ? `${diffMins} menit lalu` : `${diffMins}m ago`;
+    if (diffHours < 24) return isId ? `${diffHours} jam lalu` : `${diffHours}h ago`;
+    if (diffDays === 1) return isId ? "Kemarin" : "Yesterday";
+    if (diffDays < 7) return isId ? `${diffDays} hari lalu` : `${diffDays}d ago`;
+    return new Intl.DateTimeFormat(isId ? "id-ID" : "en-US", { dateStyle: "medium" }).format(new Date(dateStr));
   } catch {
     return dateStr;
   }
 }
 
 function NotificationsPage() {
+  const { language, t } = useLanguage();
+  const isId = language === "id";
+
   const getNotifs = useServerFn(listMyNotifications);
   const query = useQuery({
     queryKey: ["notifications", "my"],
@@ -62,33 +66,37 @@ function NotificationsPage() {
     <PageShell
       sidebar={{
         icon: Bell,
-        title: "Notifications",
-        subtitle: "Aktivitas dan status pengajuan Anda.",
+        title: isId ? "Notifikasi" : "Notifications",
+        subtitle: isId ? "Aktivitas dan status pengajuan Anda." : "Your submissions and activity status.",
         sections: [
           {
-            label: "Filter",
+            label: isId ? "Saring" : "Filter",
             items: [
-              { label: "All Notifications", active: true },
-              { label: "Learning", to: "/academy/learn" },
-              { label: "Events", to: "/events" },
-              { label: "Experts", to: "/experts" },
+              { label: isId ? "Semua Notifikasi" : "All Notifications", active: true },
+              { label: isId ? "Pembelajaran" : "Learning", to: "/academy/learn" },
+              { label: isId ? "Acara" : "Events", to: "/events" },
+              { label: isId ? "Pakar" : "Experts", to: "/experts" },
             ],
           },
         ],
       }}
       cta={{
         icon: Bell,
-        title: "Notification settings",
-        description: "Atur preferensi pemberitahuan akun Anda.",
-        button: "Ke Pengaturan",
+        title: isId ? "Pengaturan notifikasi" : "Notification settings",
+        description: isId ? "Atur preferensi pemberitahuan akun Anda." : "Manage your notification preferences.",
+        button: isId ? "Ke Pengaturan" : "Go to Settings",
         href: "/account/profile",
       }}
     >
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-navy">Pemberitahuan</h1>
+          <h1 className="font-display text-3xl font-extrabold text-navy">
+            {isId ? "Pemberitahuan" : "Notifications"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Status evaluasi berkas, keputusan verifikator, dan aktivitas penting di BARUNA.
+            {isId
+              ? "Status evaluasi berkas, keputusan verifikator, dan aktivitas penting di BARUNA."
+              : "Document evaluation status, verifier decisions, and important activities in BARUNA."}
           </p>
         </div>
 
@@ -145,13 +153,13 @@ function NotificationsPage() {
                             }`}
                           >
                             {isRevision
-                              ? "Perlu Tindakan / Revisi"
+                              ? (isId ? "Perlu Tindakan / Revisi" : "Action / Revision Required")
                               : isApproved
-                                ? "Disetujui"
-                                : "Ditolak"}
+                                ? (isId ? "Disetujui" : "Approved")
+                                : (isId ? "Ditolak" : "Rejected")}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {formatRelativeTime(n.createdAt)}
+                            {formatRelativeTime(n.createdAt, isId)}
                           </span>
                         </div>
 
@@ -169,7 +177,9 @@ function NotificationsPage() {
                           }`}
                         >
                           <span className="font-bold text-[11px] uppercase tracking-wider block mb-1">
-                            {isRevision ? "Catatan Verifikator / Alasan Revisi:" : "Keterangan:"}
+                            {isRevision
+                              ? (isId ? "Catatan Verifikator / Alasan Revisi:" : "Reviewer Notes / Revision Reason:")
+                              : (isId ? "Keterangan:" : "Details:")}
                           </span>
                           <p className="italic">&quot;{n.body}&quot;</p>
                         </div>
@@ -190,11 +200,11 @@ function NotificationsPage() {
                       >
                         {isRevision ? (
                           <>
-                            <RotateCcw className="h-3.5 w-3.5" /> Ganti Berkas &amp; Kirim Ulang
+                            <RotateCcw className="h-3.5 w-3.5" /> {isId ? "Ganti Berkas & Kirim Ulang" : "Update Files & Resubmit"}
                           </>
                         ) : (
                           <>
-                            Buka Detail <ArrowRight className="h-3.5 w-3.5" />
+                            {isId ? "Buka Detail" : "View Details"} <ArrowRight className="h-3.5 w-3.5" />
                           </>
                         )}
                       </Link>
@@ -208,10 +218,12 @@ function NotificationsPage() {
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600/70" />
             <h3 className="mt-3 font-display text-base font-bold text-navy">
-              Tidak Ada Pemberitahuan Baru
+              {isId ? "Tidak Ada Pemberitahuan Baru" : "No New Notifications"}
             </h3>
             <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-              Semua pengajuan dan aktivitas akun Anda dalam kondisi terkini.
+              {isId
+                ? "Semua pengajuan dan aktivitas akun Anda dalam kondisi terkini."
+                : "All your submissions and account activities are up to date."}
             </p>
           </div>
         )}

@@ -28,6 +28,7 @@ import {
   eventStats,
 } from "@/data/events";
 import bannerUnderwater from "@/assets/banner-underwater.jpg";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/events/")({
   head: () => ({
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/events/")({
 });
 
 function EventsHome() {
+  const { t } = useLanguage();
   const hero = getHeroEvent();
   const featured = getFeaturedEvents();
   const upcoming = getUpcomingEvents().slice(0, 4);
@@ -62,10 +64,9 @@ function EventsHome() {
         {/* Title + search */}
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h1 className="font-display text-3xl font-extrabold text-navy">Events</h1>
+            <h1 className="font-display text-3xl font-extrabold text-navy">{t("events.title")}</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Explore events, webinars, workshops, conferences, and networking opportunities related
-              to marine and fisheries.
+              {t("events.subtitle")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -78,14 +79,14 @@ function EventsHome() {
               <input
                 name="q"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                placeholder="Search events, topics, or speakers..."
+                placeholder={t("events.searchPlaceholder")}
               />
             </form>
             <Link
               to="/events/all" search={{ q: "", category: "", country: "", format: "" }}
               className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy shadow-soft transition-colors hover:border-marine hover:text-marine"
             >
-              <SlidersHorizontal className="h-4 w-4" /> Filter
+              <SlidersHorizontal className="h-4 w-4" /> {t("common.filter")}
             </Link>
           </div>
         </div>
@@ -107,7 +108,7 @@ function EventsHome() {
                   <div className="flex flex-wrap items-center gap-2">
                     <EventBadge category={hero.category} />
                     <span className="rounded-md bg-navy-foreground/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide">
-                      Featured
+                      {t("events.featuredEvents")}
                     </span>
                   </div>
                   <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.1] sm:text-4xl">
@@ -134,10 +135,10 @@ function EventsHome() {
 
                 <div className="mt-7 flex flex-wrap gap-x-7 gap-y-4 border-t border-navy-foreground/20 pt-6">
                   {[
-                    { value: String(eventStats.upcoming), label: "Upcoming Events", icon: Calendar },
-                    { value: eventStats.participants, label: "Participants", icon: Users },
-                    { value: eventStats.globalOrganizations, label: "Organizations", icon: Building2 },
-                    { value: eventStats.globalCountries, label: "Countries", icon: Globe },
+                    { value: String(eventStats.upcoming), label: t("events.upcomingEvents"), icon: Calendar },
+                    { value: eventStats.participants, label: t("footer.learners"), icon: Users },
+                    { value: eventStats.globalOrganizations, label: t("sidebar.organizations"), icon: Building2 },
+                    { value: eventStats.globalCountries, label: t("footer.countries"), icon: Globe },
                   ].map((s) => (
                     <div key={s.label} className="flex items-center gap-2.5">
                       <s.icon className="h-5 w-5 text-navy-foreground/80" strokeWidth={1.8} />
@@ -155,13 +156,13 @@ function EventsHome() {
             <section>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="font-display text-lg font-bold text-navy sm:text-xl">
-                  Featured Events
+                  {t("events.featuredEvents")}
                 </h2>
                 <Link
                   to="/events/all" search={{ q: "", category: "", country: "", format: "" }}
                   className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy"
                 >
-                  View all events <ArrowRight className="h-3.5 w-3.5" />
+                  {t("bottomGrid.viewAllEvents")} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
@@ -175,13 +176,13 @@ function EventsHome() {
             <section>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="font-display text-lg font-bold text-navy sm:text-xl">
-                  Browse by Category
+                  {t("sidebar.byCategory")}
                 </h2>
                 <Link
                   to="/events/categories"
                   className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy"
                 >
-                  View all categories <ArrowRight className="h-3.5 w-3.5" />
+                  {t("common.viewAll")} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -197,7 +198,7 @@ function EventsHome() {
                     </span>
                     <span className="text-sm font-semibold text-navy">{label}</span>
                     <span className="text-[0.7rem] text-muted-foreground">
-                      {categoryCount(category)} Events
+                      {categoryCount(category)} {t("nav.events")}
                     </span>
                   </Link>
                 ))}
@@ -208,7 +209,7 @@ function EventsHome() {
           {/* Right sidebar */}
           <div className="space-y-5">
             <Panel>
-              <SectionHeader title="Upcoming Events" action={null} />
+              <SectionHeader title={t("events.upcomingEvents")} action={null} />
               <ul className="space-y-4">
                 {upcoming.map((e) => (
                   <li key={e.slug}>
@@ -220,12 +221,12 @@ function EventsHome() {
                 to="/events/calendar"
                 className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-marine"
               >
-                Open calendar <ArrowRight className="h-4 w-4" />
+                {t("events.viewCalendar")} <ArrowRight className="h-4 w-4" />
               </Link>
             </Panel>
 
             <Panel>
-              <SectionHeader title="Event Categories" action={null} />
+              <SectionHeader title={t("events.eventCategories")} action={null} />
               <ul className="space-y-1">
                 {eventCategories.map(({ slug, label, category }) => (
                   <li key={slug}>
@@ -247,32 +248,32 @@ function EventsHome() {
             <div className="rounded-2xl border border-marine/30 bg-marine/5 p-5 shadow-soft">
               <Megaphone className="h-6 w-6 text-marine" />
               <h3 className="mt-3 font-display text-base font-bold text-navy">
-                Open Calls & Opportunities
+                {t("sidebar.callForSpeakers")}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                {eventStats.activeCalls} active calls for participants, speakers, experts, and more.
+                {eventStats.activeCalls} active opportunities for speakers, trainers, and participants.
               </p>
               <Link
                 to="/events/calls/$slug" params={{ slug: "participants" }}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-marine py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
               >
-                Explore Opportunities <ArrowRight className="h-4 w-4" />
+                {t("bottomGrid.exploreOpportunities")} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
               <FileText className="h-6 w-6 text-marine" />
               <h3 className="mt-3 font-display text-base font-bold text-navy">
-                Have an event to share?
+                {t("events.hostEventTitle")}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Submit your event and reach a global marine and fisheries audience.
+                {t("events.hostEventDesc")}
               </p>
               <Link
                 to="/events/submit"
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-accent-foreground shadow-soft transition-colors hover:bg-accent/90"
               >
-                Submit Event <ArrowRight className="h-4 w-4" />
+                {t("events.submitEventBtn")} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>

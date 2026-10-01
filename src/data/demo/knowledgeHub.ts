@@ -58,6 +58,7 @@ export type KhResource = {
   keywords: string[];
   access: KhAccessLevel;
   status: KhStatus;
+  coverImage?: string;
   fileType: string;
   fileSize?: string;
   pages?: number;

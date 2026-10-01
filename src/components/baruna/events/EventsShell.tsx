@@ -8,6 +8,7 @@ import {
   EventsSidebarHeader,
   EventsMobileNav,
 } from "./EventsSidebar";
+import { useLanguage } from "@/lib/i18n";
 
 function Toaster() {
   const [msg, setMsg] = useState<string | null>(null);
@@ -31,6 +32,9 @@ function Toaster() {
 
 export function EventsShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const { language } = useLanguage();
+  const isId = language === "id";
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -39,12 +43,14 @@ export function EventsShell({ children }: { children: ReactNode }) {
       <div className="mx-auto flex max-w-[1500px] items-center justify-between px-4 pt-4 sm:px-6 lg:hidden">
         <div className="flex items-center gap-2 text-navy">
           <CalendarDays className="h-5 w-5 text-marine" />
-          <span className="font-display text-base font-bold">Events</span>
+          <span className="font-display text-base font-bold">
+            {isId ? "Acara" : "Events"}
+          </span>
         </div>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <button className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-navy shadow-soft">
-              <Menu className="h-4 w-4" /> Menu
+              <Menu className="h-4 w-4" /> {isId ? "Menu" : "Menu"}
             </button>
           </SheetTrigger>
           <SheetContent side="left" className="w-80 overflow-y-auto">
@@ -73,11 +79,12 @@ export function EventsShell({ children }: { children: ReactNode }) {
             </div>
             <div>
               <h3 className="font-display text-lg font-extrabold text-navy sm:text-xl">
-                Have an Event to Share?
+                {isId ? "Punya Acara untuk Dibagikan?" : "Have an Event to Share?"}
               </h3>
               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                Submit your event and reach a global community of marine and fisheries
-                professionals.
+                {isId
+                  ? "Kirimkan acara Anda dan jangkau komunitas global profesional kelautan dan perikanan."
+                  : "Submit your event and reach a global community of marine and fisheries professionals."}
               </p>
             </div>
           </div>
@@ -85,7 +92,7 @@ export function EventsShell({ children }: { children: ReactNode }) {
             to="/events/submit"
             className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-soft transition-all hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-hover"
           >
-            Submit Event
+            {isId ? "Ajukan Acara" : "Submit Event"}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

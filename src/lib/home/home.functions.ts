@@ -168,7 +168,7 @@ async function registeredMetrics(
 }
 
 function dashboardUrlForRole(roleCode: string): string {
-  if (["super_admin", "admin"].includes(roleCode)) return "/admin/users";
+  if (["super_admin", "admin", "management", "qa_reviewer"].includes(roleCode)) return "/admin";
   if (roleCode === "expert") return "/experts/portal";
   if (["operator", "reviewer", "verifier", "approver", "publisher"].includes(roleCode)) {
     return "/governance/queue";

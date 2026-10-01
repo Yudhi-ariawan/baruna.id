@@ -41,6 +41,7 @@ import {
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge } from "@/components/baruna/knowledge/ResourceCard";
 import { DEMO_CATEGORIES } from "@/data/demo";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/knowledge-hub")({
   head: () => ({
@@ -74,6 +75,7 @@ const TYPE_ICONS: Record<KhResourceType, LucideIcon> = {
 function KnowledgeHubPage() {
   const [q, setQ] = useState("");
   const total = totalPublished();
+  const { t } = useLanguage();
 
   const latest = useMemo(() => [...KH_ALL].sort((a, b) => b.year - a.year).slice(0, 8), []);
   const results = useMemo(() => {
@@ -102,11 +104,11 @@ function KnowledgeHubPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-display text-3xl font-extrabold text-navy">Knowledge Hub</h1>
+              <h1 className="font-display text-3xl font-extrabold text-navy">{t("knowledgeHub.title")}</h1>
               <DemoDataBadge />
             </div>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Explore, discover, and share knowledge for a sustainable ocean and fisheries future.
+              {t("knowledgeHub.subtitle")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -116,20 +118,20 @@ function KnowledgeHubPage() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                placeholder="Search publications, topics, authors…"
+                placeholder={t("knowledgeHub.searchPlaceholder")}
               />
             </div>
             <Link to="/knowledge-hub/$type" params={{ type: "library" }} className="flex items-center gap-2 rounded-xl bg-marine px-4 py-2.5 text-sm font-semibold text-marine-foreground shadow-soft">
-              Resource Library <ArrowRight className="h-4 w-4" />
+              {t("sidebar.resourceLibrary")} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
 
         {results && (
           <Panel>
-            <SectionHeader title={`Search results (${results.length})`} action={null} />
+            <SectionHeader title={`${t("common.search")} (${results.length})`} action={null} />
             {results.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No resources match “{q}”. Try another keyword or clear the search.</p>
+              <p className="text-sm text-muted-foreground">{t("common.noResults")}</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {results.map((r) => (
@@ -149,27 +151,27 @@ function KnowledgeHubPage() {
             <Banner
               image={pageImages.bannerUnderwater}
               alt="Sea turtle swimming over coral reef"
-              title={<>Reliable Knowledge.<br />Stronger Impact.</>}
-              description="A single connected catalogue of BARUNA publications, modules, videos, toolkits, and case studies."
+              title={t("knowledgeHub.bannerTitle")}
+              description={t("knowledgeHub.bannerDesc")}
               stats={[
-                { value: total.toLocaleString(), label: "Published Resources", icon: BookOpen },
-                { value: totalViews().toLocaleString(), label: "Total Views", icon: Globe },
-                { value: totalDownloads().toLocaleString(), label: "Downloads", icon: Download },
-                { value: DEMO_CATEGORIES.length.toString(), label: "Training Categories", icon: Library },
+                { value: total.toLocaleString(), label: t("knowledgeHub.totalPublished"), icon: BookOpen },
+                { value: totalViews().toLocaleString(), label: t("knowledgeHub.totalViews"), icon: Globe },
+                { value: totalDownloads().toLocaleString(), label: t("knowledgeHub.totalDownloads"), icon: Download },
+                { value: DEMO_CATEGORIES.length.toString(), label: t("sidebar.byCategory"), icon: Library },
               ]}
             />
 
             <Panel>
-              <SectionHeader title="Browse Knowledge by Type" action={null} />
+              <SectionHeader title={t("knowledgeHub.browseByType")} action={null} />
               <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                {KH_TYPES.map((t) => {
-                  const Icon = TYPE_ICONS[t.slug];
-                  const count = countByType(t.slug);
+                {KH_TYPES.map((typeItem) => {
+                  const Icon = TYPE_ICONS[typeItem.slug];
+                  const count = countByType(typeItem.slug);
                   return (
-                    <li key={t.slug}>
+                    <li key={typeItem.slug}>
                       <Link
                         to="/knowledge-hub/$type"
-                        params={{ type: t.slug }}
+                        params={{ type: typeItem.slug }}
                         className="flex min-h-[68px] items-center gap-3 px-4 py-3 transition-colors hover:bg-marine/5 sm:gap-4"
                       >
                         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine">
@@ -177,12 +179,12 @@ function KnowledgeHubPage() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline gap-2">
-                            <p className="font-display text-sm font-bold text-navy sm:text-base">{t.label}</p>
+                            <p className="font-display text-sm font-bold text-navy sm:text-base">{typeItem.label}</p>
                             <span className="text-xs font-semibold text-marine">
-                              {count} {t.slug === "learning-modules" ? "Modules" : t.slug === "toolkits" ? "Toolkits" : t.slug === "videos" ? "Videos" : "Resources"}
+                              {count}
                             </span>
                           </div>
-                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground sm:line-clamp-1">{t.description}</p>
+                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground sm:line-clamp-1">{typeItem.description}</p>
                         </div>
                         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
                       </Link>
@@ -199,11 +201,11 @@ function KnowledgeHubPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
-                        <p className="font-display text-sm font-bold text-navy sm:text-base">Resource Library</p>
-                        <span className="text-xs font-semibold text-marine">{total} Resources</span>
+                        <p className="font-display text-sm font-bold text-navy sm:text-base">{t("sidebar.resourceLibrary")}</p>
+                        <span className="text-xs font-semibold text-marine">{total} {t("knowledgeHub.totalPublished")}</span>
                       </div>
                       <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground sm:line-clamp-1">
-                        Search all BARUNA knowledge resources in one catalogue.
+                        {t("knowledgeHub.subtitle")}
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -214,9 +216,9 @@ function KnowledgeHubPage() {
 
             <section>
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="font-display text-lg font-bold text-navy sm:text-xl">Latest Resources</h2>
+                <h2 className="font-display text-lg font-bold text-navy sm:text-xl">{t("knowledgeHub.latestResources")}</h2>
                 <Link to="/knowledge-hub/$type" params={{ type: "library" }} className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy">
-                  Browse Library <ArrowRight className="h-3.5 w-3.5" />
+                  {t("bottomGrid.browseAll")} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -229,20 +231,18 @@ function KnowledgeHubPage() {
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div className="max-w-2xl">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-navy-foreground/15 px-3 py-1 text-xs font-bold uppercase tracking-wide">
-                    <Globe className="h-3.5 w-3.5" /> International Knowledge Exchange
+                    <Globe className="h-3.5 w-3.5" /> {t("fellowship.title")}
                   </span>
-                  <h2 className="mt-3 font-display text-2xl font-extrabold">Share Knowledge from Your Country</h2>
+                  <h2 className="mt-3 font-display text-2xl font-extrabold">{t("knowledgeHub.ctaTitle")}</h2>
                   <p className="mt-2 text-sm leading-relaxed text-navy-foreground/85">
-                    Contribute fisheries, aquaculture, marine conservation, ocean governance, and
-                    capacity development knowledge from your country to enrich the BARUNA global
-                    repository.
+                    {t("knowledgeHub.ctaDesc")}
                   </p>
                 </div>
                 <Link
                   to="/knowledge-hub/submit-resource"
                   className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-soft transition-all hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-hover"
                 >
-                  <Plus className="h-4 w-4" /> Contribute Now
+                  <Plus className="h-4 w-4" /> {t("knowledgeHub.ctaButton")}
                 </Link>
               </div>
             </section>
@@ -251,7 +251,7 @@ function KnowledgeHubPage() {
           <div className="space-y-5">
             <Panel>
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-base font-bold text-navy">Featured Resource</h2>
+                <h2 className="font-display text-base font-bold text-navy">{t("bottomGrid.featuredExperts")}</h2>
                 <Bookmark className="h-5 w-5 fill-marine text-marine" />
               </div>
               {latest[0] && (
@@ -271,13 +271,13 @@ function KnowledgeHubPage() {
                   params={{ id: latest[0].id }}
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-marine py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
                 >
-                  {latest[0].type === "videos" ? <><Play className="h-4 w-4" /> Play</> : <><Download className="h-4 w-4" /> Open Resource</>}
+                  {latest[0].type === "videos" ? <><Play className="h-4 w-4" /> {t("common.open")}</> : <><Download className="h-4 w-4" /> {t("common.open")}</>}
                 </Link>
               )}
             </Panel>
 
             <Panel>
-              <SectionHeader title="Browse by Category" action={null} />
+              <SectionHeader title={t("sidebar.byCategory")} action={null} />
               <div className="flex flex-wrap gap-2">
                 {DEMO_CATEGORIES.map((c) => (
                   <Link key={c.slug} to="/academy/category/$slug" params={{ slug: c.slug }}>
@@ -288,20 +288,20 @@ function KnowledgeHubPage() {
             </Panel>
 
             <Panel>
-              <SectionHeader title="Hub in Numbers" action={null} />
+              <SectionHeader title="BARUNA Hub" action={null} />
               <div className="grid grid-cols-2 gap-3">
-                <NumberTile icon={BookOpen} value={total.toString()} label="Published" />
-                <NumberTile icon={Users} value={DEMO_CATEGORIES.length.toString()} label="Categories" />
-                <NumberTile icon={Building2} value="9" label="Trainers" />
-                <NumberTile icon={Globe} value="60+" label="Countries" />
+                <NumberTile icon={BookOpen} value={total.toString()} label={t("knowledgeHub.totalPublished")} />
+                <NumberTile icon={Users} value={DEMO_CATEGORIES.length.toString()} label={t("sidebar.byCategory")} />
+                <NumberTile icon={Building2} value="9" label={t("sidebar.instructors")} />
+                <NumberTile icon={Globe} value="60+" label={t("footer.countries")} />
               </div>
               <Link to="/analytics" className="mt-4 flex w-full items-center justify-center gap-2 text-sm font-semibold text-marine">
-                Open Analytics <ArrowRight className="h-4 w-4" />
+                {t("common.viewAll")} <ArrowRight className="h-4 w-4" />
               </Link>
             </Panel>
 
             <Panel>
-              <SectionHeader title="Most Viewed" action={null} />
+              <SectionHeader title={t("knowledgeHub.latestResources")} action={null} />
               <ul className="space-y-2 text-sm">
                 {[...KH_ALL].sort((a, b) => b.metrics.views - a.metrics.views).slice(0, 5).map((r) => (
                   <li key={r.id}>
@@ -333,5 +333,4 @@ function NumberTile({ icon: Icon, value, label }: { icon: LucideIcon; value: str
   );
 }
 
-// Legacy helper retained for backward-compat imports (safe no-op export)
 export const KNOWLEDGE_HUB_TYPE_LABEL = labelForType;

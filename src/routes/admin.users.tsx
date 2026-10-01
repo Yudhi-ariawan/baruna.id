@@ -64,6 +64,15 @@ function initials(user: UserRow) {
     .join("");
 }
 
+function getRoleBadgeStyle(role: string) {
+  const r = role.toLowerCase();
+  if (r === "expert") return "bg-teal-50 text-teal-800 border-teal-200";
+  if (r === "admin" || r === "super_admin") return "bg-indigo-50 text-indigo-800 border-indigo-200";
+  if (r === "reviewer" || r === "verifier" || r === "approver") return "bg-amber-50 text-amber-800 border-amber-200";
+  if (r === "participant") return "bg-emerald-50 text-emerald-800 border-emerald-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
 function UsersPage() {
   const queryClient = useQueryClient();
   const usersFn = useServerFn(listUsers);
@@ -71,6 +80,8 @@ function UsersPage() {
   const accessFn = useServerFn(getAdminAccess);
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -92,6 +103,21 @@ function UsersPage() {
     retry: false,
   });
   const users = useMemo(() => usersQuery.data?.users ?? [], [usersQuery.data?.users]);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      if (roleFilter !== "all") {
+        const hasRole = u.roles.some((r) =>
+          typeof r === "string" ? r === roleFilter : (r as unknown as { code?: string }).code === roleFilter
+        );
+        if (!hasRole) return false;
+      }
+      if (statusFilter === "active" && !u.isActive) return false;
+      if (statusFilter === "suspended" && u.isActive) return false;
+      return true;
+    });
+  }, [users, roleFilter, statusFilter]);
+
   const selected = useMemo(
     () => users.find((user) => user.id === selectedId) ?? null,
     [users, selectedId],
@@ -107,120 +133,215 @@ function UsersPage() {
     queryClient.invalidateQueries({ queryKey: ["admin", "history"] });
   }
 
+  // Quick stats
+  const totalCount = users.length;
+  const expertCount = users.filter((u) =>
+    u.roles.some((r) => (typeof r === "string" ? r === "expert" : (r as unknown as { code?: string }).code === "expert"))
+  ).length;
+  const adminCount = users.filter((u) =>
+    u.roles.some((r) => {
+      const code = typeof r === "string" ? r : (r as unknown as { code?: string }).code;
+      return code === "admin" || code === "super_admin";
+    })
+  ).length;
+  const activeCount = users.filter((u) => u.isActive).length;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      {/* Top Header & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-marine">
-            User management
-          </p>
-          <h2 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-navy">Users &amp; access</h2>
+          <div className="flex items-center gap-2">
+            <span className="rounded-lg bg-marine/10 p-1.5 text-marine">
+              <Users className="h-5 w-5" />
+            </span>
+            <h1 className="font-display text-2xl font-extrabold text-navy">
+              Manajemen Pengguna &amp; Akses
+            </h1>
+          </div>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-            Auth identities are read securely through the Supabase Admin API.
+            Kelola data autentikasi, status aktif, dan penugasan peran (RBAC) seluruh pengguna platform BARUNA.
           </p>
         </div>
+
         {accessQuery.data?.canInviteUsers ? (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2.5">
             <button
+              type="button"
               onClick={() => setShowCreate(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white shadow-xs hover:bg-navy/90"
+              className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-navy/90 transition cursor-pointer"
             >
-              <UserPlus className="h-4 w-4" /> Create user
+              <UserPlus className="h-4 w-4" /> Tambah User
             </button>
             <button
+              type="button"
               onClick={() => setShowInvite(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-marine bg-white px-4 py-2 text-sm font-bold text-marine shadow-xs hover:bg-marine/10"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
             >
-              <MailPlus className="h-4 w-4" /> Invite user
+              <MailPlus className="h-4 w-4 text-marine" /> Undang User
             </button>
           </div>
         ) : null}
       </div>
 
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Akun</span>
+          <p className="mt-1 font-display text-2xl font-extrabold text-navy">{totalCount}</p>
+          <span className="text-[11px] text-muted-foreground">Terdaftar di Auth</span>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pakar &amp; Instruktur</span>
+          <p className="mt-1 font-display text-2xl font-extrabold text-teal-700">{expertCount}</p>
+          <span className="text-[11px] text-muted-foreground">Role Expert</span>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Administrator</span>
+          <p className="mt-1 font-display text-2xl font-extrabold text-indigo-700">{adminCount}</p>
+          <span className="text-[11px] text-muted-foreground">Akses Admin/Super</span>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status Aktif</span>
+          <p className="mt-1 font-display text-2xl font-extrabold text-emerald-700">{activeCount}</p>
+          <span className="text-[11px] text-muted-foreground">Akun Normal</span>
+        </div>
+      </div>
+
       {notice ? (
         <div
-          className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${notice.type === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-700"}`}
+          className={`flex items-center justify-between rounded-xl border px-4 py-3 text-xs font-semibold ${
+            notice.type === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-700"
+          }`}
         >
           <span>{notice.text}</span>
-          <button onClick={() => setNotice(null)} aria-label="Dismiss">
+          <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss" className="cursor-pointer">
             <X className="h-4 w-4" />
           </button>
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border p-4">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setSearch(input.trim());
-            }}
-            className="flex w-full max-w-xl gap-2"
-          >
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder="Search name, email, organization, UID…"
-                className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs sm:text-sm outline-none focus:border-marine"
-              />
-            </div>
-            <button className="rounded-lg border border-border px-3.5 py-2 text-xs sm:text-sm font-semibold hover:bg-muted shrink-0">
-              Search
-            </button>
-          </form>
-          <span className="text-xs text-muted-foreground self-end sm:self-center">
-            {usersQuery.data?.total ?? 0} user(s)
-          </span>
+      {/* Main Table Card */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+        {/* Filter Toolbar */}
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Search Bar */}
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSearch(input.trim());
+              }}
+              className="flex w-full sm:max-w-md gap-2"
+            >
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  placeholder="Cari nama, email, instansi, UID…"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-8 text-xs sm:text-sm outline-none focus:border-marine focus:bg-white transition"
+                />
+                {input && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInput("");
+                      setSearch("");
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="rounded-xl bg-navy px-4 py-2 text-xs font-bold text-white hover:bg-marine transition shrink-0 cursor-pointer"
+              >
+                Cari
+              </button>
+            </form>
+
+            <span className="text-xs text-muted-foreground">
+              Menampilkan <strong className="text-navy font-bold">{filteredUsers.length}</strong> dari {totalCount} akun
+            </span>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Filter Role:</span>
+            {[
+              { id: "all", label: "Semua Role" },
+              { id: "expert", label: "Expert" },
+              { id: "admin", label: "Admin" },
+              { id: "participant", label: "Participant" },
+              { id: "registered_user", label: "Registered User" },
+            ].map((tab) => {
+              const active = roleFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setRoleFilter(tab.id)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer ${
+                    active
+                      ? "bg-navy text-white shadow-2xs font-bold"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {usersQuery.isLoading ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">Loading users…</div>
+          <div className="p-12 text-center text-sm text-muted-foreground">Memuat data pengguna…</div>
         ) : null}
         {usersQuery.isError ? (
-          <div className="p-10 text-center text-sm text-red-600">{messageOf(usersQuery.error)}</div>
+          <div className="p-12 text-center text-sm text-red-600">{messageOf(usersQuery.error)}</div>
         ) : null}
-        {!usersQuery.isLoading && !usersQuery.isError && users.length === 0 ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">No users found.</div>
+        {!usersQuery.isLoading && !usersQuery.isError && filteredUsers.length === 0 ? (
+          <div className="p-12 text-center text-sm text-muted-foreground">
+            Tidak ada pengguna yang sesuai dengan filter atau kata kunci pencarian.
+          </div>
         ) : null}
-        {users.length > 0 ? (
+        {filteredUsers.length > 0 ? (
           <>
-            {/* 1. Mobile Card View */}
-            <div className="block md:hidden divide-y divide-border/60">
-              {users.map((user) => (
+            {/* Mobile Cards */}
+            <div className="block md:hidden divide-y divide-slate-100">
+              {filteredUsers.map((user) => (
                 <div key={user.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-bold text-white">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-navy to-marine text-xs font-bold text-white shadow-2xs">
                         {initials(user)}
                       </span>
                       <div className="min-w-0">
-                        <p className="font-semibold text-navy truncate">
+                        <p className="font-bold text-xs text-navy truncate">
                           {user.displayName || "Unnamed user"}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
                       </div>
                     </div>
                     <span
-                      className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${user.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
+                      className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        user.isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"
+                      }`}
                     >
-                      {user.isActive ? (
-                        <CheckCircle2 className="h-3 w-3" />
-                      ) : (
-                        <Ban className="h-3 w-3" />
-                      )}
+                      {user.isActive ? <CheckCircle2 className="h-3 w-3" /> : <Ban className="h-3 w-3" />}
                       {user.isActive ? "Active" : "Suspended"}
                     </span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[11px] text-muted-foreground mr-1">Roles:</span>
                     {user.roles.length ? (
                       user.roles.map((role) => (
                         <span
                           key={role}
-                          className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700"
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeStyle(role)}`}
                         >
                           {role}
                         </span>
@@ -230,85 +351,85 @@ function UsersPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/50">
-                    <span>Last sign-in: {formatDate(user.lastSignInAt)}</span>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-slate-100">
+                    <span className="text-[11px]">Terakhir: {formatDate(user.lastSignInAt)}</span>
                     <button
+                      type="button"
                       onClick={() => setSelectedId(user.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy hover:border-marine hover:text-marine bg-slate-50 hover:bg-slate-100 transition cursor-pointer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-navy hover:bg-slate-50 transition cursor-pointer"
                     >
-                      <Pencil className="h-3.5 w-3.5" /> Manage
+                      <Pencil className="h-3 w-3" /> Kelola
                     </button>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* 2. Desktop Table View */}
+            {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[820px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground">
+                <thead className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200">
                   <tr>
-                    <th className="px-5 py-3">User</th>
-                    <th className="px-5 py-3">Roles</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Last sign-in</th>
-                    <th className="px-5 py-3 text-right">Action</th>
+                    <th className="px-6 py-3.5">Pengguna &amp; Identitas</th>
+                    <th className="px-6 py-3.5">Peran (Roles)</th>
+                    <th className="px-6 py-3.5">Status Akun</th>
+                    <th className="px-6 py-3.5">Terakhir Masuk</th>
+                    <th className="px-6 py-3.5 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
-                  {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-50/80">
-                      <td className="px-5 py-4">
+                <tbody className="divide-y divide-slate-100">
+                  {filteredUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-bold text-white">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-navy to-marine text-xs font-bold text-white shadow-2xs">
                             {initials(user)}
                           </span>
-                          <div>
-                            <p className="font-semibold text-navy">
-                              {user.displayName || "Unnamed user"}
+                          <div className="min-w-0">
+                            <p className="font-bold text-xs text-navy leading-snug truncate">
+                              {user.displayName || "Pengguna Tanpa Nama"}
                             </p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                            <p className="font-mono text-[10px] text-muted-foreground">{user.id}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                            <p className="font-mono text-[9px] text-slate-400 truncate">{user.id}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-6 py-4">
                         <div className="flex max-w-xs flex-wrap gap-1">
                           {user.roles.length ? (
                             user.roles.map((role) => (
                               <span
                                 key={role}
-                                className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700"
+                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeStyle(role)}`}
                               >
                                 {role}
                               </span>
                             ))
                           ) : (
-                            <span className="text-xs text-muted-foreground">No role</span>
+                            <span className="text-xs text-muted-foreground italic">Tanpa peran</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${user.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
+                            user.isActive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"
+                          }`}
                         >
-                          {user.isActive ? (
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          ) : (
-                            <Ban className="h-3.5 w-3.5" />
-                          )}
+                          {user.isActive ? <CheckCircle2 className="h-3 w-3" /> : <Ban className="h-3 w-3" />}
                           {user.isActive ? "Active" : "Suspended"}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-xs text-muted-foreground">
+                      <td className="px-6 py-4 text-xs text-muted-foreground">
                         {formatDate(user.lastSignInAt)}
                       </td>
-                      <td className="px-5 py-4 text-right">
+                      <td className="px-6 py-4 text-right">
                         <button
+                          type="button"
                           onClick={() => setSelectedId(user.id)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:border-marine hover:text-marine cursor-pointer"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-marine hover:text-marine hover:bg-slate-50 transition cursor-pointer shadow-2xs"
                         >
-                          <Pencil className="h-3.5 w-3.5" /> Manage
+                          <Pencil className="h-3.5 w-3.5" /> Kelola
                         </button>
                       </td>
                     </tr>

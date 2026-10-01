@@ -8,7 +8,6 @@ import {
   ArrowRight,
   Clock,
   BarChart3,
-  Star,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { Banner } from "@/components/baruna/page/Banner";
@@ -18,18 +17,19 @@ import { academyImages } from "@/data/academy";
 import { pathways as learningPathways } from "@/data/pathways";
 import { categories as browseCategories, accentFor } from "@/data/categories";
 
-import { supabase } from "@/integrations/supabase/client";
+import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
 import defaultCover from "@/assets/self-paced/m01.jpg";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/academy/")({
   loader: async () => {
-    const { data: dbModules } = await supabase
-      .from("module_registry")
-      .select("id, title, summary, language, estimated_learning_hours, created_at")
-      .eq("current_status", "published")
-      .order("created_at", { ascending: false });
-
-    return { dbModules: dbModules ?? [] };
+    try {
+      const dbModules = await getPublishedModulesCatalog();
+      return { dbModules: dbModules ?? [] };
+    } catch (err) {
+      console.warn("Could not load published modules:", err);
+      return { dbModules: [] };
+    }
   },
   head: () => ({
     meta: [
@@ -63,11 +63,11 @@ type Program = {
 
 const featured: Program[] = [
   { badge: "TRAINING", title: "Sustainable Fisheries Management", meta: "3 Weeks", level: "Intermediate", rating: 4.7, reviews: 98, mode: "In-person", image: academyImages.seaTurtle, href: "/academy/training" },
-  { badge: "WEBINAR", title: "Climate Change and Oceans", meta: "24 Jul 2026 · 1.5 Hours", level: "Beginner", rating: 4.6, reviews: 76, mode: "Online", image: academyImages.fishingSunset, href: "/academy/webinars" },
-  { badge: "WORKSHOP", title: "Marine Spatial Planning", meta: "6–31 Aug 2026", level: "Advanced", rating: 4.9, reviews: 54, mode: "Blended", image: academyImages.marineSpatial, href: "/academy/workshops" },
-  { badge: "CERTIFICATION", title: "Fish Processing and Value Addition", meta: "7–28 Aug 2026", level: "Intermediate", rating: 4.6, reviews: 37, mode: "In-person", image: academyImages.fishProcessing, href: "/academy/certifications" },
+  { badge: "WEBINAR", title: "Climate Change and Oceans", meta: "24 Jul 2026 · 1.5 Hours", level: "Beginner", rating: 4.6, reviews: 76, mode: "Online", image: academyImages.fishingSunset, href: "/academy/webinar" },
+  { badge: "WORKSHOP", title: "Marine Spatial Planning", meta: "6–31 Aug 2026", level: "Advanced", rating: 4.9, reviews: 54, mode: "Blended", image: academyImages.marineSpatial, href: "/academy/workshop" },
+  { badge: "CERTIFICATION", title: "Fish Processing and Value Addition", meta: "7–28 Aug 2026", level: "Intermediate", rating: 4.6, reviews: 37, mode: "In-person", image: academyImages.fishProcessing, href: "/academy/certification" },
   { badge: "TRAINING", title: "Blue Economy Fundamentals", meta: "14 Jul – 18 Aug 2026", level: "Beginner", rating: 4.8, reviews: 120, mode: "Online", image: academyImages.offshoreWind, href: "/academy/training" },
-  { badge: "WEBINAR", title: "Mangrove Ecosystem Conservation", meta: "30 Jul 2026 · 1.5 Hours", level: "Beginner", rating: 4.5, reviews: 65, mode: "Online", image: academyImages.mangrove, href: "/academy/webinars" },
+  { badge: "WEBINAR", title: "Mangrove Ecosystem Conservation", meta: "30 Jul 2026 · 1.5 Hours", level: "Beginner", rating: 4.5, reviews: 65, mode: "Online", image: academyImages.mangrove, href: "/academy/webinar" },
 ];
 
 const upcoming = [
@@ -105,7 +105,19 @@ function ProgramCard({ p }: { p: Program }) {
   const cardBody = (
     <article className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
       <div className="relative h-32 overflow-hidden">
-        <img src={p.image} alt={p.title} loading="lazy" width={768} height={512} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
+        <img
+          src={p.image}
+          alt={p.title}
+          loading="lazy"
+          width={768}
+          height={512}
+          className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+          onError={(e) => {
+            if (e.currentTarget.src !== defaultCover) {
+              e.currentTarget.src = defaultCover;
+            }
+          }}
+        />
         <span className="absolute left-2 top-2">
           <StatusBadge label={p.badge} />
         </span>
@@ -137,16 +149,17 @@ function ProgramCard({ p }: { p: Program }) {
 
 function AcademyOverview() {
   const { dbModules } = Route.useLoaderData();
+  const { t } = useLanguage();
 
   const dynamicFeatured: Program[] = (dbModules ?? []).map((m) => ({
     badge: "SELF-PACED",
     title: m.title,
-    meta: `${m.estimated_learning_hours || 2} Hours`,
-    level: "Intermediate",
+    meta: `${m.estimated_learning_hours || 2} ${t("common.hours")}`,
+    level: t("common.intermediate"),
     rating: 5.0,
     reviews: 1,
-    mode: "Online",
-    image: defaultCover,
+    mode: t("common.online"),
+    image: m.coverUrl || defaultCover,
     href: `/academy/self-paced/${m.id}`,
   }));
 
@@ -158,36 +171,39 @@ function AcademyOverview() {
         <Banner
           image={academyImages.seaTurtle}
           alt="Sea turtle swimming over coral reef"
-          title={<>Build Your Capacity<br />for a Sustainable Ocean</>}
-          description="Learn from experts. Connect with peers. Make an impact."
+          title={t("academy.bannerTitle")}
+          description={t("academy.bannerDesc")}
           stats={[
-            { value: "240+", label: "Programs", icon: BookOpen },
-            { value: "1,250+", label: "Learners", icon: Users },
-            { value: "120+", label: "Instructors", icon: Building2 },
-            { value: "45+", label: "Countries", icon: Globe },
+            { value: "240+", label: t("footer.programs"), icon: BookOpen },
+            { value: "1,250+", label: t("footer.learners"), icon: Users },
+            { value: "120+", label: t("sidebar.instructors"), icon: Building2 },
+            { value: "45+", label: t("footer.countries"), icon: Globe },
           ]}
           side={
             <div className="w-full rounded-2xl border border-navy-foreground/15 bg-navy/85 p-5 text-navy-foreground shadow-card backdrop-blur-md sm:w-72">
-              <p className="font-display text-base font-bold">Your Learning Journey</p>
+              <p className="font-display text-base font-bold">{t("sidebar.myJourney")}</p>
               <div className="mt-4 flex items-center gap-4">
                 <CircularProgress value={65} />
                 <div className="text-xs text-navy-foreground/85">
-                  <p className="font-semibold text-navy-foreground">Keep going, Komang!</p>
+                  <p className="font-semibold text-navy-foreground">Keep going!</p>
                   <p className="mt-1">You've completed 7 of 12 learning activities.</p>
                 </div>
               </div>
-              <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-navy-foreground/10 py-2.5 text-sm font-semibold transition-colors hover:bg-navy-foreground/20">
-                Go to My Learning <ArrowRight className="h-4 w-4" />
-              </button>
+              <Link
+                to="/academy/learn"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-navy-foreground/10 py-2.5 text-sm font-semibold transition-colors hover:bg-navy-foreground/20"
+              >
+                {t("sidebar.myLearning")} <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           }
         />
 
         <section>
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-navy sm:text-xl">Featured Programs & Modules</h2>
+            <h2 className="font-display text-lg font-bold text-navy sm:text-xl">{t("academy.featuredPrograms")}</h2>
             <Link to="/academy/programs" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy">
-              View all programs <ArrowRight className="h-3.5 w-3.5" />
+              {t("sidebar.allPrograms")} <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
           <div className="mt-3 flex gap-4 overflow-x-auto pb-2">
@@ -199,7 +215,7 @@ function AcademyOverview() {
 
         <div className="grid gap-5 xl:grid-cols-2">
           <Panel>
-            <SectionHeader title="Browse by Category" action={null} />
+            <SectionHeader title={t("sidebar.byCategory")} action={null} />
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
               {browseCategories.map(({ slug, shortLabel, icon: Icon }) => {
                 const accent = accentFor(slug);
@@ -222,9 +238,9 @@ function AcademyOverview() {
 
           <Panel>
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-bold text-navy sm:text-xl">Learning Pathways</h2>
+              <h2 className="font-display text-lg font-bold text-navy sm:text-xl">{t("sidebar.learningPathways")}</h2>
               <Link to="/academy/pathways" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy">
-                View all <ArrowRight className="h-3.5 w-3.5" />
+                {t("common.viewAll")} <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
             <ul className="space-y-2">
@@ -252,9 +268,8 @@ function AcademyOverview() {
             </ul>
           </Panel>
 
-
           <Panel>
-            <SectionHeader title="Upcoming Programs" action={null} />
+            <SectionHeader title={t("academy.upcomingSessions")} action={null} />
             <ul className="space-y-3">
               {upcoming.map((e) => (
                 <li key={e.title} className="flex items-center gap-3">
@@ -274,17 +289,17 @@ function AcademyOverview() {
           </Panel>
 
           <Panel>
-            <SectionHeader title="Popular Topics" action={null} />
+            <SectionHeader title={t("academy.popularTopics")} action={null} />
             <div className="flex flex-wrap gap-2">
-              {popularTopics.map((t) => (
-                <Tag key={t}>{t}</Tag>
+              {popularTopics.map((item) => (
+                <Tag key={item}>{item}</Tag>
               ))}
             </div>
           </Panel>
         </div>
 
         <Link
-          to="/academy/training"
+          to="/academy/programs"
           className="flex items-center justify-between gap-4 rounded-2xl bg-navy p-6 text-navy-foreground shadow-card transition-all hover:-translate-y-0.5 hover:shadow-hover"
         >
           <div className="flex items-center gap-4">
@@ -292,12 +307,12 @@ function AcademyOverview() {
               <GraduationCap className="h-6 w-6" />
             </span>
             <div>
-              <p className="font-display text-lg font-bold">Build Your Capacity. Shape the Future.</p>
-              <p className="text-sm text-navy-foreground/80">Join thousands of learners advancing marine and fisheries knowledge worldwide.</p>
+              <p className="font-display text-lg font-bold">{t("academy.bannerTitle")}</p>
+              <p className="text-sm text-navy-foreground/80">{t("academy.bannerDesc")}</p>
             </div>
           </div>
           <span className="hidden shrink-0 items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground sm:flex">
-            Browse All Programs <ArrowRight className="h-4 w-4" />
+            {t("sidebar.allPrograms")} <ArrowRight className="h-4 w-4" />
           </span>
         </Link>
       </div>

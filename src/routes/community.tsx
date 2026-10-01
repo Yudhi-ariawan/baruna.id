@@ -19,13 +19,13 @@ import {
   ThumbsUp,
   MoreHorizontal,
   Calendar,
-  ArrowRight,
   Globe,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader, CategoryBadge } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages, expertImages } from "@/data/pages";
+import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/community")({
   head: () => ({
@@ -44,27 +44,6 @@ export const Route = createFileRoute("/community")({
   }),
   component: CommunityPage,
 });
-
-const mainMenu = [
-  { label: "Community Home", icon: Home, active: true },
-  { label: "Discussions", icon: MessageCircle },
-  { label: "Groups", icon: UsersRound },
-  { label: "Member Directory", icon: Contact },
-  { label: "My Network", icon: Network },
-  { label: "Messages", icon: Mail },
-  { label: "Notifications", icon: Bell },
-];
-
-const explore = [
-  { label: "Topics", icon: Hash },
-  { label: "Resource Sharing", icon: Share2 },
-];
-
-const myActivity = [
-  { label: "My Contributions", icon: ClipboardList },
-  { label: "Saved Items", icon: Bookmark },
-  { label: "Following", icon: Heart },
-];
 
 const discussions = [
   { tag: "Question", author: "Dr. Andi Pratama", location: "Indonesia", time: "2 hours ago", title: "Best practices for community-based marine conservation?", excerpt: "Looking for examples of successful community-based approaches in protecting coral reefs.", comments: 12, likes: 24, avatar: expertImages[1] },
@@ -97,6 +76,29 @@ const trending = [
 const memberAvatars = [...expertImages, pageImages.userAvatar, ...expertImages].slice(0, 11);
 
 function CommunityPage() {
+  const { t } = useLanguage();
+
+  const mainMenu = [
+    { label: t("sidebar.communityHome"), icon: Home, active: true },
+    { label: t("sidebar.discussions"), icon: MessageCircle },
+    { label: t("sidebar.groups"), icon: UsersRound },
+    { label: t("sidebar.memberDirectory"), icon: Contact },
+    { label: t("sidebar.myNetwork"), icon: Network },
+    { label: t("sidebar.messages"), icon: Mail },
+    { label: t("header.notifications"), icon: Bell },
+  ];
+
+  const explore = [
+    { label: t("sidebar.topics"), icon: Hash },
+    { label: t("sidebar.resourceSharing"), icon: Share2 },
+  ];
+
+  const myActivity = [
+    { label: t("sidebar.myContributions"), icon: ClipboardList },
+    { label: t("sidebar.savedItems"), icon: Bookmark },
+    { label: t("sidebar.following"), icon: Heart },
+  ];
+
   return (
     <PageShell
       sidebar={{
@@ -108,30 +110,30 @@ function CommunityPage() {
           { label: "Explore", items: explore },
           { label: "My Activity", items: myActivity },
         ],
-        footer: { icon: Plus, label: "Create New Post" },
+        footer: { icon: Plus, label: t("community.startDiscussion") },
       }}
       cta={{
         icon: MessagesSquare,
-        title: "Share Knowledge. Build Connections. Create Impact.",
-        description: "Together, we can achieve a sustainable future for our ocean and communities.",
-        button: "Explore Discussions",
+        title: "Join the Conversation",
+        description: "Create your profile to join discussions, share practical solutions, and grow your ocean network.",
+        button: "Get Involved",
       }}
     >
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-display text-3xl font-extrabold text-navy">Community</h1>
+            <h1 className="font-display text-3xl font-extrabold text-navy">{t("community.title")}</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Join a global network of marine and fisheries professionals. Share knowledge, ask questions, and collaborate for impact.
+              {t("community.subtitle")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 shadow-soft">
               <Search className="h-4 w-4 text-muted-foreground" />
-              <input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder="Search discussions, members, groups, or topics..." />
+              <input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder={t("search.placeholder")} />
             </div>
-            <button className="flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft transition-colors hover:bg-accent/90">
-              <Plus className="h-4 w-4" /> New Post
+            <button type="button" className="flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-soft transition-colors hover:bg-accent/90 cursor-pointer">
+              <Plus className="h-4 w-4" /> {t("community.startDiscussion")}
             </button>
           </div>
         </div>
@@ -141,18 +143,18 @@ function CommunityPage() {
             <Banner
               image={pageImages.bannerUnderwater}
               alt="Sea turtle swimming over coral reef"
-              title={<>Stronger Together.<br />Ocean Impact Forever.</>}
-              description="Engage with our community, share your insights, and be part of solutions for a sustainable ocean."
+              title={t("community.bannerTitle")}
+              description={t("community.bannerDesc")}
               stats={[
-                { value: "12,458", label: "Members", icon: UsersRound },
-                { value: "480+", label: "Groups", icon: Network },
-                { value: "2,350+", label: "Discussions", icon: MessageCircle },
-                { value: "120+", label: "Countries", icon: Globe },
+                { value: "12,458", label: t("community.activeMembers"), icon: UsersRound },
+                { value: "480+", label: t("community.activeGroups"), icon: Network },
+                { value: "2,350+", label: t("community.discussionsCount"), icon: MessageCircle },
+                { value: "120+", label: t("footer.countries"), icon: Globe },
               ]}
             />
 
             <section>
-              <SectionHeader title="Featured Discussions" action="View all discussions" />
+              <SectionHeader title={t("community.recentDiscussions")} action={t("common.viewAll")} />
               <div className="grid gap-4 sm:grid-cols-2">
                 {discussions.map((d) => (
                   <article key={d.title} className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-hover">
@@ -177,7 +179,7 @@ function CommunityPage() {
             </section>
 
             <section>
-              <SectionHeader title="Popular Groups" action="View all groups" />
+              <SectionHeader title={t("community.featuredGroups")} action={t("common.viewAll")} />
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {groups.map((g) => (
                   <article key={g.name} className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
@@ -185,7 +187,9 @@ function CommunityPage() {
                     <h3 className="mt-3 font-display text-sm font-bold leading-snug text-navy">{g.name}</h3>
                     <p className="text-xs font-medium text-marine">{g.members}</p>
                     <p className="mt-1 flex-1 text-xs leading-snug text-muted-foreground">{g.desc}</p>
-                    <button className="mt-3 w-full rounded-lg border border-marine py-1.5 text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground">Join</button>
+                    <button type="button" className="mt-3 w-full rounded-lg border border-marine py-1.5 text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground cursor-pointer">
+                      {t("common.apply")}
+                    </button>
                   </article>
                 ))}
               </div>
@@ -194,7 +198,7 @@ function CommunityPage() {
 
           <div className="space-y-5">
             <Panel>
-              <SectionHeader title="Upcoming Community Events" />
+              <SectionHeader title={t("community.upcomingCommunityEvents")} />
               <ul className="space-y-4">
                 {events.map((e) => (
                   <li key={e.title} className="flex gap-3">
@@ -210,26 +214,26 @@ function CommunityPage() {
             </Panel>
 
             <Panel>
-              <SectionHeader title="Trending Topics" />
+              <SectionHeader title={t("community.trendingTopics")} />
               <ul className="space-y-3">
-                {trending.map((t) => (
-                  <li key={t.tag} className="flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-sm font-semibold text-marine"><Hash className="h-3.5 w-3.5" />{t.tag}</span>
-                    <span className="text-xs text-muted-foreground">{t.posts}</span>
+                {trending.map((item) => (
+                  <li key={item.tag} className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-sm font-semibold text-marine"><Hash className="h-3.5 w-3.5" />{item.tag}</span>
+                    <span className="text-xs text-muted-foreground">{item.posts}</span>
                   </li>
                 ))}
               </ul>
             </Panel>
 
             <Panel>
-              <SectionHeader title="Active Members" />
+              <SectionHeader title={t("community.activeMembers")} />
               <div className="flex flex-wrap gap-2">
                 {memberAvatars.map((a, i) => (
                   <img key={i} src={a} alt="Member" loading="lazy" width={40} height={40} className="h-10 w-10 rounded-full object-cover ring-2 ring-card" />
                 ))}
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-marine/10 text-xs font-bold text-marine">+120</span>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">12,458+ members worldwide</p>
+              <p className="mt-3 text-xs text-muted-foreground">12,458+ {t("community.activeMembers")}</p>
             </Panel>
           </div>
         </div>

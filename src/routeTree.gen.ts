@@ -45,10 +45,13 @@ import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
 import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
 import { Route as AdminModulesRouteImport } from './routes/admin.modules'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
+import { Route as DashboardUserRouteImport } from './routes/dashboard.user'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as EventsSlugRouteImport } from './routes/events.$slug'
 import { Route as EventsAllRouteImport } from './routes/events.all'
@@ -306,6 +309,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminExpertsRoute = AdminExpertsRouteImport.update({
   id: '/experts',
   path: '/experts',
@@ -325,6 +333,16 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRoute,
+} as any)
+const DashboardAdminRoute = DashboardAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardUserRoute = DashboardUserRouteImport.update({
+  id: '/user',
+  path: '/user',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const EventsIndexRoute = EventsIndexRouteImport.update({
   id: '/',
@@ -735,7 +753,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/demo': typeof DemoRoute
   '/document-viewer': typeof DocumentViewerRoute
   '/events': typeof EventsRouteWithChildren
@@ -761,10 +779,13 @@ export interface FileRoutesByFullPath {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/user': typeof DashboardUserRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
   '/events/calendar': typeof EventsCalendarRoute
@@ -851,7 +872,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/demo': typeof DemoRoute
   '/document-viewer': typeof DocumentViewerRoute
   '/fellowship': typeof FellowshipRoute
@@ -871,10 +892,13 @@ export interface FileRoutesByTo {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/user': typeof DashboardUserRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
   '/events/calendar': typeof EventsCalendarRoute
@@ -963,7 +987,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/demo': typeof DemoRoute
   '/document-viewer': typeof DocumentViewerRoute
   '/events': typeof EventsRouteWithChildren
@@ -989,10 +1013,13 @@ export interface FileRoutesById {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/user': typeof DashboardUserRoute
   '/events/$slug': typeof EventsSlugRoute
   '/events/all': typeof EventsAllRoute
   '/events/calendar': typeof EventsCalendarRoute
@@ -1109,10 +1136,13 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/dashboard'
     | '/admin/experts'
     | '/admin/modules'
     | '/admin/reviews'
     | '/admin/users'
+    | '/dashboard/admin'
+    | '/dashboard/user'
     | '/events/$slug'
     | '/events/all'
     | '/events/calendar'
@@ -1219,10 +1249,13 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/dashboard'
     | '/admin/experts'
     | '/admin/modules'
     | '/admin/reviews'
     | '/admin/users'
+    | '/dashboard/admin'
+    | '/dashboard/user'
     | '/events/$slug'
     | '/events/all'
     | '/events/calendar'
@@ -1336,10 +1369,13 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/dashboard'
     | '/admin/experts'
     | '/admin/modules'
     | '/admin/reviews'
     | '/admin/users'
+    | '/dashboard/admin'
+    | '/dashboard/user'
     | '/events/$slug'
     | '/events/all'
     | '/events/calendar'
@@ -1429,7 +1465,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   AuthRoute: typeof AuthRoute
   CommunityRoute: typeof CommunityRoute
-  DashboardRoute: typeof DashboardRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
   DemoRoute: typeof DemoRoute
   DocumentViewerRoute: typeof DocumentViewerRoute
   EventsRoute: typeof EventsRouteWithChildren
@@ -1704,6 +1740,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/experts': {
       id: '/admin/experts'
       path: '/experts'
@@ -1731,6 +1774,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/dashboard/admin': {
+      id: '/dashboard/admin'
+      path: '/admin'
+      fullPath: '/dashboard/admin'
+      preLoaderRoute: typeof DashboardAdminRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/user': {
+      id: '/dashboard/user'
+      path: '/user'
+      fullPath: '/dashboard/user'
+      preLoaderRoute: typeof DashboardUserRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/events/': {
       id: '/events/'
@@ -2376,6 +2433,7 @@ const AccountRouteWithChildren =
   AccountRoute._addFileChildren(AccountRouteChildren)
 
 interface AdminRouteChildren {
+  AdminDashboardRoute: typeof AdminDashboardRoute
   AdminExpertsRoute: typeof AdminExpertsRoute
   AdminModulesRoute: typeof AdminModulesRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
@@ -2384,6 +2442,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminDashboardRoute: AdminDashboardRoute,
   AdminExpertsRoute: AdminExpertsRoute,
   AdminModulesRoute: AdminModulesRoute,
   AdminReviewsRoute: AdminReviewsRoute,
@@ -2392,6 +2451,20 @@ const AdminRouteChildren: AdminRouteChildren = {
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface DashboardRouteChildren {
+  DashboardAdminRoute: typeof DashboardAdminRoute
+  DashboardUserRoute: typeof DashboardUserRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAdminRoute: DashboardAdminRoute,
+  DashboardUserRoute: DashboardUserRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
 
 interface EventsRouteChildren {
   EventsSlugRoute: typeof EventsSlugRoute
@@ -2550,7 +2623,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   AuthRoute: AuthRoute,
   CommunityRoute: CommunityRoute,
-  DashboardRoute: DashboardRoute,
+  DashboardRoute: DashboardRouteWithChildren,
   DemoRoute: DemoRoute,
   DocumentViewerRoute: DocumentViewerRoute,
   EventsRoute: EventsRouteWithChildren,

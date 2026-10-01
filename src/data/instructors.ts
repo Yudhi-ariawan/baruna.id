@@ -59,7 +59,7 @@ export const instructors: Instructor[] = [
     biography:
       "I Putu Suarma is a Mid-Level Instructor at Banyuwangi Fisheries Training and Extension Center (BPPP Banyuwangi) with over 30 years of experience in aquaculture. Born in Jembrana, he earned his Bachelor's degree in Fisheries from the Universitas 17 Agustus 1945 Banyuwangi in 2000. He is skilled in water quality management, selecting superior seeds, and efficient feeding techniques. Known for his excellent communication skills, I Putu Suarma has led various training programs that have enhanced fish farmers' skills across Indonesia. His participation in trainings such as Fish Resource Supervision Training and Grouper Aquaculture Training has enriched his expertise in this field. Committed to human resource development in the fisheries sector, he continues to significantly contribute to increasing productivity and the well-being of fish farmers in Indonesia.",
     programRole: "Lead Instructor – Aquaculture Production and Farm Management",
-    email: "putu.suarma@yahoo.co.id",
+    email: "putu.suarma@kkp.go.id",
     photo: putuPhoto,
     group: "Lead Instructors",
     programs: ["international-training-fisheries-african-countries"],
@@ -98,6 +98,7 @@ export const instructors: Instructor[] = [
     biography:
       "Achmad Suhermanto completed his formal education in aquaculture, earning a Bachelor of Applied Science from the Jakarta Fisheries College (STP Jakarta), a Master's degree from Brawijaya University (UB Malang), and a doctoral degree in aquaculture science from Bogor Agricultural University. He currently serves as a lecturer at the Karawang Marine and Fisheries Polytechnic under the Ministry of Marine Affairs and Fisheries, teaching in the diploma program of Fish Farming. His research focuses on vaccines for fish, particularly tilapia. One of his research outcomes has been patented with patent code IDP000084140, and the resulting vaccine product is currently in the registration process.",
     programRole: "Instructor – Fish Health and Vaccination",
+    email: "achmad.suhermanto@kkp.go.id",
     photo: achmadPhoto,
     group: "Aquaculture Specialists",
     programs: ["international-training-fisheries-african-countries"],
@@ -118,7 +119,7 @@ export const instructors: Instructor[] = [
     biography:
       "Sumartin is a Senior Trainer at Banyuwangi Fisheries Training and Extension Center (BPPP Banyuwangi) with over 30 years of experience. She obtained her Bachelor's degree from DR. Soetomo University and her Master's degree from Brawijaya University, both in Aquaculture. With expertise in aquaculture, managerial, and training curriculum development, Sumartin has led various training programs for civil servants and the public. Her participation in trainings such as CBIB Verifier, Asean Training Course on Good Aquaculture Production, and Indonesian National Work Competency Standards (SKKNI) training has enhanced her competencies. Her commitment to human resource development in the fisheries sector continues to significantly contribute to increasing productivity and the well-being of fish farmers in Indonesia.",
     programRole: "Instructor – Aquaculture Management",
-    email: "sumartinmartin@yahoo.co.id",
+    email: "sumartin@kkp.go.id",
     photo: sumartinPhoto,
     group: "Aquaculture Specialists",
     programs: ["international-training-fisheries-african-countries"],
@@ -134,7 +135,7 @@ export const instructors: Instructor[] = [
     biography:
       "Firman Pra Setia Nugraha began his career in 2011 as a Fisheries Extension Officer in Banyuwangi Regency, where he guided local fish farmers, focusing on tilapia and catfish farming. His dedication led to his current role as an Aquaculture Instructor at the Banyuwangi Fisheries Training and Extension Center (BPPP Banyuwangi), which he has held since 2023. Firman holds a Diploma 4 in Fisheries Extension and a Master's degree in Fisheries Resource Utilization with a specialization in the Aquaculture Industry from the Jakarta Polytechnic of Fisheries Business Experts. His expertise includes Communication and Freshwater Fish Farming. He has contributed to academia with research published in international and national journals, including articles on the growth performance and survival of Snakehead Fish Juveniles using Terminalia catappa Leaf Powder.",
     programRole: "Instructor – Tilapia and Catfish Farming",
-    email: "firmanpnugraha@kkp.go.id",
+    email: "firman.nugraha@kkp.go.id",
     photo: firmanPhoto,
     group: "Aquaculture Specialists",
     programs: ["international-training-fisheries-african-countries"],
@@ -168,6 +169,7 @@ export const instructors: Instructor[] = [
     biography:
       "Erika Arisetiana Dewi, with over 18 years of experience in fishery product processing, has demonstrated dedication to developing and implementing innovative and sustainable fish processing techniques. Erika holds a Bachelor's degree in Fisheries from Universitas Tujuh Belas Agustus and a Master's degree in Food Science and Technology from Universitas Brawijaya. As an experienced instructor, she has successfully led various training programs designed to enhance the skills of fish processors and marketers across Indonesia. Erika is skilled in various aspects of fish processing, including product diversification, sanitation and hygiene, HACCP, and product quality management. She is also known for her excellent communication skills, enabling training participants to easily understand and implement the material. Throughout her career, Erika has collaborated with various government and non-government agencies, as well as local communities, to promote high-quality fish processing practices that meet Indonesian national standards.",
     programRole: "Instructor – Fish Processing and Product Diversification",
+    email: "erika.dewi@kkp.go.id",
     photo: erikaPhoto,
     group: "Fish Processing & Value Addition Specialists",
     programs: ["international-training-fisheries-african-countries"],
@@ -188,6 +190,7 @@ export const instructors: Instructor[] = [
     biography:
       "Emi Wati is an instructor with a solid background in fisheries and community training. She began her career at Banyuwangi Fisheries Training and Extension Center (BPPP Banyuwangi), where she served as a Junior Instructor from 2000 to 2010, and later advanced to the position of Senior Instructor until 2022. Emi holds a Bachelor's degree from UNTAG 45 Banyuwangi, earned in 2003. Over the years, she has participated in various specialized training programs, including entrepreneurship, competency-based training, and quality management. Her dedication to professional development and passion for fisheries education have made her a valuable asset in her field.",
     programRole: "Instructor – Community Empowerment and Business Development",
+    email: "emi.wati@kkp.go.id",
     photo: emiPhoto,
     group: "Fish Processing & Value Addition Specialists",
     programs: ["international-training-fisheries-african-countries"],
@@ -208,7 +211,7 @@ export const instructors: Instructor[] = [
     biography:
       "Ricky Aditya Saputra is a Young Instructor at the Banyuwangi Fisheries Training and Extension Center (BPPP Banyuwangi), under the Ministry of Marine Affairs and Fisheries. Ricky holds a Diploma IV degree in Fisheries Processing Technology and has diverse work experience, including roles as a Production Supervisor at the shrimp freezing company PT. Suri Tani Pemuka Cirebon (2012–2013), Ads Quality Analyst at olx.com in Jakarta (2013–2015), and currently as an Instructor in fish processing at BPPP Banyuwangi (2015–present). He has completed various trainings, such as HACCP training (2012), Certification of Competency in Fisheries Processing (2018), Basic Functional Instructor Training (2018), and Competency Certification in Methodology – KKNI Level IV (2018). His expertise lies in fish processing technology.",
     programRole: "Instructor – Fish Processing Technology",
-    email: "rickyadityajo@gmail.com",
+    email: "ricky.saputra@kkp.go.id",
     photo: rickyPhoto,
     group: "Fish Processing & Value Addition Specialists",
     programs: ["international-training-fisheries-african-countries"],
@@ -224,6 +227,7 @@ export const instructors: Instructor[] = [
     biography:
       "Iman Setya Dwi Ardani is an Instructor at the Banyuwangi Fisheries Training and Extension Center (BPPP Banyuwangi), under the Ministry of Marine Affairs and Fisheries. Iman holds a Diploma degree in Fisheries Processing Technology and a bachelor's degree in Food Technology and Nutrition. His work experience includes roles as a Production Supervisor at a shrimp freezing company (2009–2010), Quality Control at a shrimp cracker company (2010–2014), and currently as an Instructor in fish processing at BPPP Banyuwangi (2014–present). He has completed various trainings, such as HACCP training (2009), Certification of Competency in Fisheries Processing (2018), and Basic Functional Instructor Training.",
     programRole: "Instructor – Quality Assurance and Product Standards",
+    email: "iman.setya@kkp.go.id",
     photo: imanPhoto,
     group: "Fish Processing & Value Addition Specialists",
     programs: ["international-training-fisheries-african-countries"],

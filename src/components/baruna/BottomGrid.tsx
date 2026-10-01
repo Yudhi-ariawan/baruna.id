@@ -10,6 +10,7 @@ import {
   Building2,
   Globe,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import {
   events,
   resources,
@@ -17,18 +18,19 @@ import {
   fellowships,
   partners,
 } from "@/data/baruna";
+import { useLanguage } from "@/lib/i18n";
 
-function ColHeader({ title, action }: { title: string; action: string }) {
+function ColHeader({ title, action, href }: { title: string; action: string; href: string }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-2">
       <h2 className="font-display text-base font-bold text-navy">{title}</h2>
-      <a
-        href="#"
+      <Link
+        to={href}
         className="inline-flex shrink-0 items-center gap-1 text-[0.7rem] font-semibold text-marine transition-colors hover:text-navy"
       >
         {action}
         <ArrowRight className="h-3 w-3" />
-      </a>
+      </Link>
     </div>
   );
 }
@@ -58,9 +60,10 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 function UpcomingEvents() {
+  const { t } = useLanguage();
   return (
     <Card>
-      <ColHeader title="Upcoming Events" action="View all events" />
+      <ColHeader title={t("bottomGrid.upcomingEvents")} action={t("bottomGrid.viewAllEvents")} href="/events" />
       <ul className="space-y-4">
         {events.map((e) => (
           <li key={e.title} className="flex gap-3">
@@ -77,43 +80,45 @@ function UpcomingEvents() {
               </p>
             </div>
             <span
-              className={`h-fit shrink-0 rounded-md px-2 py-0.5 text-[0.6rem] font-bold ${eventBadge[e.type]}`}
+              className={`h-fit shrink-0 rounded-md px-2 py-0.5 text-[0.6rem] font-bold ${eventBadge[e.type] ?? "bg-muted"}`}
             >
               {e.type}
             </span>
           </li>
         ))}
       </ul>
-      <a
-        href="#"
+      <Link
+        to="/events/calendar"
         className="mt-5 flex items-center justify-center gap-1.5 text-xs font-semibold text-marine"
       >
         <Calendar className="h-3.5 w-3.5" />
-        Go to Event Calendar
-      </a>
+        {t("bottomGrid.goToEventCalendar")}
+      </Link>
     </Card>
   );
 }
 
-function KnowledgeHub() {
+function KnowledgeHubCard() {
+  const { t } = useLanguage();
   return (
     <Card>
-      <ColHeader title="Latest from Knowledge Hub" action="View all resources" />
+      <ColHeader title={t("bottomGrid.latestFromKnowledgeHub")} action={t("bottomGrid.viewAllResources")} href="/knowledge-hub" />
       <ul className="space-y-4">
         {resources.map((r) => {
-          const Icon = resourceIcon[r.type];
+          const Icon = resourceIcon[r.type] ?? FileText;
           return (
             <li key={r.title} className="flex items-start gap-3">
               <div className="min-w-0 flex-1">
-                <p className={`text-[0.6rem] font-bold uppercase tracking-wide ${resourceColor[r.type]}`}>
+                <p className={`text-[0.6rem] font-bold uppercase tracking-wide ${resourceColor[r.type] ?? "text-muted-foreground"}`}>
                   {r.type}
                 </p>
                 <h3 className="mt-0.5 text-sm font-semibold leading-snug text-navy">{r.title}</h3>
                 <p className="mt-0.5 text-xs text-muted-foreground">{r.meta}</p>
               </div>
               <button
+                type="button"
                 aria-label={r.type === "VIDEO" ? "Play video" : "Download"}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border text-marine transition-colors hover:bg-marine hover:text-marine-foreground cursor-pointer"
               >
                 <Icon className="h-4 w-4" />
               </button>
@@ -121,21 +126,22 @@ function KnowledgeHub() {
           );
         })}
       </ul>
-      <a
-        href="#"
+      <Link
+        to="/knowledge-hub"
         className="mt-5 flex items-center justify-center gap-1.5 text-xs font-semibold text-marine"
       >
         <Download className="h-3.5 w-3.5" />
-        Go to Knowledge Hub
-      </a>
+        {t("bottomGrid.goToKnowledgeHub")}
+      </Link>
     </Card>
   );
 }
 
 function FeaturedExperts() {
+  const { t } = useLanguage();
   return (
     <Card>
-      <ColHeader title="Featured Experts" action="View all experts" />
+      <ColHeader title={t("bottomGrid.featuredExperts")} action={t("bottomGrid.viewAllExperts")} href="/experts" />
       <ul className="space-y-4">
         {experts.map((ex) => (
           <li key={ex.name} className="flex items-start gap-3">
@@ -152,29 +158,31 @@ function FeaturedExperts() {
               <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{ex.position}</p>
             </div>
             <button
+              type="button"
               aria-label="Save expert"
-              className="shrink-0 text-muted-foreground transition-colors hover:text-marine"
+              className="shrink-0 text-muted-foreground transition-colors hover:text-marine cursor-pointer"
             >
               <Bookmark className="h-4 w-4" />
             </button>
           </li>
         ))}
       </ul>
-      <a
-        href="#"
+      <Link
+        to="/experts/directory"
         className="mt-5 flex items-center justify-center gap-1.5 text-xs font-semibold text-marine"
       >
         <Users className="h-3.5 w-3.5" />
-        Browse Experts
-      </a>
+        {t("bottomGrid.browseExperts")}
+      </Link>
     </Card>
   );
 }
 
-function Fellowship() {
+function FellowshipCard() {
+  const { t } = useLanguage();
   return (
     <Card>
-      <ColHeader title="Fellowship & Exchange Opportunities" action="View all opportunities" />
+      <ColHeader title={t("bottomGrid.fellowshipOpportunities")} action={t("bottomGrid.viewAllOpportunities")} href="/fellowship" />
       <ul className="space-y-4">
         {fellowships.map((f) => (
           <li key={f.title} className="flex items-start gap-3">
@@ -188,21 +196,22 @@ function Fellowship() {
           </li>
         ))}
       </ul>
-      <a
-        href="#"
+      <Link
+        to="/fellowship"
         className="mt-5 flex items-center justify-center gap-1.5 text-xs font-semibold text-marine"
       >
         <Globe className="h-3.5 w-3.5" />
-        Explore Opportunities
-      </a>
+        {t("bottomGrid.exploreOpportunities")}
+      </Link>
     </Card>
   );
 }
 
-function Partnership() {
+function PartnershipCard() {
+  const { t } = useLanguage();
   return (
     <Card>
-      <ColHeader title="Partnership Highlights" action="View all partners" />
+      <ColHeader title={t("bottomGrid.partnershipHighlights")} action={t("bottomGrid.viewAllPartners")} href="/partnership" />
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
         {partners.map((p) => (
           <div
@@ -214,12 +223,15 @@ function Partnership() {
         ))}
       </div>
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        Working together for sustainable oceans and fisheries.
+        {t("bottomGrid.partnershipSubtitle")}
       </p>
-      <button className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-marine py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground cursor-pointer">
+      <Link
+        to="/partnership"
+        className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-marine py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground cursor-pointer"
+      >
         <Building2 className="h-4 w-4" />
-        Become a Partner
-      </button>
+        {t("bottomGrid.becomePartner")}
+      </Link>
     </Card>
   );
 }
@@ -229,10 +241,10 @@ export function BottomGrid() {
     <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-8 sm:py-10 w-full overflow-hidden">
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5 w-full">
         <UpcomingEvents />
-        <KnowledgeHub />
+        <KnowledgeHubCard />
         <FeaturedExperts />
-        <Fellowship />
-        <Partnership />
+        <FellowshipCard />
+        <PartnershipCard />
       </div>
     </section>
   );

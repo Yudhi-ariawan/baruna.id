@@ -213,6 +213,11 @@ function ExpertCard({ expert }: { expert: PublicExpert }) {
           width={240}
           height={320}
           className="h-full w-full object-cover object-center"
+          onError={(e) => {
+            if (e.currentTarget.src !== defaultExpertAvatar) {
+              e.currentTarget.src = defaultExpertAvatar;
+            }
+          }}
         />
       </div>
 

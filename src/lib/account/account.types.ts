@@ -6,6 +6,12 @@ export type AccountProfile = {
   jobTitle: string;
   phone: string;
   avatarUrl: string | null;
+  country?: string | null;
+  linkedin?: string | null;
+  website?: string | null;
+  bio?: string | null;
+  roles?: string[];
+  createdAt?: string | null;
 };
 
 export const AVATAR_BUCKET = "avatars";

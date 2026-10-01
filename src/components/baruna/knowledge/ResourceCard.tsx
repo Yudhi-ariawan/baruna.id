@@ -34,14 +34,27 @@ export function AccessBadge({ level }: { level: KhResource["access"] }) {
 
 export function ResourceCard({ r, index }: { r: KhResource; index: number }) {
   const saved = useIsSaved(r.id);
-  const cover = courseImages[index % courseImages.length];
+  const cover = r.coverImage || courseImages[index % courseImages.length];
   const isVideo = r.type === "videos";
   const isModule = r.type === "learning-modules";
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
       <Link to="/knowledge-hub/resource/$id" params={{ id: r.id }} className="relative block h-36 overflow-hidden">
-        <img src={cover} alt={r.title} loading="lazy" width={768} height={512} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+        <img
+          src={cover}
+          alt={r.title}
+          loading="lazy"
+          width={768}
+          height={512}
+          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          onError={(e) => {
+            const fallback = courseImages[index % courseImages.length];
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
+        />
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
           <span className="inline-flex rounded-md bg-navy px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-navy-foreground">
             {r.typeLabel}

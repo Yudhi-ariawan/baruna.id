@@ -1,8 +1,11 @@
 import { ArrowRight, Play } from "lucide-react";
 import { images } from "@/data/baruna";
 import { HomeWelcomeCard } from "./HomeWelcomeCard";
+import { useLanguage } from "@/lib/i18n";
 
 export function Hero() {
+  const { t } = useLanguage();
+
   return (
     <section className="mx-auto max-w-[1500px] px-3 sm:px-6 pt-3 sm:pt-5 w-full">
       <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-card w-full">
@@ -19,21 +22,26 @@ export function Hero() {
           {/* Left copy */}
           <div className="max-w-xl text-navy-foreground">
             <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight">
-              From Ocean Wisdom <br className="hidden sm:block" />
-              to Global Impact
+              {t("hero.title1")} <br className="hidden sm:block" />
+              {t("hero.title2")}
             </h1>
             <p className="mt-3 sm:mt-5 max-w-md text-xs sm:text-sm md:text-base leading-relaxed text-navy-foreground/85">
-              BARUNA connects people, knowledge, and opportunities to strengthen capacity and drive
-              sustainable marine and fisheries development for a better future.
+              {t("hero.subtitle")}
             </p>
             <div className="mt-5 sm:mt-7 flex flex-wrap gap-2.5 sm:gap-3">
-              <button className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-semibold text-accent-foreground shadow-soft transition-all hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-hover cursor-pointer">
-                Explore the Ecosystem
+              <a
+                href="#ecosystem"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-semibold text-accent-foreground shadow-soft transition-all hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-hover cursor-pointer"
+              >
+                {t("hero.exploreBtn")}
                 <ArrowRight className="h-4 w-4" />
-              </button>
-              <button className="inline-flex items-center gap-1.5 rounded-xl border border-navy-foreground/40 bg-navy-foreground/10 px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-semibold text-navy-foreground backdrop-blur transition-colors hover:bg-navy-foreground/20 cursor-pointer">
+              </a>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-navy-foreground/40 bg-navy-foreground/10 px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-semibold text-navy-foreground backdrop-blur transition-colors hover:bg-navy-foreground/20 cursor-pointer"
+              >
                 <Play className="h-4 w-4 fill-current" />
-                Watch Video
+                {t("hero.watchVideoBtn")}
               </button>
             </div>
 

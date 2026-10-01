@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Building2, Mail } from "lucide-react";
 import type { Instructor } from "@/data/instructors";
 import { groupInstructors } from "@/data/instructors";
+import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
 
 /**
  * Shared instructor card — compact, horizontal "academy" profile card used
@@ -23,6 +24,11 @@ export function InstructorCard({ instructor }: { instructor: Instructor }) {
         width={240}
         height={320}
         className="aspect-[3/4] w-[72px] shrink-0 self-start rounded-xl object-cover object-center sm:w-[96px]"
+        onError={(e) => {
+          if (e.currentTarget.src !== defaultExpertAvatar) {
+            e.currentTarget.src = defaultExpertAvatar;
+          }
+        }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="font-display text-base font-bold leading-tight text-navy">{i.name}</h3>
@@ -76,6 +82,11 @@ export function ExpertInstructorCard({ instructor }: { instructor: Instructor })
         width={240}
         height={320}
         className="aspect-[3/4] w-[72px] shrink-0 self-start rounded-xl object-cover object-center sm:w-[88px]"
+        onError={(e) => {
+          if (e.currentTarget.src !== defaultExpertAvatar) {
+            e.currentTarget.src = defaultExpertAvatar;
+          }
+        }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="font-display text-sm font-bold leading-tight text-navy">{i.name}</h3>

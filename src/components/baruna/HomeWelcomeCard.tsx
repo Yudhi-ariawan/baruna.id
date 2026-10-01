@@ -17,6 +17,7 @@ import {
 import { useHomeExperience } from "./home-experience";
 import { ProfileAvatar } from "./ProfileAvatar";
 import type { HomeMetricIcon } from "@/lib/home/home.types";
+import { useLanguage } from "@/lib/i18n";
 
 const metricIcons = {
   book: BookOpen,
@@ -32,6 +33,7 @@ const metricIcons = {
 
 export function HomeWelcomeCard() {
   const { authState, viewer, publicStats, publicStatsLoading } = useHomeExperience();
+  const { t } = useLanguage();
 
   if (authState === "authenticated" && viewer) {
     return (
@@ -39,7 +41,7 @@ export function HomeWelcomeCard() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="flex items-center gap-1.5 text-sm text-navy-foreground/80">
-              Welcome back <Hand className="h-4 w-4 text-star" />
+              {t("welcome.welcomeBack")} <Hand className="h-4 w-4 text-star" />
             </p>
             <p className="mt-1 font-display text-2xl font-extrabold">{viewer.displayName}</p>
             <span className="mt-2 inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[0.7rem] font-semibold text-white/90">
@@ -68,7 +70,7 @@ export function HomeWelcomeCard() {
           to={viewer.dashboardUrl}
           className="mt-6 flex w-full items-center justify-between rounded-xl bg-navy-foreground/10 px-4 py-3 text-sm font-semibold transition-colors hover:bg-navy-foreground/20"
         >
-          {viewer.variant === "admin" ? "Open Admin Console" : "Go to Dashboard"}
+          {viewer.variant === "admin" ? t("welcome.openAdminConsole") : t("welcome.goToDashboard")}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -76,19 +78,19 @@ export function HomeWelcomeCard() {
   }
 
   const publicMetrics = [
-    { label: "Active Training", value: publicStats?.activeTraining, icon: Award },
-    { label: "Verified Experts", value: publicStats?.verifiedExperts, icon: UserCheck },
-    { label: "Open Publications", value: publicStats?.openPublications, icon: BookOpen },
-    { label: "Upcoming Events", value: publicStats?.upcomingEvents, icon: CalendarDays },
+    { label: t("welcome.activeTraining"), value: publicStats?.activeTraining, icon: Award },
+    { label: t("welcome.verifiedExperts"), value: publicStats?.verifiedExperts, icon: UserCheck },
+    { label: t("welcome.openPublications"), value: publicStats?.openPublications, icon: BookOpen },
+    { label: t("welcome.upcomingEvents"), value: publicStats?.upcomingEvents, icon: CalendarDays },
   ];
 
   return (
     <div className="rounded-2xl border border-navy-foreground/15 bg-navy/85 p-6 text-navy-foreground shadow-card backdrop-blur-md">
       <div>
-        <p className="text-sm text-navy-foreground/80">Indonesia’s marine knowledge network</p>
-        <h2 className="mt-1 font-display text-2xl font-extrabold">Welcome to BARUNA</h2>
+        <p className="text-sm text-navy-foreground/80">{t("welcome.networkTagline")}</p>
+        <h2 className="mt-1 font-display text-2xl font-extrabold">{t("welcome.welcomeTitle")}</h2>
         <p className="mt-1 text-sm text-navy-foreground/80">
-          Learn, connect, and contribute to a stronger marine and fisheries community.
+          {t("welcome.welcomeSubtitle")}
         </p>
       </div>
 
@@ -111,7 +113,7 @@ export function HomeWelcomeCard() {
         search={{ mode: "signup" }}
         className="mt-6 flex w-full items-center justify-between rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
       >
-        Register Now
+        {t("welcome.registerNow")}
         <ArrowRight className="h-4 w-4" />
       </Link>
     </div>

@@ -17,53 +17,18 @@ import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { programsByType, type Program } from "@/data/programs";
 import { MINUTES_PER_JP, masterByCode } from "@/data/masterModules";
 import { useShortCourses } from "@/lib/shortCourses";
-import { supabase } from "@/integrations/supabase/client";
+import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
 import defaultCover from "@/assets/self-paced/m01.jpg";
 
 export const Route = createFileRoute("/academy/self-paced/")({
   loader: async () => {
-    const { data: dbModules } = await supabase
-      .from("module_registry")
-      .select("id, title, summary, language, estimated_learning_hours, current_status, created_at, author_expert_id")
-      .eq("current_status", "published")
-      .order("created_at", { ascending: false });
-
-    const expertIds = Array.from(
-      new Set((dbModules ?? []).map((m) => m.author_expert_id).filter(Boolean)),
-    ) as string[];
-    let expertMap: Record<string, string> = {};
-    if (expertIds.length > 0) {
-      const { data: expList } = await supabase
-        .from("experts_directory_v")
-        .select("id, display_name")
-        .in("id", expertIds);
-      if (expList && expList.length > 0) {
-        expertMap = Object.fromEntries(expList.map((e) => [e.id, e.display_name]));
-      } else {
-        const { data: rawList } = await supabase
-          .from("experts")
-          .select("id, display_name")
-          .in("id", expertIds);
-        if (rawList && rawList.length > 0) {
-          expertMap = Object.fromEntries(rawList.map((e) => [e.id, e.display_name]));
-        }
-      }
-
-      // Fallback check in profiles if id is user_id
-      if (Object.keys(expertMap).length === 0) {
-        const { data: profList } = await supabase
-          .from("profiles")
-          .select("id, display_name")
-          .in("id", expertIds);
-        if (profList) {
-          for (const p of profList) {
-            if (p.display_name) expertMap[p.id] = p.display_name;
-          }
-        }
-      }
+    try {
+      const dbModules = await getPublishedModulesCatalog();
+      return { dbModules: dbModules ?? [] };
+    } catch (err) {
+      console.warn("Could not load published modules:", err);
+      return { dbModules: [] };
     }
-
-    return { dbModules: dbModules ?? [], expertMap };
   },
   head: () => ({
     meta: [
@@ -94,24 +59,23 @@ function masterCodeFor(p: Program): string | undefined {
 }
 
 function SelfPacedIndex() {
-  const { dbModules, expertMap } = Route.useLoaderData();
+  const { dbModules } = Route.useLoaderData();
   const staticCatalog = programsByType("self-paced");
   const { isCompleted, get } = useShortCourses();
 
   const dynamicPrograms: Program[] = useMemo(() => {
     return (dbModules ?? []).map((m) => {
-      const author = m.author_expert_id ? expertMap[m.author_expert_id] : "BARUNA Trainer";
       return {
         id: m.id,
         type: "self-paced" as const,
         title: m.title,
         description: m.summary || "Approved BARUNA self-paced learning module.",
-        image: defaultCover,
+        image: m.coverUrl || defaultCover,
         category: "Fisheries Management",
         level: "Intermediate" as const,
         language: m.language || "English",
         duration: `${m.estimated_learning_hours || 2} Hours`,
-        instructor: author ? `${author} (BARUNA Trainer)` : "BARUNA Trainer",
+        instructor: m.authorName ? `${m.authorName} (BARUNA Trainer)` : "BARUNA Trainer",
         organization: "BARUNA Academy",
         country: "Indonesia",
         startDate: new Date(m.created_at).toISOString().split("T")[0],
@@ -121,9 +85,10 @@ function SelfPacedIndex() {
         status: "ONLINE",
         keywords: ["self-paced", "module", m.title.toLowerCase()],
         href: `/academy/self-paced/${m.id}`,
+        featured: false,
       };
     });
-  }, [dbModules, expertMap]);
+  }, [dbModules]);
 
   const catalog = useMemo(() => {
     return [...dynamicPrograms, ...staticCatalog];
@@ -240,6 +205,11 @@ function CourseCard({ program, completed }: { program: Program; completed: boole
           width={1280}
           height={720}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          onError={(e) => {
+            if (e.currentTarget.src !== defaultCover) {
+              e.currentTarget.src = defaultCover;
+            }
+          }}
         />
         <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wide text-marine shadow-sm ring-1 ring-marine/20">
           Online

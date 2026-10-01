@@ -14,13 +14,13 @@ import {
   Archive,
   Users,
   Network,
-  
   Layers,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { categories } from "@/data/categories";
 import { pathways } from "@/data/pathways";
+import { useLanguage } from "@/lib/i18n";
 
 export type AcademyActive =
   | "overview"
@@ -43,38 +43,13 @@ export type AcademyActive =
   | "my-training-requests";
 
 type NavLink = {
-  label: string;
+  keyName: string;
+  defaultLabel: string;
   key: AcademyActive;
   to: string;
   icon?: LucideIcon;
   search?: Record<string, string>;
 };
-
-const programLinks: NavLink[] = [
-  { label: "All Programs", key: "all-programs", to: "/academy/programs" },
-  { label: "Training", key: "training", to: "/academy/programs", search: { type: "training" } },
-  { label: "Webinar", key: "webinar", to: "/academy/programs", search: { type: "webinar" } },
-  { label: "Workshop", key: "workshop", to: "/academy/programs", search: { type: "workshop" } },
-  { label: "Certification", key: "certification", to: "/academy/programs", search: { type: "certification" } },
-  { label: "Self-Paced Course", key: "self-paced", to: "/academy/self-paced" },
-];
-
-
-const archiveLinks: NavLink[] = [
-  { label: "All Archived Programs", key: "archive", to: "/academy/archive" },
-  { label: "2024 Edition — Fisheries", key: "edition-2024", to: "/academy/edition-2024" },
-];
-
-const alumniLinks: NavLink[] = [
-  { label: "Alumni Directory", key: "alumni", to: "/academy/alumni" },
-  { label: "Alumni Network", key: "alumni-network", to: "/academy/alumni-network" },
-];
-
-const myJourneyLinks: (NavLink & { icon: LucideIcon })[] = [
-  { label: "My Applications", key: "my-applications", to: "/academy/applications", icon: FileText },
-  { label: "My Learning", key: "my-learning", to: "/academy/learn", icon: CheckCircle2 },
-  { label: "My Training Requests", key: "my-training-requests", to: "/academy/training-requests", icon: ClipboardList },
-];
 
 const topLink =
   "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors";
@@ -98,6 +73,7 @@ function GroupHeader({
 }) {
   return (
     <button
+      type="button"
       onClick={onToggle}
       className={`${topLink} ${hasActive ? "text-marine" : "text-foreground/75 hover:bg-muted"}`}
     >
@@ -147,7 +123,6 @@ function SubLink({
   );
 }
 
-
 export function AcademySidebar({
   active: current,
   activeCategory,
@@ -159,6 +134,33 @@ export function AcademySidebar({
   activePathway?: string;
   onNavigate?: () => void;
 }) {
+  const { t } = useLanguage();
+
+  const programLinks: NavLink[] = [
+    { keyName: "sidebar.allPrograms", defaultLabel: "All Programs", key: "all-programs", to: "/academy/programs" },
+    { keyName: "sidebar.training", defaultLabel: "Training", key: "training", to: "/academy/programs", search: { type: "training" } },
+    { keyName: "sidebar.webinar", defaultLabel: "Webinar", key: "webinar", to: "/academy/programs", search: { type: "webinar" } },
+    { keyName: "sidebar.workshop", defaultLabel: "Workshop", key: "workshop", to: "/academy/programs", search: { type: "workshop" } },
+    { keyName: "sidebar.certification", defaultLabel: "Certification", key: "certification", to: "/academy/programs", search: { type: "certification" } },
+    { keyName: "sidebar.selfPacedCourse", defaultLabel: "Self-Paced Course", key: "self-paced", to: "/academy/self-paced" },
+  ];
+
+  const archiveLinks: NavLink[] = [
+    { keyName: "sidebar.allArchivedPrograms", defaultLabel: "All Archived Programs", key: "archive", to: "/academy/archive" },
+    { keyName: "sidebar.edition2024", defaultLabel: "2024 Edition — Fisheries", key: "edition-2024", to: "/academy/edition-2024" },
+  ];
+
+  const alumniLinks: NavLink[] = [
+    { keyName: "sidebar.alumniDirectory", defaultLabel: "Alumni Directory", key: "alumni", to: "/academy/alumni" },
+    { keyName: "sidebar.alumniNetwork", defaultLabel: "Alumni Network", key: "alumni-network", to: "/academy/alumni-network" },
+  ];
+
+  const myJourneyLinks: (NavLink & { icon: LucideIcon })[] = [
+    { keyName: "sidebar.myApplications", defaultLabel: "My Applications", key: "my-applications", to: "/academy/applications", icon: FileText },
+    { keyName: "sidebar.myLearning", defaultLabel: "My Learning", key: "my-learning", to: "/academy/learn", icon: CheckCircle2 },
+    { keyName: "sidebar.myTrainingRequests", defaultLabel: "My Training Requests", key: "my-training-requests", to: "/academy/training-requests", icon: ClipboardList },
+  ];
+
   const isProgramsActive =
     current === "programs-multi" || programLinks.some((p) => p.key === current);
 
@@ -182,9 +184,9 @@ export function AcademySidebar({
             <GraduationCap className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-bold leading-tight">Academy</h2>
+            <h2 className="font-display text-lg font-bold leading-tight">{t("nav.academy")}</h2>
             <p className="mt-1 text-xs leading-relaxed text-navy-foreground/80">
-              Learning · Training Archive · Alumni History
+              {t("academy.subtitle")}
             </p>
           </div>
         </div>
@@ -193,7 +195,7 @@ export function AcademySidebar({
       {/* Nav card */}
       <nav className="rounded-2xl border border-border bg-card p-3 shadow-soft">
         <p className="px-3 pb-2 pt-1 text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-          Academy Menu
+          {t("sidebar.academyMenu")}
         </p>
 
         <ul className="space-y-0.5">
@@ -204,14 +206,14 @@ export function AcademySidebar({
               className={`${topLink} ${current === "overview" ? activeCls : idle}`}
             >
               <Home className="h-4 w-4 shrink-0" />
-              <span className="flex-1">Overview</span>
+              <span className="flex-1">{t("sidebar.overview")}</span>
             </Link>
           </li>
 
           {/* 1. Training Programs */}
           <li>
             <GroupHeader
-              label="Training Programs"
+              label={t("sidebar.trainingPrograms")}
               icon={BookMarked}
               open={programsOpen}
               onToggle={() => setProgramsOpen((o) => !o)}
@@ -220,8 +222,14 @@ export function AcademySidebar({
             {programsOpen && (
               <ul className="mt-0.5 space-y-0.5 pl-4">
                 {programLinks.map((p) => (
-                  <SubLink key={p.key} to={p.to} search={p.search} label={p.label} active={p.key === current} onNavigate={onNavigate} />
-
+                  <SubLink
+                    key={p.key}
+                    to={p.to}
+                    search={p.search}
+                    label={t(p.keyName, p.defaultLabel)}
+                    active={p.key === current}
+                    onNavigate={onNavigate}
+                  />
                 ))}
               </ul>
             )}
@@ -230,7 +238,7 @@ export function AcademySidebar({
           {/* 3. Training Archive */}
           <li>
             <GroupHeader
-              label="Training Archive"
+              label={t("sidebar.trainingArchive")}
               icon={Archive}
               open={archiveOpen}
               onToggle={() => setArchiveOpen((o) => !o)}
@@ -239,7 +247,13 @@ export function AcademySidebar({
             {archiveOpen && (
               <ul className="mt-0.5 space-y-0.5 pl-4">
                 {archiveLinks.map((p) => (
-                  <SubLink key={p.key} to={p.to} label={p.label} active={p.key === current} onNavigate={onNavigate} />
+                  <SubLink
+                    key={p.key}
+                    to={p.to}
+                    label={t(p.keyName, p.defaultLabel)}
+                    active={p.key === current}
+                    onNavigate={onNavigate}
+                  />
                 ))}
               </ul>
             )}
@@ -248,7 +262,7 @@ export function AcademySidebar({
           {/* 4. Alumni */}
           <li>
             <GroupHeader
-              label="Alumni"
+              label={t("sidebar.alumni")}
               icon={Users}
               open={alumniOpen}
               onToggle={() => setAlumniOpen((o) => !o)}
@@ -260,7 +274,7 @@ export function AcademySidebar({
                   <SubLink
                     key={p.key}
                     to={p.to}
-                    label={p.label}
+                    label={t(p.keyName, p.defaultLabel)}
                     active={p.key === current}
                     onNavigate={onNavigate}
                     icon={p.key === "alumni-network" ? Network : undefined}
@@ -273,7 +287,7 @@ export function AcademySidebar({
           {/* 5. My Journey */}
           <li className="pt-1">
             <p className="px-3 pb-1 pt-2 text-[0.6rem] font-bold uppercase tracking-wider text-muted-foreground">
-              My Journey
+              {t("sidebar.myJourney")}
             </p>
           </li>
           {myJourneyLinks.map((l) => (
@@ -284,7 +298,7 @@ export function AcademySidebar({
                 className={`${topLink} ${current === l.key ? activeCls : idle}`}
               >
                 <l.icon className="h-4 w-4 shrink-0" />
-                <span className="flex-1">{l.label}</span>
+                <span className="flex-1">{t(l.keyName, l.defaultLabel)}</span>
               </Link>
             </li>
           ))}
@@ -294,12 +308,12 @@ export function AcademySidebar({
 
         {/* Browse */}
         <p className="px-3 pb-2 pt-1 text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-          Browse
+          {t("sidebar.browse")}
         </p>
         <ul className="space-y-0.5">
           <li>
             <GroupHeader
-              label="By Category"
+              label={t("sidebar.byCategory")}
               icon={LayoutGrid}
               open={categoriesOpen}
               onToggle={() => setCategoriesOpen((o) => !o)}
@@ -326,7 +340,7 @@ export function AcademySidebar({
           </li>
           <li>
             <GroupHeader
-              label="Learning Pathways"
+              label={t("sidebar.learningPathways")}
               icon={RouteIcon}
               open={pathwaysOpen}
               onToggle={() => setPathwaysOpen((o) => !o)}
@@ -352,22 +366,22 @@ export function AcademySidebar({
             )}
           </li>
           <li>
-            <button className={`${topLink} ${idle}`}>
+            <Link to="/academy/certification" onClick={onNavigate} className={`${topLink} ${idle}`}>
               <Award className="h-4 w-4 shrink-0" />
-              <span className="flex-1">Certificates</span>
-            </button>
+              <span className="flex-1">{t("sidebar.certificates")}</span>
+            </Link>
           </li>
           <li>
-            <button className={`${topLink} ${idle}`}>
+            <Link to="/experts/directory" onClick={onNavigate} className={`${topLink} ${idle}`}>
               <UserSquare2 className="h-4 w-4 shrink-0" />
-              <span className="flex-1">Instructors</span>
-            </button>
+              <span className="flex-1">{t("sidebar.instructors")}</span>
+            </Link>
           </li>
           <li>
-            <button className={`${topLink} ${idle}`}>
+            <Link to="/partnership" onClick={onNavigate} className={`${topLink} ${idle}`}>
               <Layers className="h-4 w-4 shrink-0" />
-              <span className="flex-1">Organizations</span>
-            </button>
+              <span className="flex-1">{t("sidebar.organizations")}</span>
+            </Link>
           </li>
         </ul>
       </nav>
