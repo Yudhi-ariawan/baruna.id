@@ -5,6 +5,7 @@ import {
   type RecommendedCourse,
   type ContinueCourse,
 } from "@/data/baruna";
+import { useLanguage } from "@/lib/i18n";
 
 const badgeBg: Record<string, string> = {
   COURSE: "bg-badge-course",
@@ -39,6 +40,8 @@ function SectionHead({ title, action }: { title: string; action: string }) {
 }
 
 function ContinueCard({ course }: { course: ContinueCourse }) {
+  const { t } = useLanguage();
+
   return (
     <article className="flex w-[300px] shrink-0 gap-3 rounded-xl border border-border bg-card p-3 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-hover sm:w-auto sm:shrink">
       <div className="relative h-28 w-24 shrink-0 overflow-hidden rounded-lg">
@@ -57,7 +60,7 @@ function ContinueCard({ course }: { course: ContinueCourse }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="line-clamp-2 text-sm font-semibold text-navy">{course.title}</h3>
         <p className="mt-2 text-xs font-medium text-muted-foreground">
-          {course.progress}% Completed
+          {course.progress}% {t("learning.completed")}
         </p>
         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
@@ -66,7 +69,7 @@ function ContinueCard({ course }: { course: ContinueCourse }) {
           />
         </div>
         <button className="mt-auto w-full rounded-lg border border-marine/40 py-1.5 text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground">
-          Continue
+          {t("learning.continueBtn")}
         </button>
       </div>
     </article>
@@ -110,11 +113,16 @@ function RecommendedCard({ course }: { course: RecommendedCourse }) {
 }
 
 export function LearningSections() {
+  const { t } = useLanguage();
+
   return (
     <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-6 sm:py-8 w-full overflow-hidden">
       <div className="grid gap-6 lg:grid-cols-2 w-full">
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-soft min-w-0 overflow-hidden">
-          <SectionHead title="Continue Learning" action="View all my learning" />
+          <SectionHead
+            title={t("learning.continueTitle")}
+            action={t("learning.viewAllMyLearning")}
+          />
           <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-2 sm:overflow-visible">
             {continueLearning.slice(0, 2).map((c) => (
               <ContinueCard key={c.title} course={c} />
@@ -123,7 +131,10 @@ export function LearningSections() {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-soft min-w-0 overflow-hidden">
-          <SectionHead title="Recommended for You" action="View all recommendations" />
+          <SectionHead
+            title={t("learning.recommendedTitle")}
+            action={t("learning.viewAllRecommendations")}
+          />
           <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-none">
             {recommended.map((c) => (
               <RecommendedCard key={c.title} course={c} />

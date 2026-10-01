@@ -79,11 +79,11 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75 w-full">
       <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3 w-full">
         <Link to="/" aria-label="BARUNA home" className="flex min-w-0 shrink items-center">
-          <Logo className="h-8 xs:h-9 sm:h-12 md:h-14 max-w-[140px] xs:max-w-[180px] sm:max-w-none" />
+          <Logo className="h-8 xs:h-9 sm:h-10 xl:h-11 max-w-[135px] xs:max-w-[165px] sm:max-w-[190px] xl:max-w-[210px]" />
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-0.5 xl:flex" aria-label="Main">
+        <nav className="hidden items-center gap-0 2xl:gap-0.5 xl:flex" aria-label="Main">
           {navItems.map(({ key, href, icon: Icon }) => {
             const label = t(key);
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -91,16 +91,16 @@ export function Navbar() {
               <Link
                 key={key}
                 to={href}
-                className={`group flex flex-col items-center rounded-lg px-2 py-1.5 text-center transition-colors ${
+                className={`group flex flex-col items-center rounded-lg px-1.5 2xl:px-2 py-1 text-center transition-colors ${
                   active ? "text-marine" : "text-foreground/75 hover:text-marine"
                 }`}
               >
-                <Icon className="h-5 w-5" strokeWidth={2} />
-                <span className="mt-0.5 whitespace-nowrap text-[0.7rem] font-semibold">
+                <Icon className="h-4.5 w-4.5 2xl:h-5 2xl:w-5" strokeWidth={2} />
+                <span className="mt-0.5 whitespace-nowrap text-[0.67rem] 2xl:text-[0.7rem] font-semibold">
                   {label}
                 </span>
                 <span
-                  className={`mt-0.5 h-0.5 w-6 rounded-full transition-colors ${
+                  className={`mt-0.5 h-0.5 w-5 2xl:w-6 rounded-full transition-colors ${
                     active ? "bg-marine" : "bg-transparent group-hover:bg-marine/40"
                   }`}
                 />
@@ -109,87 +109,94 @@ export function Navbar() {
           })}
         </nav>
 
-        <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Link
             to="/search"
-            className="grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
+            className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
             aria-label={t("header.search")}
           >
-            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Search className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
           </Link>
           <LanguageSwitcher variant="dropdown" />
           {authState === "authenticated" && viewer ? (
-            <>
-              <Link
-                to="/notifications"
-                className="relative grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
-                aria-label={t("header.notifications")}
-              >
-                <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-                {revisionCount > 0 ? (
-                  <span className="absolute top-0.5 right-0.5 flex h-3.5 min-w-[14px] sm:h-4 sm:min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[8px] sm:text-[9px] font-extrabold text-white shadow-xs">
-                    {revisionCount}
-                  </span>
-                ) : hasNotifications ? (
-                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-marine" />
-                ) : null}
-              </Link>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted"
-                    aria-label={t("header.openAccountMenu")}
-                  >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted"
+                  aria-label={t("header.openAccountMenu")}
+                >
+                  <div className="relative shrink-0">
                     <ProfileAvatar name={viewer.displayName} url={viewer.avatarUrl} />
-                    <span className="hidden text-left leading-tight sm:block">
-                      <span className="block max-w-28 truncate text-sm font-semibold text-navy">
-                        {viewer.displayName}
+                    {revisionCount > 0 ? (
+                      <span className="absolute -top-1 -right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-extrabold text-white shadow-xs">
+                        {revisionCount}
                       </span>
-                      <span className="block max-w-28 truncate text-xs text-muted-foreground">
-                        {viewer.primaryRoleLabel}
-                      </span>
+                    ) : hasNotifications ? (
+                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-marine ring-2 ring-background" />
+                    ) : null}
+                  </div>
+                  <span className="hidden text-left leading-tight sm:block">
+                    <span className="block max-w-20 2xl:max-w-28 truncate text-sm font-semibold text-navy">
+                      {viewer.displayName}
                     </span>
-                    <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="truncate">{viewer.displayName}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/account/profile">
-                      <UserRound /> {t("header.myProfile")}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to={dashboardUrl}>
-                      <LayoutDashboard /> {t("header.myDashboard")}
-                    </Link>
-                  </DropdownMenuItem>
-                  {viewer.variant === "admin" ||
-                  ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(
-                    viewer.primaryRoleCode,
-                  ) ? (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/admin/experts">
-                          <UserCheck /> {t("header.expertVerification")}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/governance/subjects">
-                          <ClipboardCheck /> {t("header.approvalsGovernance")}
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  ) : null}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => void handleSignOut()}>
-                    <LogOut /> {t("header.signOut")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
+                    <span className="block max-w-20 2xl:max-w-28 truncate text-xs text-muted-foreground">
+                      {viewer.primaryRoleLabel}
+                    </span>
+                  </span>
+                  <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="truncate">{viewer.displayName}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/notifications" className="flex items-center justify-between w-full">
+                    <span className="flex items-center gap-2">
+                      <Bell className="h-4 w-4" /> {t("header.notifications")}
+                    </span>
+                    {revisionCount > 0 ? (
+                      <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {revisionCount} {t("header.revisionRequired")}
+                      </span>
+                    ) : hasNotifications ? (
+                      <span className="h-2 w-2 rounded-full bg-marine" />
+                    ) : null}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/account/profile">
+                    <UserRound className="h-4 w-4" /> {t("header.myProfile")}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={dashboardUrl}>
+                    <LayoutDashboard className="h-4 w-4" /> {t("header.myDashboard")}
+                  </Link>
+                </DropdownMenuItem>
+                {viewer.variant === "admin" ||
+                ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(
+                  viewer.primaryRoleCode,
+                ) ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin/experts">
+                        <UserCheck className="h-4 w-4" /> {t("header.expertVerification")}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/governance/subjects">
+                        <ClipboardCheck className="h-4 w-4" /> {t("header.approvalsGovernance")}
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void handleSignOut()}>
+                  <LogOut className="h-4 w-4" /> {t("header.signOut")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : authState === "loading" ? (
             <span
               className="h-9 w-28 animate-pulse rounded-full bg-muted"
