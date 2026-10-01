@@ -14,6 +14,7 @@ import favicon from "@/assets/baruna-icon.png";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PresentationMode } from "@/components/baruna/PresentationMode";
 import { HomeExperienceProvider } from "@/components/baruna/HomeExperienceProvider";
+import { LanguageProvider } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -137,13 +138,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HomeExperienceProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        {/* Global single-flag Presentation / Demo Mode control + banner. */}
-        <PresentationMode />
-        <Toaster position="top-right" richColors />
-      </HomeExperienceProvider>
+      <LanguageProvider>
+        <HomeExperienceProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          {/* Global single-flag Presentation / Demo Mode control + banner. */}
+          <PresentationMode />
+          <Toaster position="top-right" richColors />
+        </HomeExperienceProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

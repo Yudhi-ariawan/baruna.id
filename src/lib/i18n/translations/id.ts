@@ -1,0 +1,53 @@
+import type { TranslationSchema } from "./en";
+
+export const id: TranslationSchema = {
+  nav: {
+    home: "Beranda",
+    academy: "Akademi",
+    knowledgeHub: "Pusat Pengetahuan",
+    experts: "Tenaga Ahli",
+    fellowship: "Beasiswa & Pertukaran",
+    community: "Komunitas",
+    events: "Agenda & Acara",
+    partnership: "Kemitraan",
+    about: "Tentang BARUNA",
+  },
+  header: {
+    search: "Pencarian",
+    notifications: "Notifikasi",
+    revisionRequired: "Perlu Revisi",
+    login: "Masuk",
+    register: "Daftar",
+    myProfile: "Profil Saya",
+    myDashboard: "Dasbor Saya",
+    expertVerification: "Verifikasi Ahli",
+    approvalsGovernance: "Persetujuan & Tata Kelola",
+    signOut: "Keluar",
+    menu: "Menu",
+    openMenu: "Buka menu",
+    openAccountMenu: "Buka menu akun",
+    language: "Bahasa",
+  },
+  common: {
+    loading: "Memuat...",
+    save: "Simpan",
+    cancel: "Batal",
+    submit: "Kirim",
+    back: "Kembali",
+    search: "Cari",
+    filter: "Saring",
+    all: "Semua",
+    viewAll: "Lihat Semua",
+    learnMore: "Pelajari Lebih Lanjut",
+    seeMore: "Lihat Selengkapnya",
+  },
+  footer: {
+    tagline: "Jaringan Pengetahuan dan Peningkatan Kapasitas Kelautan & Perikanan Indonesia.",
+    allRightsReserved: "Hak cipta dilindungi undang-undang.",
+    quickLinks: "Tautan Cepat",
+    contactUs: "Hubungi Kami",
+    privacyPolicy: "Kebijakan Privasi",
+    termsOfService: "Syarat & Ketentuan",
+  },
+};
+

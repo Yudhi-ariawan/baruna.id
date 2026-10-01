@@ -1,0 +1,53 @@
+export const en = {
+  nav: {
+    home: "Home",
+    academy: "Academy",
+    knowledgeHub: "Knowledge Hub",
+    experts: "Experts",
+    fellowship: "Fellowship & Exchange",
+    community: "Community",
+    events: "Events",
+    partnership: "Partnership",
+    about: "About BARUNA",
+  },
+  header: {
+    search: "Search",
+    notifications: "Notifications",
+    revisionRequired: "Needs Revision",
+    login: "Login",
+    register: "Register",
+    myProfile: "My Profile",
+    myDashboard: "My Dashboard",
+    expertVerification: "Verify Experts",
+    approvalsGovernance: "Approvals & Governance",
+    signOut: "Sign out",
+    menu: "Menu",
+    openMenu: "Open menu",
+    openAccountMenu: "Open account menu",
+    language: "Language",
+  },
+  common: {
+    loading: "Loading...",
+    save: "Save",
+    cancel: "Cancel",
+    submit: "Submit",
+    back: "Back",
+    search: "Search",
+    filter: "Filter",
+    all: "All",
+    viewAll: "View All",
+    learnMore: "Learn More",
+    seeMore: "See More",
+  },
+  footer: {
+    tagline: "Indonesia's Marine and Fisheries Knowledge & Capacity Building Network.",
+    allRightsReserved: "All rights reserved.",
+    quickLinks: "Quick Links",
+    contactUs: "Contact Us",
+    privacyPolicy: "Privacy Policy",
+    termsOfService: "Terms of Service",
+  },
+};
+
+export type TranslationSchema = typeof en;
+
