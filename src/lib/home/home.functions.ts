@@ -7,7 +7,10 @@ import { getUpcomingEvents } from "@/data/events";
 import type { HomeMetric, HomeViewer, PublicHomeStats } from "./home.types";
 
 function exactCount(result: { count: number | null; error: { message: string } | null }): number {
-  if (result.error) throw new Error(result.error.message);
+  if (result.error) {
+    console.warn("Home stats count query warning:", result.error.message);
+    return 0;
+  }
   return result.count ?? 0;
 }
 
