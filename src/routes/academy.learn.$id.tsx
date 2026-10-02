@@ -191,7 +191,7 @@ const resourceMeta: Record<ResourceKind, { icon: LucideIcon; label: string }> = 
   quiz: { icon: ListChecks, label: "Quiz" },
 };
 
-const RESOURCE_ORDER: ResourceKind[] = ["video", "pdf", "ppt", "reading", "quiz"];
+const RESOURCE_ORDER: ResourceKind[] = ["pdf", "ppt", "video", "reading", "quiz"];
 
 const welcomeIcons: Record<string, LucideIcon> = {
   video: Video,
@@ -211,7 +211,10 @@ function LearningDashboard() {
     return <MasterModuleLmsPlayer master={loaderData.master} lms={loaderData.lms} />;
   }
 
-  const { id } = loaderData;
+  return <FullTrainingLearningDashboard id={loaderData.id} />;
+}
+
+function FullTrainingLearningDashboard({ id }: { id: string }) {
   const appFromHook = useApplication(id);
   const app =
     appFromHook ||

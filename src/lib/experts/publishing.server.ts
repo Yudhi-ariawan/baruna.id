@@ -8,6 +8,18 @@ export function slugifyExpertName(name: string): string {
   return base || "expert";
 }
 
+function mapToProficiencyEnum(level: string): "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "native" {
+  const norm = (level || "").toLowerCase().trim();
+  if (norm === "native") return "native";
+  if (norm === "fluent" || norm === "c2") return "C2";
+  if (norm === "professional" || norm === "c1") return "C1";
+  if (norm === "b2") return "B2";
+  if (norm === "intermediate" || norm === "b1") return "B1";
+  if (norm === "a2") return "A2";
+  if (norm === "basic" || norm === "a1") return "A1";
+  return "C1";
+}
+
 export async function publishApprovedExpert({
   subjectId,
   decisionId,
@@ -230,7 +242,127 @@ export async function publishApprovedExpert({
     }
   }
 
-  // 6. Grant expert RBAC role to applicant
+  // 6. Sync relational child tables: expert_languages, expert_projects, expert_publications
+  try {
+    // 6a. Sync public.expert_languages
+    const rawLangs = Array.isArray(payload.structuredLanguages)
+      ? (payload.structuredLanguages as Array<{ language?: string; proficiency?: string }>)
+      : [];
+    const langItems =
+      rawLangs.length > 0
+        ? rawLangs
+        : languages.map((l) => ({ language: l, proficiency: "fluent" }));
+
+    if (langItems.length > 0) {
+      await supabaseAdmin.from("expert_languages").delete().eq("expert_id", expertId);
+      const toInsertLangs = langItems
+        .filter((l) => Boolean(l.language && l.language.trim()))
+        .map((l, idx) => {
+          const langName = (l.language || "").trim();
+          const code =
+            langName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) || `lang-${idx}`;
+          return {
+            expert_id: expertId,
+            language_code: code,
+            language_name: langName,
+            proficiency_level: mapToProficiencyEnum(l.proficiency || "fluent"),
+            visibility: "public" as const,
+          };
+        });
+      const uniqueLangs = Array.from(
+        new Map(toInsertLangs.map((item) => [item.language_code, item])).values(),
+      );
+      if (uniqueLangs.length > 0) {
+        await supabaseAdmin.from("expert_languages").insert(uniqueLangs);
+      }
+    }
+
+    // 6b. Sync public.expert_projects
+    const rawProjects = Array.isArray(payload.structuredProjects)
+      ? (payload.structuredProjects as Array<{
+          name?: string;
+          title?: string;
+          institution?: string;
+          clientOrOrg?: string;
+          role?: string;
+          period?: string;
+          description?: string;
+          outcome?: string;
+          url?: string;
+        }>)
+      : [];
+
+    if (rawProjects.length > 0) {
+      await supabaseAdmin.from("expert_projects").delete().eq("expert_id", expertId);
+      const toInsertProjects = rawProjects
+        .map((p) => {
+          const projectName = (p.name || p.title || "").trim();
+          if (!projectName) return null;
+          const inst = (p.institution || p.clientOrOrg || "").trim() || null;
+          const role = (p.role || "").trim() || null;
+          const desc =
+            [p.description, p.outcome, p.period ? `Periode: ${p.period}` : null]
+              .filter(Boolean)
+              .join("\n") || null;
+          return {
+            expert_id: expertId,
+            project_name: projectName,
+            institution_or_funder: inst,
+            role,
+            description: desc,
+            evidence_ref: p.url || null,
+            visibility: "public" as const,
+          };
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null);
+
+      if (toInsertProjects.length > 0) {
+        await supabaseAdmin.from("expert_projects").insert(toInsertProjects);
+      }
+    }
+
+    // 6c. Sync public.expert_publications
+    const rawPubs = Array.isArray(payload.structuredPublications)
+      ? (payload.structuredPublications as Array<{
+          title?: string;
+          venue?: string;
+          publisherOrJournal?: string;
+          year?: string | number;
+          url?: string;
+          doi?: string;
+        }>)
+      : [];
+
+    if (rawPubs.length > 0) {
+      await supabaseAdmin.from("expert_publications").delete().eq("expert_id", expertId);
+      const toInsertPubs = rawPubs
+        .map((pub) => {
+          const title = (pub.title || "").trim();
+          if (!title) return null;
+          const venue = (pub.venue || pub.publisherOrJournal || "").trim() || null;
+          const yr = typeof pub.year === "number" ? pub.year : parseInt(String(pub.year || ""), 10);
+          const yearNum = !isNaN(yr) && yr > 1900 && yr < 2100 ? yr : null;
+          const link = pub.url || pub.doi || null;
+          return {
+            expert_id: expertId,
+            title,
+            venue,
+            year: yearNum,
+            url: link,
+            visibility: "public" as const,
+          };
+        })
+        .filter((pub): pub is NonNullable<typeof pub> => pub !== null);
+
+      if (toInsertPubs.length > 0) {
+        await supabaseAdmin.from("expert_publications").insert(toInsertPubs);
+      }
+    }
+  } catch (err) {
+    console.error("[publishApprovedExpert] Error syncing child relational tables:", err);
+  }
+
+  // 7. Grant expert RBAC role to applicant
   if (subject.submitted_by) {
     const { data: expertRole } = await supabaseAdmin
       .from("rbac_roles")
