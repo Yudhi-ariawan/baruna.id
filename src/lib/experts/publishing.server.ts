@@ -557,17 +557,38 @@ export async function publishApprovedModule({
     payload = (snap.payload as Record<string, unknown>) ?? {};
   }
 
-  // 4. Find expert record for author
+  // 4. Find expert record for author (check both original_contributor_id and created_by)
   const { data: expert } = await supabaseAdmin
     .from("experts")
     .select("id")
-    .eq("original_contributor_id", subject.submitted_by)
+    .or(`original_contributor_id.eq.${subject.submitted_by},created_by.eq.${subject.submitted_by}`)
+    .order("current_status", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   const now = new Date().toISOString();
   const decisionRef = decisionId || dec?.id || null;
   const decidedByRef = decidedBy || dec?.decided_by || null;
   const decidedAtRef = dec?.decided_at || now;
+
+  // Whitelist validate module_type to prevent PostgreSQL enum rejection
+  const VALID_MODULE_TYPES = [
+    "foundational",
+    "technical",
+    "applied",
+    "policy",
+    "managerial",
+    "safety",
+    "compliance",
+    "soft_skills",
+    "field_practicum",
+    "other",
+  ] as const;
+  type ModuleTypeEnum = (typeof VALID_MODULE_TYPES)[number];
+  const rawModuleType = typeof payload.module_type === "string" ? payload.module_type : "technical";
+  const safeModuleType: ModuleTypeEnum = VALID_MODULE_TYPES.includes(rawModuleType as ModuleTypeEnum)
+    ? (rawModuleType as ModuleTypeEnum)
+    : "technical";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error: iErr } = await (supabaseAdmin as any)
@@ -588,7 +609,7 @@ export async function publishApprovedModule({
       title: (typeof payload.title === "string" && payload.title) || subject.title || "Untitled Module",
       summary: typeof payload.summary === "string" ? payload.summary : null,
       language: typeof payload.language === "string" ? payload.language : "English",
-      module_type: typeof payload.module_type === "string" ? payload.module_type : "technical",
+      module_type: safeModuleType,
       target_participants: typeof payload.target_participants === "string" ? payload.target_participants : null,
       estimated_learning_hours: Number(payload.estimated_learning_hours || 0),
       learning_objectives: Array.isArray(payload.learning_objectives) ? (payload.learning_objectives as string[]) : [],

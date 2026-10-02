@@ -61,12 +61,22 @@ export function resolveModuleCoverImage(
       if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
         return storagePath;
       }
-      // Get public URL from expert-applications or module-attachments
+      // Get public URL from module-attachments or expert-applications
+      const primaryBucket =
+        (typeof coverResource.bucket === "string" && coverResource.bucket) || "module-attachments";
       const { data: pub1 } = supabase.storage
-        .from("expert-applications")
+        .from(primaryBucket)
         .getPublicUrl(storagePath);
       if (pub1?.publicUrl) {
         return pub1.publicUrl;
+      }
+      const altBucket =
+        primaryBucket === "module-attachments" ? "expert-applications" : "module-attachments";
+      const { data: pub2 } = supabase.storage
+        .from(altBucket)
+        .getPublicUrl(storagePath);
+      if (pub2?.publicUrl) {
+        return pub2.publicUrl;
       }
     }
   }

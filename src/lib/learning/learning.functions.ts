@@ -9,6 +9,37 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getModuleStorageSignedUrl(
+  supabaseAdmin: any,
+  storagePath: string,
+  expiresIn = 86400,
+  bucket?: string,
+): Promise<string | null> {
+  if (!storagePath) return null;
+  if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+    return storagePath;
+  }
+  const primaryBucket =
+    bucket || (storagePath.includes("/modules/") ? "module-attachments" : "expert-applications");
+  try {
+    const { data: signed, error } = await supabaseAdmin.storage
+      .from(primaryBucket)
+      .createSignedUrl(storagePath, expiresIn);
+    if (!error && signed?.signedUrl) {
+      return signed.signedUrl;
+    }
+    const altBucket =
+      primaryBucket === "module-attachments" ? "expert-applications" : "module-attachments";
+    const { data: altSigned } = await supabaseAdmin.storage
+      .from(altBucket)
+      .createSignedUrl(storagePath, expiresIn);
+    return altSigned?.signedUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Public reads (no auth required) ───────────────────────────────────────
 
 export const listOfferings = createServerFn({ method: "GET" }).handler(async () => {
@@ -510,18 +541,12 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
             let downloadUrl: string | null = null;
 
             if (storagePath) {
-              if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
-                downloadUrl = storagePath;
-              } else {
-                try {
-                  const { data: signed } = await supabaseAdmin.storage
-                    .from("expert-applications")
-                    .createSignedUrl(storagePath, 86400);
-                  downloadUrl = signed?.signedUrl ?? null;
-                } catch {
-                  downloadUrl = null;
-                }
-              }
+              downloadUrl = await getModuleStorageSignedUrl(
+                supabaseAdmin,
+                storagePath,
+                86400,
+                typeof doc.bucket === "string" ? doc.bucket : undefined,
+              );
             } else if (typeof doc.url === "string" && (doc.url.startsWith("http://") || doc.url.startsWith("https://"))) {
               downloadUrl = doc.url;
             } else if (name.startsWith("http://") || name.startsWith("https://")) {
@@ -628,18 +653,12 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
         let downloadUrl: string | null = null;
 
         if (storagePath) {
-          if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
-            downloadUrl = storagePath;
-          } else {
-            try {
-              const { data: signed } = await supabaseAdmin.storage
-                .from("expert-applications")
-                .createSignedUrl(storagePath, 86400);
-              downloadUrl = signed?.signedUrl ?? null;
-            } catch {
-              downloadUrl = null;
-            }
-          }
+          downloadUrl = await getModuleStorageSignedUrl(
+            supabaseAdmin,
+            storagePath,
+            86400,
+            typeof doc.bucket === "string" ? doc.bucket : undefined,
+          );
         } else if (typeof doc.url === "string" && (doc.url.startsWith("http://") || doc.url.startsWith("https://"))) {
           downloadUrl = doc.url;
         } else if (name.startsWith("http://") || name.startsWith("https://")) {
@@ -750,18 +769,7 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
           // 1. Direct cover_image_url
           if (typeof meta.cover_image_url === "string" && meta.cover_image_url.trim()) {
             const url = meta.cover_image_url.trim();
-            if (url.startsWith("http://") || url.startsWith("https://")) {
-              coverUrl = url;
-            } else {
-              try {
-                const { data: signed } = await supabaseAdmin.storage
-                  .from("expert-applications")
-                  .createSignedUrl(url, 86400);
-                coverUrl = signed?.signedUrl ?? null;
-              } catch {
-                coverUrl = null;
-              }
-            }
+            coverUrl = await getModuleStorageSignedUrl(supabaseAdmin, url, 86400);
           }
 
           // 2. Extract from attached_resources or documents
@@ -791,18 +799,12 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
               if (directUrl && (directUrl.startsWith("http://") || directUrl.startsWith("https://"))) {
                 coverUrl = directUrl;
               } else if (storagePath) {
-                if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
-                  coverUrl = storagePath;
-                } else {
-                  try {
-                    const { data: signed } = await supabaseAdmin.storage
-                      .from("expert-applications")
-                      .createSignedUrl(storagePath, 86400);
-                    coverUrl = signed?.signedUrl ?? null;
-                  } catch {
-                    coverUrl = null;
-                  }
-                }
+                coverUrl = await getModuleStorageSignedUrl(
+                  supabaseAdmin,
+                  storagePath,
+                  86400,
+                  typeof coverDoc.bucket === "string" ? coverDoc.bucket : undefined,
+                );
               }
             }
           }

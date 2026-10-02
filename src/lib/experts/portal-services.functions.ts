@@ -183,6 +183,26 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
       throw new Error("active_trainer_required");
     }
 
+    // Validate attachment quotas server-side (Max 100MB per file)
+    const rawAttachments = Array.isArray(data.payload.attachments)
+      ? data.payload.attachments
+      : Array.isArray(data.payload.documents)
+        ? data.payload.documents
+        : [];
+
+    for (const item of rawAttachments) {
+      if (item && typeof item === "object") {
+        const size = Number(
+          (item as Record<string, unknown>).fileSize ||
+            (item as Record<string, unknown>).size ||
+            0,
+        );
+        if (size > 100 * 1024 * 1024) {
+          throw new Error("Ukuran berkas lampiran modul tidak boleh melebihi batas 100MB.");
+        }
+      }
+    }
+
     let draftId = data.draftId;
     if (!draftId) {
       const created = await context.supabase.rpc("module_draft_create", {

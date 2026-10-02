@@ -91,16 +91,25 @@ function ReviewStatusPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [openingFile, setOpeningFile] = useState<string | null>(null);
 
-  const handleOpenFile = async (filePath?: string, fileName?: string) => {
+  const handleOpenFile = async (filePath?: string, fileName?: string, bucket?: string) => {
     if (!filePath) {
       toast.info("Berkas tersimpan sebagai metadata draf pengajuan.");
       return;
     }
     setOpeningFile(filePath);
     try {
-      const { data, error } = await supabase.storage
-        .from("expert-applications")
+      const primaryBucket =
+        bucket || (filePath.includes("/modules/") ? "module-attachments" : "expert-applications");
+      let { data, error } = await supabase.storage
+        .from(primaryBucket)
         .createSignedUrl(filePath, 3600);
+      if (error || !data?.signedUrl) {
+        const altBucket =
+          primaryBucket === "module-attachments" ? "expert-applications" : "module-attachments";
+        const altRes = await supabase.storage.from(altBucket).createSignedUrl(filePath, 3600);
+        data = altRes.data;
+        error = altRes.error;
+      }
       if (error || !data?.signedUrl) {
         toast.error("Gagal mendapatkan akses berkas.");
         return;
@@ -114,15 +123,24 @@ function ReviewStatusPage() {
     }
   };
 
-  const handleDownloadFile = async (filePath?: string, fileName?: string) => {
+  const handleDownloadFile = async (filePath?: string, fileName?: string, bucket?: string) => {
     if (!filePath) {
       toast.info("Berkas tersimpan sebagai metadata draf pengajuan.");
       return;
     }
     try {
-      const { data, error } = await supabase.storage
-        .from("expert-applications")
+      const primaryBucket =
+        bucket || (filePath.includes("/modules/") ? "module-attachments" : "expert-applications");
+      let { data, error } = await supabase.storage
+        .from(primaryBucket)
         .createSignedUrl(filePath, 3600);
+      if (error || !data?.signedUrl) {
+        const altBucket =
+          primaryBucket === "module-attachments" ? "expert-applications" : "module-attachments";
+        const altRes = await supabase.storage.from(altBucket).createSignedUrl(filePath, 3600);
+        data = altRes.data;
+        error = altRes.error;
+      }
       if (error || !data?.signedUrl) {
         toast.error("Gagal membuat tautan unduhan.");
         return;
@@ -622,7 +640,7 @@ function ReviewStatusPage() {
                               <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenFile(file.path, file.name)}
+                                  onClick={() => handleOpenFile(file.path, file.name, (file as any).bucket)}
                                   disabled={openingFile === file.path}
                                   title="Buka dokumen di tab baru tanpa harus mengunduh (PDF / Gambar)"
                                   className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-marine/10 px-2.5 py-1.5 text-[11px] font-bold text-marine hover:bg-marine hover:text-white transition cursor-pointer"
@@ -632,7 +650,7 @@ function ReviewStatusPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDownloadFile(file.path, file.name)}
+                                  onClick={() => handleDownloadFile(file.path, file.name, (file as any).bucket)}
                                   title="Unduh berkas ke komputer"
                                   className="inline-flex items-center justify-center rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                                 >

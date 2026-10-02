@@ -56,18 +56,68 @@ export const getModuleReviewPacket = createServerFn({ method: "GET" })
     if (!revision) return null;
     const snapshot = revision.snapshot as { payload?: Record<string, Json> };
     const payload = snapshot.payload ?? {};
-    const raw = Array.isArray(payload.attachments) ? payload.attachments : [];
-    const attachments = await Promise.all(raw.map(async (item) => {
-      const file = item as { category?: string; name?: string; size?: number; type?: string; path?: string; bucket?: string };
-      if (!file.path || file.bucket !== "module-attachments") return null;
-      const [preview, download] = await Promise.all([
-        supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 900),
-        supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 900, { download: file.name }),
-      ]);
-      if (preview.error) throw new Error(preview.error.message);
-      if (download.error) throw new Error(download.error.message);
-      return { category: file.category ?? "attachment", name: file.name ?? "Attachment", size: file.size ?? 0, type: file.type ?? "application/octet-stream", path: file.path, signedUrl: preview.data.signedUrl, downloadUrl: download.data.signedUrl };
-    }));
+    const meta = (payload.metadata as Record<string, unknown>) ?? {};
+    const raw = Array.isArray(payload.attachments)
+      ? payload.attachments
+      : Array.isArray(meta.attached_resources)
+        ? (meta.attached_resources as unknown[])
+        : Array.isArray(payload.documents)
+          ? payload.documents
+          : [];
+
+    const attachments = await Promise.all(
+      raw.map(async (item) => {
+        const file = item as {
+          category?: string;
+          name?: string;
+          fileName?: string;
+          size?: number;
+          fileSize?: number;
+          type?: string;
+          fileType?: string;
+          path?: string;
+          bucket?: string;
+        };
+        if (!file.path) return null;
+
+        const targetBucket =
+          file.bucket ||
+          (file.path.includes("/modules/") ? "module-attachments" : "expert-applications");
+        const fileName = file.fileName || file.name || "Attachment";
+
+        let [preview, download] = await Promise.all([
+          supabaseAdmin.storage.from(targetBucket).createSignedUrl(file.path, 900),
+          supabaseAdmin.storage
+            .from(targetBucket)
+            .createSignedUrl(file.path, 900, { download: fileName }),
+        ]);
+
+        if ((preview.error || download.error) && targetBucket === "module-attachments") {
+          const [fbPreview, fbDownload] = await Promise.all([
+            supabaseAdmin.storage.from("expert-applications").createSignedUrl(file.path, 900),
+            supabaseAdmin.storage
+              .from("expert-applications")
+              .createSignedUrl(file.path, 900, { download: fileName }),
+          ]);
+          if (!fbPreview.error) {
+            preview = fbPreview;
+            download = fbDownload;
+          }
+        }
+
+        if (preview.error || !preview.data?.signedUrl) return null;
+
+        return {
+          category: file.category ?? "attachment",
+          name: fileName,
+          size: file.size || file.fileSize || 0,
+          type: file.type || file.fileType || "application/octet-stream",
+          path: file.path,
+          signedUrl: preview.data.signedUrl,
+          downloadUrl: download.data?.signedUrl ?? preview.data.signedUrl,
+        };
+      }),
+    );
     return { revision: revision.revision, submittedAt: revision.submitted_at, payload, attachments: attachments.filter((file): file is NonNullable<typeof file> => Boolean(file)) };
   });
 

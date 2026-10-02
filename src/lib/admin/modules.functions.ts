@@ -381,11 +381,25 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
         let downloadUrl: string | null = null;
 
         if (storagePath) {
+          const docBucket =
+            typeof doc.bucket === "string" && doc.bucket
+              ? doc.bucket
+              : storagePath.includes("/modules/")
+                ? "module-attachments"
+                : "expert-applications";
           try {
-            const { data: signed } = await supabaseAdmin.storage
-              .from("expert-applications")
+            const { data: signed, error: sErr } = await supabaseAdmin.storage
+              .from(docBucket)
               .createSignedUrl(storagePath, 3600);
-            downloadUrl = signed?.signedUrl ?? null;
+            if (!sErr && signed?.signedUrl) {
+              downloadUrl = signed.signedUrl;
+            } else {
+              const altBucket = docBucket === "module-attachments" ? "expert-applications" : "module-attachments";
+              const { data: altSigned } = await supabaseAdmin.storage
+                .from(altBucket)
+                .createSignedUrl(storagePath, 3600);
+              downloadUrl = altSigned?.signedUrl ?? null;
+            }
           } catch {
             downloadUrl = null;
           }
@@ -677,6 +691,7 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
     }
 
     if (input.decision === "approve") {
+      const prevStatus = subj.current_status;
       await supabaseAdmin
         .from("review_subjects")
         .update({
@@ -693,9 +708,27 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
         });
       } catch (publishErr) {
         console.error("[recordAdminModuleDecision] publishApprovedModule error:", publishErr);
+        // Automatic Rollback: Kembalikan status review_subjects dan hapus record keputusan gantung
+        try {
+          await supabaseAdmin
+            .from("review_subjects")
+            .update({
+              current_status: prevStatus,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", input.subjectId);
+
+          await supabaseAdmin
+            .from("review_decisions")
+            .delete()
+            .eq("id", decisionId);
+        } catch (rollbackErr) {
+          console.error("[recordAdminModuleDecision] Rollback error:", rollbackErr);
+        }
+
         throw new Error(
           publishErr instanceof Error
-            ? `Keputusan disetujui namun gagal mempublikasikan modul ke registry: ${publishErr.message}`
+            ? `Persetujuan dibatalkan karena gagal mempublikasikan modul ke registry: ${publishErr.message}`
             : "Gagal mempublikasikan modul ke registry.",
         );
       }

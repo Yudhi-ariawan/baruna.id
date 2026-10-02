@@ -31,6 +31,7 @@ import { saveTrainerModuleSubmission } from "@/lib/experts/portal-services.funct
 import { supabase } from "@/integrations/supabase/client";
 import { resolveFileContentType } from "@/lib/storage/mime";
 import { useLanguage } from "@/lib/i18n";
+import { MODULE_ATTACHMENTS_BUCKET } from "@/lib/experts/module-attachments";
 
 export const Route = createFileRoute("/experts/portal/submit-module")({
   head: () => ({
@@ -78,6 +79,7 @@ type ExistingResource = {
   fileSize?: number;
   fileType?: string;
   path?: string;
+  bucket?: string;
   uploadedAt?: string;
 };
 
@@ -310,6 +312,7 @@ function SubmitModulePage() {
         fileSize: number;
         fileType: string;
         path?: string;
+        bucket?: string;
         uploadedAt: string;
       }> = [];
 
@@ -323,6 +326,7 @@ function SubmitModulePage() {
             fileSize: ex.fileSize || 0,
             fileType: ex.fileType || "application/octet-stream",
             path: ex.path,
+            bucket: ex.bucket || (ex.path?.includes("/modules/") ? MODULE_ATTACHMENTS_BUCKET : "expert-applications"),
             uploadedAt: ex.uploadedAt || new Date().toISOString(),
           });
         }
@@ -340,14 +344,28 @@ function SubmitModulePage() {
       const newUploaded = await Promise.all(
         newEntries.map(async ([type, f]) => {
           let storagePath: string | undefined = undefined;
+          let storageBucket: string = MODULE_ATTACHMENTS_BUCKET;
           const contentType = resolveFileContentType(f.name, f.type);
           if (uid) {
             try {
               const safeName = f.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
               const path = `users/${uid}/modules/${draftId || Date.now()}/${Date.now()}-${safeName}`;
-              const { error: upErr } = await supabase.storage
-                .from("expert-applications")
+
+              // 1. Primary: Official module-attachments bucket (allows PDF, PPT, PPTX, videos)
+              let { error: upErr } = await supabase.storage
+                .from(MODULE_ATTACHMENTS_BUCKET)
                 .upload(path, f, { contentType, upsert: true });
+
+              if (upErr) {
+                // 2. Resilient fallback: expert-applications for legacy/test environment flexibility
+                const fbRes = await supabase.storage
+                  .from("expert-applications")
+                  .upload(path, f, { contentType, upsert: true });
+                if (!fbRes.error) {
+                  storageBucket = "expert-applications";
+                  upErr = null;
+                }
+              }
 
               if (!upErr) {
                 storagePath = path;
@@ -371,6 +389,7 @@ function SubmitModulePage() {
             fileSize: f.size,
             fileType: contentType,
             path: storagePath,
+            bucket: storagePath ? storageBucket : undefined,
             uploadedAt: new Date().toISOString(),
           };
         }),
@@ -416,11 +435,19 @@ function SubmitModulePage() {
         if (coverRes.path.startsWith("http")) {
           coverImageUrl = coverRes.path;
         } else {
-          const { data: pub } = supabase.storage
-            .from("expert-applications")
+          const primaryBucket = coverRes.bucket || MODULE_ATTACHMENTS_BUCKET;
+          const { data: pub1 } = supabase.storage
+            .from(primaryBucket)
             .getPublicUrl(coverRes.path);
-          if (pub?.publicUrl) {
-            coverImageUrl = pub.publicUrl;
+          if (pub1?.publicUrl) {
+            coverImageUrl = pub1.publicUrl;
+          } else {
+            const { data: pub2 } = supabase.storage
+              .from("expert-applications")
+              .getPublicUrl(coverRes.path);
+            if (pub2?.publicUrl) {
+              coverImageUrl = pub2.publicUrl;
+            }
           }
         }
       }
@@ -448,6 +475,7 @@ function SubmitModulePage() {
               method: formFields.assessment.trim(),
               passing_score: Number(formFields.passingScore),
             },
+            attachments: uploadedResources,
             metadata: {
               level: formFields.level,
               delivery_format: formFields.deliveryFormat,
