@@ -14,12 +14,15 @@ import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader, Tag } from "@/components/baruna/page/primitives";
 import { StatusBadge, Rating } from "@/components/baruna/academy/ui";
 import { academyImages } from "@/data/academy";
+import { programs } from "@/data/programs";
 import { pathways as learningPathways } from "@/data/pathways";
 import { categories as browseCategories, accentFor } from "@/data/categories";
 
 import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
 import defaultCover from "@/assets/self-paced/m01.jpg";
 import { useLanguage } from "@/lib/i18n";
+import { shortCourseProgress, useShortCourses } from "@/lib/shortCourses";
+import { useHomeExperience } from "@/components/baruna/home-experience";
 
 export const Route = createFileRoute("/academy/")({
   loader: async () => {
@@ -150,6 +153,8 @@ function ProgramCard({ p }: { p: Program }) {
 function AcademyOverview() {
   const { dbModules } = Route.useLoaderData();
   const { t } = useLanguage();
+  const { authState } = useHomeExperience();
+  const { enrollments } = useShortCourses();
 
   const dynamicFeatured: Program[] = (dbModules ?? []).map((m) => ({
     badge: "SELF-PACED",
@@ -164,6 +169,29 @@ function AcademyOverview() {
   }));
 
   const allFeatured = [...dynamicFeatured, ...featured];
+  const totalActivities = enrollments.length * 4;
+  const completedActivities = enrollments.reduce(
+    (total, enrollment) => total + Math.round(shortCourseProgress(enrollment) / 25),
+    0,
+  );
+  const journeyProgress = totalActivities
+    ? Math.round((completedActivities / totalActivities) * 100)
+    : 0;
+  const isAuthenticated = authState === "authenticated";
+  const hasJourney = isAuthenticated && enrollments.length > 0;
+
+  const catalogProgramCount = programs.length + dbModules.length;
+  const catalogLearnerCount = programs.reduce(
+    (total, program) => total + Math.max(0, program.participants),
+    0,
+  );
+  const instructorCount = new Set([
+    ...programs.map((program) => program.instructor.trim()).filter(Boolean),
+    ...dbModules.map((module) => module.authorName.trim()).filter(Boolean),
+  ]).size;
+  const countryCount = new Set(
+    programs.map((program) => program.country.trim()).filter(Boolean),
+  ).size;
 
   return (
     <AcademyShell active="overview">
@@ -174,19 +202,27 @@ function AcademyOverview() {
           title={t("academy.bannerTitle")}
           description={t("academy.bannerDesc")}
           stats={[
-            { value: "240+", label: t("footer.programs"), icon: BookOpen },
-            { value: "1,250+", label: t("footer.learners"), icon: Users },
-            { value: "120+", label: t("sidebar.instructors"), icon: Building2 },
-            { value: "45+", label: t("footer.countries"), icon: Globe },
+            { value: String(catalogProgramCount), label: t("footer.programs"), icon: BookOpen },
+            { value: catalogLearnerCount.toLocaleString(), label: t("footer.learners"), icon: Users },
+            { value: String(instructorCount), label: t("sidebar.instructors"), icon: Building2 },
+            { value: String(countryCount), label: t("footer.countries"), icon: Globe },
           ]}
           side={
             <div className="w-full rounded-2xl border border-navy-foreground/15 bg-navy/85 p-5 text-navy-foreground shadow-card backdrop-blur-md sm:w-72">
               <p className="font-display text-base font-bold">{t("sidebar.myJourney")}</p>
               <div className="mt-4 flex items-center gap-4">
-                <CircularProgress value={65} />
+                <CircularProgress value={hasJourney ? journeyProgress : 0} />
                 <div className="text-xs text-navy-foreground/85">
-                  <p className="font-semibold text-navy-foreground">Keep going!</p>
-                  <p className="mt-1">You've completed 7 of 12 learning activities.</p>
+                  <p className="font-semibold text-navy-foreground">
+                    {hasJourney ? "Keep going!" : "Start your learning journey"}
+                  </p>
+                  <p className="mt-1">
+                    {hasJourney
+                      ? `You've completed ${completedActivities} of ${totalActivities} learning activities.`
+                      : isAuthenticated
+                        ? "Explore the catalog and enroll in your first module."
+                        : "Sign in to track your enrolled modules and progress."}
+                  </p>
                 </div>
               </div>
               <Link
