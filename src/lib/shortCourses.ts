@@ -14,7 +14,7 @@ import { loadApplications } from "@/lib/application";
 import { getUserScopedKey, subscribeToAuthChange } from "@/lib/authSession";
 
 const STORE_PREFIX = "baruna:short-courses";
-const EVENT = "baruna:short-courses";
+export const SHORT_COURSES_EVENT = "baruna:short-courses";
 const APPS_EVENT = "baruna:applications";
 
 export type ShortCourseEnrollment = {
@@ -53,7 +53,7 @@ function readStore(): Store {
 function writeStore(store: Store) {
   if (typeof window === "undefined") return;
   localStorage.setItem(getUserScopedKey(STORE_PREFIX), JSON.stringify(store));
-  window.dispatchEvent(new Event(EVENT));
+  window.dispatchEvent(new Event(SHORT_COURSES_EVENT));
 }
 
 // ── Prior-learning recognition ──────────────────────────────────────────────
@@ -160,6 +160,19 @@ export function resetShortCourse(code: string) {
   writeStore(store);
 }
 
+/** Keep dashboard and homepage progress calculations aligned. */
+export function shortCourseProgress(enrollment: ShortCourseEnrollment): number {
+  if (enrollment.completed) return 100;
+  const steps = enrollment.completedSteps;
+  const completedSteps = steps
+    ? Number(Boolean(steps.video)) +
+      Number(Boolean(steps.pdf)) +
+      Number(Boolean(steps.ppt)) +
+      Number(Boolean(steps.quiz))
+    : 0;
+  return completedSteps > 0 ? Math.round((completedSteps / 4) * 100) : 25;
+}
+
 /** Is this Master Module already earned as credit via a standalone Short Course
  *  OR by completing the same module inside the Full Training Program? */
 export function isModuleCredited(code: string): boolean {
@@ -191,12 +204,12 @@ export function useShortCourses() {
       setStore(readStore());
       setLmsIds(lmsCompletedIds());
     };
-    window.addEventListener(EVENT, sync);
+    window.addEventListener(SHORT_COURSES_EVENT, sync);
     window.addEventListener(APPS_EVENT, sync);
     window.addEventListener("storage", sync);
     const unsubAuth = subscribeToAuthChange(sync);
     return () => {
-      window.removeEventListener(EVENT, sync);
+      window.removeEventListener(SHORT_COURSES_EVENT, sync);
       window.removeEventListener(APPS_EVENT, sync);
       window.removeEventListener("storage", sync);
       unsubAuth();

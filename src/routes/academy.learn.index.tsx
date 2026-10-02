@@ -25,7 +25,7 @@ import {
 import { LMS_MODULES } from "@/data/lms";
 import { useAza, overallProgress as azaOverallProgress, accessDaysRemaining } from "@/lib/aza";
 import { AZA_META, AZA_MODULES, AZA_PASS_MARK } from "@/data/aza";
-import { useShortCourses } from "@/lib/shortCourses";
+import { shortCourseProgress, useShortCourses } from "@/lib/shortCourses";
 import { masterByCode } from "@/data/masterModules";
 import { downloadCertificatePdf } from "@/lib/certificate";
 import { barunaToast } from "@/lib/downloads";
@@ -184,17 +184,7 @@ function MyLearning() {
                     const hours = sc.hours || masterByCode[sc.code]?.hours || 2;
                     const isDone = sc.completed;
 
-                    const stepsDoneCount = isDone
-                      ? 4
-                      : (sc.completedSteps?.video ? 1 : 0) +
-                        (sc.completedSteps?.pdf ? 1 : 0) +
-                        (sc.completedSteps?.ppt ? 1 : 0) +
-                        (sc.completedSteps?.quiz ? 1 : 0);
-                    const progressPercent = isDone
-                      ? 100
-                      : stepsDoneCount > 0
-                        ? Math.round((stepsDoneCount / 4) * 100)
-                        : 25;
+                    const progressPercent = shortCourseProgress(sc);
 
                     return (
                       <article
