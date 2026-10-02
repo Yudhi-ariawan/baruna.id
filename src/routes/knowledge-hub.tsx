@@ -32,18 +32,18 @@ import {
   KH_TYPES,
   KH_ALL,
   countByType,
-  totalPublished,
-  totalViews,
-  totalDownloads,
   labelForType,
   type KhResourceType,
 } from "@/data/demo/knowledgeHub";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
-import { ResourceCard, DemoDataBadge } from "@/components/baruna/knowledge/ResourceCard";
+import { ResourceCard } from "@/components/baruna/knowledge/ResourceCard";
 import { DEMO_CATEGORIES } from "@/data/demo";
 import { useLanguage } from "@/lib/i18n";
+import { getKnowledgeHubStats } from "@/lib/knowledge-hub/knowledge-hub.functions";
 
 export const Route = createFileRoute("/knowledge-hub")({
+  loader: () => getKnowledgeHubStats(),
+  staleTime: 60_000,
   head: () => ({
     meta: [
       { title: "Knowledge Hub — BARUNA" },
@@ -74,7 +74,8 @@ const TYPE_ICONS: Record<KhResourceType, LucideIcon> = {
 
 function KnowledgeHubPage() {
   const [q, setQ] = useState("");
-  const total = totalPublished();
+  const stats = Route.useLoaderData();
+  const total = stats.totalPublished;
   const { t } = useLanguage();
 
   const latest = useMemo(() => [...KH_ALL].sort((a, b) => b.year - a.year).slice(0, 8), []);
@@ -105,7 +106,6 @@ function KnowledgeHubPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-display text-3xl font-extrabold text-navy">{t("knowledgeHub.title")}</h1>
-              <DemoDataBadge />
             </div>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
               {t("knowledgeHub.subtitle")}
@@ -155,9 +155,9 @@ function KnowledgeHubPage() {
               description={t("knowledgeHub.bannerDesc")}
               stats={[
                 { value: total.toLocaleString(), label: t("knowledgeHub.totalPublished"), icon: BookOpen },
-                { value: totalViews().toLocaleString(), label: t("knowledgeHub.totalViews"), icon: Globe },
-                { value: totalDownloads().toLocaleString(), label: t("knowledgeHub.totalDownloads"), icon: Download },
-                { value: DEMO_CATEGORIES.length.toString(), label: t("sidebar.byCategory"), icon: Library },
+                { value: stats.totalViews.toLocaleString(), label: t("knowledgeHub.totalViews"), icon: Globe },
+                { value: stats.totalDownloads.toLocaleString(), label: t("knowledgeHub.totalDownloads"), icon: Download },
+                { value: stats.categoryCount.toLocaleString(), label: t("sidebar.byCategory"), icon: Library },
               ]}
             />
 
