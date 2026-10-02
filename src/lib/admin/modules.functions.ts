@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { publishApprovedModule } from "@/lib/experts/publishing.server";
 
-const DecisionType = z.enum(["approve", "return_for_revision", "reject"]);
+const DecisionType = z.enum(["approve", "return_for_revision", "reject", "archive", "restore"]);
 
 export type AdminModuleDocument = {
   type: string;
@@ -91,7 +91,7 @@ async function assertAdminOrReviewer(
 
 export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         status: z.string().optional(),
@@ -210,7 +210,14 @@ export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
 
       // Determine effective status
       let effectiveStatus = subj.current_status;
-      if (subj.current_status === "approved" || lastDecision === "approve") {
+      if (
+        subj.current_status === "withdrawn" ||
+        subjMeta.review_status === "archived" ||
+        published?.current_status === "archived" ||
+        lastDecision === "archive"
+      ) {
+        effectiveStatus = "archived";
+      } else if (subj.current_status === "approved" || lastDecision === "approve") {
         effectiveStatus = "approved";
       } else if (subj.current_status === "rejected" || lastDecision === "reject") {
         effectiveStatus = "rejected";
@@ -276,6 +283,8 @@ export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
         filtered = items.filter((it) => it.status === "resubmitted");
       } else if (input.status === "revision_requested") {
         filtered = items.filter((it) => it.status === "revision_requested");
+      } else if (input.status === "archived") {
+        filtered = items.filter((it) => it.status === "archived");
       } else {
         filtered = items.filter((it) => it.status === input.status);
       }
@@ -298,7 +307,7 @@ export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
 
 export const getAdminModuleDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
+  .validator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
   .handler(async ({ data: input, context }): Promise<AdminModuleDetail | null> => {
     if (!(await assertAdminOrReviewer(context))) {
       throw new Error("forbidden");
@@ -421,7 +430,14 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
       (draftUpdateTime > lastDecisionTime || subjUpdateTime > lastDecisionTime || subjMeta.review_status === "resubmitted");
 
     let effectiveStatus = subj.current_status;
-    if (subj.current_status === "approved" || latestDecision === "approve") {
+    if (
+      subj.current_status === "withdrawn" ||
+      subjMeta.review_status === "archived" ||
+      published?.current_status === "archived" ||
+      latestDecision === "archive"
+    ) {
+      effectiveStatus = "archived";
+    } else if (subj.current_status === "approved" || latestDecision === "approve") {
       effectiveStatus = "approved";
     } else if (subj.current_status === "rejected" || latestDecision === "reject") {
       effectiveStatus = "rejected";
@@ -483,7 +499,7 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
 
 export const recordAdminModuleDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         subjectId: z.string().uuid(),
@@ -510,7 +526,102 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
       throw new Error("Modul pelatihan tidak ditemukan.");
     }
 
-    // 2. Insert decision record
+    // 2. Handle Archive decision separately (without violating review_decisions check constraint)
+    if (input.decision === "archive") {
+      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
+      const rationaleText = input.rationale?.trim() || "Modul diarsipkan dan ditarik dari tayang publik.";
+
+      await supabaseAdmin
+        .from("review_subjects")
+        .update({
+          current_status: "withdrawn",
+          metadata: {
+            ...currentMeta,
+            review_status: "archived",
+            last_decision: "archive",
+            last_rationale: rationaleText,
+            archived_at: new Date().toISOString(),
+          } as never,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.subjectId);
+
+      // Update module_registry
+      await supabaseAdmin
+        .from("module_registry")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("source_submission_id", input.subjectId);
+
+      try {
+        await supabaseAdmin.from("governance_audit_log").insert({
+          event_type: "module_archived",
+          actor_id: context.userId,
+          subject_id: input.subjectId,
+          entity_type: "module_registry",
+          entity_id: input.subjectId,
+          after: {
+            status: "archived",
+            rationale: rationaleText,
+          },
+        });
+      } catch (logErr) {
+        console.warn("governance_audit_log insert skipped:", logErr);
+      }
+
+      return { success: true, decisionId: `archive-${input.subjectId}`, decision: input.decision };
+    }
+
+    // 3. Handle Restore decision
+    if (input.decision === "restore") {
+      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
+      const rationaleText = input.rationale?.trim() || "Modul dipulihkan dan ditayangkan kembali ke publik.";
+
+      await supabaseAdmin
+        .from("review_subjects")
+        .update({
+          current_status: "approved",
+          metadata: {
+            ...currentMeta,
+            review_status: "approved",
+            last_decision: "approve",
+            last_rationale: rationaleText,
+            restored_at: new Date().toISOString(),
+          } as never,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.subjectId);
+
+      // Check existing module in registry
+      const { data: existingMod } = await supabaseAdmin
+        .from("module_registry")
+        .select("id")
+        .eq("source_submission_id", input.subjectId)
+        .maybeSingle();
+
+      if (existingMod) {
+        await supabaseAdmin
+          .from("module_registry")
+          .update({
+            current_status: "published",
+            visibility: "public",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingMod.id);
+      } else {
+        await publishApprovedModule({
+          subjectId: input.subjectId,
+          decidedBy: context.userId,
+        });
+      }
+
+      return { success: true, decisionId: `restore-${input.subjectId}`, decision: input.decision };
+    }
+
+    // 4. Standard review gate decisions: approve, return_for_revision, reject
     const rationaleText =
       input.rationale?.trim() ||
       (input.decision === "return_for_revision"

@@ -37,7 +37,7 @@ function getInitialLanguage(): Language {
 }
 
 function resolveNestedKey(obj: unknown, path: string): string | undefined {
-  if (!obj || typeof obj !== "object") return undefined;
+  if (!obj || typeof obj !== "object" || typeof path !== "string" || !path) return undefined;
   const parts = path.split(".");
   let current: unknown = obj;
   for (const part of parts) {

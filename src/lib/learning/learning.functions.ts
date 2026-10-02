@@ -35,7 +35,7 @@ export const listOfferings = createServerFn({ method: "GET" }).handler(async () 
 });
 
 export const getOfferingByCode = createServerFn({ method: "GET" })
-  .inputValidator((d) => z.object({ code: z.string() }).parse(d))
+  .validator((d) => z.object({ code: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const { createClient } = await import("@supabase/supabase-js");
     const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
@@ -72,7 +72,7 @@ export const getOfferingByCode = createServerFn({ method: "GET" })
 
 // Safe route resolver — enforces feature-flag gating.
 export const resolveOfferingRoute = createServerFn({ method: "GET" })
-  .inputValidator((d) => z.object({ code: z.string() }).parse(d))
+  .validator((d) => z.object({ code: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const { createClient } = await import("@supabase/supabase-js");
     const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
@@ -124,7 +124,7 @@ export const listMyEnrolments = createServerFn({ method: "GET" })
 
 export const enrolInOffering = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ offeringCode: z.string() }).parse(d))
+  .validator((d) => z.object({ offeringCode: z.string() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: offering, error: offErr } = await context.supabase
       .from("course_offerings")
@@ -174,7 +174,7 @@ export const enrolInOffering = createServerFn({ method: "POST" })
 
 export const getEnrolmentDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ offeringCode: z.string() }).parse(d))
+  .validator((d) => z.object({ offeringCode: z.string() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: offering } = await context.supabase
       .from("course_offerings")
@@ -208,7 +208,7 @@ export const getEnrolmentDetail = createServerFn({ method: "GET" })
 
 export const markActivityComplete = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         enrolmentId: z.string().uuid(),
@@ -240,7 +240,7 @@ export const markActivityComplete = createServerFn({ method: "POST" })
 
 export const submitEvaluation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         enrolmentId: z.string().uuid(),
@@ -270,7 +270,7 @@ export const submitEvaluation = createServerFn({ method: "POST" })
 
 export const checkEligibility = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ enrolmentId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ enrolmentId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: result, error } = await context.supabase.rpc("check_certificate_eligibility", {
       _enrolment_id: data.enrolmentId,
@@ -281,7 +281,7 @@ export const checkEligibility = createServerFn({ method: "GET" })
 
 export const issueCertificate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         enrolmentId: z.string().uuid(),
@@ -379,7 +379,7 @@ export const listMyCertificates = createServerFn({ method: "GET" })
 // experience by marking their enrolment withdrawn. Server data is preserved.
 export const rollbackOwnEnrolment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ enrolmentId: z.string().uuid(), reason: z.string().max(500).optional() }).parse(d))
+  .validator((d) => z.object({ enrolmentId: z.string().uuid(), reason: z.string().max(500).optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("enrolments")
@@ -433,7 +433,7 @@ export type PublishedModuleDetail = {
 };
 
 export const getPublishedModuleDetail = createServerFn({ method: "GET" })
-  .inputValidator((d) => z.object({ moduleId: z.string() }).parse(d))
+  .validator((d) => z.object({ moduleId: z.string() }).parse(d))
   .handler(async ({ data }): Promise<PublishedModuleDetail | null> => {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.moduleId);
     if (!isUuid) return null;

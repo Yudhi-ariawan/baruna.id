@@ -93,14 +93,14 @@ export const alumnusById: Record<string, Alumnus> = Object.fromEntries(
 
 /** Initials for the photo placeholder. */
 export function initials(name: string): string {
-  const clean = name.replace(/^Dr\.?\s+/i, "").trim();
+  const clean = (name || "").replace(/^Dr\.?\s+/i, "").trim();
   const parts = clean.split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
 }
 
 /** First name used in generated, records-grounded professional summaries. */
 function firstName(name: string): string {
-  const clean = name.replace(/^Dr\.?\s+/i, "").trim();
+  const clean = (name || "").replace(/^Dr\.?\s+/i, "").trim();
   return clean.split(/\s+/)[0] ?? clean;
 }
 

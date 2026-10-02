@@ -7,18 +7,24 @@ import { Navbar } from "@/components/baruna/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { getTrainerPortalBootstrap } from "@/lib/experts/portal-services.functions";
 
+import { getActiveUserId } from "@/lib/authSession";
+
 export const Route = createFileRoute("/experts/portal")({ component: TrainerPortalGuard });
 
 function TrainerPortalGuard() {
   const navigate = useNavigate();
   const bootstrap = useServerFn(getTrainerPortalBootstrap);
+  const userId = getActiveUserId();
   const query = useQuery({
-    queryKey: ["experts", "trainer-portal-access"],
+    queryKey: ["experts", "trainer-portal-access", userId ?? "guest"],
     queryFn: async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) return null;
       return bootstrap();
-    }, retry: false,
+    },
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   useEffect(() => {
     if (!query.isLoading && !query.data && !query.isError) void navigate({ to: "/auth", search: { mode: "signin", redirect: "/experts/portal" }, replace: true });

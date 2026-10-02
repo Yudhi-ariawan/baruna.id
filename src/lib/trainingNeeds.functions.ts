@@ -86,7 +86,7 @@ export type TrainingNeedRequestPayload = z.infer<typeof RequestPayload>;
  */
 export const submitTrainingNeedRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => RequestPayload.parse(d))
+  .validator((d) => RequestPayload.parse(d))
   .handler(async ({ data, context }) => {
     // 1) Create empty draft.
     const { data: draftId, error: e1 } = await context.supabase.rpc(

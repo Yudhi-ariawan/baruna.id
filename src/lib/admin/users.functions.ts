@@ -103,7 +103,7 @@ export const getAdminAccess = createServerFn({ method: "GET" })
 
 export const listUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z.object({ search: z.string().trim().max(120).default("") }).parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
@@ -195,7 +195,7 @@ export const listRoles = createServerFn({ method: "GET" })
 
 export const inviteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         email: z.string().trim().email().max(254),
@@ -222,7 +222,7 @@ export const inviteUser = createServerFn({ method: "POST" })
 
 export const createUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         email: z.string().trim().email("Invalid email address").max(254),
@@ -301,7 +301,7 @@ export const createUser = createServerFn({ method: "POST" })
 
 export const updateUserProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         userId: UserId,
@@ -335,7 +335,7 @@ export const updateUserProfile = createServerFn({ method: "POST" })
 
 export const assignUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ userId: UserId, role: RoleCode }).parse(input))
+  .validator((input) => z.object({ userId: UserId, role: RoleCode }).parse(input))
   .handler(async ({ data, context }) => {
     await requirePermission(context, "users.assign_role");
     const { error } = await context.supabase.rpc(
@@ -351,7 +351,7 @@ export const assignUserRole = createServerFn({ method: "POST" })
 
 export const revokeUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ userId: UserId, role: RoleCode }).parse(input))
+  .validator((input) => z.object({ userId: UserId, role: RoleCode }).parse(input))
   .handler(async ({ data, context }) => {
     await requirePermission(context, "users.assign_role");
     const { error } = await context.supabase.rpc(
@@ -367,7 +367,7 @@ export const revokeUserRole = createServerFn({ method: "POST" })
 
 export const setUserSuspended = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ userId: UserId, suspended: z.boolean() }).parse(input))
+  .validator((input) => z.object({ userId: UserId, suspended: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => {
     await requirePermission(context, "users.suspend");
     if (data.suspended && data.userId === context.userId) throw new Error("self_lockout_protected");
@@ -400,7 +400,7 @@ export const setUserSuspended = createServerFn({ method: "POST" })
 
 export const listUserAccessHistory = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ userId: UserId }).parse(input))
+  .validator((input) => z.object({ userId: UserId }).parse(input))
   .handler(async ({ data, context }) => {
     await requirePermission(context, "audit.read");
     const admin = (await loadAdmin()) as any;

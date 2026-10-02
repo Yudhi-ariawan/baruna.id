@@ -79,7 +79,7 @@ async function assertAdminOrReviewer(
 
 export const listAdminExpertApplications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         status: z.string().optional(),
@@ -257,7 +257,7 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
 
 export const getAdminExpertDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
+  .validator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
   .handler(async ({ data: input, context }): Promise<AdminExpertDetail | null> => {
     if (!(await assertAdminOrReviewer(context))) {
       throw new Error("forbidden");
@@ -390,7 +390,7 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
 
 export const recordAdminExpertDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         subjectId: z.string().uuid(),
@@ -516,7 +516,7 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
 
 export const syncExpertToDirectory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
+  .validator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
   .handler(async ({ data: input, context }) => {
     if (!(await assertAdminOrReviewer(context))) {
       throw new Error("forbidden");

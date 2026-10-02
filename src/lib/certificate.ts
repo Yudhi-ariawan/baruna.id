@@ -166,7 +166,7 @@ function wrapText(
   maxWidth: number,
   lineHeight: number,
 ) {
-  const words = text.split(" ");
+  const words = (text || "").split(" ");
   let line = "";
   const lines: string[] = [];
   for (const w of words) {

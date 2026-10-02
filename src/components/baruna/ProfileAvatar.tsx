@@ -12,7 +12,7 @@ export function ProfileAvatar({
   const [imageAvailable, setImageAvailable] = useState(Boolean(url));
   useEffect(() => setImageAvailable(Boolean(url)), [url]);
 
-  const initials = name
+  const initials = (name || "User")
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())

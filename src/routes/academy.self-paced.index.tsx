@@ -52,7 +52,7 @@ export const Route = createFileRoute("/academy/self-paced/")({
 /** Resolve the Master Module code (if any) for a Self-Paced program. */
 function masterCodeFor(p: Program): string | undefined {
   // Module-based programs use `sp-mNN` ids and embed the code as href suffix.
-  if (p.href.startsWith("/academy/self-paced/BARUNA-")) {
+  if (p?.href && p.href.startsWith("/academy/self-paced/BARUNA-")) {
     return p.href.split("/").pop();
   }
   return undefined;
@@ -78,12 +78,12 @@ function SelfPacedIndex() {
         instructor: m.authorName ? `${m.authorName} (BARUNA Trainer)` : "BARUNA Trainer",
         organization: "BARUNA Academy",
         country: "Indonesia",
-        startDate: new Date(m.created_at).toISOString().split("T")[0],
+        startDate: m.created_at && !isNaN(Date.parse(m.created_at)) ? new Date(m.created_at).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
         participants: 1,
         rating: 5.0,
         reviews: 1,
         status: "ONLINE",
-        keywords: ["self-paced", "module", m.title.toLowerCase()],
+        keywords: ["self-paced", "module", (m.title || "").toLowerCase()],
         href: `/academy/self-paced/${m.id}`,
         featured: false,
       };

@@ -9,8 +9,8 @@ export function PageShell({
   cta,
   children,
 }: {
-  sidebar: SidebarProps;
-  cta: { icon: LucideIcon; title: string; description: string; button: string; href?: string };
+  sidebar?: SidebarProps | null;
+  cta?: { icon?: LucideIcon | null; title?: string; description?: string; button?: string; href?: string } | null;
   children: ReactNode;
 }) {
   return (
@@ -18,11 +18,11 @@ export function PageShell({
       <Navbar />
       <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6">
         <div className="flex flex-col gap-6 lg:flex-row">
-          <Sidebar {...sidebar} />
+          {sidebar && <Sidebar {...sidebar} />}
           <main className="min-w-0 flex-1">{children}</main>
         </div>
       </div>
-      <CtaBanner {...cta} />
+      {cta && <CtaBanner {...cta} />}
     </div>
   );
 }

@@ -399,7 +399,7 @@ function SubmitModulePage() {
       setUploadProgress(isId ? "Menyimpan modul ke sistem..." : "Saving module to system...");
 
       // 2. Prepare payload
-      const learningObjectives = formFields.objectives
+      const learningObjectives = (formFields.objectives || "")
         .split("\n")
         .map((s) => s.trim())
         .filter(Boolean);

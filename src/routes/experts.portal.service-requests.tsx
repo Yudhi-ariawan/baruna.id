@@ -8,14 +8,29 @@ import { REQUEST_TYPE_CONFIG } from "@/lib/experts";
 import { listTrainerServiceRequests, respondToTrainerServiceRequest } from "@/lib/experts/portal-services.functions";
 import type { ServiceRequest } from "@/lib/experts/portal-services.types";
 
+import { getActiveUserId } from "@/lib/authSession";
+
 export const Route = createFileRoute("/experts/portal/service-requests")({ head: () => ({ meta: [{ title: "Service Requests — Trainer Portal" }, { name: "description", content: "Incoming Expert Service requests directed to you." }] }), component: ServiceRequestsPortal });
 
 const STYLES: Record<string, string> = { confirmed: "bg-eco-community/15 text-eco-community", scheduled: "bg-marine/15 text-marine", under_review: "bg-badge-workshop/15 text-badge-workshop", expert_contacted: "bg-accent/25 text-accent-foreground", declined: "bg-destructive/10 text-destructive" };
 
 function ServiceRequestsPortal() {
-  const list = useServerFn(listTrainerServiceRequests); const respond = useServerFn(respondToTrainerServiceRequest); const client = useQueryClient();
-  const query = useQuery({ queryKey: ["experts", "trainer-service-requests"], queryFn: () => list(), retry: false });
-  const act = async (requestId: string, action: "accept" | "request_info" | "decline") => { await respond({ data: { requestId, action } }); await client.invalidateQueries({ queryKey: ["experts", "trainer-service-requests"] }); await client.invalidateQueries({ queryKey: ["experts", "my-service-requests"] }); };
+  const list = useServerFn(listTrainerServiceRequests);
+  const respond = useServerFn(respondToTrainerServiceRequest);
+  const client = useQueryClient();
+  const userId = getActiveUserId();
+  const query = useQuery({
+    queryKey: ["experts", "trainer-service-requests", userId ?? "guest"],
+    queryFn: () => list(),
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+  const act = async (requestId: string, action: "accept" | "request_info" | "decline") => {
+    await respond({ data: { requestId, action } });
+    await client.invalidateQueries({ queryKey: ["experts", "trainer-service-requests"] });
+    await client.invalidateQueries({ queryKey: ["experts", "my-service-requests"] });
+  };
   return <PageShell sidebar={{ ...EXPERTS_SIDEBAR_META, title: "Trainer Portal", subtitle: "Incoming Expert Services.", sections: trainerPortalNav("/experts/portal/service-requests") }} cta={{ icon: Inbox, title: "Secure request workflow", description: "Every response is recorded in the audit trail.", button: "Back to Dashboard", href: "/experts/portal" }}><div className="space-y-6"><div><h1 className="font-display text-3xl font-extrabold text-navy">Service Requests</h1><p className="mt-2 text-sm text-muted-foreground">Requests submitted directly to your canonical expert profile.</p></div>{query.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Loading service requests…</p> : query.isError ? <p className="rounded-xl bg-destructive/10 p-5 text-sm text-destructive">Unable to load trainer service requests.</p> : query.data?.length ? <ul className="space-y-3">{query.data.map((r) => <RequestItem key={r.id} request={r} onAction={act} />)}</ul> : <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center"><Inbox className="mx-auto h-8 w-8 text-marine" /><p className="mt-3 font-display text-lg font-bold text-navy">No incoming requests</p><p className="mt-1 text-sm text-muted-foreground">Directed service requests will appear here.</p></div>}</div></PageShell>;
 }
 

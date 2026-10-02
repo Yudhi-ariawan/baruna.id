@@ -5,7 +5,7 @@ import { formatBytes, type DocumentMeta, type DocField } from "@/lib/application
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 function extOk(file: File, accept: string): boolean {
-  const exts = accept
+  const exts = (accept || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);

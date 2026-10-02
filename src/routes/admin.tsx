@@ -1,5 +1,5 @@
 import { Link, Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   BookOpen,
@@ -76,6 +76,7 @@ export const Route = createFileRoute("/admin")({
 function AdminShell() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [authReady, setAuthReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email?: string; name?: string } | null>(null);
@@ -91,7 +92,7 @@ function AdminShell() {
       if (user) {
         setCurrentUser({
           email: user.email,
-          name: (user.user_metadata?.display_name as string) || (user.user_metadata?.full_name as string) || user.email?.split("@")[0],
+          name: (user.user_metadata?.display_name as string) || (user.user_metadata?.full_name as string) || (user.email ? user.email.split("@")[0] : "Admin"),
         });
       }
       setAuthReady(true);
@@ -114,6 +115,7 @@ function AdminShell() {
   async function handleSignOut() {
     try {
       await supabase.auth.signOut();
+      queryClient.clear();
       toast.success("Berhasil keluar dari sesi admin.");
       navigate({ to: "/auth" });
     } catch {
@@ -348,7 +350,7 @@ function AdminShell() {
               <span className="font-semibold text-navy">Portal Tata Kelola</span>
               <span>/</span>
               <span className="capitalize font-medium text-slate-700">
-                {location.pathname.split("/")[2]?.replace(/-/g, " ") || "Dashboard"}
+                {location?.pathname ? location.pathname.split("/")[2]?.replace(/-/g, " ") || "Dashboard" : "Dashboard"}
               </span>
             </div>
           </div>

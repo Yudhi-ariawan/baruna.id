@@ -429,10 +429,10 @@ function ResourceDetailPage() {
                 <h3 className="font-display text-sm font-bold text-navy">Related Expert</h3>
                 <Link to="/experts/$slug" params={{ slug: expert.slug }} className="mt-2 flex items-center gap-3 rounded-lg p-1 hover:bg-muted">
                   <span className="grid h-10 w-10 place-items-center rounded-full bg-marine/10 font-bold text-marine">
-                    {expert.fullName.split(" ").slice(-2).map((s) => s[0]).join("")}
+                    {(expert.fullName || expert.title || "EX").split(" ").slice(-2).map((s) => s[0]).join("")}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-navy">{expert.fullName}</p>
+                    <p className="truncate font-semibold text-navy">{expert.fullName || "Expert"}</p>
                     <p className="truncate text-xs text-muted-foreground">{expert.title}</p>
                   </div>
                   <ArrowRight className="ml-auto h-4 w-4 text-marine" />

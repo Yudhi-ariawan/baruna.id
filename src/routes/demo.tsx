@@ -287,7 +287,7 @@ function DemoHub() {
                   </div>
                   <div className="mt-3 flex items-start gap-3">
                     <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-marine/10 font-display text-lg font-bold text-marine">
-                      {e.fullName.split(" ").slice(-1)[0][0]}
+                      {(e.fullName || "Expert").split(" ").slice(-1)[0][0]}
                     </div>
                     <div>
                       <h3 className="font-display text-base font-bold leading-tight text-navy">{e.fullName}</h3>
@@ -410,7 +410,7 @@ function DemoHub() {
             {DEMO_EXPERTS.map((e) => {
               const course = DEMO_SHORT_COURSES.find((c) => c.trainerId === e.id)!;
               const mod = getModuleByCode(e.moduleCode)!;
-              const certNo = `DEMO-BARUNA-2026-${e.moduleCode.split("-")[1]}-${e.id.replace("e", "").padStart(4, "0")}`;
+              const certNo = `DEMO-BARUNA-2026-${(e.moduleCode || "").split("-")[1] || "MOD"}-${(e.id || "").replace("e", "").padStart(4, "0")}`;
               return (
                 <article key={e.id} className="relative overflow-hidden rounded-2xl border-2 border-navy/10 bg-gradient-to-br from-marine/5 to-transparent p-5 shadow-soft">
                   <Award className="absolute -right-6 -top-6 h-32 w-32 text-marine/5" />

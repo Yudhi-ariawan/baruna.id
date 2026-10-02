@@ -534,12 +534,12 @@ function ProgramsPage() {
         instructor: m.authorName ? `${m.authorName} (BARUNA Trainer)` : "BARUNA Trainer",
         organization: "BARUNA Academy",
         country: "Indonesia",
-        startDate: new Date(m.created_at).toISOString().split("T")[0],
+        startDate: m.created_at && !isNaN(Date.parse(m.created_at)) ? new Date(m.created_at).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
         participants: 1,
         rating: 5.0,
         reviews: 1,
         status: "AVAILABLE NOW",
-        keywords: ["self-paced", "module", "trainer", m.title.toLowerCase()],
+        keywords: ["self-paced", "module", "trainer", (m.title || "").toLowerCase()],
         href: `/academy/self-paced/${m.id}`,
       };
     });

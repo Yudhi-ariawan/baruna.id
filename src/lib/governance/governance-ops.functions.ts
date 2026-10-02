@@ -31,7 +31,7 @@ export const listMyDrafts = createServerFn({ method: "GET" })
 
 export const getMyDraft = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: draft, error } = await context.supabase
       .from("review_drafts")
@@ -79,7 +79,7 @@ export const getMyDraft = createServerFn({ method: "GET" })
 
 export const saveMyDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         id: z.string().uuid().optional(),
@@ -140,7 +140,7 @@ export const saveMyDraft = createServerFn({ method: "POST" })
 
 export const withdrawMyDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: updated, error } = await context.supabase
       .from("review_drafts")
@@ -156,7 +156,7 @@ export const withdrawMyDraft = createServerFn({ method: "POST" })
 
 export const submitMyDraftForReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: subjectId, error } = await context.supabase.rpc("submit_draft_for_review", {
       _draft_id: data.id,
@@ -192,7 +192,7 @@ const SubjectStatus = z.enum([
 
 export const listReviewSubjects = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         kind: SubjectKind.optional(),
@@ -222,7 +222,7 @@ export const listReviewSubjects = createServerFn({ method: "GET" })
 
 export const getReviewSubjectFull = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertGovRole(context);
     const { data: subject, error } = await context.supabase
@@ -284,7 +284,7 @@ export const getReviewSubjectFull = createServerFn({ method: "GET" })
 // ─── Admin/mgmt: assignment operations ─────────────────────────────────────
 export const assignReviewer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         subjectId: z.string().uuid(),
@@ -312,7 +312,7 @@ export const assignReviewer = createServerFn({ method: "POST" })
 
 export const reassignReviewer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         assignmentId: z.string().uuid(),
@@ -340,7 +340,7 @@ export const reassignReviewer = createServerFn({ method: "POST" })
 
 export const cancelAssignment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ assignmentId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ assignmentId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertGovRole(context);
     const { error } = await context.supabase.rpc("cancel_assignment", {
@@ -352,7 +352,7 @@ export const cancelAssignment = createServerFn({ method: "POST" })
 
 export const setRequiredRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z.object({ subjectId: z.string().uuid(), n: z.number().int().min(1).max(10) }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -383,7 +383,7 @@ export const listReviewers = createServerFn({ method: "GET" })
 // ─── Reviewer: template criteria schema ────────────────────────────────────
 export const getTemplateVersionSchema = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ templateVersionId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ templateVersionId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("review_template_versions")
@@ -396,7 +396,7 @@ export const getTemplateVersionSchema = createServerFn({ method: "GET" })
 
 export const saveReviewCriteria = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         recordId: z.string().uuid(),
@@ -420,7 +420,7 @@ export const saveReviewCriteria = createServerFn({ method: "POST" })
 // ─── Admin/mgmt: template management ───────────────────────────────────────
 export const listReviewTemplates = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ kind: SubjectKind.optional() }).parse(d ?? {}))
+  .validator((d) => z.object({ kind: SubjectKind.optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     await assertGovRole(context);
     let q = context.supabase
@@ -435,7 +435,7 @@ export const listReviewTemplates = createServerFn({ method: "GET" })
 
 export const getReviewTemplateFull = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertGovRole(context);
     const { data: tpl, error } = await context.supabase
@@ -456,7 +456,7 @@ export const getReviewTemplateFull = createServerFn({ method: "GET" })
 
 export const createReviewTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z.object({ subjectKind: SubjectKind, name: z.string().min(1).max(200) }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -471,7 +471,7 @@ export const createReviewTemplate = createServerFn({ method: "POST" })
 
 export const addTemplateVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({ templateId: z.string().uuid(), criteriaSchema: z.record(z.unknown()) })
       .parse(d),
@@ -488,7 +488,7 @@ export const addTemplateVersion = createServerFn({ method: "POST" })
 
 export const publishTemplateVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ versionId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ versionId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertGovRole(context);
     const { error } = await context.supabase.rpc("publish_template_version", {
@@ -500,7 +500,7 @@ export const publishTemplateVersion = createServerFn({ method: "POST" })
 
 export const setActiveTemplateVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z.object({ templateId: z.string().uuid(), versionId: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -515,7 +515,7 @@ export const setActiveTemplateVersion = createServerFn({ method: "POST" })
 
 export const deprecateReviewTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ templateId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ templateId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertGovRole(context);
     const { error } = await context.supabase.rpc("deprecate_template", {

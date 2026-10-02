@@ -15,6 +15,7 @@ import {
   BookOpenCheck,
   ChevronRight,
   Info,
+  Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/baruna/page/PageShell";
@@ -82,7 +83,7 @@ function downloadFromUrl(url: string, filename: string) {
   document.body.removeChild(link);
 }
 
-type FilterTab = "all" | "approved" | "revision" | "pending";
+type FilterTab = "all" | "approved" | "revision" | "pending" | "archived";
 
 function ReviewStatusPage() {
   const q = useTrainerPortal();
@@ -136,34 +137,44 @@ function ReviewStatusPage() {
   // Filter drafts
   const filteredDrafts = drafts.filter((d) => {
     const latestDecision = d.reviewHistory?.[0]?.decision;
-    const isApproved = d.reviewStatus === "approved" || latestDecision === "approve";
+    const isArchived = d.reviewStatus === "archived" || latestDecision === "archive";
+    const isApproved = !isArchived && (d.reviewStatus === "approved" || latestDecision === "approve");
     const isRevision =
-      d.reviewStatus === "revision_requested" || latestDecision === "return_for_revision";
+      !isArchived &&
+      (d.reviewStatus === "revision_requested" || latestDecision === "return_for_revision");
     const isPending =
-      !isApproved && !isRevision && (d.reviewStatus === "pending" || d.reviewStatus === "under_review" || d.status === "submitted");
+      !isArchived && !isApproved && !isRevision && (d.reviewStatus === "pending" || d.reviewStatus === "under_review" || d.status === "submitted");
 
+    if (activeTab === "archived") return isArchived;
     if (activeTab === "approved") return isApproved;
     if (activeTab === "revision") return isRevision;
     if (activeTab === "pending") return isPending;
     return true;
   });
 
+  const countArchived = drafts.filter(
+    (d) => d.reviewStatus === "archived" || d.reviewHistory?.[0]?.decision === "archive",
+  ).length;
   const countApproved = drafts.filter(
-    (d) => d.reviewStatus === "approved" || d.reviewHistory?.[0]?.decision === "approve",
+    (d) =>
+      d.reviewStatus !== "archived" &&
+      d.reviewHistory?.[0]?.decision !== "archive" &&
+      (d.reviewStatus === "approved" || d.reviewHistory?.[0]?.decision === "approve"),
   ).length;
   const countRevision = drafts.filter(
     (d) =>
-      d.reviewStatus === "revision_requested" ||
-      d.reviewHistory?.[0]?.decision === "return_for_revision",
+      d.reviewStatus !== "archived" &&
+      d.reviewHistory?.[0]?.decision !== "archive" &&
+      (d.reviewStatus === "revision_requested" ||
+        d.reviewHistory?.[0]?.decision === "return_for_revision"),
   ).length;
   const countPending = drafts.filter((d) => {
     const latestDecision = d.reviewHistory?.[0]?.decision;
-    return (
-      d.reviewStatus !== "approved" &&
-      latestDecision !== "approve" &&
-      d.reviewStatus !== "revision_requested" &&
-      latestDecision !== "return_for_revision"
-    );
+    const isArchived = d.reviewStatus === "archived" || latestDecision === "archive";
+    const isApproved = d.reviewStatus === "approved" || latestDecision === "approve";
+    const isRevision =
+      d.reviewStatus === "revision_requested" || latestDecision === "return_for_revision";
+    return !isArchived && !isApproved && !isRevision;
   }).length;
 
   return (
@@ -260,6 +271,19 @@ function ReviewStatusPage() {
           >
             Dalam Proses ({countPending})
           </button>
+          {countArchived > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("archived")}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "archived"
+                  ? "bg-slate-700 text-white shadow-xs"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <Archive className="h-3.5 w-3.5" /> Diarsipkan ({countArchived})
+            </button>
+          )}
         </div>
 
         {/* Content Area */}
@@ -271,34 +295,41 @@ function ReviewStatusPage() {
           <div className="space-y-6">
             {filteredDrafts.map((d) => {
               const latestDecision = d.reviewHistory?.[0];
+              const isArchived =
+                d.reviewStatus === "archived" || latestDecision?.decision === "archive";
               const isRevision =
-                d.reviewStatus === "revision_requested" ||
-                latestDecision?.decision === "return_for_revision";
+                !isArchived &&
+                (d.reviewStatus === "revision_requested" ||
+                  latestDecision?.decision === "return_for_revision");
               const isApproved =
-                d.reviewStatus === "approved" || latestDecision?.decision === "approve";
+                !isArchived &&
+                (d.reviewStatus === "approved" || latestDecision?.decision === "approve");
               const isRejected =
-                d.reviewStatus === "rejected" || latestDecision?.decision === "reject";
+                !isArchived &&
+                (d.reviewStatus === "rejected" || latestDecision?.decision === "reject");
               const files = getDraftFiles(d.payload);
 
               // Tentukan tahapan stepper
               // Step 1: Draf Disusun (Selalu done)
               // Step 2: Pengajuan Terkirim (Selalu done karena masuk antrean)
-              // Step 3: Verifikasi Kurikulum (Done jika approved/rejected, in-progress jika pending/revision)
-              // Step 4: Keputusan Akhir (Done jika approved/rejected/revision)
+              // Step 3: Verifikasi Kurikulum (Done jika approved/rejected/archived, in-progress jika pending/revision)
+              // Step 4: Keputusan Akhir (Done jika approved/rejected/revision/archived)
               const step1Done = true;
               const step2Done = true;
-              const step3Done = isApproved || isRejected;
-              const step3Active = !isApproved && !isRejected;
+              const step3Done = isApproved || isRejected || isArchived;
+              const step3Active = !isApproved && !isRejected && !isArchived;
 
               return (
                 <section
                   key={d.id}
                   className={`rounded-2xl border p-6 shadow-soft transition ${
-                    isRevision
-                      ? "border-amber-300 bg-amber-50/20"
-                      : isApproved
-                        ? "border-emerald-300 bg-emerald-50/15"
-                        : "border-border bg-card"
+                    isArchived
+                      ? "border-slate-300 bg-slate-50/50"
+                      : isRevision
+                        ? "border-amber-300 bg-amber-50/20"
+                        : isApproved
+                          ? "border-emerald-300 bg-emerald-50/15"
+                          : "border-border bg-card"
                   }`}
                 >
                   {/* Top Bar: Title & Status */}
@@ -314,7 +345,11 @@ function ReviewStatusPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      {isRevision ? (
+                      {isArchived ? (
+                        <Badge className="bg-slate-100 text-slate-800 border-slate-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
+                          <Archive className="h-3.5 w-3.5 text-slate-600" /> Diarsipkan oleh Admin
+                        </Badge>
+                      ) : isRevision ? (
                         <Badge className="bg-amber-100 text-amber-800 border-amber-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
                           <RotateCcw className="h-3.5 w-3.5" /> Perlu Revisi Dokumen
                         </Badge>
@@ -451,6 +486,33 @@ function ReviewStatusPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* PROMINENT BANNER FOR ARCHIVED STATUS */}
+                  {isArchived && (
+                    <div className="mt-4 rounded-xl border border-slate-300 bg-slate-100/90 p-4 sm:p-5 flex items-start gap-3">
+                      <span className="rounded-lg bg-slate-200 p-2 text-slate-700 shrink-0 mt-0.5">
+                        <Archive className="h-5 w-5" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900">
+                          Modul Diarsipkan oleh Pengelola
+                        </p>
+                        <p className="text-xs text-slate-700 mt-0.5 leading-relaxed">
+                          Modul ini ditarik dari tayang publik dan disimpan dalam arsip tata kelola sistem. Jika memerlukan informasi lebih lanjut, silakan hubungi tim administrator.
+                        </p>
+                        {latestDecision?.comment && (
+                          <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-800">
+                            <span className="font-bold text-slate-800 uppercase tracking-wide block mb-1 text-[11px]">
+                              Catatan Pengarsipan:
+                            </span>
+                            <p className="italic text-slate-700 leading-relaxed">
+                              &quot;{latestDecision.comment}&quot;
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* PROMINENT BANNER FOR APPROVED STATUS */}
                   {isApproved && (

@@ -25,7 +25,7 @@ type Props = {
 };
 
 function previewKind(file: PreviewAttachment) {
-  const extension = file.name.split(".").pop()?.toLowerCase();
+  const extension = (file?.name || "").split(".").pop()?.toLowerCase();
   if (file.type === "application/pdf" || extension === "pdf") return "pdf";
   if (file.type.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif"].includes(extension ?? "")) return "image";
   if (file.type.startsWith("video/") || ["mp4", "mov", "webm"].includes(extension ?? "")) return "video";

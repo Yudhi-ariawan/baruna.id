@@ -55,9 +55,67 @@ export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
               updatedAt: rm.updated_at,
             });
             existingIds.add(rm.id);
+          } else {
+            const idx = mergedModules.findIndex((m) => m.id === rm.id);
+            if (idx !== -1) {
+              mergedModules[idx].status = rm.current_status;
+            }
           }
         }
         bootstrap.modules = mergedModules;
+      }
+
+      // Enrich moduleDrafts with review_subjects metadata (especially archiving info)
+      if (bootstrap.moduleDrafts && bootstrap.moduleDrafts.length > 0) {
+        const subjectIds = bootstrap.moduleDrafts
+          .map((d) => d.subjectId)
+          .filter((id): id is string => Boolean(id));
+
+        if (subjectIds.length > 0) {
+          const { data: subjects } = await supabaseAdmin
+            .from("review_subjects")
+            .select("id, current_status, metadata")
+            .in("id", subjectIds);
+
+          if (subjects && subjects.length > 0) {
+            const subjectMap = new Map(subjects.map((s) => [s.id, s]));
+
+            for (const draft of bootstrap.moduleDrafts) {
+              if (draft.subjectId && subjectMap.has(draft.subjectId)) {
+                const s = subjectMap.get(draft.subjectId)!;
+                const meta = (s.metadata as Record<string, unknown>) ?? {};
+
+                if (s.current_status === "withdrawn" || meta.review_status === "archived") {
+                  draft.reviewStatus = "archived";
+                  const archivedReason =
+                    typeof meta.archived_reason === "string"
+                      ? meta.archived_reason
+                      : "Modul telah ditarik/diarsipkan oleh Administrator BARUNA.";
+                  const archivedAt =
+                    typeof meta.archived_at === "string"
+                      ? meta.archived_at
+                      : draft.updatedAt;
+
+                  const hasArchiveEvent = (draft.reviewHistory ?? []).some(
+                    (h) => h.decision === "archive",
+                  );
+                  if (!hasArchiveEvent) {
+                    draft.reviewHistory = [
+                      {
+                        kind: "decision",
+                        at: archivedAt,
+                        actor: "Administrator BARUNA",
+                        decision: "archive",
+                        comment: archivedReason,
+                      },
+                      ...(draft.reviewHistory ?? []),
+                    ];
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     } catch (enrichErr) {
       console.warn("[getTrainerPortalBootstrap] enrichment warning:", enrichErr);
@@ -68,7 +126,7 @@ export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
 
 export const createExpertServiceRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => CreateRequest.parse(input))
+  .validator((input) => CreateRequest.parse(input))
   .handler(async ({ context, data }) => {
     const { data: result, error } = await context.supabase.rpc("expert_service_request_create", {
       _request_type: data.type,
@@ -90,7 +148,7 @@ export const listMyExpertServiceRequests = createServerFn({ method: "GET" })
 
 export const deleteExpertServiceRequestDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => RequestId.parse(input))
+  .validator((input) => RequestId.parse(input))
   .handler(async ({ context, data }) => {
     const { error } = await context.supabase.rpc("expert_service_request_delete_draft", { _request_id: data.requestId });
     if (error) throw new Error(error.message);
@@ -107,7 +165,7 @@ export const listTrainerServiceRequests = createServerFn({ method: "GET" })
 
 export const respondToTrainerServiceRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => Respond.parse(input))
+  .validator((input) => Respond.parse(input))
   .handler(async ({ context, data }) => {
     const { data: result, error } = await context.supabase.rpc("trainer_service_request_respond", {
       _request_id: data.requestId, _action: data.action,
@@ -118,7 +176,7 @@ export const respondToTrainerServiceRequest = createServerFn({ method: "POST" })
 
 export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => ModuleSubmission.parse(input))
+  .validator((input) => ModuleSubmission.parse(input))
   .handler(async ({ context, data }) => {
     const access = await context.supabase.rpc("trainer_portal_bootstrap");
     if (access.error || (access.data as { access?: string } | null)?.access !== "active_trainer") {
