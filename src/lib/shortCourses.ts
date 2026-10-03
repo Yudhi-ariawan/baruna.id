@@ -11,7 +11,11 @@
 import { useEffect, useState } from "react";
 import { MASTER_MODULES, masterByCode, type MasterModule } from "@/data/masterModules";
 import { loadApplications } from "@/lib/application";
-import { getUserScopedKey, subscribeToAuthChange } from "@/lib/authSession";
+import {
+  getActiveUserId,
+  getUserScopedKey,
+  subscribeToAuthChange,
+} from "@/lib/authSession";
 
 const STORE_PREFIX = "baruna:short-courses";
 export const SHORT_COURSES_EVENT = "baruna:short-courses";
@@ -43,6 +47,9 @@ type Store = Record<string, ShortCourseEnrollment>;
 
 function readStore(): Store {
   if (typeof window === "undefined") return {};
+  // Enrollment is account-owned state. Never expose legacy anonymous data to
+  // a signed-out visitor, even if an old `:guest` key remains in localStorage.
+  if (!getActiveUserId()) return {};
   try {
     return JSON.parse(localStorage.getItem(getUserScopedKey(STORE_PREFIX)) || "{}");
   } catch {
@@ -52,6 +59,7 @@ function readStore(): Store {
 
 function writeStore(store: Store) {
   if (typeof window === "undefined") return;
+  if (!getActiveUserId()) return;
   localStorage.setItem(getUserScopedKey(STORE_PREFIX), JSON.stringify(store));
   window.dispatchEvent(new Event(SHORT_COURSES_EVENT));
 }

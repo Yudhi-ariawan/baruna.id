@@ -35,6 +35,7 @@ import {
   enrollShortCourse,
 } from "@/lib/shortCourses";
 import { barunaToast } from "@/lib/downloads";
+import { useHomeExperience } from "@/components/baruna/home-experience";
 import {
   getPublishedModuleDetail,
   type PublishedModuleDetail,
@@ -147,11 +148,23 @@ function SelfPacedDetail() {
 // ─── 1. OVERVIEW MODUL DINAMIS (DARI EXPERT REGISTRY) ─────────────────────────
 function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
   const navigate = useNavigate();
+  const { authState } = useHomeExperience();
   const { get, isCompleted } = useShortCourses();
-  const enrollment = get(module.id);
-  const done = isCompleted(module.id);
+  const isAuthenticated = authState === "authenticated";
+  const enrollment = isAuthenticated ? get(module.id) : undefined;
+  const done = isAuthenticated ? isCompleted(module.id) : false;
 
   const handleEnroll = () => {
+    if (!isAuthenticated) {
+      void navigate({
+        to: "/auth",
+        search: {
+          mode: "signin",
+          redirect: `/academy/self-paced/${module.id}`,
+        },
+      });
+      return;
+    }
     enrollShortCourse(module.id, {
       title: module.title,
       hours: module.hours,
@@ -234,7 +247,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               onClick={handleEnroll}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
             >
-              Ikuti Modul Ini (Gratis) <ArrowRight className="h-4 w-4" />
+              {isAuthenticated ? "Enroll Course" : "Sign In to Enroll"} <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
             <>
@@ -415,7 +428,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
                 onClick={handleEnroll}
                 className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
               >
-                Ikuti Pelatihan Mandiri Ini <ArrowRight className="h-4 w-4" />
+                {isAuthenticated ? "Enroll Course" : "Sign In to Enroll"} <ArrowRight className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -517,12 +530,24 @@ function MasterModuleOverview({
   lms: LmsModule | undefined;
 }) {
   const navigate = useNavigate();
+  const { authState } = useHomeExperience();
   const { get, isCompleted } = useShortCourses();
-  const enrollment = get(master.code);
-  const done = isCompleted(master.code);
+  const isAuthenticated = authState === "authenticated";
+  const enrollment = isAuthenticated ? get(master.code) : undefined;
+  const done = isAuthenticated ? isCompleted(master.code) : false;
   const instructor = instructorBySlug[master.instructorSlug];
 
   const handleEnroll = () => {
+    if (!isAuthenticated) {
+      void navigate({
+        to: "/auth",
+        search: {
+          mode: "signin",
+          redirect: `/academy/self-paced/${master.code}`,
+        },
+      });
+      return;
+    }
     enrollShortCourse(master.code, {
       title: master.title,
       hours: master.hours,
@@ -581,7 +606,7 @@ function MasterModuleOverview({
               onClick={handleEnroll}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
             >
-              Ikuti Modul Ini (Gratis) <ArrowRight className="h-4 w-4" />
+              {isAuthenticated ? "Enroll Course" : "Sign In to Enroll"} <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
             <Link
@@ -662,7 +687,7 @@ function MasterModuleOverview({
                 onClick={handleEnroll}
                 className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
               >
-                Ikuti Pelatihan Mandiri Ini <ArrowRight className="h-4 w-4" />
+                {isAuthenticated ? "Enroll Course" : "Sign In to Enroll"} <ArrowRight className="h-4 w-4" />
               </button>
             )}
           </div>
