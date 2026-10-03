@@ -25,13 +25,23 @@ import { instructors, instructorBySlug, type Instructor } from "@/data/instructo
 import { ExpertInstructorCard } from "@/components/baruna/InstructorDirectory";
 import { DEMO_EXPERTS, DEMO_CATEGORIES, LEVEL_LABEL } from "@/data/demo";
 import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
-import { listPublicExperts } from "@/lib/experts/directory.functions";
+import {
+  getPublicExpertStats,
+  listPublicExperts,
+} from "@/lib/experts/directory.functions";
 
 import { publicExpertsNav } from "@/data/expertsNav";
 import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/experts/")({
-  loader: async () => ({ dbExperts: await listPublicExperts().catch(() => []) }),
+  loader: async () => {
+    const [dbExperts, stats] = await Promise.all([
+      listPublicExperts().catch(() => []),
+      getPublicExpertStats(),
+    ]);
+    return { dbExperts, stats };
+  },
+  staleTime: 60_000,
   head: () => ({
     meta: [
       { title: "Experts Directory — BARUNA" },
@@ -106,7 +116,7 @@ function ExpertCard({ e }: { e: Expert }) {
 }
 
 function ExpertsPage() {
-  const { dbExperts } = Route.useLoaderData();
+  const { dbExperts, stats } = Route.useLoaderData();
   const { t } = useLanguage();
 
   const requests = [
@@ -217,10 +227,10 @@ function ExpertsPage() {
           title={t("experts.bannerTitle")}
           description={t("experts.bannerDesc")}
           stats={[
-            { value: "850+", label: t("welcome.verifiedExperts"), icon: Users },
-            { value: "60+", label: t("footer.countries"), icon: Globe },
-            { value: "25+", label: t("sidebar.topics"), icon: BookMarked },
-            { value: "320+", label: t("experts.institutionsRepresented"), icon: Building2 },
+            { value: stats.verifiedExperts.toLocaleString(), label: t("welcome.verifiedExperts"), icon: Users },
+            { value: stats.countries.toLocaleString(), label: t("footer.countries"), icon: Globe },
+            { value: stats.topics.toLocaleString(), label: t("sidebar.topics"), icon: BookMarked },
+            { value: stats.institutions.toLocaleString(), label: t("experts.institutionsRepresented"), icon: Building2 },
           ]}
           side={
             <div className="w-full rounded-2xl border border-navy-foreground/15 bg-navy/85 p-5 text-navy-foreground shadow-card backdrop-blur-md sm:w-72">

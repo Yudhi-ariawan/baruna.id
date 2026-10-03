@@ -7,6 +7,31 @@ import type { PublicExpert } from "./directory.types";
 
 type DirectoryRow = Database["public"]["Views"]["experts_directory_v"]["Row"];
 
+export type PublicExpertStats = {
+  verifiedExperts: number;
+  countries: number;
+  topics: number;
+  institutions: number;
+};
+
+const EMPTY_EXPERT_STATS: PublicExpertStats = {
+  verifiedExperts: 0,
+  countries: 0,
+  topics: 0,
+  institutions: 0,
+};
+
+const EXPERT_STATS_CACHE_TTL_MS = 60_000;
+let expertStatsCache:
+  | { expiresAt: number; value: PublicExpertStats }
+  | undefined;
+
+function normalizedUnique(values: Array<string | null | undefined>): number {
+  return new Set(
+    values.map((value) => value?.trim().toLocaleLowerCase()).filter(Boolean),
+  ).size;
+}
+
 function mapExpert(row: DirectoryRow): PublicExpert {
   return {
     id: row.id,
@@ -183,6 +208,46 @@ export const listPublicExperts = createServerFn({ method: "GET" }).handler(
       .map(mapInstructorToPublicExpert);
 
     return [...dbExperts, ...trainerExperts];
+  },
+);
+
+export const getPublicExpertStats = createServerFn({ method: "GET" }).handler(
+  async (): Promise<PublicExpertStats> => {
+    const now = Date.now();
+    if (expertStatsCache && expertStatsCache.expiresAt > now) {
+      return expertStatsCache.value;
+    }
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin
+        .from("experts_directory_v")
+        .select("country, expertise_areas, institution, verification_status")
+        .in("verification_status", ["institutionally_verified", "governance_verified"]);
+
+      if (error) throw error;
+
+      const experts = data ?? [];
+      const value: PublicExpertStats = {
+        verifiedExperts: experts.length,
+        countries: normalizedUnique(experts.map((expert) => expert.country)),
+        topics: normalizedUnique(
+          experts.flatMap((expert) => expert.expertise_areas ?? []),
+        ),
+        institutions: normalizedUnique(
+          experts.map((expert) => expert.institution),
+        ),
+      };
+
+      expertStatsCache = {
+        value,
+        expiresAt: now + EXPERT_STATS_CACHE_TTL_MS,
+      };
+      return value;
+    } catch (error) {
+      console.warn("Failed to load public expert statistics:", error);
+      return EMPTY_EXPERT_STATS;
+    }
   },
 );
 
