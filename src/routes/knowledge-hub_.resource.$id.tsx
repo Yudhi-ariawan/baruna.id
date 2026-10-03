@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import {
   Bookmark, Share2, Download, Play, Users, GraduationCap, CalendarDays, MessagesSquare,
   Building2, FileText, ArrowRight, ArrowLeft, AlertCircle, Eye, Clock, Layers, Award,
@@ -14,7 +14,8 @@ import {
   DEMO_EXPERTS, DEMO_CATEGORIES, DEMO_SHORT_COURSES, DEMO_EVENTS, DEMO_COMMUNITIES, DEMO_PARTNERS, DEMO_MODULES,
 } from "@/data/demo";
 import { masterByCode, masterByKhCode, MINUTES_PER_JP } from "@/data/masterModules";
-import { useShortCourses } from "@/lib/shortCourses";
+import { shortCourseProgress, useShortCourses } from "@/lib/shortCourses";
+import { useHomeExperience } from "@/components/baruna/home-experience";
 import { AccessNotificationModal } from "@/components/baruna/knowledge/AccessNotificationModal";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge, AccessBadge } from "@/components/baruna/knowledge/ResourceCard";
@@ -129,6 +130,8 @@ function markViewed(id: string) {
 
 function ResourceDetailPage() {
   const { resource: r } = Route.useLoaderData();
+  const navigate = useNavigate();
+  const { authState } = useHomeExperience();
   const saved = useIsSaved(r.id);
   useEffect(() => { markViewed(r.id); }, [r.id]);
 
@@ -150,7 +153,10 @@ function ResourceDetailPage() {
     (r.shortCourseCode && masterByCode[r.shortCourseCode]) ||
     undefined;
   const learningId = masterModule?.code || r.shortCourseCode || r.id;
-  const { isCompleted, priorLearning } = useShortCourses();
+  const { get, isCompleted, priorLearning } = useShortCourses();
+  const enrollment = authState === "authenticated" ? get(learningId) : undefined;
+  const enrollmentProgress = enrollment ? shortCourseProgress(enrollment) : 0;
+  const enrolledCtaLabel = enrollmentProgress >= 100 ? "Review Module" : "Continue Learning";
   const scCompleted = masterModule ? isCompleted(masterModule.code) : false;
   const scPrior = masterModule ? priorLearning(masterModule.code) : false;
   const event = r.relatedEventId ? DEMO_EVENTS.find((e) => e.id === r.relatedEventId) : undefined;
@@ -251,10 +257,24 @@ function ResourceDetailPage() {
                   </button>
                   {r.type === "learning-modules" ? (
                     <button
-                      onClick={() => setGateOpen(true)}
+                      onClick={() => {
+                        if (enrollment) {
+                          void navigate({
+                            to: "/academy/learn/$id",
+                            params: { id: learningId },
+                          });
+                          return;
+                        }
+                        setGateOpen(true);
+                      }}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground"
                     >
-                      <Lock className="h-3.5 w-3.5" /> Start Module
+                      {enrollment ? (
+                        <GraduationCap className="h-3.5 w-3.5" />
+                      ) : (
+                        <Lock className="h-3.5 w-3.5" />
+                      )}
+                      {enrollment ? enrolledCtaLabel : "Start Module"}
                     </button>
                   ) : canDownload ? (
                     <button className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground">
