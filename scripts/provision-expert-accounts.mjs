@@ -9,6 +9,19 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+const officialEmails = {
+  "achmad-suhermanto": "achmad.suhermanto@kkp.go.id",
+  "emi-wati": "emi.wati@kkp.go.id",
+  "erika-arisetiana-dewi": "erika.dewi@kkp.go.id",
+  "firman-pra-setia-nugraha": "firman.nugraha@kkp.go.id",
+  "herison-lingga": "herison.lingga@kkp.go.id",
+  "i-putu-suarma": "putu.suarma@kkp.go.id",
+  "iman-setya-dwi-ardani": "iman.setya@kkp.go.id",
+  "ricky-aditya-saputra": "ricky.saputra@kkp.go.id",
+  "sri-astutik": "sri.astutik@kkp.go.id",
+  sumartin: "sumartin@kkp.go.id",
+};
+
 const { data: experts, error: expertError } = await supabase
   .from("experts_directory_v")
   .select("id,slug,display_name,institution,institution_role")
@@ -33,11 +46,15 @@ for (let page = 1; ; page += 1) {
 
 const summary = [];
 for (const expert of experts) {
-  const email = `${expert.slug.replaceAll("-", ".")}@baruna.id`;
-  let user = authUsers.find((candidate) => candidate.email?.toLowerCase() === email);
+  const email = officialEmails[expert.slug];
+  if (!email) throw new Error(`Missing official email for ${expert.slug}`);
+  const { data: currentExpert } = await supabase.from("experts").select("original_contributor_id").eq("id", expert.id).single();
+  let user = authUsers.find((candidate) => candidate.id === currentExpert?.original_contributor_id)
+    ?? authUsers.find((candidate) => candidate.email?.toLowerCase() === email);
 
   if (user) {
     const { data, error } = await supabase.auth.admin.updateUserById(user.id, {
+      email,
       password: process.env.EXPERT_DEFAULT_PASSWORD,
       email_confirm: true,
       user_metadata: {
@@ -78,6 +95,12 @@ for (const expert of experts) {
     is_active: true,
   });
   if (profileError) throw profileError;
+
+  const { error: contactError } = await supabase.from("expert_contact_private").upsert({
+    expert_id: expert.id,
+    email,
+  });
+  if (contactError) throw contactError;
 
   const { error: linkError } = await supabase
     .from("experts")
