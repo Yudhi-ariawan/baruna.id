@@ -109,7 +109,7 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
   errorComponent: ({ error }: { error: any }) => (
     <AcademyShell active="self-paced">
       <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
-        <h1 className="font-display text-2xl font-bold text-navy">Kendala Memuat Modul Pembelajaran</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">Unable to Load Learning Module</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
           {String(error?.message || error || "Terjadi kendala saat memuat detail modul pelatihan. Silakan coba kembali.")}
         </p>
@@ -117,7 +117,7 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
           to="/academy/self-paced"
           className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-white"
         >
-          Kembali ke Katalog Pelatihan <ArrowRight className="h-4 w-4" />
+          Return to Training Catalog <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </AcademyShell>
@@ -125,12 +125,12 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
   notFoundComponent: () => (
     <AcademyShell active="self-paced">
       <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
-        <h1 className="font-display text-2xl font-bold text-navy">Modul Pembelajaran Tidak Ditemukan</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">Learning Module Not Found</h1>
         <Link
           to="/academy/self-paced"
           className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-white"
         >
-          Kembali ke Katalog Pelatihan <ArrowRight className="h-4 w-4" />
+          Return to Training Catalog <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </AcademyShell>
@@ -171,7 +171,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
       instructor: module.trainer.name,
       category: module.topic || "Fisheries Management",
     });
-    barunaToast("Berhasil mendaftar! Mengalihkan ke Ruang Belajar...");
+    barunaToast("Enrollment successful. Opening your learning space...");
     navigate({ to: "/academy/learn/$id", params: { id: module.id } });
   };
 
@@ -184,7 +184,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
       certNo: `BARUNA-MOD-${module.id.slice(0, 8).toUpperCase()}-2026`,
       verifyUrl: `https://baruna.kkp.go.id/verify/${module.id}`,
     });
-    barunaToast("Sertifikat kelulusan berhasil diunduh!");
+    barunaToast("Your certificate has been downloaded.");
   };
 
   const coverDoc = module.documents.find(
@@ -203,31 +203,31 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
           </span>
           {done ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="h-3 w-3" /> Selesai 100%
+              <CheckCircle2 className="h-3 w-3" /> 100% Completed
             </span>
           ) : enrollment ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-marine/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine">
-              <Sparkles className="h-3 w-3" /> Aktif Belajar
+              <Sparkles className="h-3 w-3" /> Learning in Progress
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-eco-community">
-              Tersedia Online
+              Available Online
             </span>
           )}
         </div>
 
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
+        <h3 className="mt-3 font-display text-base font-bold text-navy">Module Information</h3>
         <ul className="mt-3 space-y-2 text-xs">
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Durasi Belajar</span>
-            <span className="font-semibold text-navy">{module.hours} Jam Belajar (JP)</span>
+            <span className="text-muted-foreground">Learning Duration</span>
+            <span className="font-semibold text-navy">{module.hours} Learning Hours</span>
           </li>
           <li className="flex items-center justify-between">
             <span className="text-muted-foreground">Format</span>
-            <span className="font-semibold text-navy">Self-Paced (Mandiri Online)</span>
+            <span className="font-semibold text-navy">Self-Paced (Online)</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Bahasa Pengantar</span>
+            <span className="text-muted-foreground">Language of Instruction</span>
             <span className="font-semibold text-navy">{module.language}</span>
           </li>
           <li className="flex items-center justify-between">
@@ -235,7 +235,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             <span className="font-semibold text-navy">{module.passingScore}%</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Sertifikat</span>
+            <span className="text-muted-foreground">Certificate</span>
             <span className="font-semibold text-navy">Certificate of Completion</span>
           </li>
         </ul>
@@ -254,16 +254,16 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               {done ? (
                 <div className="rounded-xl border border-success/40 bg-success/5 p-3 text-xs text-success">
                   <p className="flex items-center gap-1.5 font-bold">
-                    <Award className="h-4 w-4" /> Modul Telah Selesai
+                    <Award className="h-4 w-4" /> Module Completed
                   </p>
                   <p className="mt-1 text-success/80">
-                    Selamat! Anda telah lulus modul ini. Rekam kelulusan tersimpan resmi.
+                    Congratulations! You have passed this module and your completion record has been saved.
                   </p>
                   <button
                     onClick={handleDownloadCertificate}
                     className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
                   >
-                    <Download className="h-3.5 w-3.5" /> Unduh Sertifikat (PDF)
+                    <Download className="h-3.5 w-3.5" /> Download Certificate (PDF)
                   </button>
                 </div>
               ) : null}
@@ -274,7 +274,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
               >
                 <PlayCircle className="h-4 w-4" />
-                {done ? "Tinjau di Ruang Belajar" : "Lanjutkan Belajar →"}
+                {done ? "Review Module" : "Continue Learning →"}
               </Link>
             </>
           )}
@@ -283,7 +283,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             to="/academy/learn"
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted transition"
           >
-            ← Buka Dashboard My Learning
+            ← Go to My Learning Dashboard
           </Link>
         </div>
       </div>
@@ -291,7 +291,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
       {/* Trainer Card */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <span className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-          Instruktur Modul
+          Module Instructor
         </span>
         <div className="mt-3 flex items-start gap-3">
           {module.trainer.avatarUrl ? (
@@ -328,7 +328,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               params={{ slug: module.trainer.slug }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-marine hover:underline"
             >
-              Lihat Profil Lengkap <ExternalLink className="h-3 w-3" />
+              View Full Profile <ExternalLink className="h-3 w-3" />
             </Link>
           </div>
         )}
@@ -344,7 +344,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Program &amp; Modul</Link>
+          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Programs &amp; Modules</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy truncate max-w-xs">{module.title}</span>
         </nav>
@@ -371,7 +371,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             </span>
             {done ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-success">
-                <CheckCircle2 className="h-3 w-3" /> Selesai
+                <CheckCircle2 className="h-3 w-3" /> Completed
               </span>
             ) : enrollment ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-blue-700">
@@ -390,7 +390,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
 
           <div className="mt-5 flex flex-wrap gap-2.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
-              <Clock className="h-3.5 w-3.5 text-marine" /> {module.hours} Jam Belajar
+              <Clock className="h-3.5 w-3.5 text-marine" /> {module.hours} Learning Hours
             </span>
             {module.topic && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
@@ -409,9 +409,9 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
           <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
               {enrollment ? (
-                <span>Status: <strong className="text-navy font-semibold">Anda telah terdaftar di modul ini.</strong></span>
+                <span>Status: <strong className="text-navy font-semibold">You are enrolled in this module.</strong></span>
               ) : (
-                <span>Akses seluruh materi video, handbook modul, slide tayang, dan kuis kelulusan.</span>
+                <span>Access all videos, module materials, presentation slides, and the assessment quiz.</span>
               )}
             </div>
 
@@ -421,7 +421,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
                 params={{ id: module.id }}
                 className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
               >
-                <PlayCircle className="h-4 w-4" /> Lanjutkan Belajar di Ruang Belajar →
+                <PlayCircle className="h-4 w-4" /> Continue Learning in the Learning Space →
               </Link>
             ) : (
               <button
@@ -441,7 +441,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-marine/10 text-marine">
                 <Target className="h-4 w-4" />
               </span>
-              <h2 className="font-display text-base font-bold text-navy">Tujuan &amp; Capaian Pembelajaran</h2>
+              <h2 className="font-display text-base font-bold text-navy">Learning Objectives &amp; Outcomes</h2>
             </div>
             <ul className="mt-4 space-y-2.5">
               {module.learningObjectives.map((obj, idx) => (
@@ -461,8 +461,8 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               <BookOpen className="h-4 w-4" />
             </span>
             <div>
-              <h2 className="font-display text-base font-bold text-navy">Silabus &amp; Struktur Ruang Belajar</h2>
-              <p className="text-xs text-muted-foreground">Aktivitas pembelajaran yang akan diselesaikan peserta di Ruang Belajar:</p>
+              <h2 className="font-display text-base font-bold text-navy">Syllabus &amp; Learning Space Structure</h2>
+              <p className="text-xs text-muted-foreground">Learning activities participants will complete in the Learning Space:</p>
             </div>
           </div>
 
@@ -484,7 +484,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
                 <FileText className="h-4 w-4" />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-navy">2. Modul Pembelajaran</h3>
+                <h3 className="text-sm font-bold text-navy">2. Module Material</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Ringkasan modul, dokumen lengkap, dan pedoman teknis resmi.
                 </p>
@@ -508,7 +508,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
                 <ListChecks className="h-4 w-4" />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-navy">4. Kuis Kelulusan Modul</h3>
+                <h3 className="text-sm font-bold text-navy">4. Module Assessment Quiz</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Evaluasi pemahaman dengan passing grade {module.passingScore}%.
                 </p>
@@ -554,7 +554,7 @@ function MasterModuleOverview({
       instructor: master.instructorSlug,
       category: master.subCategory,
     });
-    barunaToast("Berhasil mendaftar! Mengalihkan ke Ruang Belajar...");
+    barunaToast("Enrollment successful. Opening your learning space...");
     navigate({ to: "/academy/learn/$id", params: { id: master.code } });
   };
 
@@ -567,11 +567,11 @@ function MasterModuleOverview({
           </span>
           {done ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="h-3 w-3" /> Selesai 100%
+              <CheckCircle2 className="h-3 w-3" /> 100% Completed
             </span>
           ) : enrollment ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-marine/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine">
-              <Sparkles className="h-3 w-3" /> Aktif Belajar
+              <Sparkles className="h-3 w-3" /> Learning in Progress
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-eco-community">
@@ -580,10 +580,10 @@ function MasterModuleOverview({
           )}
         </div>
 
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
+        <h3 className="mt-3 font-display text-base font-bold text-navy">Module Information</h3>
         <ul className="mt-3 space-y-2 text-xs">
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Durasi</span>
+            <span className="text-muted-foreground">Learning Duration</span>
             <span className="font-semibold text-navy">{master.hours}h ({master.jp} JP)</span>
           </li>
           <li className="flex items-center justify-between">
@@ -591,11 +591,11 @@ function MasterModuleOverview({
             <span className="font-semibold text-navy">{master.level}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Instruktur</span>
+            <span className="text-muted-foreground">Instructor</span>
             <span className="font-semibold text-navy">{instructor?.name ?? master.instructorSlug}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Sertifikat</span>
+            <span className="text-muted-foreground">Certificate</span>
             <span className="font-semibold text-navy">Certificate of Completion</span>
           </li>
         </ul>
@@ -615,7 +615,7 @@ function MasterModuleOverview({
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
             >
               <PlayCircle className="h-4 w-4" />
-              {done ? "Tinjau di Ruang Belajar" : "Lanjutkan Belajar →"}
+              {done ? "Review Module" : "Continue Learning →"}
             </Link>
           )}
 
@@ -623,7 +623,7 @@ function MasterModuleOverview({
             to="/academy/learn"
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted transition"
           >
-            ← Buka Dashboard My Learning
+            ← Go to My Learning Dashboard
           </Link>
         </div>
       </div>
@@ -637,7 +637,7 @@ function MasterModuleOverview({
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Program &amp; Modul</Link>
+          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Programs &amp; Modules</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy">{master.code} · {master.title}</span>
         </nav>
@@ -652,7 +652,7 @@ function MasterModuleOverview({
             </span>
             {done && (
               <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-success">
-                <CheckCircle2 className="h-3 w-3" /> Selesai
+                <CheckCircle2 className="h-3 w-3" /> Completed
               </span>
             )}
           </div>
@@ -672,7 +672,7 @@ function MasterModuleOverview({
 
           <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
-              {enrollment ? "Modul aktif di akun pembelajaran Anda." : "Daftar secara gratis untuk mulai belajar."}
+              {enrollment ? "This module is active in your learning account." : "Enroll for free to start learning."}
             </span>
             {enrollment ? (
               <Link
@@ -680,7 +680,7 @@ function MasterModuleOverview({
                 params={{ id: master.code }}
                 className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
               >
-                <PlayCircle className="h-4 w-4" /> Lanjutkan Belajar di Ruang Belajar →
+                <PlayCircle className="h-4 w-4" /> Continue Learning in the Learning Space →
               </Link>
             ) : (
               <button
@@ -699,7 +699,7 @@ function MasterModuleOverview({
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-marine/10 text-marine">
               <Target className="h-4 w-4" />
             </span>
-            <h2 className="font-display text-base font-bold text-navy">Tujuan Pembelajaran</h2>
+            <h2 className="font-display text-base font-bold text-navy">Learning Objectives</h2>
           </div>
           <ul className="mt-4 space-y-2">
             {master.objectives.map((o: string) => (
@@ -724,7 +724,7 @@ function StandaloneProgramDetail({ program }: { program: Program }) {
           to="/academy/programs"
           className="inline-flex items-center gap-1 text-sm font-semibold text-marine hover:text-navy"
         >
-          <ArrowLeft className="h-4 w-4" /> Kembali ke Katalog Program
+          <ArrowLeft className="h-4 w-4" /> Return to Program Catalog
         </Link>
 
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
