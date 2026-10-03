@@ -7,6 +7,8 @@ export type AccessModalProps = {
   onClose: () => void;
   master: MasterModule | undefined;
   moduleTitle: string;
+  learningId: string;
+  trainingProgram?: string | null;
 };
 
 /**
@@ -17,7 +19,14 @@ export type AccessModalProps = {
  * The spec forbids generic "Access Denied" copy — this modal explains the
  * learning pathway and offers three connected next steps.
  */
-export function AccessNotificationModal({ open, onClose, master, moduleTitle }: AccessModalProps) {
+export function AccessNotificationModal({
+  open,
+  onClose,
+  master,
+  moduleTitle,
+  learningId,
+  trainingProgram,
+}: AccessModalProps) {
   if (!open) return null;
   return (
     <div
@@ -58,29 +67,30 @@ export function AccessNotificationModal({ open, onClose, master, moduleTitle }: 
             Course to access the complete learning materials, learning activities, assessment, and
             Certificate of Completion.
           </p>
-          <p className="rounded-xl border border-marine/30 bg-marine/5 p-3 text-xs text-navy">
-            This module is also included in the{" "}
-            <strong className="font-bold">International Training on Fisheries for African Countries</strong>.
-          </p>
-          {!master && (
-            <p className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-800">
+          {trainingProgram ? (
+            <p className="rounded-xl border border-marine/30 bg-marine/5 p-3 text-xs text-navy">
+              This module is also included in the{" "}
+              <strong className="font-bold">{trainingProgram}</strong>.
+            </p>
+          ) : (
+            <p className="flex items-start gap-2 rounded-xl border border-border bg-muted/50 p-3 text-xs text-foreground/75">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Self-Paced Course link is not available for this module yet.
+              This module is currently offered as a standalone Self-Paced Course. No parent training
+              program has been linked yet.
             </p>
           )}
         </div>
 
         <div className="flex flex-col gap-2 border-t border-border bg-muted/40 p-4 sm:flex-row sm:flex-wrap">
+          <Link
+            to="/academy/learn/$id"
+            params={{ id: learningId }}
+            onClick={onClose}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-marine px-4 py-2.5 text-sm font-semibold text-marine-foreground hover:bg-marine/90"
+          >
+            <GraduationCap className="h-4 w-4" /> Join the Self-Paced Course
+          </Link>
           {master && (
-            <>
-              <Link
-                to="/academy/self-paced/$code"
-                params={{ code: master.code }}
-                onClick={onClose}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-marine px-4 py-2.5 text-sm font-semibold text-marine-foreground hover:bg-marine/90"
-              >
-                <GraduationCap className="h-4 w-4" /> Join the Self-Paced Course
-              </Link>
               <Link
                 to="/academy/self-paced/$code"
                 params={{ code: master.code }}
@@ -89,16 +99,17 @@ export function AccessNotificationModal({ open, onClose, master, moduleTitle }: 
               >
                 <ExternalLink className="h-4 w-4" /> View Self-Paced Course Details
               </Link>
-            </>
           )}
-          <Link
-            to="/academy/training/$slug"
-            params={{ slug: "international-training-fisheries-african-countries" }}
-            onClick={onClose}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy hover:border-marine/40"
-          >
-            <Users className="h-4 w-4" /> View Full Training Program
-          </Link>
+          {trainingProgram && (
+            <Link
+              to="/academy/training/$slug"
+              params={{ slug: "international-training-fisheries-african-countries" }}
+              onClick={onClose}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-navy hover:border-marine/40"
+            >
+              <Users className="h-4 w-4" /> View Full Training Program
+            </Link>
+          )}
           <button
             onClick={onClose}
             className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:text-navy"

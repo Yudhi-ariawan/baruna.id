@@ -48,7 +48,7 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
           abstract: pubMod.summary || "Approved BARUNA learning module.",
           author: pubMod.trainer.name || "BARUNA Trainer",
           contributor: "BARUNA Academy",
-          organization: "BARUNA Network",
+          organization: pubMod.trainer.institution || "BARUNA Network",
           year: new Date(pubMod.publishedAt).getFullYear() || 2026,
           language: pubMod.language || "English",
           country: "Indonesia",
@@ -61,6 +61,14 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
           moduleCode: `BARUNA-MOD-${pubMod.id.slice(0, 8).toUpperCase()}`,
           shortCourseCode: pubMod.id,
           expertId: "",
+          relatedExpert: pubMod.trainer.slug
+            ? {
+                slug: pubMod.trainer.slug,
+                name: pubMod.trainer.name,
+                title: pubMod.trainer.headline || "Verified BARUNA Expert",
+                avatarUrl: pubMod.trainer.avatarUrl,
+              }
+            : null,
           metrics: { views: 42, uniqueViewers: 18, downloads: 12, saves: 4, shares: 2 },
           citation: `${pubMod.trainer.name || "BARUNA Trainer"} (${new Date(pubMod.publishedAt).getFullYear() || 2026}). ${pubMod.title}. BARUNA Knowledge Hub.`,
           createdAt: pubMod.publishedAt,
@@ -124,7 +132,15 @@ function ResourceDetailPage() {
   const saved = useIsSaved(r.id);
   useEffect(() => { markViewed(r.id); }, [r.id]);
 
-  const expert = DEMO_EXPERTS.find((e) => e.id === r.expertId);
+  const demoExpert = DEMO_EXPERTS.find((e) => e.id === r.expertId);
+  const expert = r.relatedExpert ?? (demoExpert
+    ? {
+        slug: demoExpert.slug,
+        name: demoExpert.fullName,
+        title: demoExpert.title,
+        avatarUrl: null,
+      }
+    : null);
   const category = DEMO_CATEGORIES.find((c) => c.slug === r.category);
   const module = r.moduleCode ? DEMO_MODULES.find((m) => m.code === r.moduleCode) : undefined;
   const course = r.shortCourseCode ? DEMO_SHORT_COURSES.find((c) => c.code === r.shortCourseCode) : undefined;
@@ -133,6 +149,7 @@ function ResourceDetailPage() {
     (r.moduleCode && masterByKhCode[r.moduleCode]) ||
     (r.shortCourseCode && masterByCode[r.shortCourseCode]) ||
     undefined;
+  const learningId = masterModule?.code || r.shortCourseCode || r.id;
   const { isCompleted, priorLearning } = useShortCourses();
   const scCompleted = masterModule ? isCompleted(masterModule.code) : false;
   const scPrior = masterModule ? priorLearning(masterModule.code) : false;
@@ -232,23 +249,13 @@ function ResourceDetailPage() {
                   >
                     <Share2 className="h-3.5 w-3.5" /> Share
                   </button>
-                  {r.type === "learning-modules" && masterModule ? (
-                    scCompleted ? (
-                      <Link to="/academy/self-paced/$code" params={{ code: masterModule.code }} className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-3 py-2 text-xs font-semibold text-white">
-                        <Award className="h-3.5 w-3.5" /> Completed · View Certificate
-                      </Link>
-                    ) : (
-                      <button
-                        onClick={() => setGateOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground"
-                      >
-                        <Lock className="h-3.5 w-3.5" /> Start Module
-                      </button>
-                    )
-                  ) : r.type === "learning-modules" ? (
-                    <Link to="/academy/self-paced/$code" params={{ code: r.shortCourseCode || (course ? course.code : r.id) }} className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground">
-                      <GraduationCap className="h-3.5 w-3.5" /> Take the Self-Paced Course
-                    </Link>
+                  {r.type === "learning-modules" ? (
+                    <button
+                      onClick={() => setGateOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground"
+                    >
+                      <Lock className="h-3.5 w-3.5" /> Start Module
+                    </button>
                   ) : canDownload ? (
                     <button className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground">
                       <Download className="h-3.5 w-3.5" /> Download
@@ -429,10 +436,14 @@ function ResourceDetailPage() {
                 <h3 className="font-display text-sm font-bold text-navy">Related Expert</h3>
                 <Link to="/experts/$slug" params={{ slug: expert.slug }} className="mt-2 flex items-center gap-3 rounded-lg p-1 hover:bg-muted">
                   <span className="grid h-10 w-10 place-items-center rounded-full bg-marine/10 font-bold text-marine">
-                    {expert.fullName.split(" ").slice(-2).map((s) => s[0]).join("")}
+                    {expert.avatarUrl ? (
+                      <img src={expert.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                    ) : (
+                      expert.name.split(" ").slice(-2).map((s: string) => s[0]).join("")
+                    )}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-navy">{expert.fullName}</p>
+                    <p className="truncate font-semibold text-navy">{expert.name}</p>
                     <p className="truncate text-xs text-muted-foreground">{expert.title}</p>
                   </div>
                   <ArrowRight className="ml-auto h-4 w-4 text-marine" />
@@ -449,6 +460,10 @@ function ResourceDetailPage() {
                 ) : course && (
                   <RelLink to="/academy/self-paced/$code" params={{ code: course.code }} icon={GraduationCap}
                     title="Related Self-Paced Course" subtitle={course.title} />
+                )}
+                {!masterModule && !course && r.type === "learning-modules" && (
+                  <RelLink to="/academy/learn/$id" params={{ id: learningId }} icon={GraduationCap}
+                    title="Related Self-Paced Course" subtitle={r.title} />
                 )}
                 {!masterModule && module && (
                   <RelLink to="/academy/self-paced/$code" params={{ code: module.code }} icon={Award}
@@ -532,6 +547,8 @@ function ResourceDetailPage() {
         onClose={() => setGateOpen(false)}
         master={masterModule}
         moduleTitle={r.title}
+        learningId={learningId}
+        trainingProgram={r.trainingProgram}
       />
     </PageShell>
   );
