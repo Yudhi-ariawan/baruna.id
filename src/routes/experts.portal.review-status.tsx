@@ -98,7 +98,7 @@ function ReviewStatusPage() {
     setOpeningFile(filePath);
     try {
       const { data, error } = await supabase.storage
-        .from("expert-applications")
+        .from("module-attachments")
         .createSignedUrl(filePath, 3600);
       if (error || !data?.signedUrl) {
         toast.error("Gagal mendapatkan akses berkas.");
@@ -120,7 +120,7 @@ function ReviewStatusPage() {
     }
     try {
       const { data, error } = await supabase.storage
-        .from("expert-applications")
+        .from("module-attachments")
         .createSignedUrl(filePath, 3600);
       if (error || !data?.signedUrl) {
         toast.error("Gagal membuat tautan unduhan.");
@@ -644,4 +644,3 @@ function ReviewStatusPage() {
     </PageShell>
   );
 }
-

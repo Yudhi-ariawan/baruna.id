@@ -416,10 +416,51 @@ export const publishApprovedModule = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ subjectId: z.string().uuid(), decisionId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     await requirePermission(context, "academy.publish");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: revisionDraft } = await supabaseAdmin
+      .from("review_drafts")
+      .select("payload")
+      .eq("linked_subject_id", data.subjectId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const revisionPayload = revisionDraft?.payload && typeof revisionDraft.payload === "object" && !Array.isArray(revisionDraft.payload)
+      ? revisionDraft.payload as Record<string, unknown>
+      : {};
+    const canonicalModuleId = typeof revisionPayload.canonical_module_id === "string"
+      ? revisionPayload.canonical_module_id
+      : null;
+    if (canonicalModuleId) {
+      const { error: updateError } = await supabaseAdmin.from("module_registry").update({
+        title: typeof revisionPayload.title === "string" ? revisionPayload.title : undefined,
+        summary: typeof revisionPayload.summary === "string" ? revisionPayload.summary : undefined,
+        language: typeof revisionPayload.language === "string" ? revisionPayload.language : undefined,
+        estimated_learning_hours: Number(revisionPayload.estimated_learning_hours || 0),
+        target_participants: typeof revisionPayload.target_participants === "string" ? revisionPayload.target_participants : undefined,
+        learning_objectives: Array.isArray(revisionPayload.learning_objectives) ? revisionPayload.learning_objectives as string[] : [],
+        content_outline: (revisionPayload.content_outline ?? {}) as Json,
+        assessment_approach: (revisionPayload.assessment_approach ?? {}) as Json,
+        metadata: (revisionPayload.metadata ?? {}) as Json,
+        current_status: "published",
+        visibility: "public",
+        verification_status: "governance_verified",
+        approved_by: context.userId,
+        published_by: context.userId,
+        approval_date: new Date().toISOString(),
+        publication_date: new Date().toISOString(),
+      }).eq("id", canonicalModuleId);
+      if (updateError) throw new Error(updateError.message);
+      const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
+      await projectPublishedModuleToKnowledge(canonicalModuleId);
+      return { moduleId: canonicalModuleId };
+    }
     const client = context.supabase as unknown as { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
     const result = await client.rpc("module_publish_from_decision", { _subject_id: data.subjectId, _decision_id: data.decisionId, _visibility: "public", _verification: "governance_verified" });
     if (result.error) throw new Error(result.error.message);
-    return { moduleId: result.data as string };
+    const moduleId = result.data as string;
+    const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
+    await projectPublishedModuleToKnowledge(moduleId);
+    return { moduleId };
   });
 
 

@@ -346,7 +346,7 @@ function SubmitModulePage() {
               const safeName = f.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
               const path = `users/${uid}/modules/${draftId || Date.now()}/${Date.now()}-${safeName}`;
               const { error: upErr } = await supabase.storage
-                .from("expert-applications")
+                .from("module-attachments")
                 .upload(path, f, { contentType, upsert: true });
 
               if (!upErr) {
@@ -417,7 +417,7 @@ function SubmitModulePage() {
           coverImageUrl = coverRes.path;
         } else {
           const { data: pub } = supabase.storage
-            .from("expert-applications")
+            .from("module-attachments")
             .getPublicUrl(coverRes.path);
           if (pub?.publicUrl) {
             coverImageUrl = pub.publicUrl;

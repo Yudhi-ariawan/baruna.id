@@ -604,6 +604,8 @@ export async function publishApprovedModule({
     throw new Error(iErr?.message || "module_insert_failed");
   }
 
+  const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
+  await projectPublishedModuleToKnowledge(inserted.id);
+
   return { moduleId: inserted.id };
 }
-

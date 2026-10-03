@@ -204,7 +204,7 @@ function PortalDashboard() {
     }
     try {
       const { data, error } = await supabase.storage
-        .from("expert-applications")
+        .from("module-attachments")
         .createSignedUrl(filePath, 3600);
       if (error || !data?.signedUrl) {
         toast.error("Gagal mendapatkan tautan akses berkas.");
@@ -554,13 +554,14 @@ function PortalDashboard() {
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-2 shrink-0">
-                        {statusInfo.status === "revision_requested" && (
+                        {(statusInfo.status === "revision_requested" || statusInfo.status === "draft") && (
                           <Link
                             to="/experts/portal/submit-module"
                             search={{ draftId: d.id }}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-amber-700 transition"
                           >
-                            <FileEdit className="h-3.5 w-3.5" /> Perbaiki Dokumen
+                            <FileEdit className="h-3.5 w-3.5" />
+                            {statusInfo.status === "draft" ? "Lengkapi Modul" : "Perbaiki Dokumen"}
                           </Link>
                         )}
                         <Link

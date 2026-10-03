@@ -104,10 +104,12 @@ function CataloguePage() {
       }}
       cta={{
         icon: Upload,
-        title: "Contribute a Resource",
-        description: "Verified experts, trainers, and partners may submit new resources.",
-        button: "Submit a Resource",
-        href: "/knowledge-hub/submit-resource",
+        title: isCanonicalLearning ? "Submit a Complete Learning Module" : "Contribute a Resource",
+        description: isCanonicalLearning
+          ? "Verified trainers submit the full module package, including video, handbook, slides, assessment, guide, and cover."
+          : "Verified experts, trainers, and partners may submit new resources.",
+        button: isCanonicalLearning ? "Open Trainer Module Form" : "Submit a Resource",
+        href: isCanonicalLearning ? "/experts/portal/submit-module" : "/knowledge-hub/submit-resource",
       }}
     >
       <div className="space-y-6">
