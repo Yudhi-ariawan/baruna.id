@@ -157,6 +157,7 @@ export const listPublicExperts = createServerFn({ method: "GET" }).handler(
       const { data, error } = await supabaseAdmin
         .from("experts_directory_v")
         .select(publicColumns)
+        .in("verification_status", ["institutionally_verified", "governance_verified"])
         .order("display_name");
 
       if (!error && data) {
@@ -202,12 +203,7 @@ export const listPublicExperts = createServerFn({ method: "GET" }).handler(
       console.warn("Failed to load experts from db:", err);
     }
 
-    const existingSlugs = new Set(dbExperts.map((e) => e.slug));
-    const trainerExperts = instructors
-      .filter((inst) => !existingSlugs.has(inst.slug))
-      .map(mapInstructorToPublicExpert);
-
-    return [...dbExperts, ...trainerExperts];
+    return dbExperts;
   },
 );
 

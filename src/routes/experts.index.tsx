@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Users,
   Search,
-  Bookmark,
   ArrowRight,
   Globe,
   BookMarked,
@@ -20,10 +19,9 @@ import {
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader, Tag } from "@/components/baruna/page/primitives";
-import { pageImages, expertImages } from "@/data/pages";
-import { instructors, instructorBySlug, type Instructor } from "@/data/instructors";
+import { pageImages } from "@/data/pages";
+import { instructorBySlug, type Instructor } from "@/data/instructors";
 import { ExpertInstructorCard } from "@/components/baruna/InstructorDirectory";
-import { DEMO_EXPERTS, DEMO_CATEGORIES, LEVEL_LABEL } from "@/data/demo";
 import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
 import {
   getPublicExpertStats,
@@ -58,62 +56,6 @@ export const Route = createFileRoute("/experts/")({
   }),
   component: ExpertsPage,
 });
-
-type Expert = {
-  name: string;
-  role: string;
-  institution: string;
-  expertise: string[];
-  image: string;
-};
-
-const experts: Expert[] = DEMO_EXPERTS.map((e, i) => ({
-  name: e.fullName,
-  role: `${e.title} — ${LEVEL_LABEL[e.level]} (DEMO)`,
-  institution: e.organization,
-  expertise: [
-    DEMO_CATEGORIES.find((c) => c.slug === e.category)?.name ?? "Marine & Fisheries",
-    "Verified BARUNA Expert",
-    "Approved BARUNA Trainer",
-  ],
-  image: expertImages[i % expertImages.length],
-}));
-
-const expertiseAreas = [
-  "Fisheries Management", "Aquaculture", "Marine Conservation", "Blue Economy",
-  "Ocean Governance", "Climate Change", "Marine Spatial Planning", "Fisheries Surveillance",
-];
-
-const institutions = [
-  "Ministry of Marine Affairs and Fisheries", "Hokkaido University", "IPB University",
-  "Institut Teknologi Bandung", "Ocean University of China", "CTI-CFF (Coral Triangle Initiative)", "SEAFDEC",
-];
-
-function ExpertCard({ e }: { e: Expert }) {
-  const { t } = useLanguage();
-  return (
-    <article className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
-      <div className="relative">
-        <img src={e.image} alt={e.name} loading="lazy" width={400} height={320} className="h-44 w-full rounded-xl object-cover object-top" />
-        <button type="button" aria-label="Save expert" className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-card/90 text-marine shadow-soft cursor-pointer">
-          <Bookmark className="h-4 w-4" />
-        </button>
-      </div>
-      <h3 className="mt-3 font-display text-sm font-bold leading-tight text-navy">{e.name}</h3>
-      <p className="mt-1 text-xs font-medium leading-snug text-marine">{e.role}</p>
-      <p className="mt-1 text-[0.7rem] leading-snug text-muted-foreground">{e.institution}</p>
-      <p className="mt-3 text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Expertise</p>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {e.expertise.map((x) => (
-          <span key={x} className="rounded-md bg-secondary px-2 py-0.5 text-[0.65rem] font-medium text-navy">{x}</span>
-        ))}
-      </div>
-      <Link to="/experts/directory" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-marine transition-colors hover:text-navy">
-        {t("common.details")} <ArrowRight className="h-4 w-4" />
-      </Link>
-    </article>
-  );
-}
 
 function ExpertsPage() {
   const { dbExperts, stats } = Route.useLoaderData();
@@ -157,10 +99,28 @@ function ExpertsPage() {
       programs: instructorBySlug[exp.slug]?.programs || [],
     }));
 
-    const existingSlugs = new Set(fromDb.map((i) => i.slug));
-    const remaining = instructors.filter((i) => !existingSlugs.has(i.slug));
-    return [...fromDb, ...remaining];
+    return fromDb;
   }, [dbExperts]);
+
+  const expertiseAreas = useMemo(
+    () =>
+      Array.from(
+        new Set(dbExperts.flatMap((expert) => expert.expertiseAreas).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b)),
+    [dbExperts],
+  );
+
+  const institutions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          dbExperts
+            .map((expert) => expert.institution?.trim())
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [dbExperts],
+  );
 
   return (
     <PageShell
@@ -276,25 +236,8 @@ function ExpertsPage() {
           </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
-          <section>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-bold text-navy sm:text-xl">{t("experts.title")}</h2>
-              <Link
-                to="/experts/directory"
-                className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine transition-colors hover:text-navy"
-              >
-                {t("bottomGrid.browseAll")} <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {experts.map((e) => (
-                <ExpertCard key={e.name} e={e} />
-              ))}
-            </div>
-          </section>
-
-          <div className="space-y-5">
+        <div className="grid gap-5 md:grid-cols-2">
+          <div>
             <Panel>
               <SectionHeader title={t("sidebar.topics")} action={null} />
               <div className="flex flex-wrap gap-2">
@@ -306,7 +249,8 @@ function ExpertsPage() {
                 {t("common.viewAll")} <ArrowRight className="h-4 w-4" />
               </Link>
             </Panel>
-
+          </div>
+          <div>
             <Panel>
               <SectionHeader title={t("experts.institutionsRepresented")} action={null} />
               <ul className="space-y-3">
