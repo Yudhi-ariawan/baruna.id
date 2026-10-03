@@ -34,7 +34,10 @@ export function AccessBadge({ level }: { level: KhResource["access"] }) {
 
 export function ResourceCard({ r, index, demo = true }: { r: KhResource; index: number; demo?: boolean }) {
   const saved = useIsSaved(r.id);
-  const cover = r.coverImage || courseImages[index % courseImages.length];
+  const fallbackCover = r.id === "01b19c79-d63a-4ad1-b585-3386820a0cba"
+    ? "/sample-module-files/Course_Cover_Image.jpg"
+    : courseImages[index % courseImages.length];
+  const cover = r.coverImage || fallbackCover;
   const isVideo = r.type === "videos";
   const isModule = r.type === "learning-modules";
 
@@ -49,7 +52,7 @@ export function ResourceCard({ r, index, demo = true }: { r: KhResource; index: 
           height={512}
           className="h-full w-full object-cover transition-transform group-hover:scale-105"
           onError={(e) => {
-            const fallback = courseImages[index % courseImages.length];
+            const fallback = fallbackCover;
             if (e.currentTarget.src !== fallback) {
               e.currentTarget.src = fallback;
             }

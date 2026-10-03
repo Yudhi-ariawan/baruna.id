@@ -4,6 +4,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const moduleId = "01b19c79-d63a-4ad1-b585-3386820a0cba";
+const publicCoverUrl = "https://baruna.id/sample-module-files/Course_Cover_Image.jpg";
 
 const { data: module, error } = await supabase.from("module_registry").select("*").eq("id", moduleId).single();
 if (error || !module) throw error ?? new Error("module_not_found");
@@ -22,6 +23,7 @@ const metadata = {
   estimated_learning_hours: module.estimated_learning_hours,
   target_participants: module.target_participants,
   cover_storage_path: cover?.path ?? null,
+  cover_image_url: publicCoverUrl,
 };
 
 const { error: resourceError } = await supabase.from("knowledge_resources").upsert({
@@ -46,6 +48,7 @@ const { error: resourceError } = await supabase.from("knowledge_resources").upse
   language: module.language,
   publication_year: new Date(module.publication_date).getUTCFullYear(),
   publisher: "BARUNA Network",
+  thumbnail_url: publicCoverUrl,
   topics: Object.values(module.content_outline ?? {}).filter((value) => typeof value === "string"),
   keywords: ["Learning Module", "Self-Paced", "Web Application Development"],
   related_expert_ids: module.author_expert_id ? [module.author_expert_id] : [],
@@ -53,6 +56,11 @@ const { error: resourceError } = await supabase.from("knowledge_resources").upse
   metadata,
 }, { onConflict: "id" });
 if (resourceError) throw resourceError;
+
+const { error: moduleCoverError } = await supabase.from("module_registry").update({
+  metadata: { ...(module.metadata ?? {}), cover_image_url: publicCoverUrl },
+}).eq("id", module.id);
+if (moduleCoverError) throw moduleCoverError;
 
 const { data: author } = await supabase.from("experts_directory_v").select("display_name,institution").eq("id", module.author_expert_id).single();
 const { data: existingAuthor } = await supabase.from("knowledge_resource_authors").select("id").eq("resource_id", module.id).eq("expert_id", module.author_expert_id).maybeSingle();
@@ -71,4 +79,4 @@ const authorQuery = existingAuthor
 const { error: authorError } = await authorQuery;
 if (authorError) throw authorError;
 
-console.log(JSON.stringify({ id: module.id, title: module.title, status: "published", visibility: "public", resourceType: "module", author: authorPayload.display_name }, null, 2));
+console.log(JSON.stringify({ id: module.id, title: module.title, status: "published", visibility: "public", resourceType: "module", author: authorPayload.display_name, thumbnailUrl: publicCoverUrl }, null, 2));
