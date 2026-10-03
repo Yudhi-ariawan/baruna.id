@@ -32,7 +32,7 @@ export function AccessBadge({ level }: { level: KhResource["access"] }) {
   );
 }
 
-export function ResourceCard({ r, index }: { r: KhResource; index: number }) {
+export function ResourceCard({ r, index, demo = true }: { r: KhResource; index: number; demo?: boolean }) {
   const saved = useIsSaved(r.id);
   const cover = r.coverImage || courseImages[index % courseImages.length];
   const isVideo = r.type === "videos";
@@ -60,7 +60,7 @@ export function ResourceCard({ r, index }: { r: KhResource; index: number }) {
             {r.typeLabel}
           </span>
           {r.id.startsWith("pub-") || r.id.startsWith("lm-") || r.id.startsWith("bp-") || r.id.startsWith("vid-") || r.id.startsWith("pb-") || r.id.startsWith("info-") || r.id.startsWith("cs-") || r.id.startsWith("tk-") || r.id.startsWith("res-") ? (
-            <DemoDataBadge />
+            demo ? <DemoDataBadge /> : null
           ) : (
             <span className="inline-flex items-center rounded-md bg-green-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-700">
               Verified

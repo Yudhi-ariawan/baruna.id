@@ -7,8 +7,7 @@ import { KH_ALL, KH_TYPES, labelForType, resourcesByType, type KhResource, type 
 import { DEMO_CATEGORIES } from "@/data/demo";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge } from "@/components/baruna/knowledge/ResourceCard";
-import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
-import { courseImages } from "@/data/pages";
+import { getPublishedLearningModules } from "@/lib/knowledge-hub/knowledge-hub.functions";
 
 const VALID: string[] = [...KH_TYPES.map((t) => t.slug), "library"];
 
@@ -17,41 +16,9 @@ export const Route = createFileRoute("/knowledge-hub_/$type")({
     if (!VALID.includes(params.type)) throw notFound();
 
     let dbResources: KhResource[] = [];
-    if (params.type === "learning-modules" || params.type === "library") {
+    if (params.type === "learning-modules") {
       try {
-        const dbMods = await getPublishedModulesCatalog();
-
-        if (dbMods && dbMods.length > 0) {
-          dbResources = dbMods.map((m, idx) => ({
-            id: m.id,
-            type: "learning-modules" as const,
-            typeLabel: "Learning Module",
-            title: m.title,
-            category: "fisheries-management" as const,
-            summary: m.summary || "Approved BARUNA learning module connected to Self-Paced Courses.",
-            abstract: m.summary || "Approved BARUNA learning module.",
-            coverImage: m.coverUrl || courseImages[idx % courseImages.length],
-            author: m.authorName || "BARUNA Trainer",
-            contributor: "BARUNA Academy",
-            organization: "BARUNA Network",
-            year: new Date(m.created_at).getFullYear(),
-            language: m.language || "English",
-            country: "Indonesia",
-            keywords: ["Learning Module", "Self-Paced", m.title.toLowerCase()],
-            access: "Completion Required" as const,
-            status: "Published" as const,
-            fileType: "Module Package",
-            pages: (m.estimated_learning_hours || 2) * 12,
-            version: "1.0",
-            moduleCode: `BARUNA-MOD-${String(idx + 1).padStart(2, "0")}`,
-            shortCourseCode: m.id,
-            expertId: m.author_expert_id || "",
-            metrics: { views: 42, uniqueViewers: 18, downloads: 12, saves: 4, shares: 2 },
-            citation: `${m.authorName || "BARUNA Trainer"} (${new Date(m.created_at).getFullYear()}). ${m.title}. BARUNA Knowledge Hub.`,
-            createdAt: m.created_at,
-            updatedAt: m.created_at,
-          }));
-        }
+        dbResources = await getPublishedLearningModules();
       } catch (err) {
         console.warn("Failed to load published modules catalog:", err);
       }
@@ -93,7 +60,8 @@ type ViewMode = "grid" | "list" | "compact";
 function CataloguePage() {
   const { type, dbResources } = Route.useLoaderData();
   const isLibrary = type === "library";
-  const staticList: KhResource[] = isLibrary ? KH_ALL : resourcesByType(type);
+  const isCanonicalLearning = type === "learning-modules";
+  const staticList: KhResource[] = isCanonicalLearning ? [] : isLibrary ? KH_ALL : resourcesByType(type);
   const base: KhResource[] = [...(dbResources ?? []), ...staticList];
   const label = isLibrary ? "Resource Library" : labelForType(type);
 
@@ -153,7 +121,7 @@ function CataloguePage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-display text-3xl font-extrabold text-navy">{label}</h1>
-              <DemoDataBadge />
+              {!isCanonicalLearning && <DemoDataBadge />}
             </div>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {isLibrary
@@ -242,11 +210,11 @@ function CataloguePage() {
           <EmptyState onClear={clear} />
         ) : view === "grid" ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((r, i) => <ResourceCard key={r.id} r={r} index={i} />)}
+            {filtered.map((r, i) => <ResourceCard key={r.id} r={r} index={i} demo={!isCanonicalLearning} />)}
           </div>
         ) : view === "list" ? (
           <div className="space-y-3">
-            {filtered.map((r) => <ListRow key={r.id} r={r} />)}
+            {filtered.map((r) => <ListRow key={r.id} r={r} demo={!isCanonicalLearning} />)}
           </div>
         ) : (
           <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
@@ -266,13 +234,13 @@ function CataloguePage() {
   );
 }
 
-function ListRow({ r }: { r: KhResource }) {
+function ListRow({ r, demo }: { r: KhResource; demo: boolean }) {
   return (
     <Link to="/knowledge-hub/resource/$id" params={{ id: r.id }} className="flex gap-4 rounded-2xl border border-border bg-card p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-hover">
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="inline-flex rounded-md bg-navy px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-navy-foreground">{r.typeLabel}</span>
-          <DemoDataBadge />
+          {demo && <DemoDataBadge />}
         </div>
         <h3 className="mt-1.5 font-display text-base font-bold text-navy">{r.title}</h3>
         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{r.summary}</p>

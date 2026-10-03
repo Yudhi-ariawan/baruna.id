@@ -101,7 +101,7 @@ export type ResourceStatus = (typeof RESOURCE_STATUSES)[number];
 /** Linear progression used for the status tracker (excludes the Draft start). */
 export const REVIEW_PIPELINE: ResourceStatus[] = ["Submitted", "Under Review", "Published"];
 
-export type ResourceFileMeta = { name: string; size: number; type: string; uploadedAt: string };
+export type ResourceFileMeta = { name: string; size: number; type: string; uploadedAt: string; storagePath?: string };
 
 export type Resource = {
   id: string;

@@ -1,5 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   ArrowRight,
@@ -16,6 +18,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { useHomeExperience } from "@/components/baruna/home-experience";
+import { supabase } from "@/integrations/supabase/client";
+import { createKnowledgeResourceUpload, getKnowledgeContributorBootstrap, saveKnowledgeResourceDraft } from "@/lib/knowledge-hub/contribution.functions";
 import {
   RESOURCE_TYPE_GROUPS,
   TOPIC_CATEGORIES,
@@ -23,8 +28,6 @@ import {
   ACCESS_LEVELS,
   ACCEPTED_FILE_TYPES,
   emptyResourceDraft,
-  createResource,
-  updateResource,
   getResource,
   formatBytes,
   groupForType,
@@ -67,6 +70,9 @@ const MAX_BYTES = 50 * 1024 * 1024;
 
 function SubmitResourcePage() {
   const navigate = useNavigate();
+  const { authState, viewer } = useHomeExperience();
+  const bootstrapFn = useServerFn(getKnowledgeContributorBootstrap);
+  const saveFn = useServerFn(saveKnowledgeResourceDraft);
   const { edit } = useSearch({ from: Route.id });
   const existing = useMemo(() => (edit ? getResource(edit) : undefined), [edit]);
 
@@ -94,6 +100,31 @@ function SubmitResourcePage() {
   );
   const [submitted, setSubmitted] = useState<null | "draft" | "submitted">(null);
   const [error, setError] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | undefined>();
+  const [saving, setSaving] = useState(false);
+  const bootstrap = useQuery({
+    queryKey: ["knowledge-hub", "contributor", viewer?.id],
+    queryFn: () => bootstrapFn(),
+    enabled: authState === "authenticated",
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (authState === "public") {
+      void navigate({ to: "/auth", search: { mode: "signin", redirect: "/knowledge-hub/submit-resource" }, replace: true });
+    }
+  }, [authState, navigate]);
+
+  useEffect(() => {
+    if (!bootstrap.data || existing) return;
+    setForm((current) => ({
+      ...current,
+      author: bootstrap.data.author,
+      institution: bootstrap.data.institution,
+      country: bootstrap.data.country,
+      keywords: current.keywords || bootstrap.data.expertiseAreas.join(", "),
+    }));
+  }, [bootstrap.data, existing]);
 
   const set = <K extends keyof ResourceDraft>(key: K, value: ResourceDraft[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -130,18 +161,27 @@ function SubmitResourcePage() {
     setStep((s) => Math.max(1, s - 1));
   };
 
-  const persist = (status: "draft" | "submitted") => {
+  const persist = async (status: "draft" | "submitted") => {
+    setSaving(true);
+    setError(null);
     const draft = { ...form, typeGroup: groupForType(form.type) };
-    if (existing) {
-      updateResource(existing.id, {
-        ...draft,
-        status: status === "draft" ? "Draft" : "Submitted",
-      });
-    } else {
-      createResource(draft, status === "draft" ? "Draft" : "Submitted");
+    try {
+      const result = await saveFn({ data: { draftId, submit: status === "submitted", form: draft } });
+      setDraftId(result.draftId);
+      setSubmitted(status);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save this resource.");
+    } finally {
+      setSaving(false);
     }
-    setSubmitted(status);
   };
+
+  if (authState === "loading" || (authState === "authenticated" && bootstrap.isLoading)) {
+    return <div className="min-h-screen bg-background"><Navbar /><main className="mx-auto max-w-2xl px-4 py-20 text-center text-sm text-muted-foreground">Checking contributor access…</main></div>;
+  }
+  if (bootstrap.isError) {
+    return <div className="min-h-screen bg-background"><Navbar /><main className="mx-auto max-w-2xl px-4 py-20 text-center"><h1 className="font-display text-2xl font-bold text-navy">Verified expert access required</h1><p className="mt-3 text-sm text-muted-foreground">{bootstrap.error instanceof Error ? bootstrap.error.message : "This workspace is reserved for verified BARUNA experts."}</p></main></div>;
+  }
 
   if (submitted) {
     return (
@@ -266,7 +306,8 @@ function SubmitResourcePage() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => persist("draft")}
+                onClick={() => void persist("draft")}
+                disabled={saving}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-marine px-4 py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
               >
                 Save Draft
@@ -282,8 +323,8 @@ function SubmitResourcePage() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => persist("submitted")}
-                  disabled={!form.declaration}
+                  onClick={() => void persist("submitted")}
+                  disabled={!form.declaration || saving}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
                 >
                   Submit Resource <Check className="h-4 w-4" />
@@ -420,33 +461,30 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
 }
 
 function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
+  const createUpload = useServerFn(createKnowledgeResourceUpload);
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const handleFile = (file: File | null) => {
+  const handleFile = async (file: File | null) => {
     if (!file) return;
     setErr(null);
     if (file.size > MAX_BYTES) {
       setErr("File is too large (max 50 MB).");
       return;
     }
-    setProgress(0);
-    let pct = 0;
-    const timer = setInterval(() => {
-      pct += Math.random() * 20 + 8;
-      if (pct >= 100) {
-        clearInterval(timer);
-        setProgress(100);
-        setTimeout(() => {
-          setProgress(null);
-          set("file", { name: file.name, size: file.size, type: file.type || "file", uploadedAt: new Date().toISOString() });
-        }, 250);
-      } else {
-        setProgress(Math.round(pct));
-      }
-    }, 120);
+    setProgress(15);
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) { setErr("Please sign in before uploading a file."); setProgress(null); return; }
+    const upload = await createUpload({ data: { fileName: file.name, mimeType: file.type || "application/octet-stream", size: file.size } });
+    const storagePath = upload.path;
+    setProgress(45);
+    const { error: uploadError } = await supabase.storage.from("knowledge-resource-submissions").uploadToSignedUrl(storagePath, upload.token, file, { contentType: file.type });
+    if (uploadError) { setErr(uploadError.message); setProgress(null); return; }
+    setProgress(100);
+    set("file", { name: file.name, size: file.size, type: file.type || "file", uploadedAt: new Date().toISOString(), storagePath });
+    setTimeout(() => setProgress(null), 250);
   };
 
   return (
@@ -473,7 +511,7 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files?.[0] ?? null); }}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); void handleFile(e.dataTransfer.files?.[0] ?? null); }}
           className={`mt-5 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
             dragging ? "border-marine bg-marine/5" : "border-border"
           }`}
@@ -496,7 +534,7 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
               <p className="mt-3 text-xs text-muted-foreground">PDF, PPT/PPTX, DOC/DOCX, XLS/XLSX, MP4, images · max 50 MB</p>
             </>
           )}
-          <input ref={inputRef} type="file" accept={ACCEPTED_FILE_TYPES} className="hidden" onChange={(e) => handleFile(e.target.files?.[0] ?? null)} />
+          <input ref={inputRef} type="file" accept={ACCEPTED_FILE_TYPES} className="hidden" onChange={(e) => void handleFile(e.target.files?.[0] ?? null)} />
         </div>
       )}
       {err && <p className="mt-3 text-sm font-medium text-destructive">{err}</p>}

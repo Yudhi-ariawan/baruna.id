@@ -22,6 +22,7 @@ import { ResourceCard, DemoDataBadge, AccessBadge } from "@/components/baruna/kn
 import { toggleSaved, useIsSaved, shareResource } from "@/lib/khSaved";
 import { courseImages } from "@/data/pages";
 import { getPublishedModuleDetail } from "@/lib/learning/learning.functions";
+import { getPublishedLearningModules } from "@/lib/knowledge-hub/knowledge-hub.functions";
 
 export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
   loader: async ({ params }) => {
@@ -29,6 +30,9 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
     if (demoResource) return { resource: demoResource };
 
     try {
+      const canonicalResource = (await getPublishedLearningModules()).find((item) => item.id === params.id);
+      if (canonicalResource) return { resource: canonicalResource };
+
       const pubMod = await getPublishedModuleDetail({ data: { moduleId: params.id } });
       if (pubMod) {
         const coverDoc = pubMod.documents.find(
