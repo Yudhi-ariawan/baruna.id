@@ -506,18 +506,7 @@ export async function publishApprovedModule({
   decisionId?: string | null;
   decidedBy?: string | null;
 }): Promise<{ moduleId: string }> {
-  // 1. Check existing module in module_registry
-  const { data: existing } = await supabaseAdmin
-    .from("module_registry")
-    .select("id")
-    .eq("source_submission_id", subjectId)
-    .maybeSingle();
-
-  if (existing) {
-    return { moduleId: existing.id };
-  }
-
-  // 2. Fetch review subject and decision
+  // 1. Fetch review subject and decision
   const { data: subject, error: sErr } = await supabaseAdmin
     .from("review_subjects")
     .select("id, title, submitted_by")
@@ -532,9 +521,11 @@ export async function publishApprovedModule({
     .from("review_decisions")
     .select("id, decided_by, decided_at")
     .eq("subject_id", subjectId)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
-  // 3. Fetch draft payload or revision snapshot fallback
+  // 2. Fetch draft payload or revision snapshot fallback
   const { data: draft } = await supabaseAdmin
     .from("review_drafts")
     .select("payload, title")
@@ -557,7 +548,7 @@ export async function publishApprovedModule({
     payload = (snap.payload as Record<string, unknown>) ?? {};
   }
 
-  // 4. Find expert record for author (check both original_contributor_id and created_by)
+  // 3. Find expert record for author (check both original_contributor_id and created_by)
   const { data: expert } = await supabaseAdmin
     .from("experts")
     .select("id")
@@ -590,6 +581,50 @@ export async function publishApprovedModule({
     ? (rawModuleType as ModuleTypeEnum)
     : "technical";
 
+  // 4. Check existing module in module_registry
+  const { data: existing } = await supabaseAdmin
+    .from("module_registry")
+    .select("id")
+    .eq("source_submission_id", subjectId)
+    .maybeSingle();
+
+  if (existing) {
+    // Sync updated revision payload and restore public visibility
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateErr } = await (supabaseAdmin as any)
+      .from("module_registry")
+      .update({
+        approved_by: decidedByRef,
+        published_by: decidedByRef,
+        approval_date: decidedAtRef,
+        publication_date: now,
+        verification_status: "governance_verified",
+        visibility: "public",
+        current_status: "published",
+        audit_ref: decisionRef,
+        title: (typeof payload.title === "string" && payload.title) || subject.title || "Untitled Module",
+        summary: typeof payload.summary === "string" ? payload.summary : null,
+        language: typeof payload.language === "string" ? payload.language : "English",
+        module_type: safeModuleType,
+        target_participants: typeof payload.target_participants === "string" ? payload.target_participants : null,
+        estimated_learning_hours: Number(payload.estimated_learning_hours || 0),
+        learning_objectives: Array.isArray(payload.learning_objectives) ? (payload.learning_objectives as string[]) : [],
+        content_outline: payload.content_outline || {},
+        assessment_approach: payload.assessment_approach || {},
+        author_expert_id: expert?.id || null,
+        metadata: payload.metadata || {},
+        updated_at: now,
+      })
+      .eq("id", existing.id);
+
+    if (updateErr) {
+      throw new Error(updateErr.message || "module_update_failed");
+    }
+
+    return { moduleId: existing.id };
+  }
+
+  // 5. Insert new record in module_registry
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error: iErr } = await (supabaseAdmin as any)
     .from("module_registry")

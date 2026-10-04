@@ -365,6 +365,75 @@ export const revokeUserRole = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateUserRoles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input) =>
+    z
+      .object({
+        userId: UserId,
+        roles: z.array(RoleCode),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await requirePermission(context, "users.assign_role");
+    const admin = (await loadAdmin()) as any;
+
+    const { data: assignments, error: fetchErr } = await admin
+      .from("rbac_user_roles")
+      .select("rbac_roles(code)")
+      .eq("user_id", data.userId)
+      .eq("status", "active");
+
+    if (fetchErr) throw new Error(fetchErr.message);
+
+    const activeRoles = new Set(
+      (assignments ?? [])
+        .map((a: any) => a.rbac_roles?.code)
+        .filter(Boolean),
+    );
+
+    const targetRoles = new Set(data.roles);
+
+    // Revoke roles not in targetRoles
+    for (const code of activeRoles) {
+      if (!targetRoles.has(code)) {
+        const { error } = await context.supabase.rpc(
+          "revoke_rbac_role" as never,
+          {
+            _target_user_id: data.userId,
+            _role_code: code,
+          } as never,
+        );
+        if (error) throw new Error(error.message);
+      }
+    }
+
+    // Assign roles in targetRoles not in activeRoles
+    for (const code of targetRoles) {
+      if (!activeRoles.has(code)) {
+        const { error } = await context.supabase.rpc(
+          "assign_rbac_role" as never,
+          {
+            _target_user_id: data.userId,
+            _role_code: code,
+          } as never,
+        );
+        if (error) throw new Error(error.message);
+      }
+    }
+
+    await writeAudit(
+      context.userId,
+      data.userId,
+      "user_roles_batch_updated",
+      { roles: Array.from(activeRoles) },
+      { roles: data.roles },
+    );
+
+    return { ok: true, roles: data.roles };
+  });
+
 export const setUserSuspended = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => z.object({ userId: UserId, suspended: z.boolean() }).parse(input))

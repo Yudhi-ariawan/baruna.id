@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  AlertTriangle,
   Ban,
   CheckCircle2,
   Clock3,
@@ -26,6 +27,7 @@ import {
   revokeUserRole,
   setUserSuspended,
   updateUserProfile,
+  updateUserRoles,
 } from "@/lib/admin/users.functions";
 import type {
   AdminAccess,
@@ -810,14 +812,69 @@ function UserDialog({
     onSuccess: () => onSuccess("Profile updated."),
     onError: (error) => onError(messageOf(error)),
   });
-  const roleM = useMutation({
-    mutationFn: ({ role, assigned }: { role: AdminRoleCode; assigned: boolean }) =>
-      assigned
-        ? revokeFn({ data: { userId: user.id, role } })
-        : assignFn({ data: { userId: user.id, role } }),
-    onSuccess: () => onSuccess("Role assignment updated."),
+  const updateRolesFn = useServerFn(updateUserRoles);
+
+  const currentAssignedRoles = useMemo(
+    () => (user.roles || []).map(roleCodeOf) as AdminRoleCode[],
+    [user.roles],
+  );
+  const [selectedRoles, setSelectedRoles] = useState<AdminRoleCode[]>(currentAssignedRoles);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    highPrivilegeRoles: AdminRoleCode[];
+  } | null>(null);
+
+  useEffect(() => {
+    setSelectedRoles((user.roles || []).map(roleCodeOf) as AdminRoleCode[]);
+  }, [user.roles]);
+
+  const addedRoles = useMemo(
+    () => selectedRoles.filter((r) => !currentAssignedRoles.includes(r)),
+    [selectedRoles, currentAssignedRoles],
+  );
+
+  const removedRoles = useMemo(
+    () => currentAssignedRoles.filter((r) => !selectedRoles.includes(r)),
+    [selectedRoles, currentAssignedRoles],
+  );
+
+  const hasRoleChanges = addedRoles.length > 0 || removedRoles.length > 0;
+
+  const HIGH_PRIVILEGE_ROLES: AdminRoleCode[] = ["super_admin", "admin", "management"];
+  const touchedHighPrivilege = useMemo(
+    () => [
+      ...addedRoles.filter((r) => HIGH_PRIVILEGE_ROLES.includes(r)),
+      ...removedRoles.filter((r) => HIGH_PRIVILEGE_ROLES.includes(r)),
+    ],
+    [addedRoles, removedRoles],
+  );
+
+  const updateRolesM = useMutation({
+    mutationFn: () => updateRolesFn({ data: { userId: user.id, roles: selectedRoles } }),
+    onSuccess: () => {
+      onSuccess("Perubahan peran pengguna berhasil disimpan.");
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "history", user.id] });
+    },
     onError: (error) => onError(messageOf(error)),
   });
+
+  function handleSaveRoles() {
+    if (!hasRoleChanges) return;
+    if (selectedRoles.length === 0) {
+      onError("Pengguna harus memiliki minimal satu peran aktif (misalnya: registered_user).");
+      return;
+    }
+    if (touchedHighPrivilege.length > 0) {
+      setConfirmDialog({
+        open: true,
+        highPrivilegeRoles: touchedHighPrivilege,
+      });
+      return;
+    }
+    updateRolesM.mutate();
+  }
+
   const suspendM = useMutation({
     mutationFn: () => suspendFn({ data: { userId: user.id, suspended: user.isActive } }),
     onSuccess: () => onSuccess(user.isActive ? "User suspended." : "User reactivated."),
@@ -887,27 +944,150 @@ function UserDialog({
           </form>
         ) : null}
         {access?.canAssignRoles ? (
-          <section>
-            <SectionTitle icon={<Shield className="h-4 w-4" />} text="Roles" />
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <SectionTitle icon={<Shield className="h-4 w-4" />} text="Roles & Hak Akses" />
+              {hasRoleChanges && (
+                <span className="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
+                  Ada perubahan belum disimpan
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Pilih satu atau beberapa peran. Anda dapat mencentang atau menghapus centang peran (misal: mengganti dari participant ke expert), lalu klik tombol <strong>Simpan Perubahan Peran</strong>.
+            </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {roles.map((role) => {
-                const assigned = (user.roles || []).map(roleCodeOf).includes(role);
+                const isSelected = selectedRoles.includes(role);
+                const isOriginallyAssigned = currentAssignedRoles.includes(role);
+                const isNewlyAdded = isSelected && !isOriginallyAssigned;
+                const isNewlyRemoved = !isSelected && isOriginallyAssigned;
+                const isHighPrivilege = HIGH_PRIVILEGE_ROLES.includes(role);
+
                 return (
                   <label
                     key={role}
-                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm cursor-pointer transition select-none ${
+                      isSelected
+                        ? isHighPrivilege
+                          ? "border-indigo-300 bg-indigo-50/70 text-indigo-950 font-medium"
+                          : "border-marine bg-blue-50/70 text-marine font-medium"
+                        : "border-border bg-white text-foreground hover:bg-slate-50"
+                    }`}
                   >
-                    <span className="font-medium text-navy">{role}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-medium text-navy">{role}</span>
+                      {isHighPrivilege && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded">
+                          Admin Level
+                        </span>
+                      )}
+                      {isNewlyAdded && (
+                        <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                          + Ditambahkan
+                        </span>
+                      )}
+                      {isNewlyRemoved && (
+                        <span className="text-[9px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.5 rounded">
+                          - Dihapus
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="checkbox"
-                      checked={assigned}
-                      disabled={roleM.isPending}
-                      onChange={() => roleM.mutate({ role, assigned })}
+                      checked={isSelected}
+                      disabled={updateRolesM.isPending}
+                      onChange={() => {
+                        setSelectedRoles((prev) =>
+                          prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+                        );
+                      }}
+                      className="h-4 w-4 rounded border-slate-300 text-marine focus:ring-marine cursor-pointer"
                     />
                   </label>
                 );
               })}
             </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-border/60">
+              <div className="text-xs text-muted-foreground">
+                {hasRoleChanges ? (
+                  <span>
+                    Rincian:{" "}
+                    {addedRoles.length > 0 && (
+                      <span className="text-emerald-700 font-semibold">+{addedRoles.join(", ")} </span>
+                    )}
+                    {removedRoles.length > 0 && (
+                      <span className="text-rose-700 font-semibold">-{removedRoles.join(", ")}</span>
+                    )}
+                  </span>
+                ) : (
+                  <span>Tidak ada perubahan peran yang tertunda.</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                {hasRoleChanges && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRoles(currentAssignedRoles)}
+                    disabled={updateRolesM.isPending}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+                  >
+                    Reset
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={!hasRoleChanges || updateRolesM.isPending}
+                  onClick={handleSaveRoles}
+                  className="rounded-lg bg-navy px-4 py-2 text-xs sm:text-sm font-bold text-white hover:bg-navy-light disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  {updateRolesM.isPending ? "Menyimpan Peran…" : "Simpan Perubahan Peran"}
+                </button>
+              </div>
+            </div>
+
+            {confirmDialog?.open && (
+              <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/60 p-4">
+                <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+                  <div className="flex items-center gap-3 text-amber-600">
+                    <div className="rounded-full bg-amber-100 p-2">
+                      <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <h4 className="text-base font-bold text-navy">
+                      Konfirmasi Perubahan Peran Administratif
+                    </h4>
+                  </div>
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    Anda sedang melakukan perubahan pada peran tingkat tinggi:{" "}
+                    <strong className="text-navy">{confirmDialog.highPrivilegeRoles.join(", ")}</strong> untuk akun{" "}
+                    <span className="font-mono font-bold text-navy">{user.email}</span>.
+                  </p>
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 leading-relaxed">
+                    Peran administratif memberikan wewenang penting untuk mengelola akun lain dan data platform BARUNA. Pastikan tindakan ini disengaja dan sesuai instruksi resmi.
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDialog(null)}
+                      className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-slate-100"
+                    >
+                      Batal (Periksa Lagi)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmDialog(null);
+                        updateRolesM.mutate();
+                      }}
+                      className="rounded-xl bg-indigo-700 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-800"
+                    >
+                      Ya, Terapkan Peran Ini
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         ) : null}
         {access?.canSuspendUsers ? (

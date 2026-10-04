@@ -426,6 +426,25 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
           ? "Pengajuan telah diverifikasi dan disetujui."
           : "Pengajuan ditolak.");
 
+    // Query existing decisions to link supersedes chain and satisfy unique index review_decisions_one_current_final
+    const { data: prevDecisions } = await supabaseAdmin
+      .from("review_decisions")
+      .select("id, decision, supersedes_decision_id, created_at")
+      .eq("subject_id", input.subjectId)
+      .order("created_at", { ascending: false });
+
+    let supersedesDecisionId: string | null = null;
+    if (input.decision === "approve" || input.decision === "reject") {
+      const existingNullFinal = prevDecisions?.find(
+        (d) => !d.supersedes_decision_id && (d.decision === "approve" || d.decision === "reject"),
+      );
+      if (existingNullFinal) {
+        supersedesDecisionId = existingNullFinal.id;
+      } else if (prevDecisions && prevDecisions.length > 0) {
+        supersedesDecisionId = prevDecisions[0].id;
+      }
+    }
+
     const { data: decRecord, error: decErr } = await supabaseAdmin
       .from("review_decisions")
       .insert({
@@ -433,6 +452,7 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
         decided_by: context.userId,
         decision: input.decision,
         rationale: rationaleText,
+        supersedes_decision_id: supersedesDecisionId,
       })
       .select("id")
       .single();
