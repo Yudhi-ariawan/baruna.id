@@ -409,7 +409,23 @@ function PortalDashboard() {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-                          {statusInfo.status === "revision_requested" ? (
+                          {statusInfo.status === "draft" ? (
+                            <>
+                              <Link
+                                to="/experts/portal/submit-module"
+                                search={{ draftId: d.id }}
+                                className="inline-flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-orange-600 transition"
+                              >
+                                <FileEdit className="h-3 w-3" /> Lengkapi Modul
+                              </Link>
+                              <Link
+                                to="/experts/portal/review-status"
+                                className="inline-flex items-center gap-1 rounded-lg border border-border bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-navy hover:bg-slate-100 transition"
+                              >
+                                Detail <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                              </Link>
+                            </>
+                          ) : statusInfo.status === "revision_requested" ? (
                             <Link
                               to="/experts/portal/submit-module"
                               search={{ draftId: d.id }}
