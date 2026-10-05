@@ -186,11 +186,11 @@ function AcademyOverview() {
     0,
   );
   const instructorCount = new Set([
-    ...programs.map((program) => program.instructor.trim()).filter(Boolean),
-    ...dbModules.map((module) => module.authorName.trim()).filter(Boolean),
+    ...programs.map((program) => (program.instructor || "").trim()).filter(Boolean),
+    ...dbModules.map((module) => (module.authorName || "").trim()).filter(Boolean),
   ]).size;
   const countryCount = new Set(
-    programs.map((program) => program.country.trim()).filter(Boolean),
+    programs.map((program) => (program.country || "").trim()).filter(Boolean),
   ).size;
 
   return (

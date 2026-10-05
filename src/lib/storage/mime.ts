@@ -49,7 +49,7 @@ const MIME_MAP: Record<string, string> = {
  * Resolves the exact MIME content-type based on filename extension and provided mime type.
  * Never allows blank or corrupted MIME types to be passed to storage.
  */
-export function resolveFileContentType(fileName: string, mimeType?: string | null): string {
+export function resolveFileContentType(fileName?: string | null, mimeType?: string | null): string {
   if (
     mimeType &&
     mimeType !== "application/octet-stream" &&
@@ -59,16 +59,16 @@ export function resolveFileContentType(fileName: string, mimeType?: string | nul
     return mimeType.trim();
   }
 
-  const ext = (fileName.split(".").pop() || "").toLowerCase();
+  const ext = ((fileName || "").split(".").pop() || "").toLowerCase();
   return MIME_MAP[ext] || "application/octet-stream";
 }
 
 /**
  * Returns the classification category for previewing a document in the browser.
  */
-export function getDocumentPreviewKind(fileName: string, mimeType?: string | null): DocumentPreviewKind {
+export function getDocumentPreviewKind(fileName?: string | null, mimeType?: string | null): DocumentPreviewKind {
   const mime = resolveFileContentType(fileName, mimeType).toLowerCase();
-  const ext = (fileName.split(".").pop() || "").toLowerCase();
+  const ext = ((fileName || "").split(".").pop() || "").toLowerCase();
 
   if (mime === "application/pdf" || ext === "pdf") {
     return "pdf";

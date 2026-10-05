@@ -248,7 +248,7 @@ function DocumentViewerPage() {
                   {name}
                 </h3>
                 <p className="text-xs text-slate-400 mt-2 mb-6 leading-relaxed max-w-sm mx-auto">
-                  Berkas format Office ({mimeType.split("/").pop()}) paling optimal dibuka langsung menggunakan software desktop seperti Microsoft PowerPoint atau Word. Klik tombol di bawah untuk mengunduh berkas.
+                  Berkas format Office ({(mimeType || "").split("/").pop() || "dokumen"}) paling optimal dibuka langsung menggunakan software desktop seperti Microsoft PowerPoint atau Word. Klik tombol di bawah untuk mengunduh berkas.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Button

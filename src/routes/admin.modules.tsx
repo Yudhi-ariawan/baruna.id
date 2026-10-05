@@ -3,6 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Archive,
+  ArchiveRestore,
   BookOpen,
   CheckCircle2,
   Clock,
@@ -99,6 +101,12 @@ function getStatusBadge(status: string) {
           <CheckCircle2 className="h-3 w-3" /> Disetujui (Tayang)
         </Badge>
       );
+    case "archived":
+      return (
+        <Badge className="bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-100 flex items-center gap-1 font-medium">
+          <Archive className="h-3 w-3 text-slate-600" /> Diarsipkan (Tidak Tayang)
+        </Badge>
+      );
     case "resubmitted":
       return (
         <Badge className="bg-sky-100 text-sky-900 border-sky-300 hover:bg-sky-100 flex items-center gap-1 font-semibold shadow-2xs">
@@ -161,6 +169,7 @@ function AdminModulesPage() {
     let resubmitted = 0;
     let revision = 0;
     let approved = 0;
+    let archived = 0;
 
     modules.forEach((item) => {
       if (
@@ -176,10 +185,12 @@ function AdminModulesPage() {
         revision++;
       } else if (item.status === "approved") {
         approved++;
+      } else if (item.status === "archived") {
+        archived++;
       }
     });
 
-    return { total, pending, resubmitted, revision, approved };
+    return { total, pending, resubmitted, revision, approved, archived };
   }, [modules]);
 
   const { data: activeDetail, isLoading: isDetailLoading } = useQuery({
@@ -203,7 +214,7 @@ function AdminModulesPage() {
           </div>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
             Tinjau pengajuan modul dari Trainer, periksa kelengkapan berkas dokumen, silabus materi, dan
-            berikan keputusan (Setujui, Minta Revisi, atau Tolak).
+            berikan keputusan (Setujui, Minta Revisi, Arsipkan, atau Tolak).
           </p>
         </div>
 
@@ -228,7 +239,9 @@ function AdminModulesPage() {
             Total Modul
           </p>
           <p className="font-display text-xl sm:text-2xl font-bold text-navy mt-1">{stats.total}</p>
-          <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">Semua status</p>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+            {stats.archived > 0 ? `${stats.archived} diarsipkan` : "Semua status"}
+          </p>
         </div>
 
         <div className="rounded-xl border border-yellow-200 bg-yellow-50/60 p-3 sm:p-4 shadow-2xs">
@@ -273,6 +286,7 @@ function AdminModulesPage() {
             { id: "resubmitted", label: "Sudah Direvisi" },
             { id: "revision_requested", label: "Perlu Revisi" },
             { id: "approved", label: "Disetujui" },
+            { id: "archived", label: "Diarsipkan" },
             { id: "rejected", label: "Ditolak" },
           ].map((tab) => (
             <button
@@ -534,7 +548,9 @@ function ModuleDetailModal({
     category?: string;
   } | null>(null);
 
-  const handleDecision = async (decision: "approve" | "return_for_revision" | "reject") => {
+  const handleDecision = async (
+    decision: "approve" | "return_for_revision" | "reject" | "archive" | "restore",
+  ) => {
     setRationaleError(null);
     if ((decision === "return_for_revision" || decision === "reject") && !rationale.trim()) {
       const errMsg = "Wajib menyertakan catatan evaluasi / alasan revisi pada kolom di bawah.";
@@ -548,7 +564,11 @@ function ModuleDetailModal({
         ? "menyetujui & mempublikasikan modul ini"
         : decision === "return_for_revision"
           ? "meminta revisi perbaikan kepada trainer"
-          : "menolak pengajuan modul ini";
+          : decision === "archive"
+            ? "mengarsipkan modul ini dan menariknya dari tayang publik"
+            : decision === "restore"
+              ? "memulihkan modul ini dan menayangkannya kembali ke publik"
+              : "menolak pengajuan modul ini";
 
     if (!confirm(`Apakah Anda yakin ingin ${actionText}?`)) {
       return;
@@ -569,7 +589,11 @@ function ModuleDetailModal({
           ? "Modul berhasil disetujui dan dipublikasikan ke Registry & Self-Paced Courses!"
           : decision === "return_for_revision"
             ? "Permintaan revisi telah dikirimkan ke Trainer dengan catatan perbaikan."
-            : "Pengajuan modul telah ditolak.",
+            : decision === "archive"
+              ? "Modul berhasil diarsipkan dan ditarik dari tayang publik."
+              : decision === "restore"
+                ? "Modul berhasil dipulihkan dan ditayangkan kembali ke publik."
+                : "Pengajuan modul telah ditolak.",
       );
 
       onSuccess();
@@ -610,6 +634,25 @@ function ModuleDetailModal({
                 <div>{getStatusBadge(detail.status)}</div>
               </div>
             </DialogHeader>
+
+            {detail?.status === "archived" && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-300 bg-slate-100/90 px-4 py-3 text-xs text-slate-800">
+                <div className="flex items-center gap-2">
+                  <Archive className="h-4 w-4 text-slate-600 shrink-0" />
+                  <span>
+                    <strong>Modul Diarsipkan:</strong> Modul ini berstatus arsip dan tidak tayang di katalog publik (*Knowledge Hub* maupun Kursus Mandiri).
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDecision("restore")}
+                  disabled={submitting}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 font-semibold text-white hover:bg-emerald-700 transition cursor-pointer"
+                >
+                  <ArchiveRestore className="h-3.5 w-3.5" /> Pulihkan &amp; Publikasikan Ulang
+                </button>
+              </div>
+            )}
 
             {detail?.status === "approved" && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-900">
@@ -994,40 +1037,72 @@ function ModuleDetailModal({
                     </Button>
 
                     <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={submitting}
-                        onClick={() => handleDecision("reject")}
-                        className="w-full sm:w-auto text-xs border-rose-300 text-rose-700 hover:bg-rose-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
-                      >
-                        <XCircle className="h-4 w-4 shrink-0" /> Tolak Modul
-                      </Button>
+                      {detail?.status === "approved" ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={submitting}
+                            onClick={() => handleDecision("archive")}
+                            className="w-full sm:w-auto text-xs border-slate-300 text-slate-700 hover:bg-slate-100 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
+                          >
+                            <Archive className="h-4 w-4 shrink-0 text-slate-600" /> Arsipkan Modul (Tarik Tayang)
+                          </Button>
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={submitting}
-                        onClick={() => handleDecision("return_for_revision")}
-                        className="w-full sm:w-auto text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
-                      >
-                        <RotateCcw className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
-                        {submitting ? "Memproses..." : "Minta Revisi Dokumen"}
-                      </Button>
+                          <Button
+                            type="button"
+                            disabled={submitting}
+                            onClick={() => handleDecision("approve")}
+                            className="w-full sm:w-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-1.5 py-2.5 sm:py-2 shadow-xs"
+                          >
+                            <CheckCircle2 className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
+                            {submitting ? "Memproses..." : "Perbarui Publikasi"}
+                          </Button>
+                        </>
+                      ) : detail?.status === "archived" ? (
+                        <Button
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => handleDecision("restore")}
+                          className="w-full sm:w-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-1.5 py-2.5 sm:py-2 shadow-xs"
+                        >
+                          <ArchiveRestore className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
+                          {submitting ? "Memproses..." : "Pulihkan & Publikasikan Kembali"}
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={submitting}
+                            onClick={() => handleDecision("reject")}
+                            className="w-full sm:w-auto text-xs border-rose-300 text-rose-700 hover:bg-rose-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
+                          >
+                            <XCircle className="h-4 w-4 shrink-0" /> Tolak Modul
+                          </Button>
 
-                      <Button
-                        type="button"
-                        disabled={submitting}
-                        onClick={() => handleDecision("approve")}
-                        className="w-full sm:w-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-1.5 py-2.5 sm:py-2 shadow-xs"
-                      >
-                        <CheckCircle2 className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
-                        {submitting
-                          ? "Memproses..."
-                          : detail?.status === "approved"
-                            ? "Sinkronkan / Perbarui Publikasi"
-                            : "Setujui & Publikasikan Modul"}
-                      </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={submitting}
+                            onClick={() => handleDecision("return_for_revision")}
+                            className="w-full sm:w-auto text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
+                          >
+                            <RotateCcw className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
+                            {submitting ? "Memproses..." : "Minta Revisi Dokumen"}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            disabled={submitting}
+                            onClick={() => handleDecision("approve")}
+                            className="w-full sm:w-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-1.5 py-2.5 sm:py-2 shadow-xs"
+                          >
+                            <CheckCircle2 className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
+                            {submitting ? "Memproses..." : "Setujui & Publikasikan Modul"}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

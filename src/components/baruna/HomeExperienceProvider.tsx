@@ -22,14 +22,19 @@ export function HomeExperienceProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       if (mounted) setSessionUserId(data.session?.user.id ?? null);
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSessionUserId(session?.user.id ?? null);
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextId = session?.user.id ?? null;
+      setSessionUserId(nextId);
+      // Immediately clear in-memory cache when user logs out or switches accounts
+      if (event === "SIGNED_OUT" || event === "USER_UPDATED" || (session && session.user.id !== sessionUserId)) {
+        queryClient.clear();
+      }
     });
     return () => {
       mounted = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient, sessionUserId]);
 
   const publicQuery = useQuery({
     queryKey: ["home", "public-stats"],
@@ -98,6 +103,7 @@ export function HomeExperienceProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         await supabase.auth.signOut();
         setSessionUserId(null);
+        queryClient.clear();
       },
     }),
     [publicQuery.data, publicQuery.isLoading, sessionUserId, viewer, viewerQuery.data, viewerQuery.isError],

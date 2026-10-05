@@ -274,8 +274,8 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
           : await registeredMetrics(admin, context.userId, profile);
     const displayName =
       profile.display_name?.trim() ||
-      (identity.user.user_metadata.full_name as string | undefined)?.trim() ||
-      identity.user.email?.split("@")[0] ||
+      ((identity?.user?.user_metadata?.full_name as string | undefined) || "")?.trim() ||
+      identity?.user?.email?.split("@")[0] ||
       "BARUNA Member";
 
     return {

@@ -15,11 +15,13 @@ import {
   BookOpenCheck,
   ChevronRight,
   Info,
+  Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
+import type { TrainerPortalBootstrap } from "@/lib/experts/portal-services.types";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -50,6 +52,7 @@ type ModuleAttachedFile = {
   name: string;
   size: number;
   path?: string;
+  bucket?: string;
 };
 
 function getDraftFiles(payloadRaw: unknown): ModuleAttachedFile[] {
@@ -69,6 +72,7 @@ function getDraftFiles(payloadRaw: unknown): ModuleAttachedFile[] {
     name: String(doc.fileName || doc.name || "Berkas"),
     size: Number(doc.fileSize || doc.size || 0),
     path: typeof doc.path === "string" ? doc.path : undefined,
+    bucket: typeof doc.bucket === "string" ? doc.bucket : undefined,
   }));
 }
 
@@ -82,24 +86,25 @@ function downloadFromUrl(url: string, filename: string) {
   document.body.removeChild(link);
 }
 
-type FilterTab = "all" | "approved" | "revision" | "pending";
+type FilterTab = "all" | "approved" | "revision" | "pending" | "archived";
 
-type ModuleDraft = NonNullable<NonNullable<ReturnType<typeof useTrainerPortal>["data"]>["moduleDrafts"]>[number];
+type ModuleReviewDraft = NonNullable<TrainerPortalBootstrap["moduleDrafts"]>[number];
 
-function resolveReviewState(draft: ModuleDraft) {
+function resolveReviewState(draft: ModuleReviewDraft) {
   const latestDecision = draft.reviewHistory?.[0]?.decision;
-  const isApproved = draft.reviewStatus === "approved" || latestDecision === "approve";
-  const isRevision = draft.reviewStatus === "revision_requested" || latestDecision === "return_for_revision";
-  const isRejected = draft.reviewStatus === "rejected" || latestDecision === "reject";
-  // A review state is valid only after this exact draft has been linked to a
-  // review subject. Draft rows without a subject must never inherit queue state.
-  const isPending = Boolean(draft.subjectId) && !isApproved && !isRevision && !isRejected && (
+  const isArchived = draft.reviewStatus === "archived" || latestDecision === "archive";
+  const isApproved = !isArchived && (draft.reviewStatus === "approved" || latestDecision === "approve");
+  const isRevision = !isArchived && (draft.reviewStatus === "revision_requested" || latestDecision === "return_for_revision");
+  const isRejected = !isArchived && (draft.reviewStatus === "rejected" || latestDecision === "reject");
+  // Queue state belongs to one exact submission. A saved draft without a
+  // linked review subject has never entered verification.
+  const isPending = Boolean(draft.subjectId) && !isArchived && !isApproved && !isRevision && !isRejected && (
     draft.status === "submitted" ||
     draft.reviewStatus === "pending" ||
     draft.reviewStatus === "under_review" ||
     draft.reviewStatus === "decision_pending"
   );
-  return { isApproved, isRevision, isRejected, isPending, isDraft: !isApproved && !isRevision && !isRejected && !isPending };
+  return { isArchived, isApproved, isRevision, isRejected, isPending, isDraft: !isArchived && !isApproved && !isRevision && !isRejected && !isPending };
 }
 
 function ReviewStatusPage() {
@@ -108,16 +113,25 @@ function ReviewStatusPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [openingFile, setOpeningFile] = useState<string | null>(null);
 
-  const handleOpenFile = async (filePath?: string, fileName?: string) => {
+  const handleOpenFile = async (filePath?: string, fileName?: string, bucket?: string) => {
     if (!filePath) {
       toast.info("Berkas tersimpan sebagai metadata draf pengajuan.");
       return;
     }
     setOpeningFile(filePath);
     try {
-      const { data, error } = await supabase.storage
-        .from("module-attachments")
+      const primaryBucket =
+        bucket || (filePath.includes("/modules/") ? "module-attachments" : "expert-applications");
+      let { data, error } = await supabase.storage
+        .from(primaryBucket)
         .createSignedUrl(filePath, 3600);
+      if (error || !data?.signedUrl) {
+        const altBucket =
+          primaryBucket === "module-attachments" ? "expert-applications" : "module-attachments";
+        const altRes = await supabase.storage.from(altBucket).createSignedUrl(filePath, 3600);
+        data = altRes.data;
+        error = altRes.error;
+      }
       if (error || !data?.signedUrl) {
         toast.error("Gagal mendapatkan akses berkas.");
         return;
@@ -131,15 +145,24 @@ function ReviewStatusPage() {
     }
   };
 
-  const handleDownloadFile = async (filePath?: string, fileName?: string) => {
+  const handleDownloadFile = async (filePath?: string, fileName?: string, bucket?: string) => {
     if (!filePath) {
       toast.info("Berkas tersimpan sebagai metadata draf pengajuan.");
       return;
     }
     try {
-      const { data, error } = await supabase.storage
-        .from("module-attachments")
+      const primaryBucket =
+        bucket || (filePath.includes("/modules/") ? "module-attachments" : "expert-applications");
+      let { data, error } = await supabase.storage
+        .from(primaryBucket)
         .createSignedUrl(filePath, 3600);
+      if (error || !data?.signedUrl) {
+        const altBucket =
+          primaryBucket === "module-attachments" ? "expert-applications" : "module-attachments";
+        const altRes = await supabase.storage.from(altBucket).createSignedUrl(filePath, 3600);
+        data = altRes.data;
+        error = altRes.error;
+      }
       if (error || !data?.signedUrl) {
         toast.error("Gagal membuat tautan unduhan.");
         return;
@@ -153,20 +176,18 @@ function ReviewStatusPage() {
 
   // Filter drafts
   const filteredDrafts = drafts.filter((d) => {
-    const { isApproved, isRevision, isPending } = resolveReviewState(d);
+    const { isArchived, isApproved, isRevision, isPending } = resolveReviewState(d);
 
+    if (activeTab === "archived") return isArchived;
     if (activeTab === "approved") return isApproved;
     if (activeTab === "revision") return isRevision;
     if (activeTab === "pending") return isPending;
     return true;
   });
 
-  const countApproved = drafts.filter(
-    (d) => resolveReviewState(d).isApproved,
-  ).length;
-  const countRevision = drafts.filter(
-    (d) => resolveReviewState(d).isRevision,
-  ).length;
+  const countArchived = drafts.filter((d) => resolveReviewState(d).isArchived).length;
+  const countApproved = drafts.filter((d) => resolveReviewState(d).isApproved).length;
+  const countRevision = drafts.filter((d) => resolveReviewState(d).isRevision).length;
   const countPending = drafts.filter((d) => resolveReviewState(d).isPending).length;
 
   return (
@@ -263,6 +284,19 @@ function ReviewStatusPage() {
           >
             Dalam Proses ({countPending})
           </button>
+          {countArchived > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("archived")}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "archived"
+                  ? "bg-slate-700 text-white shadow-xs"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <Archive className="h-3.5 w-3.5" /> Diarsipkan ({countArchived})
+            </button>
+          )}
         </div>
 
         {/* Content Area */}
@@ -274,28 +308,30 @@ function ReviewStatusPage() {
           <div className="space-y-6">
             {filteredDrafts.map((d) => {
               const latestDecision = d.reviewHistory?.[0];
-              const { isRevision, isApproved, isRejected, isPending, isDraft } = resolveReviewState(d);
+              const { isArchived, isRevision, isApproved, isRejected, isPending, isDraft } = resolveReviewState(d);
               const files = getDraftFiles(d.payload);
 
               // Tentukan tahapan stepper
               // Step 1: Draf Disusun (Selalu done)
               // Step 2: Pengajuan Terkirim (Selalu done karena masuk antrean)
-              // Step 3: Verifikasi Kurikulum (Done jika approved/rejected, in-progress jika pending/revision)
-              // Step 4: Keputusan Akhir (Done jika approved/rejected/revision)
+              // Step 3: Verifikasi Kurikulum (Done jika approved/rejected/archived, in-progress jika pending/revision)
+              // Step 4: Keputusan Akhir (Done jika approved/rejected/revision/archived)
               const step1Done = true;
               const step2Done = !isDraft;
-              const step3Done = isApproved || isRejected;
+              const step3Done = isApproved || isRejected || isArchived;
               const step3Active = isPending || isRevision;
 
               return (
                 <section
                   key={d.id}
                   className={`rounded-2xl border p-6 shadow-soft transition ${
-                    isRevision
-                      ? "border-amber-300 bg-amber-50/20"
-                      : isApproved
-                        ? "border-emerald-300 bg-emerald-50/15"
-                        : "border-border bg-card"
+                    isArchived
+                      ? "border-slate-300 bg-slate-50/50"
+                      : isRevision
+                        ? "border-amber-300 bg-amber-50/20"
+                        : isApproved
+                          ? "border-emerald-300 bg-emerald-50/15"
+                          : "border-border bg-card"
                   }`}
                 >
                   {/* Top Bar: Title & Status */}
@@ -311,7 +347,11 @@ function ReviewStatusPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      {isRevision ? (
+                      {isArchived ? (
+                        <Badge className="bg-slate-100 text-slate-800 border-slate-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
+                          <Archive className="h-3.5 w-3.5 text-slate-600" /> Diarsipkan oleh Admin
+                        </Badge>
+                      ) : isRevision ? (
                         <Badge className="bg-amber-100 text-amber-800 border-amber-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
                           <RotateCcw className="h-3.5 w-3.5" /> Perlu Revisi Dokumen
                         </Badge>
@@ -343,8 +383,8 @@ function ReviewStatusPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {/* Step 1 */}
                       <div className="flex items-center gap-2 rounded-xl bg-card border border-border/80 p-2.5 shadow-2xs">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                          <CheckCircle2 className="h-4 w-4" />
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${step2Done ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                          {step2Done ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                         </div>
                         <div className="min-w-0">
                           <p className="text-[11px] font-bold text-navy leading-none">1. Draf Disusun</p>
@@ -354,8 +394,8 @@ function ReviewStatusPage() {
 
                       {/* Step 2 */}
                       <div className="flex items-center gap-2 rounded-xl bg-card border border-border/80 p-2.5 shadow-2xs">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${step2Done ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-                          {step2Done ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                          <CheckCircle2 className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-[11px] font-bold text-navy leading-none">2. Pengajuan Dikirim</p>
@@ -376,9 +416,9 @@ function ReviewStatusPage() {
                             ? "bg-emerald-100 text-emerald-700"
                             : isRevision
                               ? "bg-amber-100 text-amber-700"
-                            : step3Active
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-muted text-muted-foreground"
+                              : step3Active
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-muted text-muted-foreground"
                         }`}>
                           {step3Done ? (
                             <CheckCircle2 className="h-4 w-4" />
@@ -456,6 +496,33 @@ function ReviewStatusPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* PROMINENT BANNER FOR ARCHIVED STATUS */}
+                  {isArchived && (
+                    <div className="mt-4 rounded-xl border border-slate-300 bg-slate-100/90 p-4 sm:p-5 flex items-start gap-3">
+                      <span className="rounded-lg bg-slate-200 p-2 text-slate-700 shrink-0 mt-0.5">
+                        <Archive className="h-5 w-5" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900">
+                          Modul Diarsipkan oleh Pengelola
+                        </p>
+                        <p className="text-xs text-slate-700 mt-0.5 leading-relaxed">
+                          Modul ini ditarik dari tayang publik dan disimpan dalam arsip tata kelola sistem. Jika memerlukan informasi lebih lanjut, silakan hubungi tim administrator.
+                        </p>
+                        {latestDecision?.comment && (
+                          <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-800">
+                            <span className="font-bold text-slate-800 uppercase tracking-wide block mb-1 text-[11px]">
+                              Catatan Pengarsipan:
+                            </span>
+                            <p className="italic text-slate-700 leading-relaxed">
+                              &quot;{latestDecision.comment}&quot;
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* PROMINENT BANNER FOR APPROVED STATUS */}
                   {isApproved && (
@@ -565,7 +632,7 @@ function ReviewStatusPage() {
                               <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenFile(file.path, file.name)}
+                                  onClick={() => handleOpenFile(file.path, file.name, file.bucket)}
                                   disabled={openingFile === file.path}
                                   title="Buka dokumen di tab baru tanpa harus mengunduh (PDF / Gambar)"
                                   className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-marine/10 px-2.5 py-1.5 text-[11px] font-bold text-marine hover:bg-marine hover:text-white transition cursor-pointer"
@@ -575,7 +642,7 @@ function ReviewStatusPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDownloadFile(file.path, file.name)}
+                                  onClick={() => handleDownloadFile(file.path, file.name, file.bucket)}
                                   title="Unduh berkas ke komputer"
                                   className="inline-flex items-center justify-center rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                                 >

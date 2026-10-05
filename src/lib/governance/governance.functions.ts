@@ -44,7 +44,7 @@ export const getMyRoles = createServerFn({ method: "GET" })
 
 export const getModuleReviewPacket = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: allowed, error: roleError } = await context.supabase.rpc("has_any_governance_role", { _user_id: context.userId });
     if (roleError || !allowed) throw new Error("forbidden");
@@ -56,18 +56,68 @@ export const getModuleReviewPacket = createServerFn({ method: "GET" })
     if (!revision) return null;
     const snapshot = revision.snapshot as { payload?: Record<string, Json> };
     const payload = snapshot.payload ?? {};
-    const raw = Array.isArray(payload.attachments) ? payload.attachments : [];
-    const attachments = await Promise.all(raw.map(async (item) => {
-      const file = item as { category?: string; name?: string; size?: number; type?: string; path?: string; bucket?: string };
-      if (!file.path || file.bucket !== "module-attachments") return null;
-      const [preview, download] = await Promise.all([
-        supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 900),
-        supabaseAdmin.storage.from("module-attachments").createSignedUrl(file.path, 900, { download: file.name }),
-      ]);
-      if (preview.error) throw new Error(preview.error.message);
-      if (download.error) throw new Error(download.error.message);
-      return { category: file.category ?? "attachment", name: file.name ?? "Attachment", size: file.size ?? 0, type: file.type ?? "application/octet-stream", path: file.path, signedUrl: preview.data.signedUrl, downloadUrl: download.data.signedUrl };
-    }));
+    const meta = (payload.metadata as Record<string, unknown>) ?? {};
+    const raw = Array.isArray(payload.attachments)
+      ? payload.attachments
+      : Array.isArray(meta.attached_resources)
+        ? (meta.attached_resources as unknown[])
+        : Array.isArray(payload.documents)
+          ? payload.documents
+          : [];
+
+    const attachments = await Promise.all(
+      raw.map(async (item) => {
+        const file = item as {
+          category?: string;
+          name?: string;
+          fileName?: string;
+          size?: number;
+          fileSize?: number;
+          type?: string;
+          fileType?: string;
+          path?: string;
+          bucket?: string;
+        };
+        if (!file.path) return null;
+
+        const targetBucket =
+          file.bucket ||
+          (file.path.includes("/modules/") ? "module-attachments" : "expert-applications");
+        const fileName = file.fileName || file.name || "Attachment";
+
+        let [preview, download] = await Promise.all([
+          supabaseAdmin.storage.from(targetBucket).createSignedUrl(file.path, 900),
+          supabaseAdmin.storage
+            .from(targetBucket)
+            .createSignedUrl(file.path, 900, { download: fileName }),
+        ]);
+
+        if ((preview.error || download.error) && targetBucket === "module-attachments") {
+          const [fbPreview, fbDownload] = await Promise.all([
+            supabaseAdmin.storage.from("expert-applications").createSignedUrl(file.path, 900),
+            supabaseAdmin.storage
+              .from("expert-applications")
+              .createSignedUrl(file.path, 900, { download: fileName }),
+          ]);
+          if (!fbPreview.error) {
+            preview = fbPreview;
+            download = fbDownload;
+          }
+        }
+
+        if (preview.error || !preview.data?.signedUrl) return null;
+
+        return {
+          category: file.category ?? "attachment",
+          name: fileName,
+          size: file.size || file.fileSize || 0,
+          type: file.type || file.fileType || "application/octet-stream",
+          path: file.path,
+          signedUrl: preview.data.signedUrl,
+          downloadUrl: download.data?.signedUrl ?? preview.data.signedUrl,
+        };
+      }),
+    );
     return { revision: revision.revision, submittedAt: revision.submitted_at, payload, attachments: attachments.filter((file): file is NonNullable<typeof file> => Boolean(file)) };
   });
 
@@ -103,7 +153,7 @@ export const listManualModuleReviewQueue = createServerFn({ method: "GET" })
 
 export const getReviewSubject = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: subject, error } = await context.supabase
       .from("review_subjects")
@@ -134,7 +184,7 @@ export const getReviewSubject = createServerFn({ method: "GET" })
 // ─── Draft / submit / withdraw ─────────────────────────────────────────────
 export const saveReviewDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         subjectId: z.string().uuid(),
@@ -191,7 +241,7 @@ export const saveReviewDraft = createServerFn({ method: "POST" })
 
 export const submitReviewRecommendation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ recordId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ recordId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     // Atomic RPC re-validates ownership, assignment status, COI, and criteria
     // against the assignment's template version schema. It also emits the
@@ -233,7 +283,7 @@ export const submitReviewRecommendation = createServerFn({ method: "POST" })
 
 export const withdrawReviewRecord = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ recordId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ recordId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: rec, error } = await context.supabase
       .from("review_records")
@@ -259,7 +309,7 @@ export const withdrawReviewRecord = createServerFn({ method: "POST" })
 // ─── Conflict of interest ──────────────────────────────────────────────────
 export const declareConflict = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         assignmentId: z.string().uuid(),
@@ -312,7 +362,7 @@ export const listPendingDecisions = createServerFn({ method: "GET" })
 
 export const listSubmittedRecommendations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
       throw new Error("forbidden");
@@ -329,7 +379,7 @@ export const listSubmittedRecommendations = createServerFn({ method: "GET" })
 
 export const recordFinalDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         subjectId: z.string().uuid(),
@@ -413,7 +463,7 @@ export const listApprovedModulesForPublication = createServerFn({ method: "GET" 
 
 export const publishApprovedModule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ subjectId: z.string().uuid(), decisionId: z.string().uuid() }).parse(input))
+  .validator((input) => z.object({ subjectId: z.string().uuid(), decisionId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     await requirePermission(context, "academy.publish");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -467,7 +517,7 @@ export const publishApprovedModule = createServerFn({ method: "POST" })
 // ─── Subject creation (admin/management) ───────────────────────────────────
 export const createReviewSubject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         kind: SubjectKind,
@@ -501,7 +551,7 @@ export const createReviewSubject = createServerFn({ method: "POST" })
 
 export const assignReviewer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         subjectId: z.string().uuid(),
@@ -563,7 +613,7 @@ export const assignReviewer = createServerFn({ method: "POST" })
 // ─── Audit trail (admin/management) ────────────────────────────────────────
 export const listGovernanceAudit = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
       throw new Error("forbidden");
@@ -579,7 +629,7 @@ export const listGovernanceAudit = createServerFn({ method: "GET" })
 
 export const exportGovernanceAuditCsv = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         subjectId: z.string().uuid().optional(),
@@ -610,7 +660,7 @@ export const exportGovernanceAuditCsv = createServerFn({ method: "POST" })
 // ─── Role administration (admin only) ──────────────────────────────────────
 export const grantRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ userId: z.string().uuid(), role: AppRole }).parse(d))
+  .validator((d) => z.object({ userId: z.string().uuid(), role: AppRole }).parse(d))
   .handler(async ({ data, context }) => {
     await requirePermission(context, "users.assign_role");
     const { data: row, error } = await context.supabase.rpc(
@@ -626,7 +676,7 @@ export const grantRole = createServerFn({ method: "POST" })
 
 export const revokeRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ userId: z.string().uuid(), role: AppRole }).parse(d))
+  .validator((d) => z.object({ userId: z.string().uuid(), role: AppRole }).parse(d))
   .handler(async ({ data, context }) => {
     await requirePermission(context, "users.assign_role");
     const { error } = await context.supabase.rpc(

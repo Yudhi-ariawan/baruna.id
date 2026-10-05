@@ -91,7 +91,7 @@ export function AssignmentPanel({
         data: {
           subjectId,
           reviewerId,
-          dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
+          dueAt: dueAt && !isNaN(Date.parse(dueAt)) ? new Date(dueAt).toISOString() : undefined,
           templateVersionId: activeVersionId ?? undefined,
         },
       }),

@@ -66,7 +66,7 @@ function latin1Bytes(s: string): Uint8Array {
 
 /** Converts a base64 data URL (e.g. canvas.toDataURL) into raw bytes. */
 export function dataUrlToBytes(dataUrl: string): Uint8Array {
-  const base64 = dataUrl.split(",")[1] ?? "";
+  const base64 = (dataUrl || "").split(",")[1] ?? "";
   const bin = atob(base64);
   const a = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);

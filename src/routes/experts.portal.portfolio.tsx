@@ -12,6 +12,7 @@ import {
   Building2,
   Globe,
   ArrowRight,
+  Archive,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
@@ -96,7 +97,58 @@ function PortfolioPage() {
     );
   }
 
-  // Combine modules from module_registry and approved drafts to guarantee no data is dropped
+  // Modules that are archived
+  const archivedModulesMap = new Map<string, {
+    id: string;
+    title: string;
+    summary: string | null;
+    status: string;
+    hours: number;
+    version: number | string;
+    language: string | null;
+    targetParticipants?: string | null;
+    updatedAt?: string;
+  }>();
+
+  rawModules
+    .filter((m) => m.status === "archived")
+    .forEach((m) => {
+      archivedModulesMap.set(m.id, {
+        id: m.id,
+        title: m.title,
+        summary: m.summary,
+        status: m.status,
+        hours: m.hours ?? 0,
+        version: m.version,
+        language: m.language,
+        targetParticipants: m.targetParticipants,
+        updatedAt: m.updatedAt,
+      });
+    });
+
+  drafts
+    .filter((dr) => dr.reviewStatus === "archived" || dr.reviewHistory?.[0]?.decision === "archive")
+    .forEach((dr) => {
+      const payload = (dr.payload as Record<string, unknown>) ?? {};
+      const idKey = dr.subjectId || dr.id;
+      if (!archivedModulesMap.has(idKey)) {
+        archivedModulesMap.set(idKey, {
+          id: idKey,
+          title: dr.title,
+          summary: typeof payload.summary === "string" ? payload.summary : null,
+          status: "archived",
+          hours: Number(payload.estimated_learning_hours || 0),
+          version: "1.0",
+          language: typeof payload.language === "string" ? payload.language : "Indonesia",
+          targetParticipants: typeof payload.target_participants === "string" ? payload.target_participants : null,
+          updatedAt: dr.updatedAt,
+        });
+      }
+    });
+
+  const archivedKeys = new Set(archivedModulesMap.keys());
+
+  // Combine modules from module_registry and approved drafts to guarantee no data is dropped (excluding archived)
   const approvedModulesMap = new Map<string, {
     id: string;
     title: string;
@@ -110,7 +162,7 @@ function PortfolioPage() {
   }>();
 
   rawModules
-    .filter((m) => ["approved", "published"].includes(m.status))
+    .filter((m) => ["approved", "published"].includes(m.status) && !archivedKeys.has(m.id))
     .forEach((m) => {
       approvedModulesMap.set(m.id, {
         id: m.id,
@@ -125,13 +177,18 @@ function PortfolioPage() {
       });
     });
 
-  // Also include approved drafts if not already represented
+  // Also include approved drafts if not already represented and not archived
   drafts
-    .filter((dr) => dr.reviewStatus === "approved" || dr.reviewHistory?.[0]?.decision === "approve")
+    .filter(
+      (dr) =>
+        dr.reviewStatus !== "archived" &&
+        dr.reviewHistory?.[0]?.decision !== "archive" &&
+        (dr.reviewStatus === "approved" || dr.reviewHistory?.[0]?.decision === "approve"),
+    )
     .forEach((dr) => {
       const payload = (dr.payload as Record<string, unknown>) ?? {};
       const idKey = dr.subjectId || dr.id;
-      if (!approvedModulesMap.has(idKey)) {
+      if (!approvedModulesMap.has(idKey) && !archivedKeys.has(idKey)) {
         approvedModulesMap.set(idKey, {
           id: idKey,
           title: dr.title,
@@ -146,7 +203,13 @@ function PortfolioPage() {
       }
     });
 
+  // Ensure no archived key exists in approved map
+  for (const k of archivedKeys) {
+    approvedModulesMap.delete(k);
+  }
+
   const approvedList = Array.from(approvedModulesMap.values());
+  const archivedList = Array.from(archivedModulesMap.values());
   const totalInstructionalHours = approvedList.reduce((acc, m) => acc + (m.hours || 0), 0);
   const totalGraduated = t.uniqueSuccessfulParticipants || 0;
   const learningHoursGenerated = totalInstructionalHours * totalGraduated;
@@ -378,6 +441,54 @@ function PortfolioPage() {
             </div>
           )}
         </section>
+
+        {/* Section: Modul yang Diarsipkan (Jika Ada) */}
+        {archivedList.length > 0 && (
+          <section className="rounded-2xl border border-slate-300 bg-slate-50/70 p-6 shadow-soft space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded-xl bg-slate-200 p-2 text-slate-700">
+                  <Archive className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-display text-lg font-bold text-navy">
+                    Arsip Kurikulum ({archivedList.length})
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Modul yang ditarik dari tayangan publik oleh Administrator. Seluruh data dan rekam kurikulum tetap tersimpan aman.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              {archivedList.map((m) => (
+                <article
+                  key={m.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-slate-100 text-slate-800 border-slate-300 text-xs font-semibold flex items-center gap-1">
+                        <Archive className="h-3 w-3 text-slate-600" /> Diarsipkan oleh Admin
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">{m.hours} Jam Pelatihan</span>
+                    </div>
+                    <h3 className="font-display text-base font-bold text-navy">{m.title}</h3>
+                    {m.summary && <p className="text-xs text-slate-600 line-clamp-2">{m.summary}</p>}
+                  </div>
+
+                  <Link
+                    to="/experts/portal/review-status"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shrink-0 self-start sm:self-center"
+                  >
+                    <FileText className="h-3.5 w-3.5 text-slate-600" /> Rekam Status
+                  </Link>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Section: Peran Pengajar & Riwayat Fasilitasi */}
         <section className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4">

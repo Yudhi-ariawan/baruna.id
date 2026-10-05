@@ -9,6 +9,37 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getModuleStorageSignedUrl(
+  supabaseAdmin: any,
+  storagePath: string,
+  expiresIn = 86400,
+  bucket?: string,
+): Promise<string | null> {
+  if (!storagePath) return null;
+  if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+    return storagePath;
+  }
+  const primaryBucket =
+    bucket || (storagePath.includes("/modules/") ? "module-attachments" : "expert-applications");
+  try {
+    const { data: signed, error } = await supabaseAdmin.storage
+      .from(primaryBucket)
+      .createSignedUrl(storagePath, expiresIn);
+    if (!error && signed?.signedUrl) {
+      return signed.signedUrl;
+    }
+    const altBucket =
+      primaryBucket === "module-attachments" ? "expert-applications" : "module-attachments";
+    const { data: altSigned } = await supabaseAdmin.storage
+      .from(altBucket)
+      .createSignedUrl(storagePath, expiresIn);
+    return altSigned?.signedUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Public reads (no auth required) ───────────────────────────────────────
 
 export const listOfferings = createServerFn({ method: "GET" }).handler(async () => {
@@ -35,7 +66,7 @@ export const listOfferings = createServerFn({ method: "GET" }).handler(async () 
 });
 
 export const getOfferingByCode = createServerFn({ method: "GET" })
-  .inputValidator((d) => z.object({ code: z.string() }).parse(d))
+  .validator((d) => z.object({ code: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const { createClient } = await import("@supabase/supabase-js");
     const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
@@ -72,7 +103,7 @@ export const getOfferingByCode = createServerFn({ method: "GET" })
 
 // Safe route resolver — enforces feature-flag gating.
 export const resolveOfferingRoute = createServerFn({ method: "GET" })
-  .inputValidator((d) => z.object({ code: z.string() }).parse(d))
+  .validator((d) => z.object({ code: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const { createClient } = await import("@supabase/supabase-js");
     const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
@@ -124,7 +155,7 @@ export const listMyEnrolments = createServerFn({ method: "GET" })
 
 export const enrolInOffering = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ offeringCode: z.string() }).parse(d))
+  .validator((d) => z.object({ offeringCode: z.string() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: offering, error: offErr } = await context.supabase
       .from("course_offerings")
@@ -174,7 +205,7 @@ export const enrolInOffering = createServerFn({ method: "POST" })
 
 export const getEnrolmentDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ offeringCode: z.string() }).parse(d))
+  .validator((d) => z.object({ offeringCode: z.string() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: offering } = await context.supabase
       .from("course_offerings")
@@ -208,7 +239,7 @@ export const getEnrolmentDetail = createServerFn({ method: "GET" })
 
 export const markActivityComplete = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         enrolmentId: z.string().uuid(),
@@ -240,7 +271,7 @@ export const markActivityComplete = createServerFn({ method: "POST" })
 
 export const submitEvaluation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         enrolmentId: z.string().uuid(),
@@ -270,7 +301,7 @@ export const submitEvaluation = createServerFn({ method: "POST" })
 
 export const checkEligibility = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ enrolmentId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ enrolmentId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: result, error } = await context.supabase.rpc("check_certificate_eligibility", {
       _enrolment_id: data.enrolmentId,
@@ -281,7 +312,7 @@ export const checkEligibility = createServerFn({ method: "GET" })
 
 export const issueCertificate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         enrolmentId: z.string().uuid(),
@@ -379,7 +410,7 @@ export const listMyCertificates = createServerFn({ method: "GET" })
 // experience by marking their enrolment withdrawn. Server data is preserved.
 export const rollbackOwnEnrolment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ enrolmentId: z.string().uuid(), reason: z.string().max(500).optional() }).parse(d))
+  .validator((d) => z.object({ enrolmentId: z.string().uuid(), reason: z.string().max(500).optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("enrolments")
@@ -433,7 +464,7 @@ export type PublishedModuleDetail = {
 };
 
 export const getPublishedModuleDetail = createServerFn({ method: "GET" })
-  .inputValidator((d) => z.object({ moduleId: z.string() }).parse(d))
+  .validator((d) => z.object({ moduleId: z.string() }).parse(d))
   .handler(async ({ data }): Promise<PublishedModuleDetail | null> => {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.moduleId);
     if (!isUuid) return null;
@@ -510,18 +541,12 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
             let downloadUrl: string | null = null;
 
             if (storagePath) {
-              if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
-                downloadUrl = storagePath;
-              } else {
-                try {
-                  const { data: signed } = await supabaseAdmin.storage
-                    .from("expert-applications")
-                    .createSignedUrl(storagePath, 86400);
-                  downloadUrl = signed?.signedUrl ?? null;
-                } catch {
-                  downloadUrl = null;
-                }
-              }
+              downloadUrl = await getModuleStorageSignedUrl(
+                supabaseAdmin,
+                storagePath,
+                86400,
+                typeof doc.bucket === "string" ? doc.bucket : undefined,
+              );
             } else if (typeof doc.url === "string" && (doc.url.startsWith("http://") || doc.url.startsWith("https://"))) {
               downloadUrl = doc.url;
             } else if (name.startsWith("http://") || name.startsWith("https://")) {
@@ -628,18 +653,12 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
         let downloadUrl: string | null = null;
 
         if (storagePath) {
-          if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
-            downloadUrl = storagePath;
-          } else {
-            try {
-              const { data: signed } = await supabaseAdmin.storage
-                .from("expert-applications")
-                .createSignedUrl(storagePath, 86400);
-              downloadUrl = signed?.signedUrl ?? null;
-            } catch {
-              downloadUrl = null;
-            }
-          }
+          downloadUrl = await getModuleStorageSignedUrl(
+            supabaseAdmin,
+            storagePath,
+            86400,
+            typeof doc.bucket === "string" ? doc.bucket : undefined,
+          );
         } else if (typeof doc.url === "string" && (doc.url.startsWith("http://") || doc.url.startsWith("https://"))) {
           downloadUrl = doc.url;
         } else if (name.startsWith("http://") || name.startsWith("https://")) {
@@ -750,18 +769,7 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
           // 1. Direct cover_image_url
           if (typeof meta.cover_image_url === "string" && meta.cover_image_url.trim()) {
             const url = meta.cover_image_url.trim();
-            if (url.startsWith("http://") || url.startsWith("https://")) {
-              coverUrl = url;
-            } else {
-              try {
-                const { data: signed } = await supabaseAdmin.storage
-                  .from("expert-applications")
-                  .createSignedUrl(url, 86400);
-                coverUrl = signed?.signedUrl ?? null;
-              } catch {
-                coverUrl = null;
-              }
-            }
+            coverUrl = await getModuleStorageSignedUrl(supabaseAdmin, url, 86400);
           }
 
           // 2. Extract from attached_resources or documents
@@ -791,18 +799,12 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
               if (directUrl && (directUrl.startsWith("http://") || directUrl.startsWith("https://"))) {
                 coverUrl = directUrl;
               } else if (storagePath) {
-                if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
-                  coverUrl = storagePath;
-                } else {
-                  try {
-                    const { data: signed } = await supabaseAdmin.storage
-                      .from("expert-applications")
-                      .createSignedUrl(storagePath, 86400);
-                    coverUrl = signed?.signedUrl ?? null;
-                  } catch {
-                    coverUrl = null;
-                  }
-                }
+                coverUrl = await getModuleStorageSignedUrl(
+                  supabaseAdmin,
+                  storagePath,
+                  86400,
+                  typeof coverDoc.bucket === "string" ? coverDoc.bucket : undefined,
+                );
               }
             }
           }

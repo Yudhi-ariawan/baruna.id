@@ -1,6 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import {
   LayoutDashboard,
   Award,
@@ -16,18 +14,18 @@ import {
   Clock,
   FileText,
   ExternalLink,
-  Paperclip,
   AlertCircle,
-  Info,
   BookOpenCheck,
+  Archive,
+  ChevronRight,
+  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
-import { toast } from "sonner";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import { LEVEL_LABEL, formatUsp } from "@/lib/trainerModules";
-import { getTrainerPortalBootstrap } from "@/lib/experts/portal-services.functions";
+import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/experts/portal/")({
   head: () => ({
@@ -40,53 +38,15 @@ export const Route = createFileRoute("/experts/portal/")({
   component: PortalDashboard,
 });
 
-function formatBytes(bytes: number) {
-  if (!bytes || bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
-
 function formatDate(dateStr: string) {
   if (!dateStr) return "—";
   try {
     return new Intl.DateTimeFormat("id-ID", {
       dateStyle: "medium",
-      timeStyle: "short",
     }).format(new Date(dateStr));
   } catch {
     return dateStr;
   }
-}
-
-type ModuleAttachedFile = {
-  type: string;
-  name: string;
-  size: number;
-  path?: string;
-  uploadedAt?: string;
-};
-
-function getDraftFiles(payloadRaw: unknown): ModuleAttachedFile[] {
-  const payload = (payloadRaw as Record<string, unknown>) ?? {};
-  const metadata = (payload.metadata as Record<string, unknown>) ?? {};
-
-  const rawList = Array.isArray(metadata.attached_resources)
-    ? (metadata.attached_resources as Array<Record<string, unknown>>)
-    : Array.isArray(payload.documents)
-      ? (payload.documents as Array<Record<string, unknown>>)
-      : Array.isArray(payload.attached_resources)
-        ? (payload.attached_resources as Array<Record<string, unknown>>)
-        : [];
-
-  return rawList.map((doc) => ({
-    type: String(doc.type || doc.category || "Dokumen Pendukung"),
-    name: String(doc.fileName || doc.name || "Berkas"),
-    size: Number(doc.fileSize || doc.size || 0),
-    path: typeof doc.path === "string" ? doc.path : undefined,
-    uploadedAt: typeof doc.uploadedAt === "string" ? doc.uploadedAt : undefined,
-  }));
 }
 
 function resolveDraftStatus(d: {
@@ -97,12 +57,23 @@ function resolveDraftStatus(d: {
   const latestDecision = d.reviewHistory?.[0];
   const dec = latestDecision?.decision;
 
+  if (d.reviewStatus === "archived" || d.status === "archived" || dec === "archive") {
+    return {
+      status: "archived",
+      label: "Diarsipkan",
+      badgeClass: "bg-slate-100 text-slate-700 border-slate-300",
+      cardBorder: "border-slate-200 bg-slate-50/40",
+      icon: Archive,
+      decision: latestDecision,
+    };
+  }
+
   if (d.reviewStatus === "approved" || dec === "approve") {
     return {
       status: "approved",
       label: "Disetujui / Tayang",
       badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300",
-      cardBorder: "border-emerald-300/80 bg-emerald-50/20",
+      cardBorder: "border-emerald-200 bg-emerald-50/20",
       icon: CheckCircle2,
       decision: latestDecision,
     };
@@ -111,7 +82,7 @@ function resolveDraftStatus(d: {
   if (d.reviewStatus === "revision_requested" || dec === "return_for_revision") {
     return {
       status: "revision_requested",
-      label: "Perlu Revisi Dokumen",
+      label: "Perlu Revisi",
       badgeClass: "bg-amber-100 text-amber-800 border-amber-300",
       cardBorder: "border-amber-300 bg-amber-50/30",
       icon: RotateCcw,
@@ -133,7 +104,7 @@ function resolveDraftStatus(d: {
   if (d.status === "submitted" || d.reviewStatus === "pending" || d.reviewStatus === "under_review") {
     return {
       status: "pending",
-      label: "Menunggu Verifikasi Admin",
+      label: "Dalam Proses Review",
       badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
       cardBorder: "border-blue-200 bg-blue-50/20",
       icon: Clock,
@@ -152,20 +123,43 @@ function resolveDraftStatus(d: {
 }
 
 function PortalDashboard() {
-  const load = useServerFn(getTrainerPortalBootstrap);
-  const query = useQuery({
-    queryKey: ["experts", "trainer-portal-dashboard"],
-    queryFn: () => load(),
-    retry: false,
-  });
+  const query = useTrainerPortal();
   const data = query.data;
 
-  if (query.isLoading)
-    return <div className="p-10 text-sm text-muted-foreground">Loading trainer workspace…</div>;
-  if (!data?.trainer || data.access !== "active_trainer")
+  if (query.isLoading) {
     return (
-      <div className="p-10 text-sm text-destructive">Trainer workspace data is unavailable.</div>
+      <PageShell
+        sidebar={{
+          ...EXPERTS_SIDEBAR_META,
+          title: "Trainer Portal",
+          subtitle: "Ruang kerja pengajar resmi BARUNA.",
+          sections: trainerPortalNav("/experts/portal"),
+        }}
+      >
+        <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+          <Clock className="mx-auto h-8 w-8 text-marine animate-spin" />
+          <p className="mt-3 text-sm text-muted-foreground">Memuat dashboard pengajar…</p>
+        </div>
+      </PageShell>
     );
+  }
+
+  if (!data?.trainer || data.access !== "active_trainer") {
+    return (
+      <PageShell
+        sidebar={{
+          ...EXPERTS_SIDEBAR_META,
+          title: "Trainer Portal",
+          subtitle: "Ruang kerja pengajar resmi BARUNA.",
+          sections: trainerPortalNav("/experts/portal"),
+        }}
+      >
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center text-sm text-destructive">
+          Data ruang kerja pengajar tidak tersedia atau Anda belum terdaftar sebagai Trainer aktif.
+        </div>
+      </PageShell>
+    );
+  }
 
   const trainer = data.trainer;
   const modules = data.modules ?? [];
@@ -173,6 +167,9 @@ function PortalDashboard() {
   const moduleDrafts = data.moduleDrafts ?? [];
 
   // Group module drafts by status
+  const archivedDrafts = moduleDrafts.filter(
+    (d) => resolveDraftStatus(d).status === "archived",
+  );
   const revisionDrafts = moduleDrafts.filter(
     (d) => resolveDraftStatus(d).status === "revision_requested",
   );
@@ -184,6 +181,7 @@ function PortalDashboard() {
     (m) => m.status === "approved" || m.status === "published",
   ).length;
   const published = modules.filter((m) => m.status === "published").length;
+  const inReviewCount = pendingDrafts.length;
   const instructionalHours = history.reduce(
     (sum, item) =>
       sum +
@@ -197,532 +195,430 @@ function PortalDashboard() {
   );
   const learningHours = instructionalHours * trainer.uniqueSuccessfulParticipants;
 
-  const handleOpenFile = async (filePath?: string) => {
-    if (!filePath) {
-      toast.info("Berkas tersimpan sebagai metadata draf pengajuan.");
-      return;
-    }
-    try {
-      const { data, error } = await supabase.storage
-        .from("module-attachments")
-        .createSignedUrl(filePath, 3600);
-      if (error || !data?.signedUrl) {
-        toast.error("Gagal mendapatkan tautan akses berkas.");
-        return;
-      }
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-    } catch {
-      toast.error("Tidak dapat membuka berkas.");
-    }
-  };
-
   return (
     <PageShell
       sidebar={{
         ...EXPERTS_SIDEBAR_META,
         title: "Trainer Portal",
-        subtitle: "Approved BARUNA Trainer workspace.",
+        subtitle: "Ruang kerja pengajar resmi BARUNA.",
         sections: trainerPortalNav("/experts/portal"),
       }}
       cta={{
         icon: LayoutDashboard,
-        title: "Ready to submit your next module?",
-        description: "Additional modules unlock as your recognition level grows.",
-        button: "Submit a Module",
+        title: "Ingin mengajukan modul baru?",
+        description: "Setiap modul kurikulum yang disetujui akan tayang sebagai kursus resmi di BARUNA.",
+        button: "Ajukan Modul",
         href: "/experts/portal/submit-module",
       }}
     >
       <div className="space-y-6">
-        {/* Welcome Header */}
-        <header className="rounded-2xl border border-marine/20 bg-gradient-to-br from-marine/5 to-transparent p-6 shadow-2xs">
-          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-marine">
-            <LayoutDashboard className="h-3.5 w-3.5" /> Welcome back
-          </p>
-          <h1 className="mt-2 font-display text-3xl font-extrabold text-navy">{trainer.fullName}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {[trainer.title, trainer.organization].filter(Boolean).join(" · ")}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-marine/10 px-3 py-1 text-xs font-bold text-marine">
-              <Award className="h-3 w-3" />{" "}
-              {LEVEL_LABEL[trainer.level === "not_assigned" ? "none" : trainer.level]}
-            </span>
-            <span className="rounded-full bg-eco-community/10 px-3 py-1 text-xs font-semibold text-eco-community">
-              Active trainer since {new Date(trainer.approvedAt).toLocaleDateString()}
-            </span>
+        {/* ========================================================
+            1. HEADER ELEGAN & RINGKAS (CLEAN GREETING & CTAs)
+           ======================================================== */}
+        <header className="rounded-3xl bg-gradient-to-br from-navy via-navy to-marine/90 p-6 sm:p-8 text-white shadow-soft">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-sky-200">
+                  Trainer Portal
+                </span>
+                <span className="rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 text-xs font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Trainer Aktif
+                </span>
+                <span className="rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 text-xs font-bold flex items-center gap-1">
+                  <Award className="h-3 w-3" /> Level: {LEVEL_LABEL[trainer.level === "not_assigned" ? "none" : trainer.level]}
+                </span>
+              </div>
+
+              <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Selamat Datang, {trainer.fullName}
+              </h1>
+
+              <p className="text-xs sm:text-sm text-white/80 max-w-2xl leading-relaxed">
+                {[trainer.title, trainer.organization, trainer.country].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <Link
+                to="/experts/portal/submit-module"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-navy shadow-sm hover:bg-slate-100 transition"
+              >
+                <FileEdit className="h-4 w-4 text-marine" /> Submit Modul Baru
+              </Link>
+              <Link
+                to="/experts/portal/review-status"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 border border-white/20 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition"
+              >
+                <Clock className="h-4 w-4 text-sky-300" /> Status Review
+              </Link>
+            </div>
           </div>
         </header>
 
         {/* ========================================================
-            STATUS NOTIFICATIONS (Approved, Revision, Rejected, Pending)
+            2. ACTIONABLE ALERT (ONLY SHOWN WHEN ACTION REQUIRED)
            ======================================================== */}
-        <div className="space-y-3.5">
-          {/* 1. NOTIFIKASI PERLU REVISI (AMBER) */}
-          {revisionDrafts.map((d) => {
-            const statusInfo = resolveDraftStatus(d);
-            const comment = statusInfo.decision?.comment;
-            return (
-              <div
-                key={d.id}
-                className="rounded-2xl border border-amber-300 bg-amber-50/95 p-5 shadow-sm transition hover:border-amber-400"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
-                    <span className="rounded-xl bg-amber-200/80 p-2.5 text-amber-800 shrink-0 mt-0.5">
-                      <RotateCcw className="h-5 w-5 text-amber-700" />
-                    </span>
-                    <div>
-                      <span className="inline-block rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900">
-                        Perlu Tindakan Trainer
-                      </span>
-                      <h3 className="font-display text-base font-bold text-navy mt-1">
-                        Revisi Diperlukan: &quot;{d.title}&quot;
-                      </h3>
-                      {comment && (
-                        <div className="mt-2 text-xs text-slate-700 italic bg-white/90 p-3 rounded-xl border border-amber-200">
-                          <span className="font-bold text-amber-800 not-italic block mb-0.5 text-[11px] uppercase tracking-wide">
-                            Catatan Verifikator Admin:
-                          </span>
-                          &quot;{comment}&quot;
-                        </div>
-                      )}
-                      <p className="mt-2 text-xs text-amber-800/90 leading-relaxed">
-                        Verifikator meminta Anda memperbarui berkas dokumen atau menyempurnakan isi
-                        silabus sebelum modul dapat disetujui.
-                      </p>
-                    </div>
-                  </div>
-
-                  <Link
-                    to="/experts/portal/submit-module"
-                    search={{ draftId: d.id }}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 transition shrink-0 self-start sm:self-center"
-                  >
-                    <FileEdit className="h-3.5 w-3.5" /> Perbaiki Dokumen &amp; Kirim Ulang
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* 2. NOTIFIKASI DISETUJUI & TAYANG (EMERALD) */}
-          {approvedDrafts.map((d) => {
-            const comment = resolveDraftStatus(d).decision?.comment;
-            return (
-              <div
-                key={d.id}
-                className="rounded-2xl border border-emerald-300 bg-emerald-50/90 p-5 shadow-sm"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
-                    <span className="rounded-xl bg-emerald-200/80 p-2.5 text-emerald-800 shrink-0 mt-0.5">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-700" />
-                    </span>
-                    <div>
-                      <span className="inline-block rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-900">
-                        Modul Disetujui &amp; Dipublikasikan
-                      </span>
-                      <h3 className="font-display text-base font-bold text-navy mt-1">
-                        Selamat! Modul &quot;{d.title}&quot; Telah Disetujui
-                      </h3>
-                      {comment && (
-                        <p className="mt-1 text-xs text-slate-700 italic">
-                          Catatan Reviewer: &quot;{comment}&quot;
-                        </p>
-                      )}
-                      <p className="mt-1.5 text-xs text-emerald-800 leading-relaxed">
-                        Modul Anda telah memenuhi standar kurikulum BARUNA dan kini aktif tayang
-                        sebagai Self-Paced Course di Academy &amp; Knowledge Hub.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <Link
-                      to="/experts/portal/portfolio"
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition"
-                    >
-                      <BookOpenCheck className="h-3.5 w-3.5" /> Buka Portofolio Mengajar
-                    </Link>
-                    <Link
-                      to="/academy"
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3.5 py-2 text-xs font-semibold text-emerald-800 shadow-xs hover:bg-emerald-50 transition"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" /> Katalog Kursus
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* 3. NOTIFIKASI DITOLAK (ROSE) */}
-          {rejectedDrafts.map((d) => {
-            const comment = resolveDraftStatus(d).decision?.comment;
-            return (
-              <div
-                key={d.id}
-                className="rounded-2xl border border-rose-300 bg-rose-50/90 p-5 shadow-sm"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
-                    <span className="rounded-xl bg-rose-200/80 p-2.5 text-rose-800 shrink-0 mt-0.5">
-                      <XCircle className="h-5 w-5 text-rose-700" />
-                    </span>
-                    <div>
-                      <span className="inline-block rounded-full bg-rose-200/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-900">
-                        Pengajuan Belum Disetujui
-                      </span>
-                      <h3 className="font-display text-base font-bold text-navy mt-1">
-                        Pengajuan Modul &quot;{d.title}&quot; Ditolak
-                      </h3>
-                      {comment && (
-                        <div className="mt-2 text-xs text-slate-700 italic bg-white/90 p-3 rounded-xl border border-rose-200">
-                          <span className="font-bold text-rose-800 not-italic block mb-0.5 text-[11px] uppercase tracking-wide">
-                            Alasan Penolakan:
-                          </span>
-                          &quot;{comment}&quot;
-                        </div>
-                      )}
-                      <p className="mt-2 text-xs text-rose-800/90">
-                        Anda dapat meninjau catatan penolakan di atas dan mengajukan modul baru
-                        dengan kurikulum yang disesuaikan.
-                      </p>
-                    </div>
-                  </div>
-
-                  <Link
-                    to="/experts/portal/submit-module"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-xs font-semibold text-rose-700 shadow-xs hover:bg-rose-50 transition shrink-0"
-                  >
-                    Ajukan Modul Baru
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* 4. NOTIFIKASI MENUNGGU REVIEW SEHABIS SUBMIT (BLUE) */}
-          {pendingDrafts.map((d) => (
-            <div
-              key={d.id}
-              className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 sm:p-5 shadow-2xs"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <span className="rounded-xl bg-blue-200/70 p-2 text-blue-700 shrink-0 mt-0.5">
-                    <Clock className="h-4 w-4" />
+        {revisionDrafts.length > 0 && (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50/95 p-4 sm:p-5 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <span className="rounded-xl bg-amber-200 p-2.5 text-amber-900 shrink-0 mt-0.5">
+                  <RotateCcw className="h-5 w-5 text-amber-800" />
+                </span>
+                <div>
+                  <span className="inline-block rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900">
+                    Tindakan Diperlukan
                   </span>
-                  <div>
-                    <span className="inline-block rounded-full bg-blue-200/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-900">
-                      Sedang Ditinjau
-                    </span>
-                    <h3 className="font-display text-sm sm:text-base font-bold text-navy mt-0.5">
-                      Modul &quot;{d.title}&quot; Sedang Dalam Proses Verifikasi
-                    </h3>
-                    <p className="mt-1 text-xs text-blue-900/80 leading-relaxed">
-                      Pengajuan modul dan dokumen pendukung Anda telah berhasil diterima sistem dan
-                      saat ini berada dalam antrean peninjauan oleh tim kurikulum BARUNA.
-                    </p>
-                  </div>
+                  <h3 className="font-display text-sm sm:text-base font-bold text-navy mt-0.5">
+                    {revisionDrafts.length === 1
+                      ? `Revisi Diperlukan: "${revisionDrafts[0].title}"`
+                      : `${revisionDrafts.length} Modul Memerlukan Revisi Dokumen`}
+                  </h3>
+                  <p className="mt-1 text-xs text-amber-900/90 leading-relaxed">
+                    Verifikator kurikulum telah memberikan catatan evaluasi untuk dokumen atau silabus modul Anda.
+                  </p>
                 </div>
-
-                <Link
-                  to="/experts/portal/review-status"
-                  className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition shrink-0 self-start sm:self-center"
-                >
-                  Pantau Status Review <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
               </div>
-            </div>
-          ))}
-        </div>
 
-        {/* Metric Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Link
+                to="/experts/portal/review-status"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 transition shrink-0 self-start sm:self-center"
+              >
+                Tinjau &amp; Perbaiki <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            3. SUMMARY STAT CARDS (4 METRICS)
+           ======================================================== */}
+        <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            icon={FileEdit}
-            label="Modul Disetujui"
+            icon={BookOpenCheck}
+            label="Modul Disetujui (Tayang)"
             value={approvedModules}
-            sub="Terdaftar resmi di kurikulum"
+            sub="Kurikulum resmi aktif di Academy"
+            color="emerald"
           />
           <StatCard
-            icon={BookOpen}
-            label="Kursus Tayang"
-            value={published}
-            sub="Aktif di katalog publik"
+            icon={Clock}
+            label="Dalam Peninjauan"
+            value={inReviewCount}
+            sub="Antrean verifikasi kurikulum"
+            color="blue"
           />
           <StatCard
             icon={Users}
             label="Peserta Terfasilitasi"
             value={formatUsp(trainer.uniqueSuccessfulParticipants)}
             sub="Peserta lulus terverifikasi"
+            color="marine"
           />
           <StatCard
             icon={TrendingUp}
             label="Total Jam Belajar"
             value={formatUsp(learningHours)}
-            sub={`${instructionalHours} jam instruksional`}
+            sub={`${instructionalHours} jam instruksional dirancang`}
+            color="purple"
           />
         </div>
 
         {/* ========================================================
-            SECTION: PENGAJUAN MODUL & KELENGKAPAN BERKAS (SUBMISSIONS & FILES)
+            4. MAIN DASHBOARD GRID (2 COLUMNS: LEFT 8 / RIGHT 4)
            ======================================================== */}
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-lg bg-marine/10 p-1.5 text-marine">
-                  <FileText className="h-5 w-5" />
-                </span>
-                <h2 className="font-display text-lg font-bold text-navy">
-                  Pengajuan Modul &amp; Berkas Saya
-                </h2>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Daftar modul yang telah diajukan beserta berkas dokumen pendukung yang diunggah
-                (silabus, presentasi, panduan, dan kuis).
-              </p>
-            </div>
-
-            <Link
-              to="/experts/portal/submit-module"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-navy transition self-start sm:self-center"
-            >
-              <FileEdit className="h-3.5 w-3.5" /> Submit Modul Baru
-            </Link>
-          </div>
-
-          {moduleDrafts.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-border p-10 text-center">
-              <FileText className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <p className="mt-2 text-sm font-semibold text-navy">Belum ada modul yang diajukan</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Mulai ajukan modul pelatihan Anda untuk ditinjau oleh tim verifikator BARUNA.
-              </p>
-              <Link
-                to="/experts/portal/submit-module"
-                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-marine/10 px-4 py-2 text-xs font-semibold text-marine hover:bg-marine/20 transition"
-              >
-                Ajukan Modul Sekarang <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {moduleDrafts.map((d) => {
-                const statusInfo = resolveDraftStatus(d);
-                const StatusIcon = statusInfo.icon;
-                const files = getDraftFiles(d.payload);
-                const payload = (d.payload as Record<string, unknown>) ?? {};
-                const metadata = (payload.metadata as Record<string, unknown>) ?? {};
-                const outline = (payload.content_outline as Record<string, unknown>) ?? {};
-                const hours = Number(payload.estimated_learning_hours || 0);
-
-                return (
-                  <div
-                    key={d.id}
-                    className={`rounded-2xl border p-5 shadow-2xs transition ${statusInfo.cardBorder}`}
-                  >
-                    {/* Header info */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-display text-base font-bold text-navy">{d.title}</h3>
-                          <Badge
-                            className={`flex items-center gap-1 text-xs font-medium ${statusInfo.badgeClass}`}
-                          >
-                            <StatusIcon className="h-3 w-3" /> {statusInfo.label}
-                          </Badge>
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          {Boolean(outline.topic) && (
-                            <>
-                              <span className="font-medium text-marine">{String(outline.topic)}</span>
-                              <span>•</span>
-                            </>
-                          )}
-                          <span>{hours} Jam Pembelajaran</span>
-                          <span>•</span>
-                          <span>{String(metadata.delivery_format || "Self-paced")}</span>
-                          <span>•</span>
-                          <span>Level {String(metadata.level || "Intermediate")}</span>
-                          <span>•</span>
-                          <span>Diajukan/Diperbarui: {formatDate(d.updatedAt)}</span>
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        {(statusInfo.status === "revision_requested" || statusInfo.status === "draft") && (
-                          <Link
-                            to="/experts/portal/submit-module"
-                            search={{ draftId: d.id }}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-amber-700 transition"
-                          >
-                            <FileEdit className="h-3.5 w-3.5" />
-                            {statusInfo.status === "draft" ? "Lengkapi Modul" : "Perbaiki Dokumen"}
-                          </Link>
-                        )}
-                        <Link
-                          to="/experts/portal/review-status"
-                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-navy hover:bg-muted transition"
-                        >
-                          Riwayat Review <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Evaluator Comment Callout if any */}
-                    {statusInfo.decision?.comment && (
-                      <div className="mt-3 rounded-xl border border-amber-200/90 bg-white/90 p-3 text-xs text-slate-800">
-                        <span className="font-bold text-amber-800 block mb-0.5 text-[11px] uppercase tracking-wide">
-                          Catatan Evaluasi Verifikator:
-                        </span>
-                        <p className="italic text-slate-700 leading-relaxed">
-                          &quot;{statusInfo.decision.comment}&quot;
-                        </p>
-                      </div>
-                    )}
-
-                    {/* UPLOADED FILES SECTION */}
-                    <div className="mt-4 pt-3.5 border-t border-border/60">
-                      <div className="flex items-center justify-between gap-2 mb-2.5">
-                        <span className="text-xs font-bold text-navy uppercase tracking-wider flex items-center gap-1.5">
-                          <Paperclip className="h-3.5 w-3.5 text-marine" />
-                          Berkas Dokumen Lampiran ({files.length} Berkas Diunggah)
-                        </span>
-                      </div>
-
-                      {files.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border/80 bg-white/50 p-3 text-center text-xs text-muted-foreground">
-                          Belum ada berkas lampiran yang diunggah untuk modul ini.
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                          {files.map((file, fIdx) => (
-                            <div
-                              key={fIdx}
-                              className="flex items-center justify-between gap-2.5 rounded-xl border border-border bg-white p-3 shadow-2xs hover:border-marine/40 transition"
-                            >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <FileText className="h-4 w-4 shrink-0 text-marine" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[11px] font-bold text-navy truncate">
-                                    {file.type}
-                                  </p>
-                                  <p className="text-[10px] text-muted-foreground truncate">
-                                    {file.name} {file.size > 0 ? `(${formatBytes(file.size)})` : ""}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div>
-                                {file.path ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenFile(file.path)}
-                                    title="Buka / Unduh Berkas"
-                                    className="inline-flex items-center gap-1 rounded-md bg-marine/10 px-2 py-1 text-[10px] font-bold text-marine hover:bg-marine hover:text-white transition cursor-pointer"
-                                  >
-                                    <ExternalLink className="h-3 w-3" /> Buka
-                                  </button>
-                                ) : (
-                                  <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-600">
-                                    Tersimpan
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Canonical Published Modules */}
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-display text-lg font-bold text-navy">
-                Katalog Modul Aktif di Academy
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Modul resmi yang telah disetujui dan aktif diikuti peserta di BARUNA Academy.
-              </p>
-            </div>
-            <Link to="/academy" className="text-xs font-semibold text-marine">
-              Buka Katalog Kursus <ArrowRight className="inline h-3 w-3" />
-            </Link>
-          </div>
-          {modules.length ? (
-            <div className="mt-4 divide-y divide-border">
-              {modules.slice(0, 5).map((m) => (
-                <div
-                  key={m.id}
-                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="text-sm font-bold text-navy">{m.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Version {m.version} · {m.hours ?? 0} hours{m.language ? ` · ${m.language}` : ""}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 px-3 py-1 text-xs font-bold capitalize">
-                    {m.status.replaceAll("_", " ")}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Empty
-              icon={BookOpen}
-              text="Belum ada modul kanonikal yang diterbitkan ke profil Anda."
-            />
-          )}
-        </section>
-
-        {/* Training History */}
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-          <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
-            <History className="h-5 w-5 text-marine" /> Training History
-          </h2>
-          {history.length ? (
-            <div className="mt-4 space-y-3">
-              {history.slice(0, 5).map((h) => (
-                <div key={h.id} className="rounded-xl border border-border p-4">
-                  <p className="text-sm font-bold text-navy">{h.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {[
-                      h.organizer,
-                      h.country,
-                      h.participants ? `${h.participants} participants` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT COLUMN (8 cols): Activity & Module Submissions */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Section: Pengajuan Modul Saya */}
+            <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
+                <div>
+                  <h2 className="font-display text-base sm:text-lg font-bold text-navy flex items-center gap-2">
+                    <FileText className="h-4.5 w-4.5 text-marine" /> Pengajuan Modul Saya
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Daftar modul yang diajukan beserta status verifikasi kurikulum.
                   </p>
                 </div>
-              ))}
+
+                <div className="flex items-center gap-2 self-start sm:self-center">
+                  <Link
+                    to="/experts/portal/submit-module"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-navy transition"
+                  >
+                    <FileEdit className="h-3.5 w-3.5" /> Submit Baru
+                  </Link>
+                  <Link
+                    to="/experts/portal/review-status"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-navy hover:bg-muted transition"
+                  >
+                    Lihat Semua ({moduleDrafts.length})
+                  </Link>
+                </div>
+              </div>
+
+              {moduleDrafts.length === 0 ? (
+                <div className="py-10 text-center">
+                  <FileText className="mx-auto h-8 w-8 text-muted-foreground/40" />
+                  <p className="mt-2 text-sm font-semibold text-navy">Belum ada modul yang diajukan</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 max-w-sm mx-auto">
+                    Mulai ajukan silabus dan materi modul pelatihan Anda untuk diverifikasi oleh tim kurikulum BARUNA.
+                  </p>
+                  <Link
+                    to="/experts/portal/submit-module"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-marine px-4 py-2 text-xs font-semibold text-white hover:bg-navy transition shadow-xs"
+                  >
+                    Ajukan Modul Pertama <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="mt-4 divide-y divide-border/60">
+                  {moduleDrafts.slice(0, 5).map((d) => {
+                    const statusInfo = resolveDraftStatus(d);
+                    const StatusIcon = statusInfo.icon;
+                    const payload = (d.payload as Record<string, unknown>) ?? {};
+                    const metadata = (payload.metadata as Record<string, unknown>) ?? {};
+                    const hours = Number(payload.estimated_learning_hours || 0);
+
+                    return (
+                      <div
+                        key={d.id}
+                        className="py-3.5 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                      >
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-display text-sm font-bold text-navy truncate">
+                              {d.title}
+                            </h3>
+                            <Badge
+                              className={`flex items-center gap-1 text-[11px] font-medium py-0.5 px-2 ${statusInfo.badgeClass}`}
+                            >
+                              <StatusIcon className="h-3 w-3" /> {statusInfo.label}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+                            <span>{hours > 0 ? `${hours} Jam Belajar` : "Self-paced"}</span>
+                            <span>•</span>
+                            <span>Level {String(metadata.level || "Intermediate")}</span>
+                            <span>•</span>
+                            <span>Diperbarui {formatDate(d.updatedAt)}</span>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                          {statusInfo.status === "revision_requested" ? (
+                            <Link
+                              to="/experts/portal/submit-module"
+                              search={{ draftId: d.id }}
+                              className="inline-flex items-center gap-1 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-amber-700 transition"
+                            >
+                              <FileEdit className="h-3 w-3" /> Perbaiki
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/experts/portal/review-status"
+                              className="inline-flex items-center gap-1 rounded-lg border border-border bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-navy hover:bg-slate-100 transition"
+                            >
+                              Detail <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* Section: Katalog Kursus Aktif di Academy */}
+            <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft">
+              <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <div>
+                  <h2 className="font-display text-base sm:text-lg font-bold text-navy flex items-center gap-2">
+                    <BookOpen className="h-4.5 w-4.5 text-emerald-600" /> Katalog Kursus Aktif di Academy
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Modul kurikulum resmi Anda yang aktif tayang di katalog publik.
+                  </p>
+                </div>
+                <Link
+                  to="/experts/portal/portfolio"
+                  className="text-xs font-semibold text-marine hover:underline"
+                >
+                  Portofolio Mengajar &rarr;
+                </Link>
+              </div>
+
+              {modules.filter((m) => m.status === "published" || m.status === "approved").length > 0 ? (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {modules
+                    .filter((m) => m.status === "published" || m.status === "approved")
+                    .slice(0, 4)
+                    .map((m) => (
+                      <div
+                        key={m.id}
+                        className="rounded-xl border border-emerald-200/80 bg-emerald-50/15 p-4 flex flex-col justify-between gap-3"
+                      >
+                        <div>
+                          <span className="inline-block rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold">
+                            Aktif Tayang
+                          </span>
+                          <h4 className="font-display text-sm font-bold text-navy mt-1.5 line-clamp-2">
+                            {m.title}
+                          </h4>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Versi {m.version} · {m.hours ?? 0} Jam Pelatihan
+                          </p>
+                        </div>
+
+                        <Link
+                          to="/academy"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-marine hover:underline self-start"
+                        >
+                          <ExternalLink className="h-3 w-3" /> Buka di Academy
+                        </Link>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  Belum ada kursus yang disetujui untuk tayang di katalog publik.
+                </div>
+              )}
+            </section>
+          </div>
+
+          {/* RIGHT COLUMN (4 cols): Quick Status Widget & Recent History */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* Widget 1: Ringkasan Status Verifikasi */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <h3 className="font-display text-sm font-bold text-navy flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-marine" /> Ringkasan Status Kurikulum
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Distribusi status modul pengajuan Anda.
+              </p>
+
+              <div className="mt-4 space-y-2.5">
+                <StatusRow
+                  label="Disetujui &amp; Tayang"
+                  count={approvedDrafts.length}
+                  badgeClass="bg-emerald-100 text-emerald-800"
+                />
+                <StatusRow
+                  label="Sedang Diverifikasi"
+                  count={pendingDrafts.length}
+                  badgeClass="bg-blue-100 text-blue-800"
+                />
+                <StatusRow
+                  label="Perlu Revisi"
+                  count={revisionDrafts.length}
+                  badgeClass="bg-amber-100 text-amber-800"
+                />
+                <StatusRow
+                  label="Diarsipkan oleh Admin"
+                  count={archivedDrafts.length}
+                  badgeClass="bg-slate-100 text-slate-700"
+                />
+                {rejectedDrafts.length > 0 && (
+                  <StatusRow
+                    label="Ditolak"
+                    count={rejectedDrafts.length}
+                    badgeClass="bg-rose-100 text-rose-800"
+                  />
+                )}
+              </div>
+
+              <div className="mt-4 pt-3.5 border-t border-border">
+                <Link
+                  to="/experts/portal/review-status"
+                  className="inline-flex items-center justify-between w-full rounded-xl bg-slate-50 hover:bg-slate-100 p-2.5 text-xs font-semibold text-navy transition"
+                >
+                  <span>Pusat Pelacakan Status</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              </div>
             </div>
-          ) : (
-            <Empty icon={History} text="No facilitation history has been recorded yet." />
-          )}
-        </section>
+
+            {/* Widget 2: Riwayat Fasilitasi Terakhir */}
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
+                <h3 className="font-display text-sm font-bold text-navy flex items-center gap-2">
+                  <History className="h-4 w-4 text-marine" /> Riwayat Mengajar
+                </h3>
+                <Link
+                  to="/experts/portal/portfolio"
+                  className="text-[11px] font-semibold text-marine hover:underline"
+                >
+                  Detail &rarr;
+                </Link>
+              </div>
+
+              {history.length > 0 ? (
+                <div className="mt-3 divide-y divide-border/60">
+                  {history.slice(0, 3).map((h) => (
+                    <div key={h.id} className="py-2.5 first:pt-0 last:pb-0">
+                      <p className="text-xs font-bold text-navy truncate">{h.title}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {[h.organizer, h.participants ? `${h.participants} Peserta` : null]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-4 text-center text-xs text-muted-foreground">
+                  Belum ada catatan kegiatan fasilitasi kelas.
+                </p>
+              )}
+            </div>
+
+            {/* Widget 3: Tips & Standar Kurikulum BARUNA */}
+            <div className="rounded-2xl border border-marine/20 bg-marine/5 p-4.5">
+              <div className="flex items-start gap-3">
+                <span className="rounded-xl bg-marine/10 p-2 text-marine shrink-0 mt-0.5">
+                  <Sparkles className="h-4 w-4" />
+                </span>
+                <div className="text-xs space-y-1">
+                  <p className="font-bold text-navy text-xs">Standar Kurikulum BARUNA</p>
+                  <p className="text-foreground/80 leading-relaxed">
+                    Setiap modul yang diajukan dinilai berdasarkan kelengkapan silabus, kesesuaian durasi instruksional, serta metode evaluasi kelulusan.
+                  </p>
+                  <Link
+                    to="/experts/portal/review-status"
+                    className="inline-block pt-1 font-semibold text-marine hover:underline text-[11px]"
+                  >
+                    Pelajari Alur Review &rarr;
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </PageShell>
   );
 }
 
-function Empty({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
+function StatusRow({
+  label,
+  count,
+  badgeClass,
+}: {
+  label: string;
+  count: number;
+  badgeClass: string;
+}) {
   return (
-    <div className="mt-4 rounded-xl border border-dashed border-border p-8 text-center">
-      <Icon className="mx-auto h-6 w-6 text-marine" />
-      <p className="mt-2 text-sm text-muted-foreground">{text}</p>
+    <div className="flex items-center justify-between text-xs py-1">
+      <span className="text-slate-700">{label}</span>
+      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${badgeClass}`}>
+        {count}
+      </span>
     </div>
   );
 }
@@ -732,19 +628,35 @@ function StatCard({
   label,
   value,
   sub,
+  color,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   sub?: string;
+  color?: "marine" | "emerald" | "blue" | "purple";
 }) {
+  const colorMap = {
+    marine: "bg-marine/10 text-marine",
+    emerald: "bg-emerald-100 text-emerald-700",
+    blue: "bg-blue-100 text-blue-700",
+    purple: "bg-purple-100 text-purple-700",
+  };
+
+  const iconClass = color ? colorMap[color] : "bg-marine/10 text-marine";
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-      <div className="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-        <Icon className="h-3.5 w-3.5 text-marine" /> {label}
+    <div className="rounded-2xl border border-border bg-card p-4.5 shadow-soft hover:border-marine/30 transition">
+      <div className="flex items-center gap-2.5">
+        <span className={`rounded-xl p-2 ${iconClass}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
       </div>
-      <p className="mt-2 font-display text-2xl font-extrabold text-navy">{value}</p>
-      {sub && <p className="mt-1 text-[0.65rem] text-muted-foreground">{sub}</p>}
+      <p className="mt-3 font-display text-2xl font-extrabold text-navy">{value}</p>
+      {sub && <p className="mt-1 text-[11px] text-muted-foreground leading-normal">{sub}</p>}
     </div>
   );
 }

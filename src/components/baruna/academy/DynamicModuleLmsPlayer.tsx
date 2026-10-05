@@ -731,7 +731,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                       src={
                         vidDoc.downloadUrl.includes("embed")
                           ? vidDoc.downloadUrl
-                          : `https://www.youtube.com/embed/${vidDoc.downloadUrl.split("v=")[1]?.split("&")[0] || vidDoc.downloadUrl.split("/").pop()}`
+                          : `https://www.youtube.com/embed/${vidDoc.downloadUrl.split("v=")[1]?.split("&")[0] || (vidDoc.downloadUrl || "").split("/").pop()}`
                       }
                       title={module.title}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -740,7 +740,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     />
                   ) : vidDoc.downloadUrl.includes("vimeo.com") ? (
                     <iframe
-                      src={`https://player.vimeo.com/video/${vidDoc.downloadUrl.split("/").pop()}`}
+                      src={`https://player.vimeo.com/video/${(vidDoc.downloadUrl || "").split("/").pop()}`}
                       title={module.title}
                       allow="autoplay; fullscreen; picture-in-picture"
                       allowFullScreen

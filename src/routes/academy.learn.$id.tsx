@@ -1315,7 +1315,7 @@ function ReflectionCard({
   onChange: (text: string) => void;
   onSubmit: () => void;
 }) {
-  const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+  const words = (text || "").trim() ? (text || "").trim().split(/\s+/).filter(Boolean).length : 0;
   const valid = words >= 300 && words <= 1000;
   const submitted = status === "Submitted";
 

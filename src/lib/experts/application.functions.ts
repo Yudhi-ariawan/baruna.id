@@ -212,7 +212,7 @@ export const listMyExpertApplications = createServerFn({ method: "GET" })
 
 export const saveExpertApplicationDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((value) => SaveInput.parse(value))
+  .validator((value) => SaveInput.parse(value))
   .handler(async ({ data, context }) => {
     let draftId = data.draftId;
     if (!draftId) {
@@ -233,7 +233,7 @@ export const saveExpertApplicationDraft = createServerFn({ method: "POST" })
 
 export const submitExpertApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((value) => DraftId.parse(value))
+  .validator((value) => DraftId.parse(value))
   .handler(async ({ data, context }) => {
     const { data: subjectId, error } = await context.supabase.rpc("expert_draft_submit", {
       _draft_id: data.draftId,
@@ -244,7 +244,7 @@ export const submitExpertApplication = createServerFn({ method: "POST" })
 
 export const resubmitExpertApplicationRevision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         draftId: z.string().uuid(),

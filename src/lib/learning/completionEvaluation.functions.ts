@@ -23,7 +23,7 @@ export type AnswerMap = Record<string, AnswerValue>;
 
 export const getCompletionEvaluationForm = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ enrolmentId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ enrolmentId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: state, error } = await context.supabase.rpc(
       "resolve_completion_evaluation_state" as never,
@@ -96,7 +96,7 @@ export const getCompletionEvaluationForm = createServerFn({ method: "GET" })
 
 export const startCompletionEvaluation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ enrolmentId: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ enrolmentId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: res, error } = await context.supabase.rpc(
       "start_completion_evaluation" as never,
@@ -108,7 +108,7 @@ export const startCompletionEvaluation = createServerFn({ method: "POST" })
 
 export const saveCompletionEvaluationDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         submissionId: z.string().uuid(),
@@ -132,7 +132,7 @@ export const saveCompletionEvaluationDraft = createServerFn({ method: "POST" })
 
 export const submitCompletionEvaluation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z
       .object({
         submissionId: z.string().uuid(),
