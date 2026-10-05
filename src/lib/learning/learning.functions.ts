@@ -17,11 +17,27 @@ async function getModuleStorageSignedUrl(
   bucket?: string,
 ): Promise<string | null> {
   if (!storagePath) return null;
-  if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+
+  // If a public Supabase URL was saved (e.g. from getPublicUrl), extract bucket and path to sign it properly
+  if (storagePath.includes("/storage/v1/object/public/")) {
+    const parts = storagePath.split("/storage/v1/object/public/")[1];
+    if (parts) {
+      const slashIdx = parts.indexOf("/");
+      if (slashIdx !== -1) {
+        const extractedBucket = parts.slice(0, slashIdx);
+        const extractedPath = parts.slice(slashIdx + 1);
+        return getModuleStorageSignedUrl(supabaseAdmin, extractedPath, expiresIn, extractedBucket);
+      }
+    }
+  }
+
+  // Already a signed URL or external absolute URL
+  if (storagePath.includes("/storage/v1/object/sign/") || (storagePath.startsWith("http") && !storagePath.includes("supabase.co/storage/"))) {
     return storagePath;
   }
+
   const primaryBucket =
-    bucket || (storagePath.includes("/modules/") ? "module-attachments" : "expert-applications");
+    bucket || (storagePath.includes("/modules/") ? "expert-applications" : "module-attachments");
   try {
     const { data: signed, error } = await supabaseAdmin.storage
       .from(primaryBucket)
