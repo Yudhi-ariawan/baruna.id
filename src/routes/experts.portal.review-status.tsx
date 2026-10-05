@@ -84,6 +84,24 @@ function downloadFromUrl(url: string, filename: string) {
 
 type FilterTab = "all" | "approved" | "revision" | "pending";
 
+type ModuleDraft = NonNullable<NonNullable<ReturnType<typeof useTrainerPortal>["data"]>["moduleDrafts"]>[number];
+
+function resolveReviewState(draft: ModuleDraft) {
+  const latestDecision = draft.reviewHistory?.[0]?.decision;
+  const isApproved = draft.reviewStatus === "approved" || latestDecision === "approve";
+  const isRevision = draft.reviewStatus === "revision_requested" || latestDecision === "return_for_revision";
+  const isRejected = draft.reviewStatus === "rejected" || latestDecision === "reject";
+  // A review state is valid only after this exact draft has been linked to a
+  // review subject. Draft rows without a subject must never inherit queue state.
+  const isPending = Boolean(draft.subjectId) && !isApproved && !isRevision && !isRejected && (
+    draft.status === "submitted" ||
+    draft.reviewStatus === "pending" ||
+    draft.reviewStatus === "under_review" ||
+    draft.reviewStatus === "decision_pending"
+  );
+  return { isApproved, isRevision, isRejected, isPending, isDraft: !isApproved && !isRevision && !isRejected && !isPending };
+}
+
 function ReviewStatusPage() {
   const q = useTrainerPortal();
   const drafts = q.data?.moduleDrafts ?? [];
@@ -135,12 +153,7 @@ function ReviewStatusPage() {
 
   // Filter drafts
   const filteredDrafts = drafts.filter((d) => {
-    const latestDecision = d.reviewHistory?.[0]?.decision;
-    const isApproved = d.reviewStatus === "approved" || latestDecision === "approve";
-    const isRevision =
-      d.reviewStatus === "revision_requested" || latestDecision === "return_for_revision";
-    const isPending =
-      !isApproved && !isRevision && (d.reviewStatus === "pending" || d.reviewStatus === "under_review" || d.status === "submitted");
+    const { isApproved, isRevision, isPending } = resolveReviewState(d);
 
     if (activeTab === "approved") return isApproved;
     if (activeTab === "revision") return isRevision;
@@ -149,22 +162,12 @@ function ReviewStatusPage() {
   });
 
   const countApproved = drafts.filter(
-    (d) => d.reviewStatus === "approved" || d.reviewHistory?.[0]?.decision === "approve",
+    (d) => resolveReviewState(d).isApproved,
   ).length;
   const countRevision = drafts.filter(
-    (d) =>
-      d.reviewStatus === "revision_requested" ||
-      d.reviewHistory?.[0]?.decision === "return_for_revision",
+    (d) => resolveReviewState(d).isRevision,
   ).length;
-  const countPending = drafts.filter((d) => {
-    const latestDecision = d.reviewHistory?.[0]?.decision;
-    return (
-      d.reviewStatus !== "approved" &&
-      latestDecision !== "approve" &&
-      d.reviewStatus !== "revision_requested" &&
-      latestDecision !== "return_for_revision"
-    );
-  }).length;
+  const countPending = drafts.filter((d) => resolveReviewState(d).isPending).length;
 
   return (
     <PageShell
@@ -271,13 +274,7 @@ function ReviewStatusPage() {
           <div className="space-y-6">
             {filteredDrafts.map((d) => {
               const latestDecision = d.reviewHistory?.[0];
-              const isRevision =
-                d.reviewStatus === "revision_requested" ||
-                latestDecision?.decision === "return_for_revision";
-              const isApproved =
-                d.reviewStatus === "approved" || latestDecision?.decision === "approve";
-              const isRejected =
-                d.reviewStatus === "rejected" || latestDecision?.decision === "reject";
+              const { isRevision, isApproved, isRejected, isPending, isDraft } = resolveReviewState(d);
               const files = getDraftFiles(d.payload);
 
               // Tentukan tahapan stepper
@@ -286,9 +283,9 @@ function ReviewStatusPage() {
               // Step 3: Verifikasi Kurikulum (Done jika approved/rejected, in-progress jika pending/revision)
               // Step 4: Keputusan Akhir (Done jika approved/rejected/revision)
               const step1Done = true;
-              const step2Done = true;
+              const step2Done = !isDraft;
               const step3Done = isApproved || isRejected;
-              const step3Active = !isApproved && !isRejected;
+              const step3Active = isPending || isRevision;
 
               return (
                 <section
@@ -326,9 +323,13 @@ function ReviewStatusPage() {
                         <Badge className="bg-rose-100 text-rose-800 border-rose-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
                           <AlertCircle className="h-3.5 w-3.5" /> Pengajuan Ditolak
                         </Badge>
-                      ) : (
+                      ) : isPending ? (
                         <Badge className="bg-blue-100 text-blue-800 border-blue-200 flex items-center gap-1 font-semibold text-xs py-1 px-3">
                           <Clock className="h-3.5 w-3.5 text-blue-600 animate-spin" /> Sedang Diverifikasi
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-slate-100 text-slate-700 border-slate-200 flex items-center gap-1 font-semibold text-xs py-1 px-3">
+                          <FileText className="h-3.5 w-3.5" /> Draf Tersimpan
                         </Badge>
                       )}
                     </div>
@@ -353,12 +354,12 @@ function ReviewStatusPage() {
 
                       {/* Step 2 */}
                       <div className="flex items-center gap-2 rounded-xl bg-card border border-border/80 p-2.5 shadow-2xs">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                          <CheckCircle2 className="h-4 w-4" />
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${step2Done ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                          {step2Done ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                         </div>
                         <div className="min-w-0">
                           <p className="text-[11px] font-bold text-navy leading-none">2. Pengajuan Dikirim</p>
-                          <p className="text-[10px] text-emerald-700 font-medium mt-0.5">Terkirim</p>
+                          <p className={`text-[10px] font-medium mt-0.5 ${step2Done ? "text-emerald-700" : "text-muted-foreground"}`}>{step2Done ? "Terkirim" : "Belum Dikirim"}</p>
                         </div>
                       </div>
 
@@ -375,14 +376,18 @@ function ReviewStatusPage() {
                             ? "bg-emerald-100 text-emerald-700"
                             : isRevision
                               ? "bg-amber-100 text-amber-700"
-                              : "bg-blue-100 text-blue-700"
+                            : step3Active
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-muted text-muted-foreground"
                         }`}>
                           {step3Done ? (
                             <CheckCircle2 className="h-4 w-4" />
                           ) : isRevision ? (
                             <AlertCircle className="h-4 w-4" />
-                          ) : (
+                          ) : step3Active ? (
                             <Clock className="h-4 w-4 animate-pulse" />
+                          ) : (
+                            <Clock className="h-4 w-4" />
                           )}
                         </div>
                         <div className="min-w-0">
@@ -392,9 +397,9 @@ function ReviewStatusPage() {
                               ? "text-emerald-700"
                               : isRevision
                                 ? "text-amber-700"
-                                : "text-blue-700"
+                                : step3Active ? "text-blue-700" : "text-muted-foreground"
                           }`}>
-                            {step3Done ? "Selesai Evaluasi" : isRevision ? "Perlu Revisi" : "Sedang Berjalan"}
+                            {step3Done ? "Selesai Evaluasi" : isRevision ? "Perlu Revisi" : step3Active ? "Sedang Berjalan" : "Belum Dimulai"}
                           </p>
                         </div>
                       </div>

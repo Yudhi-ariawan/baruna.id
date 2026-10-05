@@ -369,13 +369,19 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
         const size = Number(doc.fileSize || doc.size || 0);
         const fileType = typeof doc.fileType === "string" ? doc.fileType : (typeof doc.type === "string" ? doc.type : undefined);
         const storagePath = typeof doc.path === "string" ? doc.path : null;
+        const storageBucket = doc.bucket === "expert-applications"
+          ? "expert-applications"
+          : "module-attachments";
         let downloadUrl: string | null = null;
 
         if (storagePath) {
           try {
-            const { data: signed } = await supabaseAdmin.storage
-              .from("expert-applications")
+            // Signed on the server with service_role: authorized reviewers do
+            // not need direct SELECT access to the trainer's private object.
+            const { data: signed, error: signedError } = await supabaseAdmin.storage
+              .from(storageBucket)
               .createSignedUrl(storagePath, 3600);
+            if (signedError) throw signedError;
             downloadUrl = signed?.signedUrl ?? null;
           } catch {
             downloadUrl = null;
@@ -606,4 +612,3 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
 
     return { success: true, decisionId, decision: input.decision };
   });
-

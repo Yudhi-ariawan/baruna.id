@@ -18,9 +18,6 @@ const [{ data: experts, error: expertError }, { data: existingModules, error: mo
 if (expertError || moduleError) throw expertError ?? moduleError;
 const { data: expertLinks, error: linkError } = await supabase.from("experts").select("id,original_contributor_id").in("id", experts.map((expert) => expert.id));
 if (linkError) throw linkError;
-const approverId = expertLinks.find((link) => experts.find((expert) => expert.id === link.id)?.slug === "achmad-suhermanto")?.original_contributor_id;
-if (!approverId) throw new Error("approver_not_found");
-
 const results = [];
 for (const master of MASTER_MODULES) {
   const expert = experts.find((candidate) => candidate.slug === master.instructorSlug);
@@ -57,13 +54,9 @@ for (const master of MASTER_MODULES) {
     source_type: "admin_direct",
     original_contributor_id: ownerId,
     created_by: ownerId,
-    approved_by: approverId,
-    published_by: approverId,
-    approval_date: new Date().toISOString(),
-    publication_date: new Date().toISOString(),
-    verification_status: "governance_verified",
-    visibility: "public",
-    current_status: "published",
+    verification_status: "unverified",
+    visibility: "private",
+    current_status: "draft",
     module_type: "technical",
     title: master.title,
     summary: master.summary,
@@ -85,13 +78,9 @@ for (const master of MASTER_MODULES) {
     source_type: "admin_direct",
     original_contributor_id: ownerId,
     created_by: ownerId,
-    approved_by: approverId,
-    published_by: approverId,
-    approval_date: modulePayload.approval_date,
-    publication_date: modulePayload.publication_date,
-    verification_status: "governance_verified",
-    visibility: "public",
-    current_status: "published",
+    verification_status: "unverified",
+    visibility: "private",
+    current_status: "draft",
     resource_type: "module",
     title: master.title,
     summary: master.summary,
@@ -139,7 +128,7 @@ for (const master of MASTER_MODULES) {
   const { data: savedDraft, error: draftError } = await draftQuery;
   if (draftError) throw draftError;
 
-  results.push({ title: master.title, owner: expert.display_name, emailSlug: expert.slug, moduleId, draftId: draft?.id ?? savedDraft?.id, status: "published", completion: "draft_ready" });
+  results.push({ title: master.title, owner: expert.display_name, emailSlug: expert.slug, moduleId, draftId: draft?.id ?? savedDraft?.id, status: "draft", completion: "ready_for_expert_completion" });
 }
 
 console.log(JSON.stringify(results, null, 2));
