@@ -183,14 +183,16 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
       const lastDecision = lastDec?.decision;
       const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
 
-      const lastDecisionTime = lastDec ? new Date(lastDec.createdAt).getTime() : 0;
-      const draftUpdateTime = draft?.updated_at ? new Date(draft.updated_at).getTime() : 0;
-      const subjUpdateTime = subj.updated_at ? new Date(subj.updated_at).getTime() : 0;
+      // Pengajuan dianggap 'resubmitted' HANYA JIKA calon expert telah mengirimkan ulang draf (draft.status = 'submitted')
+      // Jika draft masih berstatus 'draft' atau review_status masih 'revision_requested', berarti masih menunggu pemohon merevisi
+      const isDraftRevising =
+        lastDecision === "return_for_revision" &&
+        (draft?.status === "draft" || subjMeta.review_status === "revision_requested");
 
       const isResubmitted =
         lastDecision === "return_for_revision" &&
-        (subj.current_status === "pending" || draft?.status === "submitted") &&
-        (draftUpdateTime > lastDecisionTime || subjUpdateTime > lastDecisionTime || subjMeta.review_status === "resubmitted");
+        draft?.status === "submitted" &&
+        subjMeta.review_status === "resubmitted";
 
       let status = subj.current_status;
       if (subj.current_status === "approved" || lastDecision === "approve") {
@@ -199,7 +201,7 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
         status = "rejected";
       } else if (isResubmitted) {
         status = "resubmitted";
-      } else if (lastDecision === "return_for_revision") {
+      } else if (isDraftRevising || lastDecision === "return_for_revision") {
         status = "revision_requested";
       }
 
@@ -324,14 +326,15 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
     const latestDec = (decisions ?? [])[0];
     const latestDecision = latestDec?.decision;
     const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
-    const lastDecisionTime = latestDec ? new Date(latestDec.created_at).getTime() : 0;
-    const draftUpdateTime = draft?.updated_at ? new Date(draft.updated_at).getTime() : 0;
-    const subjUpdateTime = subj.updated_at ? new Date(subj.updated_at).getTime() : 0;
+
+    const isDraftRevising =
+      latestDecision === "return_for_revision" &&
+      (draft?.status === "draft" || subjMeta.review_status === "revision_requested");
 
     const isResubmitted =
       latestDecision === "return_for_revision" &&
-      (subj.current_status === "pending" || draft?.status === "submitted") &&
-      (draftUpdateTime > lastDecisionTime || subjUpdateTime > lastDecisionTime || subjMeta.review_status === "resubmitted");
+      draft?.status === "submitted" &&
+      subjMeta.review_status === "resubmitted";
 
     let status = subj.current_status;
     if (subj.current_status === "approved" || latestDecision === "approve") {
@@ -340,7 +343,7 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
       status = "rejected";
     } else if (isResubmitted) {
       status = "resubmitted";
-    } else if (latestDecision === "return_for_revision") {
+    } else if (isDraftRevising || latestDecision === "return_for_revision") {
       status = "revision_requested";
     }
 
@@ -475,6 +478,7 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
             last_decision: "return_for_revision",
             last_rationale: rationaleText,
             revised_at: new Date().toISOString(),
+            resubmitted_at: null,
           } as never,
           updated_at: new Date().toISOString(),
         })
