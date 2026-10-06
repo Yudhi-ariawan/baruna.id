@@ -1,5 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
+import { getMyCourseEnrollmentStatus } from "@/lib/learning/enrollment-application.functions";
 import {
   ChevronRight,
   ArrowLeft,
@@ -202,6 +206,83 @@ const welcomeIcons: Record<string, LucideIcon> = {
 
 function LearningDashboard() {
   const loaderData = Route.useLoaderData();
+  const [demo] = useDemoMode();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id || null);
+      setAuthChecked(true);
+    });
+  }, []);
+
+  const courseId =
+    loaderData.kind === "dynamic"
+      ? loaderData.module.id
+      : loaderData.kind === "master"
+        ? loaderData.master.code
+        : loaderData.id;
+
+  const getStatusFn = useServerFn(getMyCourseEnrollmentStatus);
+  const { data: enrollmentStatus, isLoading: statusLoading } = useQuery({
+    queryKey: ["course-enrollment-status", courseId, userId],
+    queryFn: () => getStatusFn({ data: { courseId } }),
+    enabled: Boolean(userId),
+    staleTime: 1000 * 60 * 2,
+  });
+
+  // Access allowed if in demo mode, demo course, or status is approved
+  const isApproved =
+    demo ||
+    courseId === "demo" ||
+    courseId === "africa-fisheries-2026" ||
+    enrollmentStatus?.status === "approved";
+
+  // Access gate for unapproved participants
+  if (authChecked && userId && !statusLoading && !isApproved) {
+    return (
+      <AcademyShell active="my-learning">
+        <div className="mx-auto max-w-lg rounded-2xl border border-border bg-card p-8 text-center shadow-soft space-y-4 my-8">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-100 text-amber-700 shadow-xs">
+            <Lock className="h-7 w-7" />
+          </span>
+
+          <h2 className="font-display text-2xl font-bold text-navy">
+            {enrollmentStatus?.status === "pending"
+              ? "Menunggu Persetujuan Admin"
+              : enrollmentStatus?.status === "rejected"
+                ? "Pendaftaran Belum Disetujui"
+                : "Akses Ruang Belajar Terkunci"}
+          </h2>
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {enrollmentStatus?.status === "pending"
+              ? "Permohonan kepesertaan Anda untuk materi ini sedang ditinjau oleh Administrator (SOP PB-ACA-03). Ruang belajar akan otomatis aktif setelah disetujui."
+              : enrollmentStatus?.status === "rejected"
+                ? `Pendaftaran Anda belum disetujui: ${enrollmentStatus.decisionNotes || "Silakan hubungi administrator atau ajukan ulang."}`
+                : "Anda belum terdaftar secara resmi pada modul ini. Silakan ajukan pendaftaran kepesertaan terlebih dahulu di halaman detail modul."}
+          </p>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+            <Link
+              to="/academy/self-paced/$code"
+              params={{ code: courseId }}
+              className="w-full sm:w-auto rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
+            >
+              Buka Halaman Detail Modul →
+            </Link>
+            <Link
+              to="/academy/programs"
+              className="w-full sm:w-auto rounded-xl border border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition"
+            >
+              Katalog Pelatihan
+            </Link>
+          </div>
+        </div>
+      </AcademyShell>
+    );
+  }
 
   if (loaderData.kind === "dynamic") {
     return <DynamicModuleLmsPlayer module={loaderData.module} />;

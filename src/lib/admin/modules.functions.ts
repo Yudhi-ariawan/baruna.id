@@ -203,10 +203,14 @@ export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
       const subjUpdateTime = subj.updated_at ? new Date(subj.updated_at).getTime() : 0;
 
       // Has this module been resubmitted after a revision request?
+      const isDraftRevising =
+        lastDecision === "return_for_revision" &&
+        (draft?.status === "draft" || subjMeta.review_status === "revision_requested");
+
       const isResubmitted =
         lastDecision === "return_for_revision" &&
-        (draft?.status === "submitted" || subj.current_status === "pending") &&
-        (draftUpdateTime > lastDecisionTime || subjUpdateTime > lastDecisionTime || subjMeta.review_status === "resubmitted");
+        draft?.status === "submitted" &&
+        subjMeta.review_status === "resubmitted";
 
       // Determine effective status
       let effectiveStatus = subj.current_status;
@@ -223,7 +227,7 @@ export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
         effectiveStatus = "rejected";
       } else if (isResubmitted) {
         effectiveStatus = "resubmitted";
-      } else if (lastDecision === "return_for_revision") {
+      } else if (isDraftRevising || lastDecision === "return_for_revision") {
         effectiveStatus = "revision_requested";
       }
 
@@ -437,10 +441,14 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
     const draftUpdateTime = draft?.updated_at ? new Date(draft.updated_at).getTime() : 0;
     const subjUpdateTime = subj.updated_at ? new Date(subj.updated_at).getTime() : 0;
 
+    const isDraftRevising =
+      latestDecision === "return_for_revision" &&
+      (draft?.status === "draft" || subjMeta.review_status === "revision_requested");
+
     const isResubmitted =
       latestDecision === "return_for_revision" &&
-      (draft?.status === "submitted" || subj.current_status === "pending") &&
-      (draftUpdateTime > lastDecisionTime || subjUpdateTime > lastDecisionTime || subjMeta.review_status === "resubmitted");
+      draft?.status === "submitted" &&
+      subjMeta.review_status === "resubmitted";
 
     let effectiveStatus = subj.current_status;
     if (
@@ -456,7 +464,7 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
       effectiveStatus = "rejected";
     } else if (isResubmitted) {
       effectiveStatus = "resubmitted";
-    } else if (latestDecision === "return_for_revision") {
+    } else if (isDraftRevising || latestDecision === "return_for_revision") {
       effectiveStatus = "revision_requested";
     }
 

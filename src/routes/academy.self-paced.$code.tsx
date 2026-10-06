@@ -35,11 +35,11 @@ import {
   enrollShortCourse,
 } from "@/lib/shortCourses";
 import { barunaToast } from "@/lib/downloads";
-import { useHomeExperience } from "@/components/baruna/home-experience";
 import {
   getPublishedModuleDetail,
   type PublishedModuleDetail,
 } from "@/lib/learning/learning.functions";
+import { CourseEnrollmentAction } from "@/components/baruna/academy/CourseEnrollmentAction";
 
 type LoaderData =
   | { kind: "master"; master: NonNullable<ReturnType<typeof lookupMaster>>; lms: LmsModule | undefined }
@@ -109,7 +109,7 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
   errorComponent: ({ error }: { error: any }) => (
     <AcademyShell active="self-paced">
       <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
-        <h1 className="font-display text-2xl font-bold text-navy">Unable to Load Learning Module</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">Kendala Memuat Modul Pembelajaran</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
           {String(error?.message || error || "Terjadi kendala saat memuat detail modul pelatihan. Silakan coba kembali.")}
         </p>
@@ -117,7 +117,7 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
           to="/academy/self-paced"
           className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-white"
         >
-          Return to Training Catalog <ArrowRight className="h-4 w-4" />
+          Kembali ke Katalog Pelatihan <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </AcademyShell>
@@ -125,12 +125,12 @@ export const Route = createFileRoute("/academy/self-paced/$code")({
   notFoundComponent: () => (
     <AcademyShell active="self-paced">
       <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
-        <h1 className="font-display text-2xl font-bold text-navy">Learning Module Not Found</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">Modul Pembelajaran Tidak Ditemukan</h1>
         <Link
           to="/academy/self-paced"
           className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-white"
         >
-          Return to Training Catalog <ArrowRight className="h-4 w-4" />
+          Kembali ke Katalog Pelatihan <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </AcademyShell>
@@ -148,30 +148,18 @@ function SelfPacedDetail() {
 // ─── 1. OVERVIEW MODUL DINAMIS (DARI EXPERT REGISTRY) ─────────────────────────
 function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
   const navigate = useNavigate();
-  const { authState } = useHomeExperience();
   const { get, isCompleted } = useShortCourses();
-  const isAuthenticated = authState === "authenticated";
-  const enrollment = isAuthenticated ? get(module.id) : undefined;
-  const done = isAuthenticated ? isCompleted(module.id) : false;
+  const enrollment = get(module.id);
+  const done = isCompleted(module.id);
 
   const handleEnroll = () => {
-    if (!isAuthenticated) {
-      void navigate({
-        to: "/auth",
-        search: {
-          mode: "signin",
-          redirect: `/academy/self-paced/${module.id}`,
-        },
-      });
-      return;
-    }
     enrollShortCourse(module.id, {
       title: module.title,
       hours: module.hours,
       instructor: module.trainer.name,
       category: module.topic || "Fisheries Management",
     });
-    barunaToast("Enrollment successful. Opening your learning space...");
+    barunaToast("Berhasil mendaftar! Mengalihkan ke Ruang Belajar...");
     navigate({ to: "/academy/learn/$id", params: { id: module.id } });
   };
 
@@ -184,7 +172,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
       certNo: `BARUNA-MOD-${module.id.slice(0, 8).toUpperCase()}-2026`,
       verifyUrl: `https://baruna.kkp.go.id/verify/${module.id}`,
     });
-    barunaToast("Your certificate has been downloaded.");
+    barunaToast("Sertifikat kelulusan berhasil diunduh!");
   };
 
   const coverDoc = module.documents.find(
@@ -203,31 +191,31 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
           </span>
           {done ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="h-3 w-3" /> 100% Completed
+              <CheckCircle2 className="h-3 w-3" /> Selesai 100%
             </span>
           ) : enrollment ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-marine/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine">
-              <Sparkles className="h-3 w-3" /> Learning in Progress
+              <Sparkles className="h-3 w-3" /> Aktif Belajar
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-eco-community">
-              Available Online
+              Tersedia Online
             </span>
           )}
         </div>
 
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Module Information</h3>
+        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
         <ul className="mt-3 space-y-2 text-xs">
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Learning Duration</span>
-            <span className="font-semibold text-navy">{module.hours} Learning Hours</span>
+            <span className="text-muted-foreground">Durasi Belajar</span>
+            <span className="font-semibold text-navy">{module.hours} Jam Belajar (JP)</span>
           </li>
           <li className="flex items-center justify-between">
             <span className="text-muted-foreground">Format</span>
-            <span className="font-semibold text-navy">Self-Paced (Online)</span>
+            <span className="font-semibold text-navy">Self-Paced (Mandiri Online)</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Language of Instruction</span>
+            <span className="text-muted-foreground">Bahasa Pengantar</span>
             <span className="font-semibold text-navy">{module.language}</span>
           </li>
           <li className="flex items-center justify-between">
@@ -235,55 +223,29 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             <span className="font-semibold text-navy">{module.passingScore}%</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Certificate</span>
+            <span className="text-muted-foreground">Sertifikat</span>
             <span className="font-semibold text-navy">Certificate of Completion</span>
           </li>
         </ul>
 
         {/* CTA ACTIONS */}
         <div className="mt-5 space-y-2.5">
-          {!enrollment && !done ? (
-            <button
-              onClick={handleEnroll}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-            >
-              {isAuthenticated ? "Enroll Course" : "Sign In to Enroll"} <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <>
-              {done ? (
-                <div className="rounded-xl border border-success/40 bg-success/5 p-3 text-xs text-success">
-                  <p className="flex items-center gap-1.5 font-bold">
-                    <Award className="h-4 w-4" /> Module Completed
-                  </p>
-                  <p className="mt-1 text-success/80">
-                    Congratulations! You have passed this module and your completion record has been saved.
-                  </p>
-                  <button
-                    onClick={handleDownloadCertificate}
-                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
-                  >
-                    <Download className="h-3.5 w-3.5" /> Download Certificate (PDF)
-                  </button>
-                </div>
-              ) : null}
-
-              <Link
-                to="/academy/learn/$id"
-                params={{ id: module.id }}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-              >
-                <PlayCircle className="h-4 w-4" />
-                {done ? "Review Module" : "Continue Learning →"}
-              </Link>
-            </>
-          )}
+          <CourseEnrollmentAction
+            courseId={module.id}
+            courseTitle={module.title}
+            hours={module.hours}
+            instructorName={module.trainer.name}
+            category={module.topic || "Fisheries Management"}
+            done={done}
+            onDownloadCertificate={handleDownloadCertificate}
+            variant="aside"
+          />
 
           <Link
             to="/academy/learn"
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted transition"
           >
-            ← Go to My Learning Dashboard
+            ← Buka Dashboard My Learning
           </Link>
         </div>
       </div>
@@ -291,7 +253,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
       {/* Trainer Card */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <span className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-          Module Instructor
+          Instruktur Modul
         </span>
         <div className="mt-3 flex items-start gap-3">
           {module.trainer.avatarUrl ? (
@@ -328,7 +290,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               params={{ slug: module.trainer.slug }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-marine hover:underline"
             >
-              View Full Profile <ExternalLink className="h-3 w-3" />
+              Lihat Profil Lengkap <ExternalLink className="h-3 w-3" />
             </Link>
           </div>
         )}
@@ -344,7 +306,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Programs &amp; Modules</Link>
+          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Program &amp; Modul</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy truncate max-w-xs">{module.title}</span>
         </nav>
@@ -371,7 +333,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             </span>
             {done ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-success">
-                <CheckCircle2 className="h-3 w-3" /> Completed
+                <CheckCircle2 className="h-3 w-3" /> Selesai
               </span>
             ) : enrollment ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-blue-700">
@@ -390,7 +352,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
 
           <div className="mt-5 flex flex-wrap gap-2.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
-              <Clock className="h-3.5 w-3.5 text-marine" /> {module.hours} Learning Hours
+              <Clock className="h-3.5 w-3.5 text-marine" /> {module.hours} Jam Belajar
             </span>
             {module.topic && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
@@ -408,29 +370,18 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
           {/* Action Button Banner inside hero */}
           <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              {enrollment ? (
-                <span>Status: <strong className="text-navy font-semibold">You are enrolled in this module.</strong></span>
-              ) : (
-                <span>Access all videos, module materials, presentation slides, and the assessment quiz.</span>
-              )}
+              Akses seluruh materi video, handbook modul, slide tayang, dan kuis kelulusan resmi.
             </div>
 
-            {enrollment ? (
-              <Link
-                to="/academy/learn/$id"
-                params={{ id: module.id }}
-                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
-              >
-                <PlayCircle className="h-4 w-4" /> Continue Learning in the Learning Space →
-              </Link>
-            ) : (
-              <button
-                onClick={handleEnroll}
-                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
-              >
-                {isAuthenticated ? "Enroll Course" : "Sign In to Enroll"} <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
+            <CourseEnrollmentAction
+              courseId={module.id}
+              courseTitle={module.title}
+              hours={module.hours}
+              instructorName={module.trainer.name}
+              category={module.topic || "Fisheries Management"}
+              done={done}
+              variant="hero_banner"
+            />
           </div>
         </div>
 
@@ -441,7 +392,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-marine/10 text-marine">
                 <Target className="h-4 w-4" />
               </span>
-              <h2 className="font-display text-base font-bold text-navy">Learning Objectives &amp; Outcomes</h2>
+              <h2 className="font-display text-base font-bold text-navy">Tujuan &amp; Capaian Pembelajaran</h2>
             </div>
             <ul className="mt-4 space-y-2.5">
               {module.learningObjectives.map((obj, idx) => (
@@ -461,8 +412,8 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               <BookOpen className="h-4 w-4" />
             </span>
             <div>
-              <h2 className="font-display text-base font-bold text-navy">Syllabus &amp; Learning Space Structure</h2>
-              <p className="text-xs text-muted-foreground">Learning activities participants will complete in the Learning Space:</p>
+              <h2 className="font-display text-base font-bold text-navy">Silabus &amp; Struktur Ruang Belajar</h2>
+              <p className="text-xs text-muted-foreground">Aktivitas pembelajaran yang akan diselesaikan peserta di Ruang Belajar:</p>
             </div>
           </div>
 
@@ -484,7 +435,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
                 <FileText className="h-4 w-4" />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-navy">2. Module Material</h3>
+                <h3 className="text-sm font-bold text-navy">2. Modul Pembelajaran</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Ringkasan modul, dokumen lengkap, dan pedoman teknis resmi.
                 </p>
@@ -508,7 +459,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
                 <ListChecks className="h-4 w-4" />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-navy">4. Module Assessment Quiz</h3>
+                <h3 className="text-sm font-bold text-navy">4. Kuis Kelulusan Modul</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Evaluasi pemahaman dengan passing grade {module.passingScore}%.
                 </p>
@@ -530,31 +481,19 @@ function MasterModuleOverview({
   lms: LmsModule | undefined;
 }) {
   const navigate = useNavigate();
-  const { authState } = useHomeExperience();
   const { get, isCompleted } = useShortCourses();
-  const isAuthenticated = authState === "authenticated";
-  const enrollment = isAuthenticated ? get(master.code) : undefined;
-  const done = isAuthenticated ? isCompleted(master.code) : false;
+  const enrollment = get(master.code);
+  const done = isCompleted(master.code);
   const instructor = instructorBySlug[master.instructorSlug];
 
   const handleEnroll = () => {
-    if (!isAuthenticated) {
-      void navigate({
-        to: "/auth",
-        search: {
-          mode: "signin",
-          redirect: `/academy/self-paced/${master.code}`,
-        },
-      });
-      return;
-    }
     enrollShortCourse(master.code, {
       title: master.title,
       hours: master.hours,
       instructor: master.instructorSlug,
       category: master.subCategory,
     });
-    barunaToast("Enrollment successful. Opening your learning space...");
+    barunaToast("Berhasil mendaftar! Mengalihkan ke Ruang Belajar...");
     navigate({ to: "/academy/learn/$id", params: { id: master.code } });
   };
 
@@ -567,11 +506,11 @@ function MasterModuleOverview({
           </span>
           {done ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="h-3 w-3" /> 100% Completed
+              <CheckCircle2 className="h-3 w-3" /> Selesai 100%
             </span>
           ) : enrollment ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-marine/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine">
-              <Sparkles className="h-3 w-3" /> Learning in Progress
+              <Sparkles className="h-3 w-3" /> Aktif Belajar
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-eco-community">
@@ -580,10 +519,10 @@ function MasterModuleOverview({
           )}
         </div>
 
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Module Information</h3>
+        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
         <ul className="mt-3 space-y-2 text-xs">
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Learning Duration</span>
+            <span className="text-muted-foreground">Durasi</span>
             <span className="font-semibold text-navy">{master.hours}h ({master.jp} JP)</span>
           </li>
           <li className="flex items-center justify-between">
@@ -591,39 +530,31 @@ function MasterModuleOverview({
             <span className="font-semibold text-navy">{master.level}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Instructor</span>
+            <span className="text-muted-foreground">Instruktur</span>
             <span className="font-semibold text-navy">{instructor?.name ?? master.instructorSlug}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Certificate</span>
+            <span className="text-muted-foreground">Sertifikat</span>
             <span className="font-semibold text-navy">Certificate of Completion</span>
           </li>
         </ul>
 
         <div className="mt-5 space-y-2.5">
-          {!enrollment && !done ? (
-            <button
-              onClick={handleEnroll}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-            >
-              {isAuthenticated ? "Enroll Course" : "Sign In to Enroll"} <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <Link
-              to="/academy/learn/$id"
-              params={{ id: master.code }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-            >
-              <PlayCircle className="h-4 w-4" />
-              {done ? "Review Module" : "Continue Learning →"}
-            </Link>
-          )}
+          <CourseEnrollmentAction
+            courseId={master.code}
+            courseTitle={master.title}
+            hours={master.hours}
+            instructorName={instructor?.name ?? master.instructorSlug}
+            category={master.subCategory}
+            done={done}
+            variant="aside"
+          />
 
           <Link
             to="/academy/learn"
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted transition"
           >
-            ← Go to My Learning Dashboard
+            ← Buka Dashboard My Learning
           </Link>
         </div>
       </div>
@@ -637,7 +568,7 @@ function MasterModuleOverview({
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Programs &amp; Modules</Link>
+          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Program &amp; Modul</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy">{master.code} · {master.title}</span>
         </nav>
@@ -652,7 +583,7 @@ function MasterModuleOverview({
             </span>
             {done && (
               <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-success">
-                <CheckCircle2 className="h-3 w-3" /> Completed
+                <CheckCircle2 className="h-3 w-3" /> Selesai
               </span>
             )}
           </div>
@@ -672,24 +603,18 @@ function MasterModuleOverview({
 
           <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
-              {enrollment ? "This module is active in your learning account." : "Enroll for free to start learning."}
+              Akses modul kurikulum master, handbook pembelajaran, dan evaluasi kelulusan resmi.
             </span>
-            {enrollment ? (
-              <Link
-                to="/academy/learn/$id"
-                params={{ id: master.code }}
-                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
-              >
-                <PlayCircle className="h-4 w-4" /> Continue Learning in the Learning Space →
-              </Link>
-            ) : (
-              <button
-                onClick={handleEnroll}
-                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
-              >
-                {isAuthenticated ? "Enroll Course" : "Sign In to Enroll"} <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
+
+            <CourseEnrollmentAction
+              courseId={master.code}
+              courseTitle={master.title}
+              hours={master.hours}
+              instructorName={instructor?.name ?? master.instructorSlug}
+              category={master.subCategory}
+              done={done}
+              variant="hero_banner"
+            />
           </div>
         </div>
 
@@ -699,7 +624,7 @@ function MasterModuleOverview({
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-marine/10 text-marine">
               <Target className="h-4 w-4" />
             </span>
-            <h2 className="font-display text-base font-bold text-navy">Learning Objectives</h2>
+            <h2 className="font-display text-base font-bold text-navy">Tujuan Pembelajaran</h2>
           </div>
           <ul className="mt-4 space-y-2">
             {master.objectives.map((o: string) => (
@@ -724,7 +649,7 @@ function StandaloneProgramDetail({ program }: { program: Program }) {
           to="/academy/programs"
           className="inline-flex items-center gap-1 text-sm font-semibold text-marine hover:text-navy"
         >
-          <ArrowLeft className="h-4 w-4" /> Return to Program Catalog
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Katalog Program
         </Link>
 
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
@@ -756,6 +681,20 @@ function StandaloneProgramDetail({ program }: { program: Program }) {
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
                 <FileText className="h-3.5 w-3.5 text-marine" /> {program.language}
               </span>
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-muted-foreground">
+                Akses program pembelajaran mandiri dan rekam kelulusan sertifikasi resmi.
+              </span>
+              <CourseEnrollmentAction
+                courseId={program.id}
+                courseTitle={program.title}
+                hours={8}
+                instructorName="BARUNA Academy"
+                category={program.category}
+                variant="hero_banner"
+              />
             </div>
           </div>
         </div>

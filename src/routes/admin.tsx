@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   ExternalLink,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -206,6 +207,12 @@ function AdminShell() {
           to: "/admin/modules" as const,
           icon: BookOpen,
           description: "Kurasi materi pelatihan",
+        },
+        {
+          label: "Persetujuan Peserta",
+          to: "/admin/enrollments" as const,
+          icon: GraduationCap,
+          description: "Pendaftaran & role participant",
         },
         {
           label: "Persetujuan / Approvals",

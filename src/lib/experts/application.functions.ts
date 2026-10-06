@@ -84,21 +84,39 @@ async function readApplications(context: {
       payload: Json;
       created_at: string;
       updated_at: string;
-    }) => ({
-      draftId: draft.id,
-      subjectId: draft.linked_subject_id,
-      title: draft.title,
-      draftStatus: draft.status,
-      reviewStatus: draft.linked_subject_id
+    }) => {
+      const subjStatus = draft.linked_subject_id
         ? (statuses.get(draft.linked_subject_id) ?? null)
-        : null,
-      createdAt: draft.created_at,
-      updatedAt: draft.updated_at,
-      payload: asPayload(draft.payload),
-      latestDecision: draft.linked_subject_id
+        : null;
+      const latestDec = draft.linked_subject_id
         ? (decisionMap.get(draft.linked_subject_id) ?? null)
-        : null,
-    }),
+        : null;
+
+      let effectiveReviewStatus = subjStatus;
+      if (latestDec?.decision === "return_for_revision") {
+        if (draft.status === "draft") {
+          effectiveReviewStatus = "revision_requested";
+        } else {
+          effectiveReviewStatus = "pending";
+        }
+      } else if (latestDec?.decision === "approve" || subjStatus === "approved") {
+        effectiveReviewStatus = "approved";
+      } else if (latestDec?.decision === "reject" || subjStatus === "rejected") {
+        effectiveReviewStatus = "rejected";
+      }
+
+      return {
+        draftId: draft.id,
+        subjectId: draft.linked_subject_id,
+        title: draft.title,
+        draftStatus: draft.status,
+        reviewStatus: effectiveReviewStatus,
+        createdAt: draft.created_at,
+        updatedAt: draft.updated_at,
+        payload: asPayload(draft.payload),
+        latestDecision: latestDec,
+      };
+    },
   );
 }
 
@@ -261,7 +279,7 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
     // 1. Verify subject ownership
     const { data: subj, error: subjErr } = await supabaseAdmin
       .from("review_subjects")
-      .select("id, submitted_by, current_status")
+      .select("id, submitted_by, current_status, metadata")
       .eq("id", input.subjectId)
       .single();
 
@@ -282,11 +300,18 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
       .eq("submitter_id", context.userId);
 
     // 3. Reset subject status back to "pending" to reappear in Admin's verification queue
+    const currentSubjMeta = (subj.metadata as Record<string, unknown>) ?? {};
     await supabaseAdmin
       .from("review_subjects")
       .update({
         current_status: "pending",
         title: input.displayName,
+        metadata: {
+          ...currentSubjMeta,
+          review_status: "resubmitted",
+          resubmitted_at: new Date().toISOString(),
+          resubmission_notes: input.notes || "Dokumen revisi dikirimkan ulang oleh calon expert.",
+        } as never,
         updated_at: new Date().toISOString(),
       })
       .eq("id", input.subjectId);
