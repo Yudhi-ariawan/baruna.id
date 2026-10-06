@@ -39,6 +39,7 @@ import {
   getPublishedModuleDetail,
   type PublishedModuleDetail,
 } from "@/lib/learning/learning.functions";
+import { CourseEnrollmentAction } from "@/components/baruna/academy/CourseEnrollmentAction";
 
 type LoaderData =
   | { kind: "master"; master: NonNullable<ReturnType<typeof lookupMaster>>; lms: LmsModule | undefined }
@@ -229,42 +230,16 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
 
         {/* CTA ACTIONS */}
         <div className="mt-5 space-y-2.5">
-          {!enrollment && !done ? (
-            <button
-              onClick={handleEnroll}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-            >
-              Ikuti Modul Ini (Gratis) <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <>
-              {done ? (
-                <div className="rounded-xl border border-success/40 bg-success/5 p-3 text-xs text-success">
-                  <p className="flex items-center gap-1.5 font-bold">
-                    <Award className="h-4 w-4" /> Modul Telah Selesai
-                  </p>
-                  <p className="mt-1 text-success/80">
-                    Selamat! Anda telah lulus modul ini. Rekam kelulusan tersimpan resmi.
-                  </p>
-                  <button
-                    onClick={handleDownloadCertificate}
-                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
-                  >
-                    <Download className="h-3.5 w-3.5" /> Unduh Sertifikat (PDF)
-                  </button>
-                </div>
-              ) : null}
-
-              <Link
-                to="/academy/learn/$id"
-                params={{ id: module.id }}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-              >
-                <PlayCircle className="h-4 w-4" />
-                {done ? "Tinjau di Ruang Belajar" : "Lanjutkan Belajar →"}
-              </Link>
-            </>
-          )}
+          <CourseEnrollmentAction
+            courseId={module.id}
+            courseTitle={module.title}
+            hours={module.hours}
+            instructorName={module.trainer.name}
+            category={module.topic || "Fisheries Management"}
+            done={done}
+            onDownloadCertificate={handleDownloadCertificate}
+            variant="aside"
+          />
 
           <Link
             to="/academy/learn"
@@ -395,29 +370,18 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
           {/* Action Button Banner inside hero */}
           <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              {enrollment ? (
-                <span>Status: <strong className="text-navy font-semibold">Anda telah terdaftar di modul ini.</strong></span>
-              ) : (
-                <span>Akses seluruh materi video, handbook modul, slide tayang, dan kuis kelulusan.</span>
-              )}
+              Akses seluruh materi video, handbook modul, slide tayang, dan kuis kelulusan resmi.
             </div>
 
-            {enrollment ? (
-              <Link
-                to="/academy/learn/$id"
-                params={{ id: module.id }}
-                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
-              >
-                <PlayCircle className="h-4 w-4" /> Lanjutkan Belajar di Ruang Belajar →
-              </Link>
-            ) : (
-              <button
-                onClick={handleEnroll}
-                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
-              >
-                Ikuti Pelatihan Mandiri Ini <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
+            <CourseEnrollmentAction
+              courseId={module.id}
+              courseTitle={module.title}
+              hours={module.hours}
+              instructorName={module.trainer.name}
+              category={module.topic || "Fisheries Management"}
+              done={done}
+              variant="hero_banner"
+            />
           </div>
         </div>
 
@@ -576,23 +540,15 @@ function MasterModuleOverview({
         </ul>
 
         <div className="mt-5 space-y-2.5">
-          {!enrollment && !done ? (
-            <button
-              onClick={handleEnroll}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-            >
-              Ikuti Modul Ini (Gratis) <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <Link
-              to="/academy/learn/$id"
-              params={{ id: master.code }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-            >
-              <PlayCircle className="h-4 w-4" />
-              {done ? "Tinjau di Ruang Belajar" : "Lanjutkan Belajar →"}
-            </Link>
-          )}
+          <CourseEnrollmentAction
+            courseId={master.code}
+            courseTitle={master.title}
+            hours={master.hours}
+            instructorName={instructor?.name ?? master.instructorSlug}
+            category={master.subCategory}
+            done={done}
+            variant="aside"
+          />
 
           <Link
             to="/academy/learn"
@@ -647,24 +603,18 @@ function MasterModuleOverview({
 
           <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
-              {enrollment ? "Modul aktif di akun pembelajaran Anda." : "Daftar secara gratis untuk mulai belajar."}
+              Akses modul kurikulum master, handbook pembelajaran, dan evaluasi kelulusan resmi.
             </span>
-            {enrollment ? (
-              <Link
-                to="/academy/learn/$id"
-                params={{ id: master.code }}
-                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
-              >
-                <PlayCircle className="h-4 w-4" /> Lanjutkan Belajar di Ruang Belajar →
-              </Link>
-            ) : (
-              <button
-                onClick={handleEnroll}
-                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-sm"
-              >
-                Ikuti Pelatihan Mandiri Ini <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
+
+            <CourseEnrollmentAction
+              courseId={master.code}
+              courseTitle={master.title}
+              hours={master.hours}
+              instructorName={instructor?.name ?? master.instructorSlug}
+              category={master.subCategory}
+              done={done}
+              variant="hero_banner"
+            />
           </div>
         </div>
 
@@ -731,6 +681,20 @@ function StandaloneProgramDetail({ program }: { program: Program }) {
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
                 <FileText className="h-3.5 w-3.5 text-marine" /> {program.language}
               </span>
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-muted-foreground">
+                Akses program pembelajaran mandiri dan rekam kelulusan sertifikasi resmi.
+              </span>
+              <CourseEnrollmentAction
+                courseId={program.id}
+                courseTitle={program.title}
+                hours={8}
+                instructorName="BARUNA Academy"
+                category={program.category}
+                variant="hero_banner"
+              />
             </div>
           </div>
         </div>

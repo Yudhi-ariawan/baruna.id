@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flowchart Alur Pendaftaran & Persetujuan Peserta BARUNA</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      margin: 0;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      padding: 32px;
+      max-width: 950px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    h1 {
+      font-size: 22px;
+      color: #022b4e;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .btn-container {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    button {
+      background: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0369a1;
+    }
+    button.secondary {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    button.secondary:hover {
+      background: #e2e8f0;
+    }
+    .mermaid {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Alur Pendaftaran Pelatihan & Persetujuan Admin (PB-ACA-03)</h1>
+    <p>Diagram proses bisnis pendaftaran kursus, seleksi kuota oleh Admin Console, serta penentuan hierarki role (Registered User vs Participant vs Trainer).</p>
+    
+    <div class="btn-container">
+      <button onclick="window.print()">Simpan / Cetak PDF</button>
+      <button class="secondary" onclick="downloadSVG()">Unduh Gambar SVG</button>
+    </div>
+
+    <div class="mermaid" id="diagram">
+flowchart TD
+    subgraph CalonPeserta[" 1. SISI PENGGUNA / CALON PESERTA "]
+        A["User Login di BARUNA"] --> B{"Role Pengguna Saat Ini?"}
+        B -- "Registered User" --> C["Buka Katalog Pelatihan (/academy)"]
+        B -- "Expert / Trainer" --> C
+        C --> D["Pilih Pelatihan & Klik 'Daftar / Enroll'"]
+        D --> E["Kirim Formulir Permintaan Akses Kursus"]
+        E --> F["Status Kursus: Menunggu Persetujuan Admin"]
+    end
+
+    subgraph AdminConsole[" 2. SISI ADMIN CONSOLE (/admin) "]
+        F --> G["Pengajuan Masuk Antrean Seleksi Peserta"]
+        G --> H{"Admin Periksa Kuota & Kelayakan"}
+        H -- "Ditolak" --> I["Admin Beri Alasan Penolakan"]
+        H -- "Disetujui (ACC)" --> J["Admin Klik 'Approve Peserta'"]
+    end
+
+    subgraph Sistem[" 3. SISTEM & HIERARKI ROLE "]
+        J --> K{"Cek Role Pengguna di Database"}
+        K -- "Jika Semula Registered User" --> L["Otomatis Ditambahkan Role 'Participant'<br/>(Navbar naik jadi Participant)"]
+        K -- "Jika Sudah 'Expert / Trainer'" --> M["Tetap Menampilkan Role 'Expert'<br/>(Role Trainer tidak akan hilang/turun)"]
+        
+        L --> N["Akses Ruang Belajar Terbuka (LMS Aktif)"]
+        M --> N
+        I --> O["Peserta Menerima Notifikasi Ditolak"]
+    end
+
+    style J fill:#dcfce7,stroke:#16a34a,stroke-width:2px;
+    style I fill:#ffe4e6,stroke:#e11d48,stroke-width:2px;
+    style L fill:#e0f2fe,stroke:#0284c7,stroke-width:2px;
+    style M fill:#fef3c7,stroke:#d97706,stroke-width:2px;
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true });
+
+    function downloadSVG() {
+      const svg = document.querySelector('.mermaid svg');
+      if (!svg) {
+        alert('Diagram sedang dimuat, silakan tunggu sesaat.');
+        return;
+      }
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = svgUrl;
+      downloadLink.download = 'flowchart-alur-peserta-baruna.svg';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  </script>
+</body>
+</html>

@@ -46,6 +46,7 @@ import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
+import { Route as AdminEnrollmentsRouteImport } from './routes/admin.enrollments'
 import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
 import { Route as AdminModulesRouteImport } from './routes/admin.modules'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
@@ -312,6 +313,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEnrollmentsRoute = AdminEnrollmentsRouteImport.update({
+  id: '/enrollments',
+  path: '/enrollments',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminExpertsRoute = AdminExpertsRouteImport.update({
@@ -780,6 +786,7 @@ export interface FileRoutesByFullPath {
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
   '/admin/reviews': typeof AdminReviewsRoute
@@ -893,6 +900,7 @@ export interface FileRoutesByTo {
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
   '/admin/reviews': typeof AdminReviewsRoute
@@ -1014,6 +1022,7 @@ export interface FileRoutesById {
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
   '/admin/reviews': typeof AdminReviewsRoute
@@ -1137,6 +1146,7 @@ export interface FileRouteTypes {
     | '/academy/workshop'
     | '/account/profile'
     | '/admin/dashboard'
+    | '/admin/enrollments'
     | '/admin/experts'
     | '/admin/modules'
     | '/admin/reviews'
@@ -1250,6 +1260,7 @@ export interface FileRouteTypes {
     | '/academy/workshop'
     | '/account/profile'
     | '/admin/dashboard'
+    | '/admin/enrollments'
     | '/admin/experts'
     | '/admin/modules'
     | '/admin/reviews'
@@ -1370,6 +1381,7 @@ export interface FileRouteTypes {
     | '/academy/workshop'
     | '/account/profile'
     | '/admin/dashboard'
+    | '/admin/enrollments'
     | '/admin/experts'
     | '/admin/modules'
     | '/admin/reviews'
@@ -1747,6 +1759,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/admin/dashboard'
       preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/enrollments': {
+      id: '/admin/enrollments'
+      path: '/enrollments'
+      fullPath: '/admin/enrollments'
+      preLoaderRoute: typeof AdminEnrollmentsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/experts': {
@@ -2436,6 +2455,7 @@ const AccountRouteWithChildren =
 
 interface AdminRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminEnrollmentsRoute: typeof AdminEnrollmentsRoute
   AdminExpertsRoute: typeof AdminExpertsRoute
   AdminModulesRoute: typeof AdminModulesRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
@@ -2445,6 +2465,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
+  AdminEnrollmentsRoute: AdminEnrollmentsRoute,
   AdminExpertsRoute: AdminExpertsRoute,
   AdminModulesRoute: AdminModulesRoute,
   AdminReviewsRoute: AdminReviewsRoute,
