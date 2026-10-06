@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { instructors, type Instructor } from "@/data/instructors";
 import type { PublicExpert } from "./directory.types";
 
 type DirectoryRow = Database["public"]["Views"]["experts_directory_v"]["Row"];
@@ -54,57 +53,6 @@ function mapExpert(row: DirectoryRow): PublicExpert {
     availabilityStatus: row.availability_status,
     availableModes: row.available_modes ?? [],
     nextAvailableFrom: row.next_available_from,
-  };
-}
-
-const TRAINER_RECOGNITION: Record<
-  string,
-  {
-    level: PublicExpert["trainerLevel"];
-    participants: number;
-    city: string;
-  }
-> = {
-  "i-putu-suarma": { level: "certified", participants: 45, city: "Banyuwangi" },
-  "sri-astutik": { level: "senior", participants: 120, city: "Banyuwangi" },
-  "achmad-suhermanto": { level: "advanced", participants: 85, city: "Karawang" },
-  "sumartin": { level: "senior", participants: 150, city: "Banyuwangi" },
-  "firman-pra-setia-nugraha": { level: "certified", participants: 35, city: "Banyuwangi" },
-  "herison-lingga": { level: "certified", participants: 40, city: "Banyuwangi" },
-  "erika-arisetiana-dewi": { level: "certified", participants: 30, city: "Banyuwangi" },
-  "emi-wati": { level: "certified", participants: 25, city: "Banyuwangi" },
-  "ricky-aditya-saputra": { level: "certified", participants: 30, city: "Banyuwangi" },
-  "iman-setya-dwi-ardani": { level: "certified", participants: 20, city: "Banyuwangi" },
-};
-
-function mapInstructorToPublicExpert(inst: Instructor): PublicExpert {
-  const recognition = TRAINER_RECOGNITION[inst.slug] || {
-    level: "certified" as const,
-    participants: 30,
-    city: "Indonesia",
-  };
-
-  return {
-    id: `trainer-${inst.slug}`,
-    slug: inst.slug,
-    displayName: inst.name,
-    headline: inst.position,
-    bio: inst.biography || inst.summary,
-    country: "Indonesia",
-    city: recognition.city,
-    avatarUrl: inst.photo,
-    expertiseAreas: inst.expertise,
-    languages: ["Indonesian", "English"],
-    verificationStatus: "governance_verified",
-    institution: inst.organization,
-    institutionRole: inst.position,
-    trainerStatus: "active",
-    trainerLevel: recognition.level,
-    uniqueGraduatedParticipants: recognition.participants,
-    recognitionMinParticipants: 25,
-    availabilityStatus: "available",
-    availableModes: ["Online", "Onsite"],
-    nextAvailableFrom: null,
   };
 }
 
@@ -252,6 +200,19 @@ export const getPublicExpertBySlug = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<PublicExpert | null> => {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      // If expert is archived in database, do not show and do not fallback to mock
+      const { data: archivedExpert } = await supabaseAdmin
+        .from("experts")
+        .select("id")
+        .eq("slug", data.slug)
+        .eq("current_status", "archived")
+        .maybeSingle();
+
+      if (archivedExpert) {
+        return null;
+      }
+
       const { data: expert, error } = await supabaseAdmin
         .from("experts_directory_v")
         .select(publicColumns)
@@ -265,11 +226,6 @@ export const getPublicExpertBySlug = createServerFn({ method: "GET" })
       }
     } catch (err) {
       console.warn("Failed to load expert by slug:", err);
-    }
-
-    const foundInst = instructors.find((inst) => inst.slug === data.slug);
-    if (foundInst) {
-      return mapInstructorToPublicExpert(foundInst);
     }
 
     return null;

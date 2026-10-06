@@ -31,6 +31,9 @@ export type AdminExpertItem = {
   documentsCount: number;
   publishedSlug?: string | null;
   isPublished?: boolean;
+  isArchived?: boolean;
+  archivedAt?: string | null;
+  archiveRationale?: string | null;
 };
 
 export type AdminExpertDetail = AdminExpertItem & {
@@ -53,7 +56,7 @@ async function assertAdminOrReviewer(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: { supabase: any; userId: string },
 ) {
-  const allowed = ["super_admin", "admin", "management", "qa_reviewer", "verifier", "approver"];
+  const allowed = ["super_admin", "admin", "reviewer", "verifier", "approver"];
   const now = new Date().toISOString();
   const { data: assignments } = await context.supabase
     .from("rbac_user_roles")
@@ -68,7 +71,7 @@ async function assertAdminOrReviewer(
   if (assignments && assignments.length > 0) return true;
 
   for (const role of allowed.slice(0, 2)) {
-    const { data } = await context.supabase.rpc("has_role", {
+    const { data } = await context.supabase.rpc("has_rbac_role", {
       _user_id: context.userId,
       _role: role,
     });
@@ -195,7 +198,15 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
         subjMeta.review_status === "resubmitted";
 
       let status = subj.current_status;
-      if (subj.current_status === "approved" || lastDecision === "approve") {
+      const isArchived =
+        subj.current_status === "archived" ||
+        subj.current_status === "withdrawn" ||
+        published?.current_status === "archived" ||
+        (typeof subjMeta.review_status === "string" && subjMeta.review_status === "archived");
+
+      if (isArchived) {
+        status = "archived";
+      } else if (subj.current_status === "approved" || lastDecision === "approve") {
         status = "approved";
       } else if (subj.current_status === "rejected" || lastDecision === "reject") {
         status = "rejected";
@@ -228,11 +239,16 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
         documentsCount,
         publishedSlug: published?.slug ?? null,
         isPublished: published?.current_status === "published",
+        isArchived,
+        archivedAt: typeof subjMeta.archived_at === "string" ? subjMeta.archived_at : null,
+        archiveRationale: typeof subjMeta.archive_rationale === "string" ? subjMeta.archive_rationale : null,
       };
     });
 
     if (input.status && input.status !== "all") {
-      if (input.status === "revision_requested") {
+      if (input.status === "archived") {
+        items = items.filter((it) => it.status === "archived");
+      } else if (input.status === "revision_requested") {
         items = items.filter((it) => it.status === "revision_requested");
       } else if (input.status === "resubmitted") {
         items = items.filter((it) => it.status === "resubmitted");
@@ -337,7 +353,15 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
       subjMeta.review_status === "resubmitted";
 
     let status = subj.current_status;
-    if (subj.current_status === "approved" || latestDecision === "approve") {
+    const isArchived =
+      subj.current_status === "archived" ||
+      subj.current_status === "withdrawn" ||
+      publishedExpert?.current_status === "archived" ||
+      (typeof subjMeta.review_status === "string" && subjMeta.review_status === "archived");
+
+    if (isArchived) {
+      status = "archived";
+    } else if (subj.current_status === "approved" || latestDecision === "approve") {
       status = "approved";
     } else if (subj.current_status === "rejected" || latestDecision === "reject") {
       status = "rejected";
@@ -376,11 +400,14 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
         : null,
       lastRevisionRationale: latestDec?.rationale || (typeof subjMeta.last_rationale === "string" ? subjMeta.last_rationale : null),
       createdAt: subj.created_at,
-        updatedAt: subj.updated_at,
-        documentsCount: documentsWithUrls.length,
-        documents: documentsWithUrls,
-        publishedSlug: publishedExpert?.slug ?? null,
-        isPublished: publishedExpert?.current_status === "published",
+      updatedAt: subj.updated_at,
+      documentsCount: documentsWithUrls.length,
+      documents: documentsWithUrls,
+      publishedSlug: publishedExpert?.slug ?? null,
+      isPublished: publishedExpert?.current_status === "published",
+      isArchived,
+      archivedAt: typeof subjMeta.archived_at === "string" ? subjMeta.archived_at : null,
+      archiveRationale: typeof subjMeta.archive_rationale === "string" ? subjMeta.archive_rationale : null,
         decisionsHistory: (decisions ?? []).map((d) => ({
           id: d.id,
           decision: d.decision,
@@ -550,4 +577,212 @@ export const syncExpertToDirectory = createServerFn({ method: "POST" })
       decidedBy: context.userId,
     });
     return { success: true, ...result };
+  });
+
+export const archiveAdminExpert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input) =>
+    z
+      .object({
+        subjectId: z.string().uuid(),
+        rationale: z.string().trim().max(1000).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data: input, context }) => {
+    if (!(await assertAdminOrReviewer(context))) {
+      throw new Error("forbidden");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const rationaleText = input.rationale?.trim() || "Diarsipkan oleh Administrator.";
+
+    // 1. Fetch current subject
+    const { data: subj, error: subjErr } = await supabaseAdmin
+      .from("review_subjects")
+      .select("id, current_status, metadata")
+      .eq("id", input.subjectId)
+      .single();
+
+    if (subjErr || !subj) {
+      throw new Error("Data pengajuan tidak ditemukan.");
+    }
+
+    const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
+
+    // 2. Update review_subjects (with fallback to 'withdrawn' if 'archived' check constraint not yet applied on remote DB)
+    const updatePayload = {
+      current_status: "archived",
+      metadata: {
+        ...subjMeta,
+        previous_status: subj.current_status,
+        review_status: "archived",
+        archived_at: new Date().toISOString(),
+        archived_by: context.userId,
+        archive_rationale: rationaleText,
+      } as never,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("review_subjects")
+      .update(updatePayload)
+      .eq("id", input.subjectId);
+
+    if (updateErr) {
+      if (updateErr.message.includes("review_subjects_current_status_check")) {
+        await supabaseAdmin
+          .from("review_subjects")
+          .update({
+            ...updatePayload,
+            current_status: "withdrawn",
+          })
+          .eq("id", input.subjectId);
+      } else {
+        throw new Error(updateErr.message);
+      }
+    }
+
+    // 3. Update public.experts if published
+    const { data: expertRecord } = await supabaseAdmin
+      .from("experts")
+      .select("id, current_status")
+      .eq("source_submission_id", input.subjectId)
+      .maybeSingle();
+
+    if (expertRecord) {
+      await supabaseAdmin
+        .from("experts")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", expertRecord.id);
+
+      await supabaseAdmin
+        .from("expert_trainer_status")
+        .update({
+          trainer_status: "inactive",
+        })
+        .eq("expert_id", expertRecord.id);
+    }
+
+    // 4. Safe Governance Audit Log (append-only table, avoids review_decisions unique constraint collision)
+    try {
+      await supabaseAdmin.from("governance_audit_log").insert({
+        event_type: "expert_archived",
+        actor_id: context.userId,
+        subject_id: input.subjectId,
+        entity_type: "experts",
+        entity_id: expertRecord?.id ?? input.subjectId,
+        before: {
+          status: subj.current_status,
+        },
+        after: {
+          status: "archived",
+          rationale: rationaleText,
+        },
+      });
+    } catch (logErr) {
+      console.warn("governance_audit_log insert skipped:", logErr);
+    }
+
+    return { success: true, subjectId: input.subjectId, status: "archived" };
+  });
+
+export const unarchiveAdminExpert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data: input, context }) => {
+    if (!(await assertAdminOrReviewer(context))) {
+      throw new Error("forbidden");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Fetch current subject
+    const { data: subj, error: subjErr } = await supabaseAdmin
+      .from("review_subjects")
+      .select("id, current_status, metadata")
+      .eq("id", input.subjectId)
+      .single();
+
+    if (subjErr || !subj) {
+      throw new Error("Data pengajuan tidak ditemukan.");
+    }
+
+    const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
+    const prevStatus =
+      typeof subjMeta.previous_status === "string" &&
+      subjMeta.previous_status !== "archived" &&
+      subjMeta.previous_status !== "withdrawn"
+        ? subjMeta.previous_status
+        : "approved";
+
+    // 2. Update review_subjects
+    await supabaseAdmin
+      .from("review_subjects")
+      .update({
+        current_status: prevStatus,
+        metadata: {
+          ...subjMeta,
+          review_status: prevStatus,
+          unarchived_at: new Date().toISOString(),
+          unarchived_by: context.userId,
+        } as never,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.subjectId);
+
+    // 3. Update public.experts if published
+    const { data: expertRecord } = await supabaseAdmin
+      .from("experts")
+      .select("id")
+      .eq("source_submission_id", input.subjectId)
+      .maybeSingle();
+
+    if (expertRecord) {
+      await supabaseAdmin
+        .from("experts")
+        .update({
+          current_status: "published",
+          visibility: "public",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", expertRecord.id);
+
+      await supabaseAdmin
+        .from("expert_trainer_status")
+        .update({
+          trainer_status: "active",
+        })
+        .eq("expert_id", expertRecord.id);
+    } else if (prevStatus === "approved") {
+      await publishApprovedExpert({
+        subjectId: input.subjectId,
+        decidedBy: context.userId,
+      });
+    }
+
+    // 4. Safe Governance Audit Log
+    try {
+      await supabaseAdmin.from("governance_audit_log").insert({
+        event_type: "expert_unarchived",
+        actor_id: context.userId,
+        subject_id: input.subjectId,
+        entity_type: "experts",
+        entity_id: expertRecord?.id ?? input.subjectId,
+        before: {
+          status: subj.current_status,
+        },
+        after: {
+          status: prevStatus,
+        },
+      });
+    } catch (logErr) {
+      console.warn("governance_audit_log insert skipped:", logErr);
+    }
+
+    return { success: true, subjectId: input.subjectId, status: "published" };
   });
