@@ -177,9 +177,23 @@ export const listPublicExperts = createServerFn({ method: "GET" }).handler(
       console.warn("Failed to load experts from db:", err);
     }
 
-    const existingSlugs = new Set(dbExperts.map((e) => e.slug));
+    let archivedSlugs = new Set<string>();
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: archivedRows } = await supabaseAdmin
+        .from("experts")
+        .select("slug")
+        .eq("current_status", "archived");
+      if (archivedRows) {
+        archivedSlugs = new Set(archivedRows.map((r) => r.slug).filter(Boolean));
+      }
+    } catch {
+      // ignore if db unreachable
+    }
+
+    const suppressedSlugs = new Set([...dbExperts.map((e) => e.slug), ...archivedSlugs]);
     const trainerExperts = instructors
-      .filter((inst) => !existingSlugs.has(inst.slug))
+      .filter((inst) => !suppressedSlugs.has(inst.slug))
       .map(mapInstructorToPublicExpert);
 
     return [...dbExperts, ...trainerExperts];
@@ -191,6 +205,19 @@ export const getPublicExpertBySlug = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<PublicExpert | null> => {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      // If expert is archived in database, do not show and do not fallback to mock
+      const { data: archivedExpert } = await supabaseAdmin
+        .from("experts")
+        .select("id")
+        .eq("slug", data.slug)
+        .eq("current_status", "archived")
+        .maybeSingle();
+
+      if (archivedExpert) {
+        return null;
+      }
+
       const { data: expert, error } = await supabaseAdmin
         .from("experts_directory_v")
         .select(publicColumns)
