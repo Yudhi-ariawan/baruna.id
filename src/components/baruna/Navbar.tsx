@@ -83,7 +83,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75 w-full">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-md transition-all supports-[backdrop-filter]:bg-white/90">
       <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3 w-full">
         <Link to="/" aria-label="BARUNA home" className="flex min-w-0 shrink items-center">
           <Logo className="h-8 xs:h-9 sm:h-10 xl:h-11 max-w-[135px] xs:max-w-[165px] sm:max-w-[190px] xl:max-w-[210px]" />
