@@ -8,6 +8,10 @@ function record(value: unknown): Record<string, unknown> {
     : {};
 }
 
+export function moduleCodeForId(moduleId: string): string {
+  return `BARUNA-MOD-${moduleId.slice(0, 8).toUpperCase()}`;
+}
+
 async function publishCover(moduleId: string, metadata: Record<string, unknown>): Promise<string | null> {
   const attachments = Array.isArray(metadata.attached_resources)
     ? metadata.attached_resources as Array<Record<string, unknown>>
@@ -47,7 +51,14 @@ export async function projectPublishedModuleToKnowledge(moduleId: string): Promi
 
   const metadata = record(module.metadata);
   const coverUrl = await publishCover(module.id, metadata);
-  const projectedMetadata = { ...metadata, module_registry_id: module.id, short_course_id: module.id, cover_image_url: coverUrl };
+  const projectedMetadata = {
+    ...metadata,
+    module_registry_id: module.id,
+    short_course_id: module.id,
+    module_code: moduleCodeForId(module.id),
+    estimated_learning_hours: module.estimated_learning_hours,
+    cover_image_url: coverUrl,
+  };
   const { error: resourceError } = await supabaseAdmin.from("knowledge_resources").upsert({
     id: module.id,
     source_type: module.source_type,

@@ -115,6 +115,15 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
         : {};
       const expert = expertById.get(resource.related_expert_ids?.[0] ?? "");
       const year = resource.publication_year ?? new Date(resource.created_at).getFullYear();
+      const rawLearningHours = metadata.estimated_learning_hours;
+      const learningHours = typeof rawLearningHours === "number"
+        ? rawLearningHours
+        : typeof rawLearningHours === "string" && rawLearningHours.trim() !== ""
+          ? Number(rawLearningHours)
+          : undefined;
+      const moduleCode = typeof metadata.module_code === "string" && metadata.module_code.trim() !== ""
+        ? metadata.module_code.trim()
+        : undefined;
       return {
         id: resource.id,
         type: "learning-modules",
@@ -135,7 +144,10 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
         status: "Published",
         fileType: String(metadata.file_type ?? "Module Package"),
         version: String(metadata.version ?? "1.0"),
-        moduleCode: typeof metadata.module_code === "string" ? metadata.module_code : undefined,
+        learningHours: Number.isFinite(learningHours) && Number(learningHours) > 0
+          ? Number(learningHours)
+          : undefined,
+        moduleCode,
         shortCourseCode: typeof metadata.short_course_id === "string" ? metadata.short_course_id : undefined,
         expertId: expert?.id ?? "",
         metrics: {

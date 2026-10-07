@@ -577,6 +577,12 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
         })
         .eq("source_submission_id", input.subjectId);
 
+      await supabaseAdmin
+        .from("knowledge_resources")
+        .update({ current_status: "archived", visibility: "private", updated_at: new Date().toISOString() })
+        .eq("source_submission_id", input.subjectId)
+        .eq("resource_type", "module");
+
       try {
         await supabaseAdmin.from("governance_audit_log").insert({
           event_type: "module_archived",
@@ -632,6 +638,9 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
             updated_at: new Date().toISOString(),
           })
           .eq("id", existingMod.id);
+
+        const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
+        await projectPublishedModuleToKnowledge(existingMod.id);
       } else {
         await publishApprovedModule({
           subjectId: input.subjectId,

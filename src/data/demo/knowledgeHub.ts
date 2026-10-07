@@ -62,6 +62,7 @@ export type KhResource = {
   fileType: string;
   fileSize?: string;
   pages?: number;
+  learningHours?: number;
   duration?: string;
   speaker?: string;
   videoKind?: string;

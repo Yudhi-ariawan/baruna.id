@@ -89,10 +89,18 @@ export function ResourceCard({ r, index, demo = true }: { r: KhResource; index: 
         </div>
         <p className="mt-2 text-xs font-medium text-navy">{r.author}</p>
         <p className="text-[0.7rem] text-muted-foreground">{r.organization} · {r.year} · {r.language}</p>
-        {isModule && (
+        {isModule && (r.learningHours || r.moduleCode) && (
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.7rem] text-muted-foreground">
-            <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {r.pages ? `${Math.round((r.pages ?? 0) / 12)}h instruction` : ""}</span>
-            <span className="inline-flex items-center gap-1"><GraduationCap className="h-3 w-3" /> {r.moduleCode}</span>
+            {r.learningHours ? (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" /> {r.learningHours} Jam Belajar
+              </span>
+            ) : null}
+            {r.moduleCode ? (
+              <span className="inline-flex items-center gap-1">
+                <GraduationCap className="h-3 w-3" /> {r.moduleCode}
+              </span>
+            ) : null}
           </div>
         )}
         {isVideo && r.speaker && (
