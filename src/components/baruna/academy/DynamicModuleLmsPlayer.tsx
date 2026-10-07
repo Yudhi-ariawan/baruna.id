@@ -31,7 +31,16 @@ import {
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { Toaster } from "@/components/baruna/Toaster";
 import { barunaToast } from "@/lib/downloads";
-import { downloadCertificatePdf } from "@/lib/certificate";
+import {
+  downloadCertificatePdf,
+  openCertificatePdf,
+  formatTodayIndonesian,
+  formatTanggalIndo,
+  numberToIndonesianWords,
+  type CertificateData,
+} from "@/lib/certificate";
+import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
+import { useQuery } from "@tanstack/react-query";
 import {
   useShortCourses,
   enrollShortCourse,
@@ -194,6 +203,12 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
   const enrollment = get(module.id);
   const done = isCompleted(module.id);
 
+  const { data: myBioRes } = useQuery({
+    queryKey: ["my-participant-biodata"],
+    queryFn: () => getMyParticipantBiodata(),
+    staleTime: 30 * 1000,
+  });
+
   const dynamicSlides = getDynamicModuleSlides(module);
   const dynamicQuizQuestions = getDynamicModuleQuiz(module);
 
@@ -282,16 +297,35 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
     setQuizScore(null);
   };
 
-  const handleDownloadCertificate = () => {
-    downloadCertificatePdf({
-      name: "BARUNA Participant",
+  const getCertData = (): CertificateData => {
+    const bio = myBioRes?.biodata;
+    const certNumber = `B.589/BDA/RSDM.510/V/${new Date().getFullYear()}`;
+    return {
+      name: bio?.nama || myBioRes?.prefill.nama || "Peserta Pelatihan",
       country: "Indonesia",
       program: module.title,
-      dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
-      certNo: `BARUNA-MOD-${module.id.slice(0, 8).toUpperCase()}-2026`,
-      verifyUrl: `https://baruna.kkp.go.id/verify/${module.id}`,
-    });
+      dates: formatTodayIndonesian(),
+      certNo: certNumber,
+      verifyUrl: `${typeof window !== "undefined" ? window.location.origin : "https://baruna.kkp.go.id"}/academy/certification?verify=${module.id}`,
+      nip: bio?.nip || null,
+      tempatLahir: bio?.tempatLahir || null,
+      tanggalLahir: bio?.tanggalLahir || null,
+      pangkatGolongan: bio?.pangkatGolongan || null,
+      jabatan: bio?.jabatan || myBioRes?.prefill.jabatan || null,
+      instansi: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      workUnit: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      photoUrl: bio?.fotoUrl || null,
+      learningHours: module.hours || 8,
+    };
+  };
+
+  const handleDownloadCertificate = () => {
+    downloadCertificatePdf(getCertData());
     barunaToast("Completion certificate downloaded successfully!");
+  };
+
+  const handleOpenCertificate = () => {
+    openCertificatePdf(getCertData());
   };
 
   const topic = module.topic;
@@ -1372,37 +1406,131 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     You have completed all learning activities and passed the module assessment. Your official certificate has been issued.
                   </p>
 
-                  {/* Certificate Mock Card */}
-                  <div className="mx-auto mt-6 max-w-xl rounded-2xl border-2 border-amber-500/30 bg-gradient-to-b from-amber-500/5 via-card to-amber-500/10 p-6 text-left shadow-soft">
-                    <div className="flex items-center justify-between border-b border-amber-500/20 pb-4">
-                      <div>
-                        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                          BARUNA OFFICIAL CERTIFICATE OF COMPLETION
-                        </span>
-                        <p className="text-xs text-muted-foreground">Kementerian Kelautan dan Perikanan RI</p>
+                  {/* Official KKP STTP Certificate Card */}
+                  <div className="mx-auto mt-6 max-w-2xl rounded-2xl border-2 border-navy/20 bg-card p-6 sm:p-8 text-left shadow-card">
+                    {/* Header: Title & Nomor Surat */}
+                    <div className="text-center pb-4 border-b border-border">
+                      <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-700">
+                        <Award className="h-7 w-7" />
                       </div>
-                      <Award className="h-8 w-8 text-amber-500" />
-                    </div>
-
-                    <div className="my-5">
-                      <p className="text-[11px] text-muted-foreground">Diberikan kepada:</p>
-                      <h3 className="font-display text-lg font-bold text-navy">Verified BARUNA Participant</h3>
-                      <p className="mt-2 text-xs text-foreground/80">
-                        Atas keberhasilan menyelesaikan modul pelatihan mandiri:
+                      <h3 className="font-display text-lg sm:text-xl font-extrabold uppercase tracking-wide text-navy">
+                        SURAT TANDA TAMAT PELATIHAN
+                      </h3>
+                      <p className="mt-0.5 font-mono text-xs font-semibold text-muted-foreground">
+                        Nomor : B.589/BDA/RSDM.510/V/2026
                       </p>
-                      <h4 className="mt-1 font-display text-sm font-bold text-marine">
-                        {module.title}
-                      </h4>
-                      <p className="mt-2 text-[11px] text-muted-foreground">
-                        Instructor: <span className="font-semibold text-navy">{module.trainer.name}</span> • Learning Load: {module.hours} JP
+                      <p className="mt-3 text-[11px] leading-relaxed text-foreground/80 text-justify sm:text-center">
+                        Pusat Pelatihan dan Penyuluhan Kelautan dan Perikanan berdasarkan Undang-undang Nomor 20 Tahun 2023 tentang Aparatur Sipil Negara, serta ketentuan pelaksanaannya menyatakan bahwa :
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-500/20 pt-4 text-[11px] text-muted-foreground">
-                      <span>Certificate No.: <strong className="font-mono text-navy">BARUNA-MOD-{module.id.slice(0, 8).toUpperCase()}-2026</strong></span>
-                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Terverifikasi Resmi
-                      </span>
+                    {/* Identitas Peserta: Foto di Kiri + 7 Kolom Identitas Resmi di Kanan */}
+                    <div className="my-5 flex flex-col sm:flex-row items-start gap-4 sm:gap-6 rounded-xl border border-border/80 bg-muted/20 p-4">
+                      {/* Pas Foto Resmi */}
+                      <div className="shrink-0 mx-auto sm:mx-0 text-center">
+                        <div className="relative h-36 w-28 overflow-hidden rounded border border-navy/30 bg-red-600 shadow-xs">
+                          {myBioRes?.biodata?.fotoUrl ? (
+                            <img
+                              src={myBioRes.biodata.fotoUrl}
+                              alt="Pas Foto Peserta"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-center text-white p-2">
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider">Pas Foto</p>
+                                <p className="text-[8px] opacity-80">3 x 4 Resmi</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <span className="mt-1.5 inline-block text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          ✓ Pas foto resmi
+                        </span>
+                      </div>
+
+                      {/* 7 Kolom Identitas Lengkap Sesuai Form */}
+                      <div className="flex-1 w-full text-xs space-y-1.5">
+                        <div className="grid grid-cols-12 gap-1 py-0.5">
+                          <span className="col-span-5 sm:col-span-4 text-muted-foreground font-medium">Nama</span>
+                          <span className="col-span-1 text-center text-muted-foreground">:</span>
+                          <span className="col-span-6 sm:col-span-7 font-bold text-navy">
+                            {myBioRes?.biodata?.nama || myBioRes?.prefill.nama || "Peserta Pelatihan"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-12 gap-1 py-0.5">
+                          <span className="col-span-5 sm:col-span-4 text-muted-foreground font-medium">NIP</span>
+                          <span className="col-span-1 text-center text-muted-foreground">:</span>
+                          <span className="col-span-6 sm:col-span-7 font-mono font-medium text-foreground">
+                            {myBioRes?.biodata?.nip || "-"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-12 gap-1 py-0.5">
+                          <span className="col-span-5 sm:col-span-4 text-muted-foreground font-medium">Tempat Lahir</span>
+                          <span className="col-span-1 text-center text-muted-foreground">:</span>
+                          <span className="col-span-6 sm:col-span-7 text-foreground">
+                            {myBioRes?.biodata?.tempatLahir || "-"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-12 gap-1 py-0.5">
+                          <span className="col-span-5 sm:col-span-4 text-muted-foreground font-medium">Tanggal Lahir</span>
+                          <span className="col-span-1 text-center text-muted-foreground">:</span>
+                          <span className="col-span-6 sm:col-span-7 text-foreground">
+                            {formatTanggalIndo(myBioRes?.biodata?.tanggalLahir) || "-"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-12 gap-1 py-0.5">
+                          <span className="col-span-5 sm:col-span-4 text-muted-foreground font-medium">Pangkat/ Gol. Ruang</span>
+                          <span className="col-span-1 text-center text-muted-foreground">:</span>
+                          <span className="col-span-6 sm:col-span-7 text-foreground">
+                            {myBioRes?.biodata?.pangkatGolongan || "-"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-12 gap-1 py-0.5">
+                          <span className="col-span-5 sm:col-span-4 text-muted-foreground font-medium">Jabatan</span>
+                          <span className="col-span-1 text-center text-muted-foreground">:</span>
+                          <span className="col-span-6 sm:col-span-7 text-foreground">
+                            {myBioRes?.biodata?.jabatan || myBioRes?.prefill.jabatan || "-"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-12 gap-1 py-0.5">
+                          <span className="col-span-5 sm:col-span-4 text-muted-foreground font-medium">Instansi</span>
+                          <span className="col-span-1 text-center text-muted-foreground">:</span>
+                          <span className="col-span-6 sm:col-span-7 text-foreground">
+                            {myBioRes?.biodata?.instansiUnitKerja || myBioRes?.prefill.instansi || "Kementerian Kelautan dan Perikanan"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pernyataan Kelulusan Pelatihan */}
+                    <div className="my-4 text-center">
+                      <p className="text-xs text-foreground/80">Telah mengikuti pengembangan kompetensi melalui pelatihan :</p>
+                      <h4 className="mt-1 font-display text-base font-bold text-navy">{module.title}</h4>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        oleh Balai Diklat Aparatur Kementerian Kelautan dan Perikanan metode full e-learning meliputi {module.hours || 8} ({numberToIndonesianWords(module.hours || 8)}) jam pelajaran (JP).
+                      </p>
+                    </div>
+
+                    {/* Footer: QR Code & Pengesahan Pejabat */}
+                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-4 text-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="h-16 w-16 rounded-lg border border-border bg-white p-1 shadow-2xs flex items-center justify-center text-center">
+                          <span className="font-mono text-[9px] text-muted-foreground leading-tight">QR CODE<br/>VERIFIED<br/>OFFICIAL</span>
+                        </div>
+                        <div>
+                          <span className="text-emerald-700 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Terverifikasi Resmi
+                          </span>
+                          <p className="font-mono text-[10px] text-muted-foreground">Nomor: B.589/BDA/RSDM.510/V/2026</p>
+                        </div>
+                      </div>
+
+                      <div className="text-center sm:text-right">
+                        <p className="text-[11px] text-muted-foreground">{formatTodayIndonesian()}</p>
+                        <p className="font-semibold text-navy text-[11px]">Kepala Pusat Pelatihan Kelautan dan Perikanan</p>
+                        <p className="mt-6 font-bold text-navy text-xs underline decoration-navy/40">Lilly Aprilya Pregiwati</p>
+                      </div>
                     </div>
                   </div>
 
@@ -1412,6 +1540,12 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                       className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
                     >
                       <Download className="h-4 w-4" /> Download Official Certificate (PDF)
+                    </button>
+                    <button
+                      onClick={handleOpenCertificate}
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-card px-5 py-3 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition"
+                    >
+                      <ExternalLink className="h-4 w-4" /> Preview / Buka di Tab Baru
                     </button>
                     <Link
                       to="/academy/learn"

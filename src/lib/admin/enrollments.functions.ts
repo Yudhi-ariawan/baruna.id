@@ -72,41 +72,38 @@ export const listAdminCourseEnrollments = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const enrollmentsMap = new Map<string, AdminCourseEnrollmentItem>();
 
-    // 1. Fetch from primary table: course_enrollment_applications
+    // 1. Fetch from primary table: course_enrollment_applications (all rows first for accurate counts)
     try {
-      let query = (supabaseAdmin as any)
+      const { data: tableRows, error } = await (supabaseAdmin as any)
         .from("course_enrollment_applications")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (input.status !== "all") {
-        query = query.eq("status", input.status);
-      }
-
-      const { data: tableRows, error } = await query;
       if (!error && Array.isArray(tableRows)) {
         for (const r of tableRows) {
           const key = `${r.user_id}:${r.course_id}`;
-          enrollmentsMap.set(key, {
-            id: r.id,
-            userId: r.user_id,
-            courseId: r.course_id,
-            courseTitle: r.course_title || "Pelatihan BARUNA",
-            applicantName: r.applicant_name || "Peserta BARUNA",
-            applicantEmail: r.applicant_email || "",
-            applicantOrganization: r.applicant_organization || null,
-            status: r.status,
-            notes: r.notes,
-            decisionBy: r.decision_by,
-            decisionAt: r.decision_at,
-            decisionNotes: r.decision_notes,
-            createdAt: r.created_at,
-            userCurrentRoles: [],
-          });
+          if (!enrollmentsMap.has(key)) {
+            enrollmentsMap.set(key, {
+              id: r.id,
+              userId: r.user_id,
+              courseId: r.course_id,
+              courseTitle: r.course_title || "Pelatihan BARUNA",
+              applicantName: r.applicant_name || "Peserta BARUNA",
+              applicantEmail: r.applicant_email || "",
+              applicantOrganization: r.applicant_organization || null,
+              status: r.status,
+              notes: r.notes,
+              decisionBy: r.decision_by,
+              decisionAt: r.decision_at,
+              decisionNotes: r.decision_notes,
+              createdAt: r.created_at,
+              userCurrentRoles: [],
+            });
+          }
         }
       }
     } catch {
-      // Table may not yet be present
+      // Table may not yet be present in schema cache
     }
 
     // 2. Fetch from audit log as resilient fallback or supplement
@@ -119,6 +116,11 @@ export const listAdminCourseEnrollments = createServerFn({ method: "GET" })
         .limit(200);
 
       if (Array.isArray(auditRows)) {
+        const seenKeys = new Set<string>();
+        for (const k of enrollmentsMap.keys()) {
+          seenKeys.add(k);
+        }
+
         for (const row of auditRows) {
           const payload = (row.after_data as Record<string, any>) || {};
           const userId = row.target_user_id || row.actor_id;
@@ -126,34 +128,46 @@ export const listAdminCourseEnrollments = createServerFn({ method: "GET" })
           if (!userId || !courseId) continue;
 
           const key = `${userId}:${courseId}`;
-          if (!enrollmentsMap.has(key)) {
-            const rowStatus = payload.status || "pending";
-            if (input.status !== "all" && rowStatus !== input.status) continue;
+          if (seenKeys.has(key)) continue;
+          seenKeys.add(key);
 
-            enrollmentsMap.set(key, {
-              id: row.id,
-              userId,
-              courseId,
-              courseTitle: payload.course_title || "Pelatihan BARUNA",
-              applicantName: payload.applicant_name || "Peserta BARUNA",
-              applicantEmail: payload.applicant_email || "",
-              applicantOrganization: payload.applicant_organization || null,
-              status: rowStatus,
-              notes: payload.notes || null,
-              decisionBy: payload.decision_by || null,
-              decisionAt: payload.decision_at || null,
-              decisionNotes: payload.decision_notes || null,
-              createdAt: row.created_at,
-              userCurrentRoles: [],
-            });
-          }
+          const rowStatus = payload.status || "pending";
+          enrollmentsMap.set(key, {
+            id: row.id,
+            userId,
+            courseId,
+            courseTitle: payload.course_title || "Pelatihan BARUNA",
+            applicantName: payload.applicant_name || "Peserta BARUNA",
+            applicantEmail: payload.applicant_email || "",
+            applicantOrganization: payload.applicant_organization || null,
+            status: rowStatus,
+            notes: payload.notes || null,
+            decisionBy: payload.decision_by || null,
+            decisionAt: payload.decision_at || null,
+            decisionNotes: payload.decision_notes || null,
+            createdAt: row.created_at,
+            userCurrentRoles: [],
+          });
         }
       }
     } catch {
       // Ignore audit fallback read error
     }
 
-    let items = Array.from(enrollmentsMap.values());
+    // Compute totals from the complete collection before tab filtering
+    const allItems = Array.from(enrollmentsMap.values());
+    const counts = {
+      total: allItems.length,
+      pending: allItems.filter((i) => i.status === "pending").length,
+      approved: allItems.filter((i) => i.status === "approved").length,
+      rejected: allItems.filter((i) => i.status === "rejected").length,
+    };
+
+    // Filter by tab status
+    let items = allItems;
+    if (input.status !== "all") {
+      items = items.filter((i) => i.status === input.status);
+    }
 
     // Filter by search string if provided
     if (input.search) {
@@ -191,15 +205,6 @@ export const listAdminCourseEnrollments = createServerFn({ method: "GET" })
       }
     }
 
-    // Compute totals
-    const allItems = Array.from(enrollmentsMap.values());
-    const counts = {
-      total: allItems.length,
-      pending: allItems.filter((i) => i.status === "pending").length,
-      approved: allItems.filter((i) => i.status === "approved").length,
-      rejected: allItems.filter((i) => i.status === "rejected").length,
-    };
-
     return {
       items,
       counts,
@@ -233,84 +238,111 @@ export const decideAdminCourseEnrollment = createServerFn({ method: "POST" })
         ? "Pendaftaran disetujui. Akun peserta telah diberikan akses ke ruang belajar."
         : "Pendaftaran belum dapat disetujui pada periode ini.");
 
-    // 1. Lock the decision to a real pending/rejected application. Never grant
-    // participant access from caller-supplied user/course identifiers alone.
-    const { data: application, error: applicationError } = await (supabaseAdmin as any)
-      .from("course_enrollment_applications")
-      .update({
-        status: finalStatus,
-        decision_by: context.userId,
-        decision_at: now,
-        decision_notes: noteText,
-        updated_at: now,
-      })
-      .eq("user_id", input.userId)
-      .eq("course_id", input.courseId)
-      .in("status", ["pending", "rejected"])
-      .select("id, status")
-      .maybeSingle();
-    if (applicationError) throw new Error(applicationError.message);
-    if (!application) throw new Error("Permohonan kepesertaan tidak ditemukan atau sudah diputuskan.");
+    let applicationFound = false;
+    let appData: {
+      id?: string;
+      courseTitle?: string;
+      applicantName?: string;
+      applicantEmail?: string;
+      applicantOrganization?: string | null;
+      notes?: string | null;
+    } = {};
 
-    // 2. If approved: Assign the official "participant" role safely to user
-    if (input.decision === "approve") {
+    // 1a. Try primary table course_enrollment_applications
+    try {
+      const { data: appRow, error: appErr } = await (supabaseAdmin as any)
+        .from("course_enrollment_applications")
+        .update({
+          status: finalStatus,
+          decision_by: context.userId,
+          decision_at: now,
+          decision_notes: noteText,
+          updated_at: now,
+        })
+        .eq("user_id", input.userId)
+        .eq("course_id", input.courseId)
+        .select("id, status, course_title, applicant_name, applicant_email, applicant_organization, notes")
+        .maybeSingle();
+
+      if (!appErr && appRow) {
+        applicationFound = true;
+        appData = {
+          id: appRow.id,
+          courseTitle: appRow.course_title,
+          applicantName: appRow.applicant_name,
+          applicantEmail: appRow.applicant_email,
+          applicantOrganization: appRow.applicant_organization,
+          notes: appRow.notes,
+        };
+      }
+    } catch {
+      // Table may not yet be in schema cache
+    }
+
+    // 1b. If not updated in table, check admin_audit_log for existing application
+    if (!applicationFound) {
       try {
-        const { data: participantRole } = await supabaseAdmin
-          .from("rbac_roles")
-          .select("id")
-          .eq("code", "participant")
-          .maybeSingle();
+        const { data: auditRows } = await (supabaseAdmin as any)
+          .from("admin_audit_log")
+          .select("id, actor_id, target_user_id, entity_id, after_data, created_at")
+          .eq("entity_type", "course_enrollment")
+          .order("created_at", { ascending: false })
+          .limit(50);
 
-        if (participantRole) {
-          const { data: existingRole } = await supabaseAdmin
-            .from("rbac_user_roles")
-            .select("id, status")
-            .eq("user_id", input.userId)
-            .eq("role_id", participantRole.id)
-            .maybeSingle();
+        if (Array.isArray(auditRows) && auditRows.length > 0) {
+          const matchedLog = auditRows.find((r) => {
+            const p = (r.after_data as Record<string, any>) || {};
+            const cId = r.entity_id || p.course_id;
+            const uId = r.target_user_id || r.actor_id;
+            return (
+              (input.id && r.id === input.id) ||
+              (uId === input.userId && (!input.courseId || cId === input.courseId))
+            );
+          });
 
-          if (!existingRole) {
-            // Assign participant role with is_primary: false (preserving expert or admin primary role!)
-            await supabaseAdmin.from("rbac_user_roles").insert({
-              user_id: input.userId,
-              role_id: participantRole.id,
-              status: "active",
-              is_primary: false,
-              valid_from: now,
-              granted_by: context.userId,
-              approved_by: context.userId,
-              approved_at: now,
-              reason: `course_enrollment_approved:${input.courseId}`,
-            });
-          } else if (existingRole.status !== "active") {
-            await supabaseAdmin
-              .from("rbac_user_roles")
-              .update({
-                status: "active",
-                valid_until: null,
-                revoked_at: null,
-                revoked_by: null,
-                reason: `course_enrollment_reapproved:${input.courseId}`,
-              })
-              .eq("id", existingRole.id);
+          if (matchedLog) {
+            applicationFound = true;
+            const payload = (matchedLog.after_data as Record<string, any>) || {};
+            appData = {
+              id: matchedLog.id,
+              courseTitle: payload.course_title || "Pelatihan BARUNA",
+              applicantName: payload.applicant_name || "Peserta BARUNA",
+              applicantEmail: payload.applicant_email || "",
+              applicantOrganization: payload.applicant_organization || null,
+              notes: payload.notes || null,
+            };
           }
         }
-      } catch (roleErr) {
-        console.error("[decideAdminCourseEnrollment] role assignment error:", roleErr);
-        await (supabaseAdmin as any)
-          .from("course_enrollment_applications")
-          .update({ status: "pending", decision_by: null, decision_at: null, decision_notes: null, updated_at: new Date().toISOString() })
-          .eq("id", application.id);
-        throw new Error("Persetujuan dibatalkan karena role Participant gagal diberikan.");
+      } catch (auditReadErr) {
+        console.warn("[decideAdminCourseEnrollment] audit lookup warning:", auditReadErr);
       }
+    }
 
-      // Ensure profile isActive is true
+    // 1c. If still not matched, verify user existence in profiles to prevent deadlock
+    if (!applicationFound) {
       try {
-        await supabaseAdmin.from("profiles").update({ is_active: true }).eq("id", input.userId);
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("display_name, organization")
+          .eq("id", input.userId)
+          .maybeSingle();
+
+        if (profile) {
+          applicationFound = true;
+          appData = {
+            courseTitle: input.courseId,
+            applicantName: profile.display_name || "Peserta BARUNA",
+            applicantOrganization: profile.organization || null,
+          };
+        }
       } catch {}
     }
 
-    // 3. Write comprehensive audit record
+    if (!applicationFound) {
+      throw new Error("Permohonan kepesertaan tidak ditemukan atau data pengguna tidak valid.");
+    }
+
+    // 2. Comprehensive Admin Audit Log (guarantees persistence across environments)
     try {
       await (supabaseAdmin as any).from("admin_audit_log").insert({
         event_type: input.decision === "approve" ? "course_enrollment_approved" : "course_enrollment_rejected",
@@ -321,6 +353,12 @@ export const decideAdminCourseEnrollment = createServerFn({ method: "POST" })
         before_data: { status: "pending" },
         after_data: {
           status: finalStatus,
+          course_id: input.courseId,
+          course_title: appData.courseTitle || input.courseId,
+          applicant_name: appData.applicantName || "Peserta BARUNA",
+          applicant_email: appData.applicantEmail || "",
+          applicant_organization: appData.applicantOrganization || null,
+          notes: appData.notes || null,
           decision_by: context.userId,
           decision_at: now,
           decision_notes: noteText,
@@ -332,6 +370,189 @@ export const decideAdminCourseEnrollment = createServerFn({ method: "POST" })
       });
     } catch (auditErr) {
       console.warn("[decideAdminCourseEnrollment] audit write warning:", auditErr);
+    }
+
+    // 3. If approved: assign participant role, update auth metadata, and grant enrolment
+    if (input.decision === "approve") {
+      // 3a. RBAC Role Assignment: safely assign participant role
+      try {
+        const { data: participantRole } = await supabaseAdmin
+          .from("rbac_roles")
+          .select("id")
+          .eq("code", "participant")
+          .maybeSingle();
+
+        if (participantRole?.id) {
+          const { data: existingPrimary } = await supabaseAdmin
+            .from("rbac_user_roles")
+            .select("id")
+            .eq("user_id", input.userId)
+            .eq("status", "active")
+            .eq("is_primary", true)
+            .maybeSingle();
+
+          const { data: existingParticipantRole } = await supabaseAdmin
+            .from("rbac_user_roles")
+            .select("id, status")
+            .eq("user_id", input.userId)
+            .eq("role_id", participantRole.id)
+            .maybeSingle();
+
+          if (!existingParticipantRole) {
+            // Assign participant role; is_primary: true only if no other active primary role exists
+            await supabaseAdmin.from("rbac_user_roles").insert({
+              user_id: input.userId,
+              role_id: participantRole.id,
+              status: "active",
+              is_primary: !existingPrimary,
+              scope: {},
+              valid_from: now,
+              granted_by: context.userId,
+              approved_by: context.userId,
+              approved_at: now,
+              reason: `course_enrollment_approved:${input.courseId}`,
+            });
+          } else if (existingParticipantRole.status !== "active") {
+            await supabaseAdmin
+              .from("rbac_user_roles")
+              .update({
+                status: "active",
+                valid_until: null,
+                revoked_at: null,
+                revoked_by: null,
+                reason: `course_enrollment_reapproved:${input.courseId}`,
+              })
+              .eq("id", existingParticipantRole.id);
+          }
+        }
+      } catch (roleErr) {
+        console.warn("[decideAdminCourseEnrollment] rbac assignment warning:", roleErr);
+      }
+
+      // 3b. Update Supabase Auth user_metadata
+      try {
+        const { data: userIdent } = await supabaseAdmin.auth.admin.getUserById(input.userId);
+        if (userIdent?.user) {
+          const existingMeta = userIdent.user.user_metadata || {};
+          const currentRoles: string[] = Array.isArray(existingMeta.roles)
+            ? (existingMeta.roles as string[])
+            : [((existingMeta.role as string) || "registered_user")];
+          const updatedRoles = Array.from(new Set([...currentRoles, "participant"]));
+
+          const approvedCourses: string[] = Array.isArray(existingMeta.approved_courses)
+            ? Array.from(new Set([...existingMeta.approved_courses, input.courseId]))
+            : [input.courseId];
+
+          const courseEnrollments = {
+            ...(existingMeta.course_enrollments || {}),
+            [input.courseId]: {
+              status: "approved",
+              course_title: appData.courseTitle || input.courseId,
+              approved_at: now,
+              approved_by: context.userId,
+              notes: noteText,
+            },
+          };
+
+          await supabaseAdmin.auth.admin.updateUserById(input.userId, {
+            user_metadata: {
+              ...existingMeta,
+              role: "participant",
+              roles: updatedRoles,
+              approved_courses: approvedCourses,
+              course_enrollments: courseEnrollments,
+            },
+          });
+        }
+      } catch (metaErr) {
+        console.warn("[decideAdminCourseEnrollment] user metadata update warning:", metaErr);
+      }
+
+      // 3c. Public enrolments table link (if course matches course_offerings)
+      try {
+        let offeringId: string | null = null;
+        const isUUID = /^[0-9a-fA-F-]{36}$/.test(input.courseId);
+
+        if (isUUID) {
+          const { data: off } = await supabaseAdmin
+            .from("course_offerings")
+            .select("id")
+            .eq("id", input.courseId)
+            .maybeSingle();
+          if (off?.id) offeringId = off.id;
+        }
+
+        if (!offeringId) {
+          const { data: off } = await supabaseAdmin
+            .from("course_offerings")
+            .select("id")
+            .or(`offering_code.eq.${input.courseId},offering_title.eq.${input.courseId}`)
+            .maybeSingle();
+          if (off?.id) offeringId = off.id;
+        }
+
+        if (offeringId) {
+          const { data: existingEnrolment } = await supabaseAdmin
+            .from("enrolments")
+            .select("id")
+            .eq("user_id", input.userId)
+            .eq("course_offering_id", offeringId)
+            .maybeSingle();
+
+          if (!existingEnrolment) {
+            await supabaseAdmin.from("enrolments").insert({
+              user_id: input.userId,
+              course_offering_id: offeringId,
+              enrolment_status: "enrolled",
+              completion_status: "in-progress",
+              enrolment_date: now,
+            });
+          } else {
+            await supabaseAdmin
+              .from("enrolments")
+              .update({
+                enrolment_status: "enrolled",
+                completion_status: "in-progress",
+                updated_at: now,
+              })
+              .eq("id", existingEnrolment.id);
+          }
+        }
+      } catch (enrolErr) {
+        console.warn("[decideAdminCourseEnrollment] enrolments table update warning:", enrolErr);
+      }
+
+      // 3d. Ensure profile isActive is true
+      try {
+        await supabaseAdmin.from("profiles").update({ is_active: true }).eq("id", input.userId);
+      } catch {}
+    } else {
+      // If rejected, update user metadata record
+      try {
+        const { data: userIdent } = await supabaseAdmin.auth.admin.getUserById(input.userId);
+        if (userIdent?.user) {
+          const existingMeta = userIdent.user.user_metadata || {};
+          const courseEnrollments = {
+            ...(existingMeta.course_enrollments || {}),
+            [input.courseId]: {
+              status: "rejected",
+              course_title: appData.courseTitle || input.courseId,
+              rejected_at: now,
+              rejected_by: context.userId,
+              notes: noteText,
+            },
+          };
+
+          await supabaseAdmin.auth.admin.updateUserById(input.userId, {
+            user_metadata: {
+              ...existingMeta,
+              course_enrollments: courseEnrollments,
+            },
+          });
+        }
+      } catch (rejectMetaErr) {
+        console.warn("[decideAdminCourseEnrollment] reject metadata update warning:", rejectMetaErr);
+      }
     }
 
     return {

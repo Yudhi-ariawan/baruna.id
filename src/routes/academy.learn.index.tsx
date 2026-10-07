@@ -10,6 +10,7 @@ import {
   Award,
   Clock,
   Download,
+  ExternalLink,
   Trash2,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
@@ -26,9 +27,16 @@ import { LMS_MODULES } from "@/data/lms";
 import { useAza, overallProgress as azaOverallProgress, accessDaysRemaining } from "@/lib/aza";
 import { AZA_META, AZA_MODULES, AZA_PASS_MARK } from "@/data/aza";
 import { shortCourseProgress, useShortCourses } from "@/lib/shortCourses";
-import { masterByCode } from "@/data/masterModules";
-import { downloadCertificatePdf } from "@/lib/certificate";
+import {
+  downloadCertificatePdf,
+  openCertificatePdf,
+  formatTodayIndonesian,
+  type CertificateData,
+} from "@/lib/certificate";
+import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
+import { useQuery } from "@tanstack/react-query";
 import { barunaToast } from "@/lib/downloads";
+import { masterByCode } from "@/data/masterModules";
 
 export const Route = createFileRoute("/academy/learn/")({
   head: () => ({
@@ -101,16 +109,41 @@ function MyLearning() {
     ) ?? null;
   const hasAny = enrolled.length > 0 || azaEnrolled || shortCourses.length > 0;
 
-  const handleDownloadShortCourseCert = (code: string, title: string) => {
-    downloadCertificatePdf({
-      name: "BARUNA Participant",
+  const { data: myBioRes } = useQuery({
+    queryKey: ["my-participant-biodata"],
+    queryFn: () => getMyParticipantBiodata(),
+    staleTime: 30 * 1000,
+  });
+
+  const getCertData = (code: string, title: string): CertificateData => {
+    const bio = myBioRes?.biodata;
+    const certNumber = `B.589/BDA/RSDM.510/V/${new Date().getFullYear()}`;
+    return {
+      name: bio?.nama || myBioRes?.prefill.nama || "Peserta Pelatihan",
       country: "Indonesia",
       program: title,
-      dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
-      certNo: `BARUNA-MOD-${code.slice(0, 8).toUpperCase()}-2026`,
-      verifyUrl: `https://baruna.kkp.go.id/verify/${code}`,
-    });
+      dates: formatTodayIndonesian(),
+      certNo: certNumber,
+      verifyUrl: `${typeof window !== "undefined" ? window.location.origin : "https://baruna.kkp.go.id"}/academy/certification?verify=${code}`,
+      nip: bio?.nip || null,
+      tempatLahir: bio?.tempatLahir || null,
+      tanggalLahir: bio?.tanggalLahir || null,
+      pangkatGolongan: bio?.pangkatGolongan || null,
+      jabatan: bio?.jabatan || myBioRes?.prefill.jabatan || null,
+      instansi: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      workUnit: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      photoUrl: bio?.fotoUrl || null,
+      learningHours: 8,
+    };
+  };
+
+  const handleDownloadShortCourseCert = (code: string, title: string) => {
+    downloadCertificatePdf(getCertData(code, title));
     barunaToast("Module completion certificate downloaded successfully!");
+  };
+
+  const handleOpenShortCourseCert = (code: string, title: string) => {
+    openCertificatePdf(getCertData(code, title));
   };
 
   return (
@@ -243,12 +276,22 @@ function MyLearning() {
                           </Link>
                           <div className="flex items-center gap-2">
                             {isDone && (
-                              <button
-                                onClick={() => handleDownloadShortCourseCert(sc.code, title)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
-                              >
-                                <Download className="h-3.5 w-3.5" /> Certificate
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleDownloadShortCourseCert(sc.code, title)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
+                                  title="Download Certificate (PDF)"
+                                >
+                                  <Download className="h-3.5 w-3.5" /> Certificate
+                                </button>
+                                <button
+                                  onClick={() => handleOpenShortCourseCert(sc.code, title)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground/80 hover:bg-muted transition shadow-2xs"
+                                  title="Buka / Preview Sertifikat di Tab Baru"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </button>
+                              </>
                             )}
                             <Link
                               to="/academy/learn/$id"

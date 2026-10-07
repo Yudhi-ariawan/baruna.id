@@ -29,7 +29,9 @@ import { masterByCode, MINUTES_PER_JP } from "@/data/masterModules";
 import { LMS_MODULES, type LmsModule } from "@/data/lms";
 import { instructorBySlug } from "@/data/instructors";
 import { programs, type Program } from "@/data/programs";
-import { downloadCertificatePdf } from "@/lib/certificate";
+import { downloadCertificatePdf, formatTodayIndonesian, type CertificateData } from "@/lib/certificate";
+import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
+import { useQuery } from "@tanstack/react-query";
 import {
   useShortCourses,
   enrollShortCourse,
@@ -163,15 +165,36 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
     navigate({ to: "/academy/learn/$id", params: { id: module.id } });
   };
 
-  const handleDownloadCertificate = () => {
-    downloadCertificatePdf({
-      name: "Peserta BARUNA",
+  const { data: myBioRes } = useQuery({
+    queryKey: ["my-participant-biodata"],
+    queryFn: () => getMyParticipantBiodata(),
+    staleTime: 30 * 1000,
+  });
+
+  const getCertData = (): CertificateData => {
+    const bio = myBioRes?.biodata;
+    const certNumber = `B.589/BDA/RSDM.510/V/${new Date().getFullYear()}`;
+    return {
+      name: bio?.nama || myBioRes?.prefill.nama || "Peserta Pelatihan",
       country: "Indonesia",
       program: module.title,
-      dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
-      certNo: `BARUNA-MOD-${module.id.slice(0, 8).toUpperCase()}-2026`,
-      verifyUrl: `https://baruna.kkp.go.id/verify/${module.id}`,
-    });
+      dates: formatTodayIndonesian(),
+      certNo: certNumber,
+      verifyUrl: `${typeof window !== "undefined" ? window.location.origin : "https://baruna.kkp.go.id"}/academy/certification?verify=${module.id}`,
+      nip: bio?.nip || null,
+      tempatLahir: bio?.tempatLahir || null,
+      tanggalLahir: bio?.tanggalLahir || null,
+      pangkatGolongan: bio?.pangkatGolongan || null,
+      jabatan: bio?.jabatan || myBioRes?.prefill.jabatan || null,
+      instansi: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      workUnit: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      photoUrl: bio?.fotoUrl || null,
+      learningHours: module.hours || 8,
+    };
+  };
+
+  const handleDownloadCertificate = () => {
+    downloadCertificatePdf(getCertData());
     barunaToast("Sertifikat kelulusan berhasil diunduh!");
   };
 
@@ -497,6 +520,39 @@ function MasterModuleOverview({
     navigate({ to: "/academy/learn/$id", params: { id: master.code } });
   };
 
+  const { data: myBioRes } = useQuery({
+    queryKey: ["my-participant-biodata"],
+    queryFn: () => getMyParticipantBiodata(),
+    staleTime: 30 * 1000,
+  });
+
+  const getMasterCertData = (): CertificateData => {
+    const bio = myBioRes?.biodata;
+    const certNumber = `B.589/BDA/RSDM.510/V/${new Date().getFullYear()}`;
+    return {
+      name: bio?.nama || myBioRes?.prefill.nama || "Peserta Pelatihan",
+      country: "Indonesia",
+      program: master.title,
+      dates: formatTodayIndonesian(),
+      certNo: certNumber,
+      verifyUrl: `${typeof window !== "undefined" ? window.location.origin : "https://baruna.kkp.go.id"}/academy/certification?verify=${master.code}`,
+      nip: bio?.nip || null,
+      tempatLahir: bio?.tempatLahir || null,
+      tanggalLahir: bio?.tanggalLahir || null,
+      pangkatGolongan: bio?.pangkatGolongan || null,
+      jabatan: bio?.jabatan || myBioRes?.prefill.jabatan || null,
+      instansi: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      workUnit: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      photoUrl: bio?.fotoUrl || null,
+      learningHours: master.hours || 8,
+    };
+  };
+
+  const handleDownloadMasterCertificate = () => {
+    downloadCertificatePdf(getMasterCertData());
+    barunaToast("Sertifikat kelulusan berhasil diunduh!");
+  };
+
   const aside = (
     <div className="space-y-5">
       <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
@@ -547,6 +603,7 @@ function MasterModuleOverview({
             instructorName={instructor?.name ?? master.instructorSlug}
             category={master.subCategory}
             done={done}
+            onDownloadCertificate={handleDownloadMasterCertificate}
             variant="aside"
           />
 

@@ -80,6 +80,26 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
       // Ignore fallback audit read error
     }
 
+    // 3. Resilient check in user_metadata & enrolments table
+    try {
+      const { data: userIdent } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+      const meta = (userIdent?.user?.user_metadata as Record<string, any>) || {};
+      const enrollmentInfo = meta.course_enrollments?.[data.courseId];
+      const isApprovedInList = Array.isArray(meta.approved_courses) && meta.approved_courses.includes(data.courseId);
+
+      if (enrollmentInfo || isApprovedInList) {
+        const status = (enrollmentInfo?.status as CourseEnrollmentStatus) || (isApprovedInList ? "approved" : "pending");
+        return {
+          isEnrolled: status === "approved",
+          status,
+          appliedAt: enrollmentInfo?.applied_at || null,
+          decisionAt: enrollmentInfo?.approved_at || enrollmentInfo?.rejected_at || null,
+          decisionNotes: enrollmentInfo?.notes || null,
+          courseTitle: enrollmentInfo?.course_title || null,
+        };
+      }
+    } catch {}
+
     return {
       isEnrolled: false,
       status: "none",

@@ -18,11 +18,22 @@ const LIGHT = "#f5f8fc";
 
 export type CertificateData = {
   name: string;
-  country: string;
+  country?: string;
   program: string;
   dates: string;
   certNo: string;
   verifyUrl: string;
+  photoUrl?: string | null;
+  nip?: string | null;
+  tempatLahir?: string | null;
+  tanggalLahir?: string | null;
+  pangkatGolongan?: string | null;
+  jabatan?: string | null;
+  instansi?: string | null;
+  workUnit?: string | null;
+  learningHours?: number | string | null;
+  signerName?: string;
+  signerRole?: string;
 };
 
 export type TranscriptScores = {
@@ -36,126 +47,316 @@ export type TranscriptScores = {
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
   });
 }
 
+export function formatTodayIndonesian(): string {
+  const now = new Date();
+  const months = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  ];
+  return `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+export function numberToIndonesianWords(n: number): string {
+  const words = [
+    "nol", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan",
+    "sepuluh", "sebelas", "dua belas", "tiga belas", "empat belas", "lima belas", "enam belas",
+    "tujuh belas", "delapan belas", "sembilan belas", "dua puluh",
+  ];
+  if (n >= 0 && n < words.length) return words[n];
+  if (n === 24) return "dua puluh empat";
+  if (n === 32) return "tiga puluh dua";
+  return String(n);
+}
+
+export function formatTanggalIndo(str?: string | null): string {
+  if (!str) return "-";
+  const months = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  ];
+  const ymdMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (ymdMatch) {
+    const day = parseInt(ymdMatch[3], 10);
+    const month = months[parseInt(ymdMatch[2], 10) - 1] || ymdMatch[2];
+    const year = ymdMatch[1];
+    return `${day} ${month} ${year}`;
+  }
+  const dmyMatch = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = months[parseInt(dmyMatch[2], 10) - 1] || dmyMatch[2];
+    const year = dmyMatch[3];
+    return `${day} ${month} ${year}`;
+  }
+  return str;
+}
+
+
 // ── Certificate ──────────────────────────────────────────────────────────────
 async function renderCertificateCanvas(d: CertificateData): Promise<HTMLCanvasElement> {
-  const W = 1240;
-  const H = 877; // A4 landscape ratio
-  const scale = 2;
+  const W = 1040;
+  const H = 726; // Exact aspect ratio of official template (1040x726)
+  const scale = 2; // Hi-DPI 2x scale for print sharpness
   const canvas = document.createElement("canvas");
   canvas.width = W * scale;
   canvas.height = H * scale;
   const ctx = canvas.getContext("2d")!;
   ctx.scale(scale, scale);
 
-  // Background
+  // Default white background
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = LIGHT;
-  ctx.fillRect(0, 0, W, H);
 
-  // Borders
-  ctx.strokeStyle = NAVY;
-  ctx.lineWidth = 10;
-  ctx.strokeRect(28, 28, W - 56, H - 56);
-  ctx.strokeStyle = TEAL;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(46, 46, W - 92, H - 92);
-
-  const cx = W / 2;
-  ctx.textAlign = "center";
-
-  // Brand
-  ctx.fillStyle = MARINE;
-  ctx.font = "bold 22px Arial, sans-serif";
-  ctx.fillText("B A R U N A   A C A D E M Y", cx, 120);
-
-  // Title
-  ctx.fillStyle = NAVY;
-  ctx.font = "bold 56px Georgia, 'Times New Roman', serif";
-  ctx.fillText("Certificate of Completion", cx, 200);
-
-  // Divider
-  ctx.strokeStyle = TEAL;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(cx - 90, 222);
-  ctx.lineTo(cx + 90, 222);
-  ctx.stroke();
-
-  ctx.fillStyle = INK;
-  ctx.font = "20px Arial, sans-serif";
-  ctx.fillText("This is proudly presented to", cx, 285);
-
-  // Name
-  ctx.fillStyle = NAVY;
-  ctx.font = "bold 50px Georgia, 'Times New Roman', serif";
-  ctx.fillText(d.name || "Participant", cx, 350);
-
-  ctx.fillStyle = MARINE;
-  ctx.font = "18px Arial, sans-serif";
-  ctx.fillText(d.country ? `Country: ${d.country}` : "", cx, 385);
-
-  ctx.fillStyle = INK;
-  ctx.font = "20px Arial, sans-serif";
-  ctx.fillText("for successfully completing the", cx, 440);
-
-  // Program (wrap to two lines if long)
-  ctx.fillStyle = NAVY;
-  ctx.font = "bold 30px Georgia, 'Times New Roman', serif";
-  wrapText(ctx, d.program, cx, 485, W - 260, 38);
-
-  ctx.fillStyle = INK;
-  ctx.font = "18px Arial, sans-serif";
-  ctx.fillText(`Training Period: ${d.dates}`, cx, 580);
-
-  // Footer left: certificate number + verification
-  ctx.textAlign = "left";
-  ctx.fillStyle = NAVY;
-  ctx.font = "bold 16px Arial, sans-serif";
-  ctx.fillText("Certificate No.", 110, 720);
-  ctx.fillStyle = INK;
-  ctx.font = "15px Arial, sans-serif";
-  ctx.fillText(d.certNo, 110, 744);
-  ctx.fillStyle = INK;
-  ctx.font = "13px Arial, sans-serif";
-  ctx.fillText("Verify authenticity by scanning the QR code.", 110, 770);
-
-  // Footer center: signature line
-  ctx.textAlign = "center";
-  ctx.strokeStyle = NAVY;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(cx - 120, 735);
-  ctx.lineTo(cx + 120, 735);
-  ctx.stroke();
-  ctx.fillStyle = NAVY;
-  ctx.font = "bold 15px Arial, sans-serif";
-  ctx.fillText("Program Director", cx, 760);
-  ctx.fillStyle = INK;
-  ctx.font = "13px Arial, sans-serif";
-  ctx.fillText("BARUNA Academy", cx, 780);
-
-  // QR code (right)
+  let templateImg: HTMLImageElement | null = null;
   try {
-    const QRCode = (await import("qrcode")).default;
-    const qrUrl = await QRCode.toDataURL(d.verifyUrl, { margin: 1, width: 240 });
-    const qr = await loadImage(qrUrl);
-    ctx.drawImage(qr, W - 230, 670, 120, 120);
-    ctx.fillStyle = INK;
-    ctx.font = "12px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("Scan to verify", W - 170, 808);
+    templateImg = await loadImage("/template-sttp-sementara.jpeg");
   } catch {
-    /* QR generation is best-effort */
+    try {
+      templateImg = await loadImage("/template sementara.jpeg");
+    } catch {
+      templateImg = null;
+    }
+  }
+
+  const hours = Number(d.learningHours) || 8;
+  const hoursWord = numberToIndonesianWords(hours);
+  const formattedTanggalLahir = formatTanggalIndo(d.tanggalLahir);
+  const instansiText = d.instansi || d.workUnit || "Kementerian Kelautan dan Perikanan";
+
+  if (templateImg) {
+    // 1. Draw base official STTP template
+    ctx.drawImage(templateImg, 0, 0, W, H);
+
+    // 2. White out dynamic regions for clean, crisp re-rendering
+    // 2a. Nomor Surat
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(260, 155, 520, 30);
+
+    // 2b. Photo & Biodata block area
+    ctx.fillRect(45, 252, 820, 185);
+
+    // 2c. Course title & JP sentence area
+    ctx.fillRect(45, 460, 950, 75);
+
+    // 2d. Date above signature
+    ctx.fillRect(720, 542, 280, 24);
+
+    // 2e. QR Code area (bottom left)
+    ctx.fillRect(55, 555, 115, 115);
+
+    // 3. Render Dynamic Content matching template
+    // 3a. Nomor Surat
+    ctx.fillStyle = "#000000";
+    ctx.font = "bold 13px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`Nomor : ${d.certNo}`, W / 2, 175);
+
+    // 3b. Pas Foto (Aspect ratio 3:4, formal red background frame)
+    const photoX = 52;
+    const photoY = 258;
+    const photoW = 142;
+    const photoH = 175;
+
+    ctx.fillStyle = "#d32f2f"; // Official Indonesian red pas foto background
+    ctx.fillRect(photoX, photoY, photoW, photoH);
+
+    if (d.photoUrl) {
+      try {
+        const photoImg = await loadImage(d.photoUrl);
+        ctx.drawImage(photoImg, photoX, photoY, photoW, photoH);
+      } catch {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("PAS FOTO", photoX + photoW / 2, photoY + photoH / 2 - 6);
+        ctx.fillText("RESMI", photoX + photoW / 2, photoY + photoH / 2 + 12);
+      }
+    } else {
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 11px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("PAS FOTO", photoX + photoW / 2, photoY + photoH / 2 - 6);
+      ctx.fillText("RESMI", photoX + photoW / 2, photoY + photoH / 2 + 12);
+    }
+
+    ctx.strokeStyle = "#444444";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(photoX, photoY, photoW, photoH);
+
+    // 3c. Biodata 7 Rows Table
+    const labelX = 235;
+    const colonX = 395;
+    const valueX = 410;
+    const startY = 274;
+    const rowHeight = 23;
+
+    const rows = [
+      { label: "Nama", value: d.name || "-" },
+      { label: "NIP", value: d.nip || "-" },
+      { label: "Tempat Lahir", value: d.tempatLahir || "-" },
+      { label: "Tanggal Lahir", value: formattedTanggalLahir || "-" },
+      { label: "Pangkat/ Gol. Ruang", value: d.pangkatGolongan || "-" },
+      { label: "Jabatan", value: d.jabatan || "-" },
+      { label: "Instansi", value: instansiText || "-" },
+    ];
+
+    ctx.textAlign = "left";
+    rows.forEach((r, idx) => {
+      const y = startY + idx * rowHeight;
+      // Label
+      ctx.fillStyle = "#000000";
+      ctx.font = "13px Arial, sans-serif";
+      ctx.fillText(r.label, labelX, y);
+      // Colon
+      ctx.fillText(":", colonX, y);
+      // Value
+      ctx.font = idx === 0 ? "bold 13.5px Arial, sans-serif" : "13px Arial, sans-serif";
+      ctx.fillText(r.value, valueX, y);
+    });
+
+    // 3d. Course Title (Bold Centered)
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#000000";
+    ctx.font = "bold 16px Arial, sans-serif";
+    ctx.fillText(d.program, W / 2, 480);
+
+    // 3e. JP Sentence
+    ctx.font = "13px Arial, sans-serif";
+    ctx.fillText(
+      `oleh Balai Diklat Aparatur Kementerian Kelautan dan Perikanan metode full e-learning meliputi ${hours} (${hoursWord}) jam pelajaran (JP).`,
+      W / 2,
+      516,
+    );
+
+    // 3f. Date above signature
+    ctx.font = "14px Arial, sans-serif";
+    ctx.fillText(d.dates || formatTodayIndonesian(), 850, 558);
+
+    // 3g. Dynamic Scannable QR Code
+    try {
+      const QRCode = (await import("qrcode")).default;
+      const qrUrl = await QRCode.toDataURL(d.verifyUrl, { margin: 1, width: 200 });
+      const qr = await loadImage(qrUrl);
+      ctx.drawImage(qr, 65, 565, 95, 95);
+    } catch {}
+  } else {
+    // ── Fallback standalone renderer (if image not accessible) ────────────
+    renderStandaloneTemplate(ctx, d, W, H, hours, hoursWord, formattedTanggalLahir, instansiText);
   }
 
   return canvas;
+}
+
+function renderStandaloneTemplate(
+  ctx: CanvasRenderingContext2D,
+  d: CertificateData,
+  W: number,
+  H: number,
+  hours: number,
+  hoursWord: string,
+  formattedTanggalLahir: string,
+  instansiText: string,
+) {
+  // Border
+  ctx.strokeStyle = "#16275f";
+  ctx.lineWidth = 6;
+  ctx.strokeRect(20, 20, W - 40, H - 40);
+  ctx.strokeStyle = "#d4af37";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(28, 28, W - 56, H - 56);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#000000";
+
+  // Header Title
+  ctx.font = "bold 20px Arial, sans-serif";
+  ctx.fillText("SURAT TANDA TAMAT PELATIHAN", W / 2, 120);
+
+  ctx.font = "13px Arial, sans-serif";
+  ctx.fillText(`Nomor : ${d.certNo}`, W / 2, 145);
+
+  // Legal statement
+  ctx.font = "12px Arial, sans-serif";
+  wrapText(
+    ctx,
+    "Pusat Pelatihan dan Penyuluhan Kelautan dan Perikanan berdasarkan Undang-undang Nomor 20 Tahun 2023 tentang Aparatur Sipil Negara, serta ketentuan pelaksanaannya menyatakan bahwa :",
+    W / 2,
+    185,
+    W - 120,
+    18,
+  );
+
+  // Pas foto
+  const photoX = 65;
+  const photoY = 240;
+  const photoW = 135;
+  const photoH = 175;
+  ctx.fillStyle = "#d32f2f";
+  ctx.fillRect(photoX, photoY, photoW, photoH);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 11px Arial, sans-serif";
+  ctx.fillText("PAS FOTO RESMI", photoX + photoW / 2, photoY + photoH / 2);
+  ctx.strokeStyle = "#333333";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(photoX, photoY, photoW, photoH);
+
+  // Biodata Table
+  const labelX = 240;
+  const colonX = 400;
+  const valueX = 415;
+  const startY = 255;
+  const rowHeight = 24;
+
+  const rows = [
+    { label: "Nama", value: d.name || "-" },
+    { label: "NIP", value: d.nip || "-" },
+    { label: "Tempat Lahir", value: d.tempatLahir || "-" },
+    { label: "Tanggal Lahir", value: formattedTanggalLahir || "-" },
+    { label: "Pangkat/ Gol. Ruang", value: d.pangkatGolongan || "-" },
+    { label: "Jabatan", value: d.jabatan || "-" },
+    { label: "Instansi", value: instansiText || "-" },
+  ];
+
+  ctx.textAlign = "left";
+  rows.forEach((r, idx) => {
+    const y = startY + idx * rowHeight;
+    ctx.fillStyle = "#000000";
+    ctx.font = "13px Arial, sans-serif";
+    ctx.fillText(r.label, labelX, y);
+    ctx.fillText(":", colonX, y);
+    ctx.font = idx === 0 ? "bold 13.5px Arial, sans-serif" : "13px Arial, sans-serif";
+    ctx.fillText(r.value, valueX, y);
+  });
+
+  // Completion Text
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#000000";
+  ctx.font = "13px Arial, sans-serif";
+  ctx.fillText("Telah mengikuti pengembangan kompetensi melalui pelatihan :", W / 2, 455);
+
+  ctx.font = "bold 16px Arial, sans-serif";
+  ctx.fillText(d.program, W / 2, 485);
+
+  ctx.font = "13px Arial, sans-serif";
+  ctx.fillText(
+    `oleh Balai Diklat Aparatur Kementerian Kelautan dan Perikanan metode full e-learning meliputi ${hours} (${hoursWord}) jam pelajaran (JP).`,
+    W / 2,
+    515,
+  );
+
+  // Date and Signer
+  ctx.fillText(d.dates || formatTodayIndonesian(), 840, 560);
+  ctx.font = "bold 13px Arial, sans-serif";
+  ctx.fillText("Kepala Pusat Pelatihan Kelautan dan Perikanan", 840, 580);
+  ctx.font = "bold 14px Arial, sans-serif";
+  ctx.fillText(d.signerName || "Lilly Aprilya Pregiwati", 840, 680);
 }
 
 function wrapText(
@@ -184,11 +385,21 @@ function wrapText(
 
 export async function downloadCertificatePdf(d: CertificateData) {
   const canvas = await renderCertificateCanvas(d);
-  const jpeg = canvas.toDataURL("image/jpeg", 0.92);
+  const jpeg = canvas.toDataURL("image/jpeg", 0.95);
   const bytes = dataUrlToBytes(jpeg);
-  // A4 landscape in PDF points.
+  // A4 landscape in PDF points (842 x 595).
   const blob = buildImagePdf(bytes, canvas.width, canvas.height, 842, 595);
-  downloadBlob("baruna-certificate.pdf", blob);
+  const safeFilename = `STTP-${(d.name || "Peserta").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+  downloadBlob(safeFilename, blob);
+}
+
+export async function openCertificatePdf(d: CertificateData) {
+  const canvas = await renderCertificateCanvas(d);
+  const jpeg = canvas.toDataURL("image/jpeg", 0.95);
+  const bytes = dataUrlToBytes(jpeg);
+  const blob = buildImagePdf(bytes, canvas.width, canvas.height, 842, 595);
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
 }
 
 // ── Digital Badge ────────────────────────────────────────────────────────────

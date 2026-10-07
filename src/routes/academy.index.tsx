@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   GraduationCap,
   BookOpen,
@@ -8,6 +11,7 @@ import {
   ArrowRight,
   Clock,
   BarChart3,
+  UserCheck,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { Banner } from "@/components/baruna/page/Banner";
@@ -23,6 +27,8 @@ import defaultCover from "@/assets/self-paced/m01.jpg";
 import { useLanguage } from "@/lib/i18n";
 import { shortCourseProgress, useShortCourses } from "@/lib/shortCourses";
 import { useHomeExperience } from "@/components/baruna/home-experience";
+import { supabase } from "@/integrations/supabase/client";
+import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
 
 export const Route = createFileRoute("/academy/")({
   loader: async () => {
@@ -156,6 +162,24 @@ function AcademyOverview() {
   const { authState } = useHomeExperience();
   const { enrollments } = useShortCourses();
 
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setAuthUserId(data.user?.id || null);
+    });
+  }, []);
+
+  const getBiodataFn = useServerFn(getMyParticipantBiodata);
+  const { data: biodataResult } = useQuery({
+    queryKey: ["participant-biodata", authUserId],
+    queryFn: () => getBiodataFn(),
+    enabled: Boolean(authUserId),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const isParticipantRegistered = Boolean(biodataResult?.isRegistered);
+
   const dynamicFeatured: Program[] = (dbModules ?? []).map((m) => ({
     badge: "SELF-PACED",
     title: m.title,
@@ -214,23 +238,39 @@ function AcademyOverview() {
                 <CircularProgress value={hasJourney ? journeyProgress : 0} />
                 <div className="text-xs text-navy-foreground/85">
                   <p className="font-semibold text-navy-foreground">
-                    {hasJourney ? "Keep going!" : "Start your learning journey"}
+                    {!isParticipantRegistered && isAuthenticated
+                      ? "Daftar Peserta"
+                      : hasJourney
+                        ? "Keep going!"
+                        : "Start your learning journey"}
                   </p>
                   <p className="mt-1">
-                    {hasJourney
-                      ? `You've completed ${completedActivities} of ${totalActivities} learning activities.`
-                      : isAuthenticated
-                        ? "Explore the catalog and enroll in your first module."
-                        : "Sign in to track your enrolled modules and progress."}
+                    {!isParticipantRegistered && isAuthenticated
+                      ? "Lengkapi Biodata Peserta resmi untuk mengakses pelatihan dan sertifikat."
+                      : hasJourney
+                        ? `You've completed ${completedActivities} of ${totalActivities} learning activities.`
+                        : isAuthenticated
+                          ? "Explore the catalog and enroll in your first module."
+                          : "Sign in to track your enrolled modules and progress."}
                   </p>
                 </div>
               </div>
-              <Link
-                to="/academy/learn"
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-navy-foreground/10 py-2.5 text-sm font-semibold transition-colors hover:bg-navy-foreground/20"
-              >
-                {t("sidebar.myLearning")} <ArrowRight className="h-4 w-4" />
-              </Link>
+              {isParticipantRegistered ? (
+                <Link
+                  to="/academy/learn"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-navy-foreground/10 py-2.5 text-sm font-semibold transition-colors hover:bg-navy-foreground/20"
+                >
+                  {t("sidebar.myLearning")} <ArrowRight className="h-4 w-4" />
+                </Link>
+              ) : (
+                <Link
+                  to={isAuthenticated ? "/academy/daftar-peserta" : "/auth"}
+                  search={isAuthenticated ? undefined : { redirect: "/academy/daftar-peserta" }}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-marine/90"
+                >
+                  Daftar Peserta <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
             </div>
           }
         />
