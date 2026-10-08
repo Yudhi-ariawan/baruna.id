@@ -30,8 +30,17 @@ export function academyCategorySlugs(module: PublishedCatalogModule): string[] {
     .join(" ")
     .toLowerCase();
 
-  return CATEGORY_RULES
+  const matches = CATEGORY_RULES
     .filter(({ terms }) => terms.some((term) => searchable.includes(term)))
     .map(({ slug }) => slug);
-}
 
+  // Processing modules often mention a farmed species (for example catfish or
+  // tilapia), but their learning outcome belongs to post-harvest/value addition,
+  // not cultivation. Keep that explicit taxonomy from being diluted by species
+  // keywords in the Aquaculture rule.
+  if (matches.includes("fish-processing-and-value-addition")) {
+    return ["fish-processing-and-value-addition"];
+  }
+
+  return matches;
+}
