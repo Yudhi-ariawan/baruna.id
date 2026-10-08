@@ -5,7 +5,6 @@ import {
   MapPin,
   Target,
   Globe,
-  Star,
   LayoutGrid,
   List,
   ChevronLeft,
@@ -26,13 +25,22 @@ import {
   AsidePanel,
 } from "@/components/baruna/academy/ui";
 import { Tag } from "@/components/baruna/page/primitives";
-import { categories, categoryBySlug, type AcademyCategory, type CourseCard } from "@/data/categories";
+import { categories, categoryBySlug, type AcademyCategory } from "@/data/categories";
+import { getPublishedModulesCatalog, type PublishedCatalogModule } from "@/lib/learning/learning.functions";
+import { academyCategorySlugs } from "@/lib/academy/module-categories";
+import defaultCover from "@/assets/self-paced/m01.jpg";
 
 export const Route = createFileRoute("/academy/category/$slug")({
-  loader: ({ params }) => {
-    const category = categoryBySlug[params.slug];
+  loader: async ({ params }) => {
+    const normalizedSlug = params.slug === "fish-processing-value-addition"
+      ? "fish-processing-and-value-addition"
+      : params.slug;
+    const category = categoryBySlug[normalizedSlug];
     if (!category) throw notFound();
-    return { category };
+    const modules = (await getPublishedModulesCatalog()).filter((module) =>
+      academyCategorySlugs(module).includes(normalizedSlug),
+    );
+    return { category, modules };
   },
   head: ({ loaderData }) => {
     const c = loaderData?.category;
@@ -72,13 +80,14 @@ export const Route = createFileRoute("/academy/category/$slug")({
 
 /* ---------------- Stat cards ---------------- */
 
-function StatCards({ category }: { category: AcademyCategory }) {
+function StatCards({ modules }: { modules: PublishedCatalogModule[] }) {
+  const instructors = new Set(modules.map((module) => module.authorName).filter(Boolean)).size;
   const items = [
-    { icon: GraduationCap, value: String(category.stats.courses), label: "Courses", active: true },
-    { icon: Users, value: String(category.stats.pathways), label: "Learning Pathways" },
-    { icon: MapPin, value: String(category.stats.instructors), label: "Instructors" },
-    { icon: Target, value: category.stats.learners, label: "Learners" },
-    { icon: Globe, value: String(category.stats.countries), label: "Countries" },
+    { icon: GraduationCap, value: String(modules.length), label: "Published Courses", active: true },
+    { icon: Users, value: String(instructors), label: "Verified Instructors" },
+    { icon: MapPin, value: "Online", label: "Availability" },
+    { icon: Target, value: "Self-Paced", label: "Learning Format" },
+    { icon: Globe, value: "BARUNA", label: "Platform" },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -141,12 +150,16 @@ function CategoryTabs() {
 
 /* ---------------- Course card ---------------- */
 
-function CourseGridCard({ course }: { course: CourseCard }) {
+function CourseGridCard({ course }: { course: PublishedCatalogModule }) {
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
+    <Link
+      to="/academy/self-paced/$code"
+      params={{ code: course.id }}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover"
+    >
       <div className="relative h-36 overflow-hidden">
         <img
-          src={course.image}
+          src={course.coverUrl || defaultCover}
           alt={course.title}
           loading="lazy"
           width={768}
@@ -154,24 +167,23 @@ function CourseGridCard({ course }: { course: CourseCard }) {
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         <span className="absolute left-2.5 top-2.5">
-          <StatusBadge label={course.badge} />
+          <StatusBadge label="AVAILABLE ONLINE" />
         </span>
       </div>
       <div className="flex flex-1 flex-col p-4">
         <h3 className="line-clamp-2 min-h-[2.75rem] font-display text-[0.95rem] font-bold leading-snug text-navy">
           {course.title}
         </h3>
-        <p className="mt-2 text-[0.7rem] font-medium text-muted-foreground">{course.meta}</p>
+        <p className="mt-2 line-clamp-1 text-[0.7rem] font-semibold text-marine">{course.authorName}</p>
+        <p className="mt-1 text-[0.7rem] font-medium text-muted-foreground">
+          {course.estimated_learning_hours} Learning Hours · {course.language}
+        </p>
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-          <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
-            <Star className="h-3.5 w-3.5 fill-star text-star" />
-            {course.rating}{" "}
-            <span className="font-normal text-muted-foreground">({course.reviews})</span>
-          </span>
-          <span className="text-[0.7rem] text-muted-foreground">{course.learners}</span>
+          <span className="text-xs font-semibold text-foreground">Self-Paced Course</span>
+          <span className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-marine">View <ArrowRight className="h-3.5 w-3.5" /></span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
@@ -203,7 +215,10 @@ function Pagination() {
 }
 
 function CategoryPage() {
-  const { category } = Route.useLoaderData() as { category: AcademyCategory };
+  const { category, modules } = Route.useLoaderData() as { category: AcademyCategory; modules: PublishedCatalogModule[] };
+  const instructors = Array.from(
+    new Map(modules.map((module) => [module.authorName, module])).values(),
+  );
 
   return (
     <AcademyShell
@@ -232,22 +247,14 @@ function CategoryPage() {
             <ApplyButton />
           </FilterPanel>
 
-          <AsidePanel title="Top Instructors" action="View all">
+          <AsidePanel title="Verified Instructors" action="View all">
             <ul className="space-y-4">
-              {category.instructors.map((ins) => (
-                <li key={ins.name} className="flex items-start gap-3">
-                  <img
-                    src={ins.avatar}
-                    alt={ins.name}
-                    loading="lazy"
-                    width={40}
-                    height={40}
-                    className="h-10 w-10 shrink-0 rounded-full object-cover"
-                  />
+              {instructors.map((module) => (
+                <li key={module.authorName} className="flex items-start gap-3">
+                  {module.authorAvatar ? <img src={module.authorAvatar} alt={module.authorName} loading="lazy" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-marine/10 text-sm font-bold text-marine">{module.authorName.charAt(0)}</span>}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold leading-tight text-navy">{ins.name}</p>
-                    <p className="text-xs text-muted-foreground">{ins.role}</p>
-                    <p className="mt-0.5 text-[0.7rem] text-muted-foreground">{ins.meta}</p>
+                    <p className="text-sm font-bold leading-tight text-navy">{module.authorName}</p>
+                    <p className="text-xs text-muted-foreground">Verified BARUNA Instructor</p>
                   </div>
                 </li>
               ))}
@@ -296,13 +303,13 @@ function CategoryPage() {
           searchPlaceholder="Search courses, topics, or instructors..."
         />
 
-        <StatCards category={category} />
+        <StatCards modules={modules} />
 
         <CategoryTabs />
 
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            Showing 1–{Math.min(12, category.stats.courses)} of {category.stats.courses} courses
+            Showing {modules.length} published {modules.length === 1 ? "course" : "courses"}
           </p>
           <div className="flex items-center gap-2">
             <span className="hidden text-xs text-muted-foreground sm:inline">View as:</span>
@@ -316,12 +323,20 @@ function CategoryPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {category.courses.map((course) => (
-            <CourseGridCard key={course.title} course={course} />
+          {modules.map((course) => (
+            <CourseGridCard key={course.id} course={course} />
           ))}
         </div>
 
-        <Pagination />
+        {modules.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center shadow-soft">
+            <GraduationCap className="mx-auto h-10 w-10 text-marine/60" />
+            <h2 className="mt-3 font-display text-lg font-bold text-navy">No published courses in this category yet</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Approved public courses will appear here after their category metadata has been verified.</p>
+          </div>
+        )}
+
+        {modules.length > 12 && <Pagination />}
       </div>
     </AcademyShell>
   );

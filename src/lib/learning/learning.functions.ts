@@ -733,6 +733,8 @@ export type PublishedCatalogModule = {
   authorAvatar: string | null;
   authorSlug: string | null;
   coverUrl: string | null;
+  topic: string;
+  competency: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata: Record<string, any>;
 };
@@ -743,8 +745,9 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: dbMods, error } = await supabaseAdmin
         .from("module_registry")
-        .select("id, title, summary, language, estimated_learning_hours, created_at, author_expert_id, metadata, current_status")
+        .select("id, title, summary, language, estimated_learning_hours, created_at, author_expert_id, metadata, content_outline, current_status, visibility")
         .eq("current_status", "published")
+        .eq("visibility", "public")
         .order("created_at", { ascending: false });
 
       if (error || !dbMods || dbMods.length === 0) return [];
@@ -780,6 +783,7 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
         dbMods.map(async (m) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const meta = ((m.metadata as Record<string, any>) || {}) as Record<string, any>;
+          const outline = ((m.content_outline as Record<string, any>) || {}) as Record<string, any>;
           let coverUrl: string | null = null;
 
           // 1. Direct cover_image_url
@@ -838,6 +842,8 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
             authorAvatar: exp?.avatarUrl || null,
             authorSlug: exp?.slug || null,
             coverUrl,
+            topic: typeof outline.topic === "string" ? outline.topic : "",
+            competency: typeof outline.competency === "string" ? outline.competency : "",
             metadata: meta,
           };
         })
@@ -849,6 +855,5 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
       return [];
     }
   });
-
 
 
