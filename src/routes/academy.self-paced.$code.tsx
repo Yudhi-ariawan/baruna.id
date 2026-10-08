@@ -42,6 +42,7 @@ import {
   type PublishedModuleDetail,
 } from "@/lib/learning/learning.functions";
 import { CourseEnrollmentAction } from "@/components/baruna/academy/CourseEnrollmentAction";
+import { useLanguage } from "@/lib/i18n";
 
 type LoaderData =
   | { kind: "master"; master: NonNullable<ReturnType<typeof lookupMaster>>; lms: LmsModule | undefined }
@@ -149,6 +150,7 @@ function SelfPacedDetail() {
 
 // ─── 1. OVERVIEW MODUL DINAMIS (DARI EXPERT REGISTRY) ─────────────────────────
 function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
+  const { isId } = useLanguage();
   const navigate = useNavigate();
   const { get, isCompleted } = useShortCourses();
   const enrollment = get(module.id);
@@ -214,31 +216,31 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
           </span>
           {done ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="h-3 w-3" /> Selesai 100%
+              <CheckCircle2 className="h-3 w-3" /> {isId ? "Selesai 100%" : "100% Completed"}
             </span>
           ) : enrollment ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-marine/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine">
-              <Sparkles className="h-3 w-3" /> Aktif Belajar
+              <Sparkles className="h-3 w-3" /> {isId ? "Aktif Belajar" : "Learning in Progress"}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-eco-community">
-              Tersedia Online
+              {isId ? "Tersedia Online" : "Available Online"}
             </span>
           )}
         </div>
 
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
+        <h3 className="mt-3 font-display text-base font-bold text-navy">{isId ? "Informasi Modul" : "Module Information"}</h3>
         <ul className="mt-3 space-y-2 text-xs">
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Durasi Belajar</span>
-            <span className="font-semibold text-navy">{module.hours} Jam Belajar (JP)</span>
+            <span className="text-muted-foreground">{isId ? "Durasi Belajar" : "Learning Duration"}</span>
+            <span className="font-semibold text-navy">{isId ? `${module.hours} Jam Belajar (JP)` : `${module.hours} Learning Hours`}</span>
           </li>
           <li className="flex items-center justify-between">
             <span className="text-muted-foreground">Format</span>
-            <span className="font-semibold text-navy">Self-Paced (Mandiri Online)</span>
+            <span className="font-semibold text-navy">{isId ? "Self-Paced (Mandiri Online)" : "Self-Paced (Online)"}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Bahasa Pengantar</span>
+            <span className="text-muted-foreground">{isId ? "Bahasa Pengantar" : "Language of Instruction"}</span>
             <span className="font-semibold text-navy">{module.language}</span>
           </li>
           <li className="flex items-center justify-between">
@@ -246,7 +248,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             <span className="font-semibold text-navy">{module.passingScore}%</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Sertifikat</span>
+            <span className="text-muted-foreground">{isId ? "Sertifikat" : "Certificate"}</span>
             <span className="font-semibold text-navy">Certificate of Completion</span>
           </li>
         </ul>
@@ -268,7 +270,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             to="/academy/learn"
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted transition"
           >
-            ← Buka Dashboard My Learning
+            ← {isId ? "Buka Dashboard My Learning" : "Open My Learning Dashboard"}
           </Link>
         </div>
       </div>
@@ -276,7 +278,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
       {/* Trainer Card */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <span className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-          Instruktur Modul
+          {isId ? "Instruktur Modul" : "Course Instructor"}
         </span>
         <div className="mt-3 flex items-start gap-3">
           {module.trainer.avatarUrl ? (
@@ -313,7 +315,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
               params={{ slug: module.trainer.slug }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-marine hover:underline"
             >
-              Lihat Profil Lengkap <ExternalLink className="h-3 w-3" />
+              {isId ? "Lihat Profil Lengkap" : "View Full Profile"} <ExternalLink className="h-3 w-3" />
             </Link>
           </div>
         )}
@@ -329,7 +331,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Program &amp; Modul</Link>
+          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">{isId ? "Program & Modul" : "Programs & Modules"}</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy truncate max-w-xs">{module.title}</span>
         </nav>
@@ -356,11 +358,11 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             </span>
             {done ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-success">
-                <CheckCircle2 className="h-3 w-3" /> Selesai
+                <CheckCircle2 className="h-3 w-3" /> {isId ? "Selesai" : "Completed"}
               </span>
             ) : enrollment ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-blue-700">
-                <Clock className="h-3 w-3" /> Terdaftar
+                <Clock className="h-3 w-3" /> {isId ? "Terdaftar" : "Enrolled"}
               </span>
             ) : null}
           </div>
@@ -375,7 +377,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
 
           <div className="mt-5 flex flex-wrap gap-2.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
-              <Clock className="h-3.5 w-3.5 text-marine" /> {module.hours} Jam Belajar
+              <Clock className="h-3.5 w-3.5 text-marine" /> {isId ? `${module.hours} Jam Belajar` : `${module.hours} Learning Hours`}
             </span>
             {module.topic && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground/80">
@@ -393,7 +395,9 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
           {/* Action Button Banner inside hero */}
           <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              Akses seluruh materi video, handbook modul, slide tayang, dan kuis kelulusan resmi.
+              {isId
+                ? "Akses seluruh materi video, handbook modul, slide tayang, dan kuis kelulusan resmi."
+                : "Access all video materials, module handbooks, lecture slides, and official completion quizzes."}
             </div>
 
             <CourseEnrollmentAction
@@ -503,6 +507,7 @@ function MasterModuleOverview({
   master: NonNullable<ReturnType<typeof lookupMaster>>;
   lms: LmsModule | undefined;
 }) {
+  const { isId } = useLanguage();
   const navigate = useNavigate();
   const { get, isCompleted } = useShortCourses();
   const enrollment = get(master.code);
@@ -562,11 +567,11 @@ function MasterModuleOverview({
           </span>
           {done ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="h-3 w-3" /> Selesai 100%
+              <CheckCircle2 className="h-3 w-3" /> {isId ? "Selesai 100%" : "100% Completed"}
             </span>
           ) : enrollment ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-marine/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine">
-              <Sparkles className="h-3 w-3" /> Aktif Belajar
+              <Sparkles className="h-3 w-3" /> {isId ? "Aktif Belajar" : "Learning in Progress"}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-eco-community/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-eco-community">
@@ -575,22 +580,22 @@ function MasterModuleOverview({
           )}
         </div>
 
-        <h3 className="mt-3 font-display text-base font-bold text-navy">Informasi Modul</h3>
+        <h3 className="mt-3 font-display text-base font-bold text-navy">{isId ? "Informasi Modul" : "Module Information"}</h3>
         <ul className="mt-3 space-y-2 text-xs">
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Durasi</span>
-            <span className="font-semibold text-navy">{master.hours}h ({master.jp} JP)</span>
+            <span className="text-muted-foreground">{isId ? "Durasi Belajar" : "Learning Duration"}</span>
+            <span className="font-semibold text-navy">{isId ? `${master.hours} Jam Belajar (${master.jp} JP)` : `${master.hours} Learning Hours`}</span>
           </li>
           <li className="flex items-center justify-between">
             <span className="text-muted-foreground">Level</span>
             <span className="font-semibold text-navy">{master.level}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Instruktur</span>
+            <span className="text-muted-foreground">{isId ? "Instruktur" : "Instructor"}</span>
             <span className="font-semibold text-navy">{instructor?.name ?? master.instructorSlug}</span>
           </li>
           <li className="flex items-center justify-between">
-            <span className="text-muted-foreground">Sertifikat</span>
+            <span className="text-muted-foreground">{isId ? "Sertifikat" : "Certificate"}</span>
             <span className="font-semibold text-navy">Certificate of Completion</span>
           </li>
         </ul>
@@ -611,7 +616,7 @@ function MasterModuleOverview({
             to="/academy/learn"
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 py-2 text-xs font-semibold text-foreground/80 hover:bg-muted transition"
           >
-            ← Buka Dashboard My Learning
+            ← {isId ? "Buka Dashboard My Learning" : "Open My Learning Dashboard"}
           </Link>
         </div>
       </div>
@@ -625,7 +630,7 @@ function MasterModuleOverview({
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">Program &amp; Modul</Link>
+          <Link to="/academy/programs" className="font-medium text-foreground/70 hover:text-marine">{isId ? "Program & Modul" : "Programs & Modules"}</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy">{master.code} · {master.title}</span>
         </nav>
@@ -640,7 +645,7 @@ function MasterModuleOverview({
             </span>
             {done && (
               <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-success">
-                <CheckCircle2 className="h-3 w-3" /> Selesai
+                <CheckCircle2 className="h-3 w-3" /> {isId ? "Selesai" : "Completed"}
               </span>
             )}
           </div>
@@ -648,7 +653,7 @@ function MasterModuleOverview({
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{master.summary}</p>
           <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1">
-              <Clock className="h-3.5 w-3.5" /> {master.hours}h · {master.jp} JP
+              <Clock className="h-3.5 w-3.5" /> {isId ? `${master.hours} Jam Belajar · ${master.jp} JP` : `${master.hours} Learning Hours`}
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1">
               <Layers className="h-3.5 w-3.5" /> {master.subCategory}
@@ -660,7 +665,9 @@ function MasterModuleOverview({
 
           <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
-              Akses modul kurikulum master, handbook pembelajaran, dan evaluasi kelulusan resmi.
+              {isId
+                ? "Akses modul kurikulum master, handbook pembelajaran, dan evaluasi kelulusan resmi."
+                : "Access the master curriculum module, learning handbook, and official completion assessment."}
             </span>
 
             <CourseEnrollmentAction
