@@ -60,3 +60,4 @@ Semua potensi celah galat (*bugs*), kegagalan kompilasi, *runtime crash*, maupun
    Mentor dapat mengeksekusi file SQL migrasi di menu Supabase SQL Editor:
    `supabase/migrations/20261007100000_participant_biodata.sql`
    agar tabel fisik terindeks secara optimal di PostgreSQL.
+

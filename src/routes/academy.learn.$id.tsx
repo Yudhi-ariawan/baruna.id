@@ -95,7 +95,7 @@ import {
   type DocumentMeta,
 } from "@/lib/application";
 import { masterByCode, codeForLmsId, type MasterModule } from "@/data/masterModules";
-import { completeShortCourse } from "@/lib/shortCourses";
+import { completeShortCourse, useShortCourses } from "@/lib/shortCourses";
 import {
   getPublishedModuleDetail,
   type PublishedModuleDetail,
@@ -234,12 +234,28 @@ function LearningDashboard() {
     staleTime: 1000 * 60 * 2,
   });
 
-  // Access allowed if in demo mode, demo course, or status is approved
+  const { get: getShortCourse } = useShortCourses();
+  const localShortCourse = getShortCourse(courseId);
+  const lmsId = loaderData.kind === "master" ? loaderData.lms?.id : undefined;
+  const localByLms = lmsId ? getShortCourse(lmsId) : undefined;
+  const isEnrolledLocally = Boolean(localShortCourse || localByLms);
+
+  const fullApp = useApplication(courseId);
+  const isAppAccepted = Boolean(fullApp && fullApp.status === "Accepted");
+
+  // Access allowed if:
+  // 1. in demo mode or demo course
+  // 2. user already enrolled or actively learning in Short Courses (existing enrollment)
+  // 3. user accepted in Full Training Cohort application
+  // 4. server enrollment application status is approved
   const isApproved =
     demo ||
     courseId === "demo" ||
     courseId === "africa-fisheries-2026" ||
-    enrollmentStatus?.status === "approved";
+    isEnrolledLocally ||
+    isAppAccepted ||
+    enrollmentStatus?.status === "approved" ||
+    enrollmentStatus?.isEnrolled === true;
 
   // Access gate for unapproved participants
   if (authChecked && userId && !statusLoading && !isApproved) {
