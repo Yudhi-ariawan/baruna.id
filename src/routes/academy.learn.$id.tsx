@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,6 +208,7 @@ const welcomeIcons: Record<string, LucideIcon> = {
 
 function LearningDashboard() {
   const loaderData = Route.useLoaderData();
+  const navigate = useNavigate();
   const [demo] = useDemoMode();
   const [userId, setUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -248,55 +249,45 @@ function LearningDashboard() {
   // 2. user already enrolled or actively learning in Short Courses (existing enrollment)
   // 3. user accepted in Full Training Cohort application
   // 4. server enrollment application status is approved
+  const hasApprovedEnrollment =
+    enrollmentStatus?.status === "approved" || enrollmentStatus?.isEnrolled === true;
+  const hasParticipantAccess = enrollmentStatus?.hasParticipantRole === true;
   const isApproved =
-    demo ||
-    courseId === "demo" ||
-    courseId === "africa-fisheries-2026" ||
-    isEnrolledLocally ||
-    isAppAccepted ||
-    enrollmentStatus?.status === "approved" ||
-    enrollmentStatus?.isEnrolled === true;
+    hasParticipantAccess &&
+    (demo ||
+      courseId === "demo" ||
+      courseId === "africa-fisheries-2026" ||
+      isEnrolledLocally ||
+      isAppAccepted ||
+      hasApprovedEnrollment);
 
-  // Access gate for unapproved participants
-  if (authChecked && userId && !statusLoading && !isApproved) {
+  const accessCheckPending = !authChecked || Boolean(userId && statusLoading);
+  const accessDenied = authChecked && (!userId || (!statusLoading && !isApproved));
+
+  useEffect(() => {
+    if (!accessDenied) return;
+    void navigate({
+      to: "/academy/self-paced/$code",
+      params: { code: courseId },
+      replace: true,
+    });
+  }, [accessDenied, courseId, navigate]);
+
+  // Never render learning content while authentication/enrollment is unresolved,
+  // or during the redirect back to the official enrollment page.
+  if (accessCheckPending || accessDenied) {
     return (
-      <AcademyShell active="my-learning">
-        <div className="mx-auto max-w-lg rounded-2xl border border-border bg-card p-8 text-center shadow-soft space-y-4 my-8">
+      <AcademyShell active="self-paced">
+        <div className="mx-auto my-8 max-w-lg rounded-2xl border border-border bg-card p-8 text-center shadow-soft">
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-100 text-amber-700 shadow-xs">
             <Lock className="h-7 w-7" />
           </span>
-
-          <h2 className="font-display text-2xl font-bold text-navy">
-            {enrollmentStatus?.status === "pending"
-              ? "Menunggu Persetujuan Admin"
-              : enrollmentStatus?.status === "rejected"
-                ? "Pendaftaran Belum Disetujui"
-                : "Akses Ruang Belajar Terkunci"}
+          <h2 className="mt-4 font-display text-xl font-bold text-navy">
+            {accessCheckPending ? "Memeriksa Akses Ruang Belajar" : "Mengalihkan ke Halaman Pendaftaran"}
           </h2>
-
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {enrollmentStatus?.status === "pending"
-              ? "Permohonan kepesertaan Anda untuk materi ini sedang ditinjau oleh Administrator (SOP PB-ACA-03). Ruang belajar akan otomatis aktif setelah disetujui."
-              : enrollmentStatus?.status === "rejected"
-                ? `Pendaftaran Anda belum disetujui: ${enrollmentStatus.decisionNotes || "Silakan hubungi administrator atau ajukan ulang."}`
-                : "Anda belum terdaftar secara resmi pada modul ini. Silakan ajukan pendaftaran kepesertaan terlebih dahulu di halaman detail modul."}
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            Ruang belajar hanya tersedia bagi peserta yang telah disetujui. Anda akan diarahkan ke halaman detail pelatihan.
           </p>
-
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
-            <Link
-              to="/academy/self-paced/$code"
-              params={{ code: courseId }}
-              className="w-full sm:w-auto rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
-            >
-              Buka Halaman Detail Modul →
-            </Link>
-            <Link
-              to="/academy/programs"
-              className="w-full sm:w-auto rounded-xl border border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition"
-            >
-              Katalog Pelatihan
-            </Link>
-          </div>
         </div>
       </AcademyShell>
     );

@@ -6,6 +6,7 @@ export type CourseEnrollmentStatus = "none" | "pending" | "approved" | "rejected
 
 export type MyCourseEnrollmentDetail = {
   isEnrolled: boolean;
+  hasParticipantRole: boolean;
   status: CourseEnrollmentStatus;
   appliedAt?: string | null;
   decisionAt?: string | null;
@@ -26,6 +27,30 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<MyCourseEnrollmentDetail> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    let hasParticipantRole = false;
+    try {
+      const now = new Date().toISOString();
+      const { data: assignments } = await (supabaseAdmin as any)
+        .from("rbac_user_roles")
+        .select("rbac_roles!inner(code)")
+        .eq("user_id", context.userId)
+        .eq("status", "active")
+        .lte("valid_from", now)
+        .or(`valid_until.is.null,valid_until.gt.${now}`)
+        .eq("rbac_roles.code", "participant")
+        .limit(1);
+      hasParticipantRole = Boolean(assignments?.length);
+    } catch {
+      // Auth metadata remains a compatibility fallback for older approved users.
+      try {
+        const { data: userIdent } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+        const meta = (userIdent?.user?.user_metadata as Record<string, any>) || {};
+        hasParticipantRole =
+          meta.role === "participant" ||
+          (Array.isArray(meta.roles) && meta.roles.includes("participant"));
+      } catch {}
+    }
+
     // 1. Try querying primary table: course_enrollment_applications
     try {
       const { data: record, error } = await (supabaseAdmin as any)
@@ -39,6 +64,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
         const status = (record.status as CourseEnrollmentStatus) || "pending";
         return {
           isEnrolled: status === "approved",
+          hasParticipantRole,
           status,
           appliedAt: record.created_at,
           decisionAt: record.decision_at,
@@ -68,6 +94,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
         const status = (payload.status as CourseEnrollmentStatus) || "pending";
         return {
           isEnrolled: status === "approved",
+          hasParticipantRole,
           status,
           appliedAt: lastLog.created_at,
           decisionAt: payload.decision_at || null,
@@ -91,6 +118,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
         const status = (enrollmentInfo?.status as CourseEnrollmentStatus) || (isApprovedInList ? "approved" : "pending");
         return {
           isEnrolled: status === "approved",
+          hasParticipantRole,
           status,
           appliedAt: enrollmentInfo?.applied_at || null,
           decisionAt: enrollmentInfo?.approved_at || enrollmentInfo?.rejected_at || null,
@@ -102,6 +130,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
 
     return {
       isEnrolled: false,
+      hasParticipantRole,
       status: "none",
     };
   });
@@ -207,4 +236,3 @@ export const submitCourseEnrollmentApplication = createServerFn({ method: "POST"
       message: "Pendaftaran pelatihan berhasil diajukan dan sedang menunggu persetujuan tim Administrator.",
     };
   });
-

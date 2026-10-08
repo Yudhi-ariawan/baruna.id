@@ -83,12 +83,12 @@ export function AccessNotificationModal({
 
         <div className="flex flex-col gap-2 border-t border-border bg-muted/40 p-4 sm:flex-row sm:flex-wrap">
           <Link
-            to="/academy/learn/$id"
-            params={{ id: learningId }}
+            to="/academy/self-paced/$code"
+            params={{ code: master?.code ?? learningId }}
             onClick={onClose}
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-marine px-4 py-2.5 text-sm font-semibold text-marine-foreground hover:bg-marine/90"
           >
-            <GraduationCap className="h-4 w-4" /> Join the Self-Paced Course
+            <GraduationCap className="h-4 w-4" /> Buka Program di Academy
           </Link>
           {master && (
               <Link
