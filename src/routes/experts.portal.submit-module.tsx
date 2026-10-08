@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -169,6 +169,7 @@ function SubmitModulePage() {
   const [submitted, setSubmitted] = useState(false);
   const [savedAsDraft, setSavedAsDraft] = useState(false);
   const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState<Record<number, boolean>>({});
@@ -310,6 +311,7 @@ function SubmitModulePage() {
   // Handle Save (Draft or Submit)
   const handleSave = async (submitIntent: boolean) => {
     if (!gate.allowed) return;
+    if (saveLock.current) return;
     if (submitIntent && (!isStep1Valid || !isStep2Valid || !allDecls)) {
       if (!isQuizValid) {
         setError(
@@ -327,6 +329,7 @@ function SubmitModulePage() {
       return;
     }
 
+    saveLock.current = true;
     setSaving(true);
     setError(null);
 
@@ -536,6 +539,7 @@ function SubmitModulePage() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save module.");
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   };

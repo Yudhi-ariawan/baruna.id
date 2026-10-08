@@ -231,6 +231,28 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
       draftId = created.data as string;
     }
 
+    // A browser retry or fast double-click may replay the request after the
+    // first call has already submitted this exact draft. Treat that replay as
+    // success without reopening (or mutating) the immutable submitted draft.
+    const { data: existingDraft, error: existingDraftError } = await context.supabase
+      .from("review_drafts")
+      .select("status, linked_subject_id")
+      .eq("id", draftId)
+      .maybeSingle();
+    if (existingDraftError) throw new Error(existingDraftError.message);
+    if (
+      data.submit &&
+      existingDraft?.status === "submitted" &&
+      existingDraft.linked_subject_id
+    ) {
+      return {
+        draftId,
+        subjectId: existingDraft.linked_subject_id,
+        status: "submitted",
+        alreadySubmitted: true,
+      };
+    }
+
     const updated = await context.supabase.rpc("module_draft_update", {
       _draft_id: draftId,
       _patch: data.payload as Json,
@@ -240,8 +262,26 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
     if (!data.submit) return { draftId, subjectId: null, status: "draft" };
 
     const submitted = await context.supabase.rpc("module_draft_submit", { _draft_id: draftId });
-    if (submitted.error) throw new Error(submitted.error.message);
-    const subjectId = submitted.data as string;
+    let subjectId = submitted.data as string | null;
+    if (submitted.error) {
+      // Close the small race between the status check above and concurrent
+      // submission: resolve the canonical linked subject and return success.
+      if (submitted.error.message.includes("draft_not_editable")) {
+        const { data: submittedDraft } = await context.supabase
+          .from("review_drafts")
+          .select("status, linked_subject_id")
+          .eq("id", draftId)
+          .maybeSingle();
+        if (submittedDraft?.status === "submitted" && submittedDraft.linked_subject_id) {
+          subjectId = submittedDraft.linked_subject_id;
+        } else {
+          throw new Error(submitted.error.message);
+        }
+      } else {
+        throw new Error(submitted.error.message);
+      }
+    }
+    if (!subjectId) throw new Error("module_submission_subject_missing");
 
     // Update review_subjects metadata to track resubmitted status and timestamp
     try {
@@ -269,5 +309,5 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
       // Non-critical metadata update failure
     }
 
-    return { draftId, subjectId, status: "submitted" };
+    return { draftId, subjectId, status: "submitted", alreadySubmitted: false };
   });
