@@ -12,6 +12,21 @@ export type AccountProfile = {
   bio?: string | null;
   roles?: string[];
   createdAt?: string | null;
+  // Participant biodata fields
+  nip?: string | null;
+  tempatLahir?: string | null;
+  tanggalLahir?: string | null;
+  jenisKelamin?: string | null;
+  agama?: string | null;
+  pangkatGolongan?: string | null;
+  pendidikanTerakhir?: string | null;
+  unitEselon1?: string | null;
+  instansiUnitKerja?: string | null;
+  alamatKantor?: string | null;
+  provinsi?: string | null;
+  kabupatenKota?: string | null;
+  fotoUrl?: string | null;
+  isParticipantRegistered?: boolean;
 };
 
 export const AVATAR_BUCKET = "avatars";

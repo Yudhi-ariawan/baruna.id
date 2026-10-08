@@ -36,6 +36,7 @@ import { Route as AcademyIndexRouteImport } from './routes/academy.index'
 import { Route as AcademyAlumniNetworkRouteImport } from './routes/academy.alumni-network'
 import { Route as AcademyArchiveRouteImport } from './routes/academy.archive'
 import { Route as AcademyCertificationRouteImport } from './routes/academy.certification'
+import { Route as AcademyDaftarPesertaRouteImport } from './routes/academy.daftar-peserta'
 import { Route as AcademyEdition2024RouteImport } from './routes/academy.edition-2024'
 import { Route as AcademyLearnRouteImport } from './routes/academy.learn'
 import { Route as AcademyProgramsRouteImport } from './routes/academy.programs'
@@ -263,6 +264,11 @@ const AcademyArchiveRoute = AcademyArchiveRouteImport.update({
 const AcademyCertificationRoute = AcademyCertificationRouteImport.update({
   id: '/certification',
   path: '/certification',
+  getParentRoute: () => AcademyRoute,
+} as any)
+const AcademyDaftarPesertaRoute = AcademyDaftarPesertaRouteImport.update({
+  id: '/daftar-peserta',
+  path: '/daftar-peserta',
   getParentRoute: () => AcademyRoute,
 } as any)
 const AcademyEdition2024Route = AcademyEdition2024RouteImport.update({
@@ -777,6 +783,7 @@ export interface FileRoutesByFullPath {
   '/academy/alumni-network': typeof AcademyAlumniNetworkRoute
   '/academy/archive': typeof AcademyArchiveRoute
   '/academy/certification': typeof AcademyCertificationRoute
+  '/academy/daftar-peserta': typeof AcademyDaftarPesertaRoute
   '/academy/edition-2024': typeof AcademyEdition2024Route
   '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
@@ -893,6 +900,7 @@ export interface FileRoutesByTo {
   '/academy/alumni-network': typeof AcademyAlumniNetworkRoute
   '/academy/archive': typeof AcademyArchiveRoute
   '/academy/certification': typeof AcademyCertificationRoute
+  '/academy/daftar-peserta': typeof AcademyDaftarPesertaRoute
   '/academy/edition-2024': typeof AcademyEdition2024Route
   '/academy/programs': typeof AcademyProgramsRoute
   '/academy/request-training': typeof AcademyRequestTrainingRoute
@@ -1013,6 +1021,7 @@ export interface FileRoutesById {
   '/academy/alumni-network': typeof AcademyAlumniNetworkRoute
   '/academy/archive': typeof AcademyArchiveRoute
   '/academy/certification': typeof AcademyCertificationRoute
+  '/academy/daftar-peserta': typeof AcademyDaftarPesertaRoute
   '/academy/edition-2024': typeof AcademyEdition2024Route
   '/academy/learn': typeof AcademyLearnRouteWithChildren
   '/academy/programs': typeof AcademyProgramsRoute
@@ -1137,6 +1146,7 @@ export interface FileRouteTypes {
     | '/academy/alumni-network'
     | '/academy/archive'
     | '/academy/certification'
+    | '/academy/daftar-peserta'
     | '/academy/edition-2024'
     | '/academy/learn'
     | '/academy/programs'
@@ -1253,6 +1263,7 @@ export interface FileRouteTypes {
     | '/academy/alumni-network'
     | '/academy/archive'
     | '/academy/certification'
+    | '/academy/daftar-peserta'
     | '/academy/edition-2024'
     | '/academy/programs'
     | '/academy/request-training'
@@ -1372,6 +1383,7 @@ export interface FileRouteTypes {
     | '/academy/alumni-network'
     | '/academy/archive'
     | '/academy/certification'
+    | '/academy/daftar-peserta'
     | '/academy/edition-2024'
     | '/academy/learn'
     | '/academy/programs'
@@ -1689,6 +1701,13 @@ declare module '@tanstack/react-router' {
       path: '/certification'
       fullPath: '/academy/certification'
       preLoaderRoute: typeof AcademyCertificationRouteImport
+      parentRoute: typeof AcademyRoute
+    }
+    '/academy/daftar-peserta': {
+      id: '/academy/daftar-peserta'
+      path: '/daftar-peserta'
+      fullPath: '/academy/daftar-peserta'
+      preLoaderRoute: typeof AcademyDaftarPesertaRouteImport
       parentRoute: typeof AcademyRoute
     }
     '/academy/edition-2024': {
@@ -2379,6 +2398,7 @@ interface AcademyRouteChildren {
   AcademyAlumniNetworkRoute: typeof AcademyAlumniNetworkRoute
   AcademyArchiveRoute: typeof AcademyArchiveRoute
   AcademyCertificationRoute: typeof AcademyCertificationRoute
+  AcademyDaftarPesertaRoute: typeof AcademyDaftarPesertaRoute
   AcademyEdition2024Route: typeof AcademyEdition2024Route
   AcademyLearnRoute: typeof AcademyLearnRouteWithChildren
   AcademyProgramsRoute: typeof AcademyProgramsRoute
@@ -2410,6 +2430,7 @@ const AcademyRouteChildren: AcademyRouteChildren = {
   AcademyAlumniNetworkRoute: AcademyAlumniNetworkRoute,
   AcademyArchiveRoute: AcademyArchiveRoute,
   AcademyCertificationRoute: AcademyCertificationRoute,
+  AcademyDaftarPesertaRoute: AcademyDaftarPesertaRoute,
   AcademyEdition2024Route: AcademyEdition2024Route,
   AcademyLearnRoute: AcademyLearnRouteWithChildren,
   AcademyProgramsRoute: AcademyProgramsRoute,

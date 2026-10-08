@@ -23,7 +23,14 @@ import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { Toaster } from "@/components/baruna/Toaster";
 import { ModuleQuiz } from "@/components/baruna/academy/ModuleQuiz";
 import { barunaToast } from "@/lib/downloads";
-import { downloadCertificatePdf } from "@/lib/certificate";
+import {
+  downloadCertificatePdf,
+  openCertificatePdf,
+  formatTodayIndonesian,
+  type CertificateData,
+} from "@/lib/certificate";
+import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
+import { useQuery } from "@tanstack/react-query";
 import { masterByCode, MINUTES_PER_JP, type MasterModule } from "@/data/masterModules";
 import { type LmsModule, type ResourceKind } from "@/data/lms";
 import { hasQuizBank, QUIZ_PASS_PERCENT } from "@/data/quizzes";
@@ -63,6 +70,12 @@ export function MasterModuleLmsPlayer({
   const { get, isCompleted, priorLearning } = useShortCourses();
   const enrollment = get(master.code);
   const done = isCompleted(master.code);
+
+  const { data: myBioRes } = useQuery({
+    queryKey: ["my-participant-biodata"],
+    queryFn: () => getMyParticipantBiodata(),
+    staleTime: 30 * 1000,
+  });
   const priorFromTraining = priorLearning(master.code);
   const app = useApplication(SELF_PACED_APP_ID);
   const [quizOpen, setQuizOpen] = useState(false);
@@ -105,16 +118,35 @@ export function MasterModuleLmsPlayer({
     });
   };
 
-  const handleDownloadCertificate = () => {
-    downloadCertificatePdf({
-      name: "BARUNA Participant",
+  const getCertData = (): CertificateData => {
+    const bio = myBioRes?.biodata;
+    const certNumber = `B.589/BDA/RSDM.510/V/${new Date().getFullYear()}`;
+    return {
+      name: bio?.nama || myBioRes?.prefill.nama || "Peserta Pelatihan",
       country: "Indonesia",
       program: master.title,
-      dates: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
-      certNo: `BARUNA-MOD-${master.code.replace(/[^A-Z0-9]/gi, "").toUpperCase()}-2026`,
-      verifyUrl: `https://baruna.kkp.go.id/verify/${master.code}`,
-    });
+      dates: formatTodayIndonesian(),
+      certNo: certNumber,
+      verifyUrl: `${typeof window !== "undefined" ? window.location.origin : "https://baruna.kkp.go.id"}/academy/certification?verify=${master.code}`,
+      nip: bio?.nip || null,
+      tempatLahir: bio?.tempatLahir || null,
+      tanggalLahir: bio?.tanggalLahir || null,
+      pangkatGolongan: bio?.pangkatGolongan || null,
+      jabatan: bio?.jabatan || myBioRes?.prefill.jabatan || null,
+      instansi: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      workUnit: bio?.instansiUnitKerja || myBioRes?.prefill.instansi || null,
+      photoUrl: bio?.fotoUrl || null,
+      learningHours: master.hours || 8,
+    };
+  };
+
+  const handleDownloadCertificate = () => {
+    downloadCertificatePdf(getCertData());
     barunaToast("Module completion certificate downloaded successfully!");
+  };
+
+  const handleOpenCertificate = () => {
+    openCertificatePdf(getCertData());
   };
 
   const aside = (
@@ -155,15 +187,36 @@ export function MasterModuleLmsPlayer({
             <p className="flex items-center gap-1.5 font-bold">
               <Award className="h-3.5 w-3.5" /> Module Completed
             </p>
+            {myBioRes?.biodata?.fotoUrl && (
+              <div className="my-2 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-card p-2 text-navy">
+                <img
+                  src={myBioRes.biodata.fotoUrl}
+                  alt={myBioRes.biodata.nama}
+                  className="h-9 w-7 rounded border border-navy/20 object-cover"
+                />
+                <div className="text-[11px] leading-tight">
+                  <p className="font-bold">{myBioRes.biodata.nama}</p>
+                  <p className="text-muted-foreground">{myBioRes.biodata.nip ? `NIP. ${myBioRes.biodata.nip}` : "Peserta Terdaftar"}</p>
+                </div>
+              </div>
+            )}
             <p className="mt-1 text-success/80">
               Your completion certificate is available. Credit is recognized across BARUNA Training Programs.
             </p>
-            <button
-              onClick={handleDownloadCertificate}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
-            >
-              <Download className="h-3.5 w-3.5" /> Download Certificate (PDF)
-            </button>
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                onClick={handleDownloadCertificate}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
+              >
+                <Download className="h-3.5 w-3.5" /> Download Certificate (PDF)
+              </button>
+              <button
+                onClick={handleOpenCertificate}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-600 bg-card py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Buka / Preview di Tab Baru
+              </button>
+            </div>
           </div>
         ) : null}
 

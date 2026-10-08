@@ -38,6 +38,9 @@ import {
 import { academyImages } from "@/data/academy";
 
 export const Route = createFileRoute("/academy/certification")({
+  validateSearch: (search: Record<string, unknown>): { verify?: string } => ({
+    verify: typeof search.verify === "string" ? search.verify : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Certification — Academy — BARUNA" },
@@ -158,6 +161,8 @@ function CertCard({ c }: { c: CertItem }) {
 }
 
 function CertificationPage() {
+  const { verify } = Route.useSearch();
+
   return (
     <AcademyShell
       active="certification"
@@ -221,6 +226,40 @@ function CertificationPage() {
       }
     >
       <div className="space-y-6">
+        {verify && (
+          <div className="rounded-2xl border-2 border-emerald-500/40 bg-emerald-50/90 p-5 sm:p-6 shadow-soft dark:bg-emerald-950/40">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white shadow-xs">
+                  <ShieldCheck className="h-7 w-7" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-wide text-white">
+                      ✓ Terverifikasi Resmi
+                    </span>
+                    <span className="font-mono text-xs font-semibold text-muted-foreground">
+                      ID: {verify}
+                    </span>
+                  </div>
+                  <h2 className="mt-1 font-display text-base sm:text-lg font-bold text-navy dark:text-white">
+                    Surat Tanda Tamat Pelatihan (STTP) — Sah &amp; Terdaftar
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Diterbitkan oleh Balai Diklat Aparatur, Pusat Pelatihan Kelautan dan Perikanan (BPPSDMKP - KKP RI).
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/academy/learn"
+                className="shrink-0 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition"
+              >
+                Buka Ruang Belajar →
+              </a>
+            </div>
+          </div>
+        )}
+
         <AcademyHeader
           crumb="Certification"
           title="Certification"

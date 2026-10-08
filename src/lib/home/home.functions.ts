@@ -238,6 +238,10 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
     const roleCodes = (assignments ?? [])
       .map((assignment) => assignment.rbac_roles?.code)
       .filter((code): code is string => Boolean(code));
+    const userMeta = (identity?.user?.user_metadata as Record<string, any>) || {};
+    if ((userMeta.role === "participant" || (Array.isArray(userMeta.roles) && userMeta.roles.includes("participant"))) && !roleCodes.includes("participant")) {
+      roleCodes.push("participant");
+    }
     const roleCode = highestPriorityRole(roleCodes);
     let roleLabel = ROLE_LABELS[roleCode] ?? roleCode.replaceAll("_", " ");
     if (roleCode === "expert") {

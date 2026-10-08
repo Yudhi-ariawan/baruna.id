@@ -49,11 +49,13 @@ import { barunaToast } from "@/lib/downloads";
 import { useDemoMode } from "@/lib/demoMode";
 import {
   downloadCertificatePdf,
+  openCertificatePdf,
   downloadBadgePng,
   downloadTranscriptPdf,
   type CertificateData,
   type TranscriptScores,
 } from "@/lib/certificate";
+import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
 import {
   LMS_MODULES,
   LMS_TOTAL_HOURS,
@@ -93,7 +95,7 @@ import {
   type DocumentMeta,
 } from "@/lib/application";
 import { masterByCode, codeForLmsId, type MasterModule } from "@/data/masterModules";
-import { completeShortCourse } from "@/lib/shortCourses";
+import { completeShortCourse, useShortCourses } from "@/lib/shortCourses";
 import {
   getPublishedModuleDetail,
   type PublishedModuleDetail,
@@ -232,12 +234,28 @@ function LearningDashboard() {
     staleTime: 1000 * 60 * 2,
   });
 
-  // Access allowed if in demo mode, demo course, or status is approved
+  const { get: getShortCourse } = useShortCourses();
+  const localShortCourse = getShortCourse(courseId);
+  const lmsId = loaderData.kind === "master" ? loaderData.lms?.id : undefined;
+  const localByLms = lmsId ? getShortCourse(lmsId) : undefined;
+  const isEnrolledLocally = Boolean(localShortCourse || localByLms);
+
+  const fullApp = useApplication(courseId);
+  const isAppAccepted = Boolean(fullApp && fullApp.status === "Accepted");
+
+  // Access allowed if:
+  // 1. in demo mode or demo course
+  // 2. user already enrolled or actively learning in Short Courses (existing enrollment)
+  // 3. user accepted in Full Training Cohort application
+  // 4. server enrollment application status is approved
   const isApproved =
     demo ||
     courseId === "demo" ||
     courseId === "africa-fisheries-2026" ||
-    enrollmentStatus?.status === "approved";
+    isEnrolledLocally ||
+    isAppAccepted ||
+    enrollmentStatus?.status === "approved" ||
+    enrollmentStatus?.isEnrolled === true;
 
   // Access gate for unapproved participants
   if (authChecked && userId && !statusLoading && !isApproved) {
@@ -308,6 +326,12 @@ function FullTrainingLearningDashboard({ id }: { id: string }) {
   const [assessmentOpen, setAssessmentOpen] = useState<AssessmentId | null>(null);
 
   const [demo] = useDemoMode();
+
+  const { data: myBiodataRes } = useQuery({
+    queryKey: ["my-participant-biodata"],
+    queryFn: () => getMyParticipantBiodata(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (!app) {
     return (
@@ -441,14 +465,26 @@ function FullTrainingLearningDashboard({ id }: { id: string }) {
   // ── certificate / badge / transcript ─────────────────────────────────────────
   const certSuffix = id.match(/(\d+)\s*$/)?.[1] ?? "0001";
   const certNo = `BARUNA-CERT-2026-${certSuffix}`;
-  const getCertData = (): CertificateData => ({
-    name: app.personal.fullName || "Participant",
-    country: app.professional.country || app.personal.nationality || "",
-    program: app.title,
-    dates: TRAINING_DATES,
-    certNo,
-    verifyUrl: `${typeof window !== "undefined" ? window.location.origin : ""}/academy/certification?verify=${certNo}`,
-  });
+  const getCertData = (): CertificateData => {
+    const bio = myBiodataRes?.biodata;
+    return {
+      name: bio?.nama || app.personal.fullName || "Participant",
+      country: app.professional.country || app.personal.nationality || "Indonesia",
+      program: app.title,
+      dates: TRAINING_DATES,
+      certNo: `B.589/BDA/RSDM.510/V/${new Date().getFullYear()}`,
+      verifyUrl: `${typeof window !== "undefined" ? window.location.origin : ""}/academy/certification?verify=${certNo}`,
+      nip: bio?.nip || null,
+      tempatLahir: bio?.tempatLahir || null,
+      tanggalLahir: bio?.tanggalLahir || null,
+      pangkatGolongan: bio?.pangkatGolongan || null,
+      jabatan: bio?.jabatan || app.professional.position || myBiodataRes?.prefill.jabatan || null,
+      instansi: bio?.instansiUnitKerja || app.professional.organization || null,
+      workUnit: bio?.instansiUnitKerja || app.professional.organization || null,
+      photoUrl: bio?.fotoUrl || null,
+      learningHours: LMS_TOTAL_HOURS || 40,
+    };
+  };
 
   const moduleScores = LMS_MODULES.map((m) => {
     const rec = getQuizRecord(app, m.id);
@@ -1482,7 +1518,9 @@ function CompletionPanel({ data, transcript }: { data: CertificateData; transcri
 
   const rows: { label: string; value: string }[] = [
     { label: "Participant Name", value: data.name },
-    { label: "Country", value: data.country || "—" },
+    ...(data.nip ? [{ label: "NIP / Nomor Identitas", value: data.nip }] : []),
+    ...(data.workUnit ? [{ label: "Unit Kerja / Instansi", value: data.workUnit }] : []),
+    { label: "Country", value: data.country || "Indonesia" },
     { label: "Program Title", value: data.program },
     { label: "Training Dates", value: data.dates },
     { label: "Certificate Number", value: data.certNo },
@@ -1508,6 +1546,22 @@ function CompletionPanel({ data, transcript }: { data: CertificateData; transcri
           <ScrollText className="h-5 w-5 text-marine" />
           <h3 className="font-display text-base font-bold text-navy">Digital Certificate</h3>
         </div>
+
+        {data.photoUrl && (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
+            <img
+              src={data.photoUrl}
+              alt={data.name}
+              className="h-14 w-11 rounded-md border border-navy/20 object-cover shadow-xs"
+            />
+            <div className="text-xs">
+              <p className="font-bold text-navy">{data.name}</p>
+              <p className="text-muted-foreground">{data.nip ? `NIP. ${data.nip}` : "Peserta Terdaftar"}</p>
+              <p className="text-[11px] font-medium text-emerald-600">✓ Pas foto resmi tersemat otomatis pada sertifikat</p>
+            </div>
+          </div>
+        )}
+
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           {rows.map((r) => (
             <div key={r.label} className="rounded-xl border border-border bg-background p-3">
@@ -1516,12 +1570,20 @@ function CompletionPanel({ data, transcript }: { data: CertificateData; transcri
             </div>
           ))}
         </dl>
-        <button
-          onClick={onCertificate}
-          className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-all hover:-translate-y-0.5 hover:bg-marine/90 hover:shadow-hover"
-        >
-          <Download className="h-4 w-4" /> Download Certificate PDF
-        </button>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            onClick={onCertificate}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-all hover:-translate-y-0.5 hover:bg-marine/90 hover:shadow-hover"
+          >
+            <Download className="h-4 w-4" /> Download Certificate PDF
+          </button>
+          <button
+            onClick={() => openCertificatePdf(data)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-marine bg-card px-5 py-3 text-sm font-semibold text-marine transition-all hover:bg-marine hover:text-white"
+          >
+            <ExternalLink className="h-4 w-4" /> Buka / Cetak di Tab Baru
+          </button>
+        </div>
       </div>
 
       {/* Badge + Transcript */}
