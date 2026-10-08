@@ -159,14 +159,27 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
 
     const nowIso = new Date().toISOString();
 
-    // 2. Persist to auth.users.user_metadata (100% resilient across devices)
+    // 2. Persist to auth.users.user_metadata (Compact format to prevent JWT header bloat)
     try {
       const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
       const meta = (userRecord?.user?.user_metadata as Record<string, any>) || {};
+
+      const compactMeta: Record<string, any> = {};
+      for (const [c, item] of Object.entries(merged)) {
+        compactMeta[c] = {
+          code: item.code,
+          completed: item.completed,
+          completedAt: item.completedAt,
+          score: item.score,
+          completedSteps: item.completedSteps,
+          enrolledAt: item.enrolledAt,
+        };
+      }
+
       await supabaseAdmin.auth.admin.updateUserById(context.userId, {
         user_metadata: {
           ...meta,
-          self_paced_courses: merged,
+          self_paced_courses: compactMeta,
         },
       });
     } catch (metaErr) {
@@ -201,4 +214,45 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
     }
 
     return merged;
+  });
+
+/**
+ * Remove a specific self-paced course enrollment from cloud storage (used on reset).
+ */
+export const deleteMySelfPacedCourse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input) => z.object({ code: z.string() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Delete from self_paced_enrollments table
+    try {
+      await (supabaseAdmin as any)
+        .from("self_paced_enrollments")
+        .delete()
+        .eq("user_id", context.userId)
+        .eq("code", data.code);
+    } catch (tableErr) {
+      console.warn("[deleteMySelfPacedCourse] table delete warning:", tableErr);
+    }
+
+    // 2. Delete from auth.users.user_metadata
+    try {
+      const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+      const meta = (userRecord?.user?.user_metadata as Record<string, any>) || {};
+      if (meta.self_paced_courses && meta.self_paced_courses[data.code]) {
+        const copy = { ...meta.self_paced_courses };
+        delete copy[data.code];
+        await supabaseAdmin.auth.admin.updateUserById(context.userId, {
+          user_metadata: {
+            ...meta,
+            self_paced_courses: copy,
+          },
+        });
+      }
+    } catch (metaErr) {
+      console.warn("[deleteMySelfPacedCourse] user_metadata delete warning:", metaErr);
+    }
+
+    return { success: true };
   });

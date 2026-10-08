@@ -19,6 +19,7 @@ import {
 import {
   getMySelfPacedCourses,
   syncMySelfPacedCourses,
+  deleteMySelfPacedCourse,
   type SelfPacedEnrollmentPayload,
 } from "@/lib/learning/self-paced-sync.functions";
 
@@ -266,6 +267,11 @@ export function resetShortCourse(code: string) {
   const store = readStore();
   delete store[code];
   writeStore(store);
+  if (getActiveUserId()) {
+    deleteMySelfPacedCourse({ data: { code } }).catch((err) => {
+      console.warn("[shortCourses] cloud delete warning:", err);
+    });
+  }
 }
 
 /** Keep dashboard and homepage progress calculations aligned. */
