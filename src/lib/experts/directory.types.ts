@@ -16,6 +16,7 @@ export type PublicExpert = {
     | "governance_verified";
   institution: string | null;
   institutionRole: string | null;
+  contactEmail: string | null;
   trainerStatus: "candidate" | "active" | "inactive" | "suspended" | "retired";
   trainerLevel: "not_assigned" | "certified" | "advanced" | "senior" | "master";
   uniqueGraduatedParticipants: number | null;

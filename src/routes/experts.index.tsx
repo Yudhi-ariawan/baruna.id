@@ -89,7 +89,7 @@ function ExpertsPage() {
         exp.headline || exp.bio || "Verified marine & fisheries expert registered on the BARUNA platform.",
       biography: exp.bio || "",
       programRole: exp.trainerStatus === "active" ? "BARUNA Trainer" : "Expert",
-      email: instructorBySlug[exp.slug]?.email,
+      email: exp.contactEmail ?? undefined,
       photo:
         instructorBySlug[exp.slug]?.photo ||
         (exp.avatarUrl && !exp.avatarUrl.toLowerCase().endsWith(".pdf")

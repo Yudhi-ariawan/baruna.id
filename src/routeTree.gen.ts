@@ -72,6 +72,7 @@ import { Route as ExpertsBecomeTrainerRouteImport } from './routes/experts.becom
 import { Route as ExpertsContributionsRouteImport } from './routes/experts.contributions'
 import { Route as ExpertsDirectoryRouteImport } from './routes/experts.directory'
 import { Route as ExpertsFaqsRouteImport } from './routes/experts.faqs'
+import { Route as ExpertsFindRouteImport } from './routes/experts.find'
 import { Route as ExpertsJoinRouteImport } from './routes/experts.join'
 import { Route as ExpertsMyRequestsRouteImport } from './routes/experts.my-requests'
 import { Route as ExpertsPortalRouteImport } from './routes/experts.portal'
@@ -446,6 +447,11 @@ const ExpertsFaqsRoute = ExpertsFaqsRouteImport.update({
   path: '/faqs',
   getParentRoute: () => ExpertsRoute,
 } as any)
+const ExpertsFindRoute = ExpertsFindRouteImport.update({
+  id: '/find',
+  path: '/find',
+  getParentRoute: () => ExpertsRoute,
+} as any)
 const ExpertsJoinRoute = ExpertsJoinRouteImport.update({
   id: '/join',
   path: '/join',
@@ -816,6 +822,7 @@ export interface FileRoutesByFullPath {
   '/experts/contributions': typeof ExpertsContributionsRoute
   '/experts/directory': typeof ExpertsDirectoryRoute
   '/experts/faqs': typeof ExpertsFaqsRoute
+  '/experts/find': typeof ExpertsFindRoute
   '/experts/join': typeof ExpertsJoinRoute
   '/experts/my-requests': typeof ExpertsMyRequestsRoute
   '/experts/portal': typeof ExpertsPortalRouteWithChildren
@@ -931,6 +938,7 @@ export interface FileRoutesByTo {
   '/experts/contributions': typeof ExpertsContributionsRoute
   '/experts/directory': typeof ExpertsDirectoryRoute
   '/experts/faqs': typeof ExpertsFaqsRoute
+  '/experts/find': typeof ExpertsFindRoute
   '/experts/join': typeof ExpertsJoinRoute
   '/experts/my-requests': typeof ExpertsMyRequestsRoute
   '/experts/profile': typeof ExpertsProfileRoute
@@ -1054,6 +1062,7 @@ export interface FileRoutesById {
   '/experts/contributions': typeof ExpertsContributionsRoute
   '/experts/directory': typeof ExpertsDirectoryRoute
   '/experts/faqs': typeof ExpertsFaqsRoute
+  '/experts/find': typeof ExpertsFindRoute
   '/experts/join': typeof ExpertsJoinRoute
   '/experts/my-requests': typeof ExpertsMyRequestsRoute
   '/experts/portal': typeof ExpertsPortalRouteWithChildren
@@ -1179,6 +1188,7 @@ export interface FileRouteTypes {
     | '/experts/contributions'
     | '/experts/directory'
     | '/experts/faqs'
+    | '/experts/find'
     | '/experts/join'
     | '/experts/my-requests'
     | '/experts/portal'
@@ -1294,6 +1304,7 @@ export interface FileRouteTypes {
     | '/experts/contributions'
     | '/experts/directory'
     | '/experts/faqs'
+    | '/experts/find'
     | '/experts/join'
     | '/experts/my-requests'
     | '/experts/profile'
@@ -1416,6 +1427,7 @@ export interface FileRouteTypes {
     | '/experts/contributions'
     | '/experts/directory'
     | '/experts/faqs'
+    | '/experts/find'
     | '/experts/join'
     | '/experts/my-requests'
     | '/experts/portal'
@@ -1953,6 +1965,13 @@ declare module '@tanstack/react-router' {
       path: '/faqs'
       fullPath: '/experts/faqs'
       preLoaderRoute: typeof ExpertsFaqsRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/find': {
+      id: '/experts/find'
+      path: '/find'
+      fullPath: '/experts/find'
+      preLoaderRoute: typeof ExpertsFindRouteImport
       parentRoute: typeof ExpertsRoute
     }
     '/experts/join': {
@@ -2567,6 +2586,7 @@ interface ExpertsRouteChildren {
   ExpertsContributionsRoute: typeof ExpertsContributionsRoute
   ExpertsDirectoryRoute: typeof ExpertsDirectoryRoute
   ExpertsFaqsRoute: typeof ExpertsFaqsRoute
+  ExpertsFindRoute: typeof ExpertsFindRoute
   ExpertsJoinRoute: typeof ExpertsJoinRoute
   ExpertsMyRequestsRoute: typeof ExpertsMyRequestsRoute
   ExpertsPortalRoute: typeof ExpertsPortalRouteWithChildren
@@ -2583,6 +2603,7 @@ const ExpertsRouteChildren: ExpertsRouteChildren = {
   ExpertsContributionsRoute: ExpertsContributionsRoute,
   ExpertsDirectoryRoute: ExpertsDirectoryRoute,
   ExpertsFaqsRoute: ExpertsFaqsRoute,
+  ExpertsFindRoute: ExpertsFindRoute,
   ExpertsJoinRoute: ExpertsJoinRoute,
   ExpertsMyRequestsRoute: ExpertsMyRequestsRoute,
   ExpertsPortalRoute: ExpertsPortalRouteWithChildren,

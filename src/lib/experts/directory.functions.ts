@@ -46,6 +46,7 @@ function mapExpert(row: DirectoryRow): PublicExpert {
     verificationStatus: row.verification_status,
     institution: row.institution,
     institutionRole: row.institution_role,
+    contactEmail: row.contact_email,
     trainerStatus: row.trainer_status,
     trainerLevel: row.trainer_level,
     uniqueGraduatedParticipants: row.unique_graduated_participants,
@@ -94,7 +95,7 @@ async function resolveAvatarUrl(
 }
 
 const publicColumns =
-  "id, slug, display_name, headline, bio, country, city, avatar_url, expertise_areas, languages, verification_status, institution, institution_role, trainer_status, trainer_level, unique_graduated_participants, recognition_min_participants, availability_status, available_modes, next_available_from";
+  "id, slug, display_name, headline, bio, country, city, avatar_url, expertise_areas, languages, verification_status, institution, institution_role, contact_email, trainer_status, trainer_level, unique_graduated_participants, recognition_min_participants, availability_status, available_modes, next_available_from";
 
 export const listPublicExperts = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicExpert[]> => {

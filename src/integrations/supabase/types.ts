@@ -58,6 +58,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          email: string | null
           id: string
           is_active: boolean
           job_title: string | null
@@ -69,6 +70,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           id: string
           is_active?: boolean
           job_title?: string | null
@@ -80,6 +82,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           id?: string
           is_active?: boolean
           job_title?: string | null
@@ -1784,6 +1787,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           city: string | null
+          contact_email: string | null
           country: string | null
           created_at: string
           created_by: string
@@ -1803,6 +1807,7 @@ export type Database = {
           source_submission_id: string | null
           source_type: string
           slug: string
+          show_email: boolean
           updated_at: string
           verification_status: Database["public"]["Enums"]["verification_status_v1"]
           version: number
@@ -1815,6 +1820,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
+          contact_email?: string | null
           country?: string | null
           created_at?: string
           created_by: string
@@ -1834,6 +1840,7 @@ export type Database = {
           source_submission_id?: string | null
           source_type: string
           slug: string
+          show_email?: boolean
           updated_at?: string
           verification_status?: Database["public"]["Enums"]["verification_status_v1"]
           version?: number
@@ -1846,6 +1853,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
+          contact_email?: string | null
           country?: string | null
           created_at?: string
           created_by?: string
@@ -1865,6 +1873,7 @@ export type Database = {
           source_submission_id?: string | null
           source_type?: string
           slug?: string
+          show_email?: boolean
           updated_at?: string
           verification_status?: Database["public"]["Enums"]["verification_status_v1"]
           version?: number
@@ -3701,6 +3710,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           city: string | null
+          contact_email: string | null
           country: string | null
           display_name: string
           expertise_areas: string[]

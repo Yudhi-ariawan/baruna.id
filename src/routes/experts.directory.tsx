@@ -7,6 +7,7 @@ import {
   Filter,
   Globe,
   GraduationCap,
+  Mail,
   RotateCcw,
   Search,
   UserRound,
@@ -256,6 +257,16 @@ function ExpertCard({ expert }: { expert: PublicExpert }) {
             </span>
           ))}
         </div>
+
+        {expert.contactEmail && (
+          <a
+            href={`mailto:${expert.contactEmail}`}
+            className="mt-2 flex min-w-0 items-center gap-1.5 text-[0.7rem] text-muted-foreground hover:text-marine"
+          >
+            <Mail className="h-3 w-3 shrink-0" />
+            <span className="truncate">{expert.contactEmail}</span>
+          </a>
+        )}
 
         {expert.bio && (
           <p className="mt-2 line-clamp-2 text-[0.72rem] leading-relaxed text-foreground/70">
