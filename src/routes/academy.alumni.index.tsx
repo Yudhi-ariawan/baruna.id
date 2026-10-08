@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Search, CheckCircle2, ArrowRight, Users, Flag, Building2, GraduationCap } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
-import { ProgramSeriesNav } from "@/components/baruna/academy/ProgramSeriesNav";
+// Remove unused ProgramSeriesNav
 import { ALUMNI, COUNTRY_STATS, INSTITUTIONS, initials } from "@/data/edition2024";
 
 export const Route = createFileRoute("/academy/alumni/")({
@@ -65,20 +65,18 @@ function AlumniPage() {
   ];
 
   return (
-    <AcademyShell active="training">
+    <AcademyShell active="alumni">
       <div className="space-y-6">
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/edition-2024" className="font-medium text-foreground/70 hover:text-marine">2024 Edition</Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="font-semibold text-navy">Alumni</span>
+          <span className="font-semibold text-navy">Alumni Directory</span>
         </nav>
 
         <div>
           <h1 className="font-display text-3xl font-extrabold text-navy">Alumni Directory</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            The first cohort of the International Training on Fisheries for African Countries — 20 alumni from 10 countries, Training Year 2024.
+            Buku Induk dan Direktori Kelulusan Peserta Program Pelatihan BARUNA. Menampilkan lulusan terverifikasi yang telah menyelesaikan seluruh kurikulum dan menerima sertifikat resmi.
           </p>
         </div>
 
@@ -93,7 +91,34 @@ function AlumniPage() {
           ))}
         </div>
 
-        <ProgramSeriesNav active="2024" />
+        {/* Angkatan 2026 (Upcoming Cohort / Program Berjalan) */}
+        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-card to-muted/30 p-5 shadow-soft">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-display text-base font-bold text-navy sm:text-lg">
+                  Angkatan 2026 · International Training on Fisheries
+                </h2>
+                <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                  Tahap Pendaftaran Berjalan
+                </span>
+              </div>
+              <p className="max-w-2xl text-xs text-muted-foreground leading-relaxed">
+                Program angkatan 2026 sedang membuka pendaftaran peserta (kuota 20 orang). Peserta yang lolos seleksi, menyelesaikan seluruh materi pelatihan, dan lulus asesmen akan otomatis tercatat di direktori alumni ini setelah program selesai.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                to="/academy/training/$slug"
+                params={{ slug: "international-training-fisheries-2026" }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-4 py-2.5 text-xs font-semibold text-marine-foreground shadow-sm transition hover:bg-marine/90"
+              >
+                Lihat Program & Pendaftaran 2026
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="grid gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft sm:grid-cols-3">
@@ -128,9 +153,28 @@ function AlumniPage() {
           </select>
         </div>
 
-        <p className="text-sm text-muted-foreground">Showing {filtered.length} of {ALUMNI.length} alumni</p>
+        {/* Section: Angkatan 2024 (Lulusan Terverifikasi) */}
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-3">
+          <div>
+            <h2 className="font-display text-lg font-bold text-navy flex flex-wrap items-center gap-2">
+              Angkatan 2024 · Fisheries for African Countries
+              <span className="rounded-full bg-marine/10 px-2.5 py-0.5 text-xs font-semibold text-marine">
+                20 Lulusan Terverifikasi
+              </span>
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Menampilkan {filtered.length} dari {ALUMNI.length} alumni terdaftar
+            </p>
+          </div>
+          <Link
+            to="/academy/edition-2024"
+            className="inline-flex items-center gap-1 text-xs font-medium text-marine hover:underline self-start sm:self-auto"
+          >
+            Lihat Arsip Program 2024 <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
 
-        {/* Grid */}
+        {/* Grid 2024 */}
         <div className="grid gap-3 sm:grid-cols-2">
           {filtered.map((a) => (
             <Link

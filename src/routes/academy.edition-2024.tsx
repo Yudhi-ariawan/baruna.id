@@ -21,9 +21,9 @@ import {
   Search,
   ArrowRight,
   Network,
+  ExternalLink,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
-import { ProgramSeriesNav } from "@/components/baruna/academy/ProgramSeriesNav";
 import {
   EDITION_2024,
   EDITION_2024_HIGHLIGHTS,
@@ -43,12 +43,25 @@ import {
 import { trainingBySlug } from "@/data/training";
 import { instructorsForProgram, groupInstructors } from "@/data/instructors";
 import { downloadPdf } from "@/lib/downloads";
+import {
+  getCurriculumPdfMap,
+  type CurriculumModuleDoc,
+} from "@/lib/learning/curriculum-modules.functions";
 import trainingBali from "@/assets/academy/training-bali.jpg";
 import { academyImages } from "@/data/academy";
 
 const TRAINING_SLUG = "international-training-fisheries-african-countries";
 
 export const Route = createFileRoute("/academy/edition-2024")({
+  loader: async () => {
+    try {
+      const pdfMap = await getCurriculumPdfMap();
+      return { pdfMap };
+    } catch (err) {
+      console.warn("Could not load curriculum PDF map:", err);
+      return { pdfMap: {} as Record<number, CurriculumModuleDoc> };
+    }
+  },
   head: () => ({
     meta: [
       { title: "2024 Edition (Completed) — Fisheries Training for African Countries — BARUNA" },
@@ -133,6 +146,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof MapPin; label: str
 
 function Edition2024Page() {
   const [tab, setTab] = useState<Tab>("Overview");
+  const { pdfMap } = Route.useLoaderData();
   const program = trainingBySlug[TRAINING_SLUG];
   const curriculum = program?.curriculum ?? [];
   const instructors = instructorsForProgram(TRAINING_SLUG);
@@ -202,13 +216,13 @@ function Edition2024Page() {
   );
 
   return (
-    <AcademyShell active="training" aside={aside}>
+    <AcademyShell active="edition-2024" aside={aside}>
       <div className="space-y-6">
         {/* Breadcrumb */}
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/training" className="font-medium text-foreground/70 hover:text-marine">Training</Link>
+          <Link to="/academy/archive" className="font-medium text-foreground/70 hover:text-marine">Training Archive</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy">2024 Edition</span>
         </nav>
@@ -220,13 +234,13 @@ function Edition2024Page() {
             <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/40 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-5">
               <div className="mb-2 flex items-center gap-2">
-                <span className="rounded-md bg-marine/90 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-marine-foreground">
-                  {EDITION_2024.series} · 2024
+                <span className="rounded-md bg-marine/90 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-marine-foreground">
+                  Arsip Pelatihan · Angkatan 2024
                 </span>
                 <CompletedBadge />
               </div>
               <h1 className="font-display text-xl font-extrabold text-navy-foreground sm:text-2xl">
-                {EDITION_2024.title}
+                {EDITION_2024.title} (Arsip 2024)
               </h1>
               <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-navy-foreground/85">
                 <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {EDITION_2024.location}</span>
@@ -235,9 +249,6 @@ function Edition2024Page() {
             </div>
           </div>
         </div>
-
-        {/* Program Series switcher */}
-        <ProgramSeriesNav active="2024" />
 
         {/* Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -290,18 +301,63 @@ function Edition2024Page() {
               The same 13-module curriculum delivered in the program series — all modules completed by the 2024 cohort.
             </p>
             <ul className="mt-5 space-y-2.5">
-              {curriculum.map((m) => (
-                <li key={m.no} className="flex items-start gap-3 rounded-xl border border-border bg-background p-3.5">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-success/15 text-success">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-navy">{m.no}. {m.module}</p>
-                    <p className="text-xs text-muted-foreground">{m.topics}</p>
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-muted-foreground">{m.hours}h</span>
-                </li>
-              ))}
+              {curriculum.map((m) => {
+                const doc = pdfMap?.[m.no];
+                const pdfUrl = doc?.pdfUrl;
+                const isFromDb = doc?.source === "database";
+
+                return (
+                  <li
+                    key={m.no}
+                    onClick={() => {
+                      if (pdfUrl) {
+                        window.open(pdfUrl, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                    className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-background p-4 transition-all ${
+                      pdfUrl
+                        ? "cursor-pointer hover:-translate-y-0.5 hover:border-marine/50 hover:bg-card hover:shadow-soft"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-success/15 font-bold text-xs text-success">
+                        {m.no}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-bold text-navy group-hover:text-marine transition-colors">
+                            {m.no}. {m.module}
+                          </p>
+                          {pdfUrl && (
+                            <span className="rounded-full bg-marine/10 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-marine">
+                              {isFromDb ? "Dokumen Terverifikasi" : "PDF Modul"}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{m.topics}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                      <span className="text-xs font-semibold text-muted-foreground">{m.hours}h</span>
+                      {pdfUrl && (
+                        <a
+                          href={pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-marine/30 bg-marine/10 px-3 py-1.5 text-xs font-semibold text-marine hover:bg-marine hover:text-marine-foreground transition-colors shadow-sm"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          Buka Modul PDF
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

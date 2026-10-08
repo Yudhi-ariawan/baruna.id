@@ -74,7 +74,8 @@ export function Navbar() {
     staleTime: 15000,
   });
 
-  const revisionCount = notifications?.filter((n) => n.type === "revision_requested").length ?? 0;
+  const revisionCount =
+    notifications?.filter((n) => n.type === "revision_requested" && n.isLatestForSubject).length ?? 0;
   const hasNotifications = (notifications?.length ?? 0) > 0;
 
   const handleSignOut = async () => {
@@ -125,6 +126,22 @@ export function Navbar() {
             <Search className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
           </Link>
           <LanguageSwitcher variant="dropdown" />
+          {authState === "authenticated" && (
+            <Link
+              to="/notifications"
+              className="relative grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-marine"
+              aria-label={t("header.notifications")}
+            >
+              <Bell className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+              {revisionCount > 0 ? (
+                <span className="absolute 0 top-0.5 right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-extrabold text-white shadow-xs">
+                  {revisionCount}
+                </span>
+              ) : hasNotifications ? (
+                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-marine ring-2 ring-white" />
+              ) : null}
+            </Link>
+          )}
           {authState === "authenticated" && viewer ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

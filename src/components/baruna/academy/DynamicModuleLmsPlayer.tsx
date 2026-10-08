@@ -121,6 +121,25 @@ function getDynamicModuleSlides(module: PublishedModuleDetail) {
 }
 
 function getDynamicModuleQuiz(module: PublishedModuleDetail) {
+  if (module.quizQuestions && module.quizQuestions.length > 0) {
+    return module.quizQuestions.map((q, idx) => {
+      const opts = Array.isArray(q.options) && q.options.length >= 2 ? q.options : ["Pilihan A", "Pilihan B"];
+      const safeCorrect =
+        typeof q.correctAnswer === "number" && q.correctAnswer >= 0 && q.correctAnswer < opts.length
+          ? q.correctAnswer
+          : 0;
+      return {
+        id: q.id ?? idx + 1,
+        question: q.question,
+        options: opts,
+        correctAnswer: safeCorrect,
+        explanation:
+          q.explanation ||
+          `Pilihan ${String.fromCharCode(65 + safeCorrect)} adalah jawaban yang tepat untuk pertanyaan ini.`,
+      };
+    });
+  }
+
   const objectives =
     module.learningObjectives.length > 0
       ? module.learningObjectives
