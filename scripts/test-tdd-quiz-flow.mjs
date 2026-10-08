@@ -63,7 +63,14 @@ async function cleanup() {
       temporaryExpertId = null;
     }
     if (temporaryUserId) {
-      await admin.auth.admin.deleteUser(temporaryUserId);
+      // Governance audit rows intentionally use restrictive user references.
+      // Remove only this disposable fixture's audit event before deleting it.
+      await admin
+        .from("governance_audit_log")
+        .delete()
+        .or(`actor_id.eq.${temporaryUserId},subject_id.eq.${temporaryUserId}`);
+      const { error: deleteUserError } = await admin.auth.admin.deleteUser(temporaryUserId);
+      if (deleteUserError) throw deleteUserError;
       temporaryUserId = null;
     }
     console.log("  ✓ Database cleaned up cleanly.");
