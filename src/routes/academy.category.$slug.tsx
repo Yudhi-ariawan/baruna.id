@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import {
   GraduationCap,
@@ -131,14 +132,19 @@ const filterTabs = [
   "Certification",
 ];
 
-function CategoryTabs() {
+type FilterTab = (typeof filterTabs)[number];
+
+function CategoryTabs({ selected, onSelect }: { selected: FilterTab; onSelect: (tab: FilterTab) => void }) {
   return (
     <div className="flex flex-wrap gap-2.5">
-      {filterTabs.map((t, i) => (
+      {filterTabs.map((t) => (
         <button
+          type="button"
           key={t}
+          onClick={() => onSelect(t)}
+          aria-pressed={selected === t}
           className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
-            i === 0
+            selected === t
               ? "bg-marine text-marine-foreground shadow-soft"
               : "border border-border bg-card text-navy hover:-translate-y-0.5 hover:border-marine/40 hover:text-marine"
           }`}
@@ -222,6 +228,49 @@ function CategoryPage() {
   const instructors = Array.from(
     new Map(modules.map((module) => [module.authorName, module])).values(),
   );
+  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
+
+  const selectedTab = (selectedLevel ?? selectedFormat ?? "All") as FilterTab;
+  const levelFor = (module: PublishedCatalogModule) => {
+    const raw = String(module.metadata?.level ?? "Intermediate").toLowerCase();
+    if (raw === "foundation" || raw === "introductory" || raw === "beginner") return "Beginner";
+    if (raw === "advanced") return "Advanced";
+    return "Intermediate";
+  };
+  const formatFor = (module: PublishedCatalogModule) => {
+    const raw = String(module.metadata?.delivery_format ?? "Self-paced").toLowerCase();
+    if (raw.includes("webinar")) return "Webinar";
+    if (raw.includes("workshop")) return "Workshop";
+    if (raw.includes("certification")) return "Certification";
+    if (raw.includes("training")) return "Training";
+    return "Self-paced";
+  };
+  const filteredModules = useMemo(
+    () => modules.filter((module) =>
+      (!selectedLevel || levelFor(module) === selectedLevel) &&
+      (!selectedFormat || formatFor(module) === selectedFormat),
+    ),
+    [modules, selectedLevel, selectedFormat],
+  );
+  const selectTab = (tab: FilterTab) => {
+    if (tab === "All") {
+      setSelectedLevel(null);
+      setSelectedFormat(null);
+    } else if (["Beginner", "Intermediate", "Advanced"].includes(tab)) {
+      setSelectedLevel(tab);
+      setSelectedFormat(null);
+    } else {
+      setSelectedFormat(tab);
+      setSelectedLevel(null);
+    }
+  };
+  const resetFilters = () => {
+    setSelectedLevel(null);
+    setSelectedFormat(null);
+  };
+  const levels = ["Beginner", "Intermediate", "Advanced"];
+  const formats = ["Self-paced", "Training", "Webinar", "Workshop", "Certification"];
 
   return (
     <AcademyShell
@@ -229,16 +278,28 @@ function CategoryPage() {
       activeCategory={category.slug}
       aside={
         <>
-          <FilterPanel title="Filter Courses">
+          <FilterPanel title="Filter Courses" onReset={resetFilters}>
             <FilterSearch placeholder="Search within results..." />
             <FilterGroup label="Level">
-              {category.levelCounts.map((l) => (
-                <CheckRow key={l.label} label={l.label} count={l.count} />
+              {levels.map((level) => (
+                <CheckRow
+                  key={level}
+                  label={level}
+                  count={modules.filter((module) => levelFor(module) === level).length}
+                  checked={selectedLevel === level}
+                  onChange={() => selectTab(selectedLevel === level ? "All" : level as FilterTab)}
+                />
               ))}
             </FilterGroup>
             <FilterGroup label="Format">
-              {category.formatCounts.map((f) => (
-                <CheckRow key={f.label} label={f.label} count={f.count} />
+              {formats.map((format) => (
+                <CheckRow
+                  key={format}
+                  label={format}
+                  count={modules.filter((module) => formatFor(module) === format).length}
+                  checked={selectedFormat === format}
+                  onChange={() => selectTab(selectedFormat === format ? "All" : format as FilterTab)}
+                />
               ))}
             </FilterGroup>
             <FilterGroup label="Duration">
@@ -301,6 +362,7 @@ function CategoryPage() {
         <AcademyHeader
           crumb={category.title}
           parent="Browse by Category"
+          parentHref="/academy"
           title={category.title}
           description={category.description}
           searchPlaceholder="Search courses, topics, or instructors..."
@@ -308,11 +370,11 @@ function CategoryPage() {
 
         <StatCards modules={modules} />
 
-        <CategoryTabs />
+        <CategoryTabs selected={selectedTab} onSelect={selectTab} />
 
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            Showing {modules.length} published {modules.length === 1 ? "course" : "courses"}
+            Showing {filteredModules.length} of {modules.length} published {modules.length === 1 ? "course" : "courses"}
           </p>
           <div className="flex items-center gap-2">
             <span className="hidden text-xs text-muted-foreground sm:inline">View as:</span>
@@ -326,20 +388,31 @@ function CategoryPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {modules.map((course) => (
+          {filteredModules.map((course) => (
             <CourseGridCard key={course.id} course={course} />
           ))}
         </div>
 
-        {modules.length === 0 && (
+        {filteredModules.length === 0 && (
           <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center shadow-soft">
             <GraduationCap className="mx-auto h-10 w-10 text-marine/60" />
-            <h2 className="mt-3 font-display text-lg font-bold text-navy">No published courses in this category yet</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Approved public courses will appear here after their category metadata has been verified.</p>
+            <h2 className="mt-3 font-display text-lg font-bold text-navy">
+              {modules.length === 0 ? "No published courses in this category yet" : "Tidak ada modul dengan kriteria ini"}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {modules.length === 0
+                ? "Approved public courses will appear here after their category metadata has been verified."
+                : "Try selecting another level or learning format, or reset the filters."}
+            </p>
+            {modules.length > 0 && (
+              <button type="button" onClick={resetFilters} className="mt-4 rounded-xl bg-marine px-4 py-2 text-sm font-semibold text-white">
+                Reset Filters
+              </button>
+            )}
           </div>
         )}
 
-        {modules.length > 12 && <Pagination />}
+        {filteredModules.length > 12 && <Pagination />}
       </div>
     </AcademyShell>
   );

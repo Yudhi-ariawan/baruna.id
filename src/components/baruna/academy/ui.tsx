@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   Search,
   ChevronDown,
@@ -14,6 +15,7 @@ import {
 export function AcademyHeader({
   crumb,
   parent,
+  parentHref = "/academy",
   title,
   description,
   searchPlaceholder,
@@ -21,6 +23,7 @@ export function AcademyHeader({
 }: {
   crumb: string;
   parent?: string;
+  parentHref?: string;
   title: string;
   description: string;
   searchPlaceholder: string;
@@ -29,15 +32,15 @@ export function AcademyHeader({
   return (
     <div className="space-y-5">
       <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-        <span className="font-medium text-foreground/70">Academy</span>
+        <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
         <ChevronRight className="h-3.5 w-3.5" />
         {parent && (
           <>
-            <span className="font-medium text-foreground/70">{parent}</span>
+            <Link to={parentHref} className="font-medium text-foreground/70 hover:text-marine">{parent}</Link>
             <ChevronRight className="h-3.5 w-3.5" />
           </>
         )}
-        <span className="font-semibold text-navy">{crumb}</span>
+        <span className="font-semibold text-navy" aria-current="page">{crumb}</span>
       </nav>
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -207,12 +210,12 @@ export function DateChip({
 
 /* ---------------- Filter sidebar pieces ---------------- */
 
-export function FilterPanel({ title, children }: { title: string; children: ReactNode }) {
+export function FilterPanel({ title, children, onReset }: { title: string; children: ReactNode; onReset?: () => void }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-display text-base font-bold text-navy">{title}</h3>
-        <button className="flex items-center gap-1 text-xs font-semibold text-marine hover:text-navy">
+        <button type="button" onClick={onReset} className="flex items-center gap-1 text-xs font-semibold text-marine hover:text-navy">
           <RotateCcw className="h-3 w-3" /> Reset
         </button>
       </div>
