@@ -47,7 +47,7 @@ export const Route = createFileRoute("/academy/alumni/$id")({
     };
   },
   notFoundComponent: () => (
-    <AcademyShell active="training">
+    <AcademyShell active="alumni">
       <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
         <h1 className="font-display text-2xl font-bold text-navy">Alumnus not found</h1>
         <Link to="/academy/alumni" className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-marine-foreground">
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/academy/alumni/$id")({
     </AcademyShell>
   ),
   errorComponent: ({ error }: { error: any }) => (
-    <AcademyShell active="training">
+    <AcademyShell active="alumni">
       <div role="alert" className="rounded-2xl border border-border bg-card p-10 text-center shadow-soft">
         <h1 className="font-display text-2xl font-bold text-navy">Something went wrong</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error?.message || String(error)}</p>
@@ -92,7 +92,7 @@ function AlumnusProfile() {
 
   return (
     <AcademyShell
-      active="training"
+      active="alumni"
       aside={
         <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
           <h3 className="font-display text-base font-bold text-navy">Related Alumni</h3>
@@ -121,9 +121,9 @@ function AlumnusProfile() {
     >
       <div className="space-y-6">
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-          <Link to="/academy/edition-2024" className="font-medium text-foreground/70 hover:text-marine">2024 Edition</Link>
+          <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/alumni" className="font-medium text-foreground/70 hover:text-marine">Alumni</Link>
+          <Link to="/academy/alumni" className="font-medium text-foreground/70 hover:text-marine">Alumni Directory</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy">{a.name}</span>
         </nav>

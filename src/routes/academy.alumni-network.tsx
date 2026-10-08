@@ -11,7 +11,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
-import { ProgramSeriesNav } from "@/components/baruna/academy/ProgramSeriesNav";
 import {
   ALUMNI_NETWORK_PILLARS,
   COUNTRY_STATS,
@@ -42,12 +41,10 @@ const PILLAR_ICONS = [Users, Flag, Share2, Trophy, Handshake];
 
 function AlumniNetworkPage() {
   return (
-    <AcademyShell active="training">
+    <AcademyShell active="alumni-network">
       <div className="space-y-6">
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link to="/academy" className="font-medium text-foreground/70 hover:text-marine">Academy</Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/academy/edition-2024" className="font-medium text-foreground/70 hover:text-marine">2024 Edition</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-semibold text-navy">Alumni Network</span>
         </nav>
@@ -76,7 +73,28 @@ function AlumniNetworkPage() {
           </div>
         </div>
 
-        <ProgramSeriesNav active="2024" />
+        {/* Network Cohort Context Banner */}
+        <div className="flex flex-col gap-3 rounded-2xl border border-marine/20 bg-gradient-to-br from-marine/5 to-ocean/5 p-4 sm:flex-row sm:items-center sm:justify-between shadow-soft">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine">
+              <GraduationCap className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-bold text-navy">
+                Jejaring Resmi Alumni BARUNA (Angkatan 2024)
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Menghubungkan 20 profesional perikanan dari 10 negara Afrika. Lulusan angkatan berikutnya (2026) akan otomatis terhubung ke jejaring ini pasca-pelatihan.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/academy/edition-2024"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-marine/30 bg-card px-3.5 py-2 text-xs font-semibold text-marine transition-colors hover:border-marine hover:bg-marine hover:text-marine-foreground shadow-sm"
+          >
+            Arsip Program 2024 <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
 
         {/* Pillars */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

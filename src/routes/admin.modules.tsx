@@ -674,6 +674,31 @@ function ModuleDetailModal({
               </div>
             )}
 
+            {detail?.status === "revision_requested" && (
+              <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50/90 p-4 shadow-2xs">
+                <div className="flex items-center gap-2 font-bold text-amber-950 text-sm">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-200 text-amber-800 shrink-0">
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </span>
+                  Permintaan Revisi Telah Dikirim ke Trainer
+                  <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] ml-auto">
+                    Menunggu Perbaikan Trainer
+                  </Badge>
+                </div>
+                <p className="mt-1.5 text-xs text-amber-900 leading-relaxed">
+                  Modul ditarik sementara dari tayangan publik agar peserta tidak mengakses materi yang sedang diperbaiki. Trainer telah menerima notifikasi perbaikan dan dapat mengedit silabus atau kuis di portal mereka.
+                </p>
+                {detail.lastRevisionRationale && (
+                  <div className="mt-2.5 rounded-lg border border-amber-200 bg-white p-3 text-xs">
+                    <span className="block font-semibold text-slate-800 text-[11px] uppercase tracking-wider mb-0.5">
+                      Catatan Evaluasi / Alasan Pengembalian:
+                    </span>
+                    <p className="italic text-slate-700">&quot;{detail.lastRevisionRationale}&quot;</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {detail?.status === "resubmitted" && (
               <div className="mt-3 rounded-xl border border-sky-300 bg-sky-50/90 p-4 shadow-2xs">
                 <div className="flex items-center gap-2 font-bold text-sky-950 text-sm">
@@ -1047,6 +1072,17 @@ function ModuleDetailModal({
                             className="w-full sm:w-auto text-xs border-slate-300 text-slate-700 hover:bg-slate-100 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                           >
                             <Archive className="h-4 w-4 shrink-0 text-slate-600" /> Arsipkan Modul (Tarik Tayang)
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={submitting}
+                            onClick={() => handleDecision("return_for_revision")}
+                            className="w-full sm:w-auto text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
+                          >
+                            <RotateCcw className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
+                            {submitting ? "Memproses..." : "Minta Revisi Dokumen"}
                           </Button>
 
                           <Button

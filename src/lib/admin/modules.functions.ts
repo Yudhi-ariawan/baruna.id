@@ -209,26 +209,24 @@ export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
 
       const isResubmitted =
         lastDecision === "return_for_revision" &&
-        draft?.status === "submitted" &&
-        subjMeta.review_status === "resubmitted";
+        (draft?.status === "submitted" || subjMeta.review_status === "resubmitted");
 
       // Determine effective status
       let effectiveStatus = subj.current_status;
-      if (
-        subj.current_status === "withdrawn" ||
-        subjMeta.review_status === "archived" ||
-        published?.current_status === "archived" ||
-        lastDecision === "archive"
-      ) {
+      if (subj.current_status === "withdrawn") {
+        effectiveStatus = "withdrawn";
+      } else if (lastDecision === "archive" || subjMeta.review_status === "archived") {
         effectiveStatus = "archived";
-      } else if (subj.current_status === "approved" || lastDecision === "approve") {
-        effectiveStatus = "approved";
-      } else if (subj.current_status === "rejected" || lastDecision === "reject") {
-        effectiveStatus = "rejected";
       } else if (isResubmitted) {
         effectiveStatus = "resubmitted";
-      } else if (isDraftRevising || lastDecision === "return_for_revision") {
+      } else if (lastDecision === "return_for_revision" || isDraftRevising || subjMeta.review_status === "revision_requested") {
         effectiveStatus = "revision_requested";
+      } else if (lastDecision === "reject" || subj.current_status === "rejected") {
+        effectiveStatus = "rejected";
+      } else if (lastDecision === "approve" || subj.current_status === "approved") {
+        effectiveStatus = "approved";
+      } else if (published?.current_status === "archived") {
+        effectiveStatus = "archived";
       }
 
       // Count attached resources
@@ -447,25 +445,23 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
 
     const isResubmitted =
       latestDecision === "return_for_revision" &&
-      draft?.status === "submitted" &&
-      subjMeta.review_status === "resubmitted";
+      (draft?.status === "submitted" || subjMeta.review_status === "resubmitted");
 
     let effectiveStatus = subj.current_status;
-    if (
-      subj.current_status === "withdrawn" ||
-      subjMeta.review_status === "archived" ||
-      published?.current_status === "archived" ||
-      latestDecision === "archive"
-    ) {
+    if (subj.current_status === "withdrawn") {
+      effectiveStatus = "withdrawn";
+    } else if (latestDecision === "archive" || subjMeta.review_status === "archived") {
       effectiveStatus = "archived";
-    } else if (subj.current_status === "approved" || latestDecision === "approve") {
-      effectiveStatus = "approved";
-    } else if (subj.current_status === "rejected" || latestDecision === "reject") {
-      effectiveStatus = "rejected";
     } else if (isResubmitted) {
       effectiveStatus = "resubmitted";
-    } else if (isDraftRevising || latestDecision === "return_for_revision") {
+    } else if (latestDecision === "return_for_revision" || isDraftRevising || subjMeta.review_status === "revision_requested") {
       effectiveStatus = "revision_requested";
+    } else if (latestDecision === "reject" || subj.current_status === "rejected") {
+      effectiveStatus = "rejected";
+    } else if (latestDecision === "approve" || subj.current_status === "approved") {
+      effectiveStatus = "approved";
+    } else if (published?.current_status === "archived") {
+      effectiveStatus = "archived";
     }
 
     const learningObjectives = Array.isArray(payload.learning_objectives)
@@ -713,6 +709,16 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
           updated_at: new Date().toISOString(),
         })
         .eq("linked_subject_id", input.subjectId);
+
+      // If module exists in module_registry, set it back to draft and make private during revision
+      await supabaseAdmin
+        .from("module_registry")
+        .update({
+          current_status: "approved",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("source_submission_id", input.subjectId);
 
       return { success: true, decisionId, decision: input.decision };
     }

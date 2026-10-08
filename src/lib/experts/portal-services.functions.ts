@@ -111,6 +111,32 @@ export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
                       ...(draft.reviewHistory ?? []),
                     ];
                   }
+                } else if (meta.review_status === "revision_requested" || meta.last_decision === "return_for_revision") {
+                  draft.reviewStatus = "revision_requested";
+                  const revisionReason =
+                    typeof meta.last_rationale === "string"
+                      ? meta.last_rationale
+                      : "Verifikator meminta Anda memperbarui silabus atau berkas modul.";
+                  const revisedAt =
+                    typeof meta.revised_at === "string"
+                      ? meta.revised_at
+                      : draft.updatedAt;
+
+                  const hasRevisionEvent = (draft.reviewHistory ?? []).some(
+                    (h) => h.decision === "return_for_revision",
+                  );
+                  if (!hasRevisionEvent) {
+                    draft.reviewHistory = [
+                      {
+                        kind: "decision",
+                        at: revisedAt,
+                        actor: "Verifikator BARUNA",
+                        decision: "return_for_revision",
+                        comment: revisionReason,
+                      },
+                      ...(draft.reviewHistory ?? []),
+                    ];
+                  }
                 }
               }
             }

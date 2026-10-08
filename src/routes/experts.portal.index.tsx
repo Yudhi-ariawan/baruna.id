@@ -68,18 +68,7 @@ function resolveDraftStatus(d: {
     };
   }
 
-  if (d.reviewStatus === "approved" || dec === "approve") {
-    return {
-      status: "approved",
-      label: "Disetujui / Tayang",
-      badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300",
-      cardBorder: "border-emerald-200 bg-emerald-50/20",
-      icon: CheckCircle2,
-      decision: latestDecision,
-    };
-  }
-
-  if (d.reviewStatus === "revision_requested" || dec === "return_for_revision") {
+  if (dec === "return_for_revision" || d.reviewStatus === "revision_requested") {
     return {
       status: "revision_requested",
       label: "Perlu Revisi",
@@ -90,13 +79,24 @@ function resolveDraftStatus(d: {
     };
   }
 
-  if (d.reviewStatus === "rejected" || dec === "reject") {
+  if (dec === "reject" || d.reviewStatus === "rejected") {
     return {
       status: "rejected",
       label: "Ditolak",
       badgeClass: "bg-rose-100 text-rose-800 border-rose-300",
       cardBorder: "border-rose-200 bg-rose-50/20",
       icon: XCircle,
+      decision: latestDecision,
+    };
+  }
+
+  if (dec === "approve" || d.reviewStatus === "approved") {
+    return {
+      status: "approved",
+      label: "Disetujui / Tayang",
+      badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300",
+      cardBorder: "border-emerald-200 bg-emerald-50/20",
+      icon: CheckCircle2,
       decision: latestDecision,
     };
   }

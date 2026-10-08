@@ -32,6 +32,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveFileContentType } from "@/lib/storage/mime";
 import { useLanguage } from "@/lib/i18n";
 import { MODULE_ATTACHMENTS_BUCKET } from "@/lib/experts/module-attachments";
+import { ModuleQuizBuilder } from "@/components/baruna/experts/ModuleQuizBuilder";
+import type { CustomQuizQuestion } from "@/lib/learning/learning.functions";
 
 export const Route = createFileRoute("/experts/portal/submit-module")({
   head: () => ({
@@ -196,6 +198,7 @@ function SubmitModulePage() {
   // Pre-existing attached resources from draft metadata
   const [existingFiles, setExistingFiles] = useState<Record<string, ExistingResource>>({});
   const [videoUrl, setVideoUrl] = useState<string>("");
+  const [quizQuestions, setQuizQuestions] = useState<CustomQuizQuestion[]>([]);
 
   // Populate from activeDraft on mount / change
   useEffect(() => {
@@ -219,6 +222,15 @@ function SubmitModulePage() {
         copyrightHolder: String(draftMeta.copyright_holder ?? trainer?.fullName ?? ""),
         licensing: String(draftMeta.licensing ?? "CC BY-NC-SA 4.0"),
       });
+
+      const rawQuiz =
+        (Array.isArray(draftMeta.quiz_questions) && draftMeta.quiz_questions) ||
+        (Array.isArray(draftAssessment.quiz_questions) && draftAssessment.quiz_questions) ||
+        (Array.isArray(draftPayload.quiz_questions) && draftPayload.quiz_questions) ||
+        [];
+      if (rawQuiz.length > 0) {
+        setQuizQuestions(rawQuiz as CustomQuizQuestion[]);
+      }
 
       const rawAttached = Array.isArray(draftMeta.attached_resources)
         ? (draftMeta.attached_resources as ExistingResource[])
@@ -274,14 +286,24 @@ function SubmitModulePage() {
     );
   }, [formFields]);
 
+  const isQuizValid = useMemo(() => {
+    if (quizQuestions.length === 0) return true;
+    return quizQuestions.every(
+      (q) =>
+        q.question.trim().length > 0 &&
+        q.options.filter((o) => o.trim().length > 0).length >= 2,
+    );
+  }, [quizQuestions]);
+
   const isStep2Valid = useMemo(() => {
     return Boolean(
       formFields.objectives.trim() &&
         formFields.outcomes.trim() &&
         formFields.assessment.trim() &&
-        Number(formFields.passingScore) >= 0,
+        Number(formFields.passingScore) >= 0 &&
+        isQuizValid,
     );
-  }, [formFields]);
+  }, [formFields, isQuizValid]);
 
   const totalFilesCount = Object.keys(attachedFiles).length + Object.keys(existingFiles).length;
 
@@ -289,11 +311,19 @@ function SubmitModulePage() {
   const handleSave = async (submitIntent: boolean) => {
     if (!gate.allowed) return;
     if (submitIntent && (!isStep1Valid || !isStep2Valid || !allDecls)) {
-      setError(
-        isId
-          ? "Harap lengkapi semua bidang wajib dan centang 4 poin pernyataan etika sebelum mengirimkan."
-          : "Please complete all required fields and check the 4 ethics declarations before submitting.",
-      );
+      if (!isQuizValid) {
+        setError(
+          isId
+            ? "Terdapat butir soal kuis yang belum lengkap. Harap lengkapi teks pertanyaan dan minimal 2 pilihan jawaban, atau hapus soal tersebut."
+            : "Incomplete quiz questions found. Please complete question text and at least 2 options, or remove the question.",
+        );
+      } else {
+        setError(
+          isId
+            ? "Harap lengkapi semua bidang wajib dan centang 4 poin pernyataan etika sebelum mengirimkan."
+            : "Please complete all required fields and check the 4 ethics declarations before submitting.",
+        );
+      }
       return;
     }
 
@@ -474,6 +504,7 @@ function SubmitModulePage() {
             assessment_approach: {
               method: formFields.assessment.trim(),
               passing_score: Number(formFields.passingScore),
+              quiz_questions: quizQuestions,
             },
             attachments: uploadedResources,
             metadata: {
@@ -484,7 +515,9 @@ function SubmitModulePage() {
               video_url: videoUrl.trim() || undefined,
               cover_image_url: coverImageUrl || undefined,
               attached_resources: uploadedResources,
+              quiz_questions: quizQuestions,
             },
+            quiz_questions: quizQuestions,
             // Also save as documents for cross-compatibility
             documents: uploadedResources,
           },
@@ -955,6 +988,14 @@ function SubmitModulePage() {
                       />
                     </Field>
                   </Grid>
+
+                  <div className="mt-6 pt-5 border-t border-border">
+                    <ModuleQuizBuilder
+                      questions={quizQuestions}
+                      onChange={setQuizQuestions}
+                      isId={isId}
+                    />
+                  </div>
                 </Section>
               </div>
             )}
@@ -1110,9 +1151,23 @@ function SubmitModulePage() {
                                 htmlFor={inputId}
                                 className="flex w-full items-center justify-between gap-2 cursor-pointer select-none group"
                               >
-                                <span className="text-xs font-medium text-foreground/80 group-hover:text-marine transition-colors">
-                                  {r}
-                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-xs font-medium text-foreground/80 group-hover:text-marine transition-colors flex items-center gap-1.5">
+                                    <span>{r}</span>
+                                    {r.toLowerCase().includes("quiz") && quizQuestions.length > 0 && (
+                                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                        {isId ? `(${quizQuestions.length} Soal di Langkah 2)` : `(${quizQuestions.length} Qs in Step 2)`}
+                                      </span>
+                                    )}
+                                  </span>
+                                  {r.toLowerCase().includes("quiz") && (
+                                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                                      {quizQuestions.length > 0
+                                        ? (isId ? "Opsional (Soal kuis interaktif sudah dibuat di Langkah 2)" : "Optional (Interactive quiz created in Step 2)")
+                                        : (isId ? "Opsional / Berkas dokumen kuis fisik" : "Optional / Physical quiz document")}
+                                    </p>
+                                  )}
+                                </div>
                                 <span className="inline-flex items-center gap-1 rounded-md bg-marine/10 px-2.5 py-1 text-[0.65rem] font-bold text-marine group-hover:bg-marine group-hover:text-white transition-all shrink-0">
                                   <Upload className="h-3 w-3" /> UPLOAD
                                 </span>

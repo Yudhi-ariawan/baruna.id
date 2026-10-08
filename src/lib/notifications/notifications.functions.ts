@@ -12,6 +12,7 @@ export type InAppNotification = {
   targetUrl: string;
   createdAt: string;
   actorName: string;
+  isLatestForSubject?: boolean;
 };
 
 export const listMyNotifications = createServerFn({ method: "GET" })
@@ -57,8 +58,12 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       }
     });
 
+    const seenSubjects = new Set<string>();
     const notifications: InAppNotification[] = decisions.map((dec) => {
       const subject = subjectMap.get(dec.subject_id);
+      const isLatestForSubject = !seenSubjects.has(dec.subject_id);
+      seenSubjects.add(dec.subject_id);
+
       const kind = subject?.kind ?? "other";
       const subjectTitle = subject?.title || "Pengajuan Anda";
       const draftId = draftMap.get(dec.subject_id);
@@ -117,6 +122,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
         targetUrl,
         createdAt: dec.decided_at || dec.created_at,
         actorName: "Tim Verifikator BARUNA",
+        isLatestForSubject,
       };
     });
 

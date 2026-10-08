@@ -356,6 +356,9 @@ export const trainingBySlug: Record<string, TrainingProgram> = Object.fromEntrie
   trainingPrograms.map((p) => [p.slug, p]),
 );
 
+// Alias support: allows /academy/training/international-training-fisheries-2026 to resolve seamlessly
+trainingBySlug["international-training-fisheries-2026"] = trainingPrograms[0];
+
 // Listing-summary used on the All Training page card
 export const featuredTrainingCard = {
   slug: "international-training-fisheries-african-countries",

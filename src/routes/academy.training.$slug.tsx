@@ -35,15 +35,24 @@ import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { trainingBySlug, type TrainingProgram } from "@/data/training";
 import { instructorsForProgram } from "@/data/instructors";
 import { GroupedInstructorDirectory } from "@/components/baruna/InstructorDirectory";
-import { ProgramSeriesNav } from "@/components/baruna/academy/ProgramSeriesNav";
 import { Toaster } from "@/components/baruna/Toaster";
 import { downloadPdf, downloadScheduleICS, barunaToast } from "@/lib/downloads";
+import {
+  getCurriculumPdfMap,
+  type CurriculumModuleDoc,
+} from "@/lib/learning/curriculum-modules.functions";
 
 export const Route = createFileRoute("/academy/training/$slug")({
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
     const program = trainingBySlug[params.slug];
     if (!program) throw notFound();
-    return { program };
+    let pdfMap = {} as Record<number, CurriculumModuleDoc>;
+    try {
+      pdfMap = await getCurriculumPdfMap();
+    } catch (err) {
+      console.warn("Could not load curriculum PDF map:", err);
+    }
+    return { program, pdfMap };
   },
   head: ({ loaderData }) => {
     const p = loaderData?.program;
@@ -233,7 +242,10 @@ function DownloadCard({
 }
 
 function TrainingDetail() {
-  const { program: p } = Route.useLoaderData() as { program: TrainingProgram };
+  const { program: p, pdfMap } = Route.useLoaderData() as {
+    program: TrainingProgram;
+    pdfMap: Record<number, CurriculumModuleDoc>;
+  };
   const [tab, setTab] = useState<Tab>("Overview");
   const { saved, toggle } = useSaved(p.slug);
 
@@ -336,7 +348,7 @@ function TrainingDetail() {
         >
           <Bookmark className={`h-4 w-4 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save Program"}
         </button>
-        {p.slug === "international-training-fisheries-african-countries" && (
+        {(p.slug === "international-training-fisheries-african-countries" || p.slug === "international-training-fisheries-2026") && (
           <Link
             to="/academy/preview/international-training-fisheries-african-countries"
             className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-accent bg-accent/10 py-2.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
@@ -557,12 +569,50 @@ function TrainingDetail() {
           </div>
         </section>
 
-        {/* Program Series — connects the 2026 edition with the completed 2024 edition */}
-        {p.slug === "international-training-fisheries-african-countries" && (
-          <ProgramSeriesNav active="2026" />
-        )}
+        {/* Program Series */}
+        <section className="rounded-2xl border border-marine/20 bg-gradient-to-br from-marine/5 to-ocean/5 p-5 shadow-soft">
+          <div className="flex items-center gap-2 text-xs font-bold text-marine">
+            <Sparkles className="h-4 w-4" />
+            <span>Program Series</span>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            International Training on Fisheries for African Countries
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-display text-lg font-bold text-navy">2024</span>
+                <span className="rounded-full bg-success/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-success">
+                  Completed
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                First edition · Indonesia · Sep 2024
+              </p>
+              <Link
+                to="/academy/edition-2024"
+                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-marine hover:underline"
+              >
+                View Program <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
 
-
+            <div className="rounded-xl border-2 border-marine bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-display text-lg font-bold text-navy">2026</span>
+                <span className="rounded-full bg-marine/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-marine">
+                  Applications Open
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Blended · Bali, Indonesia · Sep 2026
+              </p>
+              <span className="mt-3 inline-block text-xs font-medium text-muted-foreground">
+                Currently Viewing
+              </span>
+            </div>
+          </div>
+        </section>
 
         {/* Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -634,7 +684,7 @@ function TrainingDetail() {
             </section>
 
             {/* Training Modules preview */}
-            <ModulesPreview p={p} onViewCurriculum={() => setTab("Curriculum")} />
+            <ModulesPreview p={p} pdfMap={pdfMap} onViewCurriculum={() => setTab("Curriculum")} />
 
             {/* Learning Outcomes */}
             <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
@@ -706,18 +756,44 @@ function TrainingDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {p.curriculum.map((m) => (
-                      <tr key={m.no} className="border-b border-border last:border-0">
-                        <td className="px-4 py-3 text-sm font-bold text-marine">{m.no}</td>
-                        <td className="px-4 py-3 text-sm font-semibold text-navy">{m.module}</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{m.topics}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-navy">
-                          <span className="inline-flex items-center gap-1 rounded-md bg-marine/10 px-2 py-0.5 text-xs text-marine">
-                            <Clock className="h-3 w-3" /> {m.hours}h
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {p.curriculum.map((m) => {
+                      const doc = pdfMap?.[m.no];
+                      const pdfUrl = doc?.pdfUrl;
+
+                      return (
+                        <tr
+                          key={m.no}
+                          onClick={() => {
+                            if (pdfUrl) {
+                              window.open(pdfUrl, "_blank", "noopener,noreferrer");
+                            }
+                          }}
+                          className={`border-b border-border last:border-0 transition-colors ${
+                            pdfUrl ? "cursor-pointer hover:bg-muted/40" : ""
+                          }`}
+                        >
+                          <td className="px-4 py-3 text-sm font-bold text-marine">{m.no}</td>
+                          <td className="px-4 py-3 text-sm font-semibold text-navy">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span>{m.module}</span>
+                              {pdfUrl && (
+                                <span className="inline-flex items-center gap-1 rounded bg-marine/10 px-1.5 py-0.5 text-[0.65rem] font-bold text-marine">
+                                  <FileText className="h-3 w-3" />
+                                  PDF
+                                  <ExternalLink className="h-2.5 w-2.5" />
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{m.topics}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-navy">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-marine/10 px-2 py-0.5 text-xs text-marine">
+                              <Clock className="h-3 w-3" /> {m.hours}h
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -999,9 +1075,11 @@ function TrainingDetail() {
 
 function ModulesPreview({
   p,
+  pdfMap,
   onViewCurriculum,
 }: {
   p: TrainingProgram;
+  pdfMap?: Record<number, CurriculumModuleDoc>;
   onViewCurriculum: () => void;
 }) {
   return (
@@ -1010,14 +1088,43 @@ function ModulesPreview({
         Training Modules <span className="text-muted-foreground">({p.modules.length})</span>
       </h2>
       <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-        {p.modules.map((m, i) => (
-          <div key={m} className="flex items-center gap-3 rounded-xl border border-border bg-secondary/30 p-3">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-marine/10 text-sm font-bold text-marine">
-              {i + 1}
-            </span>
-            <p className="text-sm font-medium text-navy">{m}</p>
-          </div>
-        ))}
+        {p.modules.map((m, i) => {
+          const num = i + 1;
+          const doc = pdfMap?.[num];
+          const pdfUrl = doc?.pdfUrl;
+
+          return (
+            <div
+              key={m}
+              onClick={() => {
+                if (pdfUrl) {
+                  window.open(pdfUrl, "_blank", "noopener,noreferrer");
+                }
+              }}
+              className={`flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 p-3 transition-all ${
+                pdfUrl
+                  ? "cursor-pointer hover:-translate-y-0.5 hover:border-marine/50 hover:bg-card hover:shadow-soft"
+                  : ""
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-marine/10 text-sm font-bold text-marine">
+                  {num}
+                </span>
+                <p className="truncate text-sm font-medium text-navy">{m}</p>
+              </div>
+              {pdfUrl && (
+                <span
+                  title="Buka modul PDF di tab baru"
+                  className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-marine hover:underline"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <ExternalLink className="h-3 w-3" />
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
       <button
         onClick={onViewCurriculum}

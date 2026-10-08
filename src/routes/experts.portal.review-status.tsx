@@ -92,19 +92,43 @@ type ModuleReviewDraft = NonNullable<TrainerPortalBootstrap["moduleDrafts"]>[num
 
 function resolveReviewState(draft: ModuleReviewDraft) {
   const latestDecision = draft.reviewHistory?.[0]?.decision;
+
   const isArchived = draft.reviewStatus === "archived" || latestDecision === "archive";
-  const isApproved = !isArchived && (draft.reviewStatus === "approved" || latestDecision === "approve");
-  const isRevision = !isArchived && (draft.reviewStatus === "revision_requested" || latestDecision === "return_for_revision");
-  const isRejected = !isArchived && (draft.reviewStatus === "rejected" || latestDecision === "reject");
-  // Queue state belongs to one exact submission. A saved draft without a
-  // linked review subject has never entered verification.
-  const isPending = Boolean(draft.subjectId) && !isArchived && !isApproved && !isRevision && !isRejected && (
+  if (isArchived) {
+    return { isArchived: true, isApproved: false, isRevision: false, isRejected: false, isPending: false, isDraft: false };
+  }
+
+  const isRevision = latestDecision === "return_for_revision" || draft.reviewStatus === "revision_requested";
+  if (isRevision) {
+    return { isArchived: false, isApproved: false, isRevision: true, isRejected: false, isPending: false, isDraft: false };
+  }
+
+  const isRejected = latestDecision === "reject" || draft.reviewStatus === "rejected";
+  if (isRejected) {
+    return { isArchived: false, isApproved: false, isRevision: false, isRejected: true, isPending: false, isDraft: false };
+  }
+
+  const isApproved = latestDecision === "approve" || draft.reviewStatus === "approved";
+  if (isApproved) {
+    return { isArchived: false, isApproved: true, isRevision: false, isRejected: false, isPending: false, isDraft: false };
+  }
+
+  const isPending = Boolean(draft.subjectId) && (
     draft.status === "submitted" ||
     draft.reviewStatus === "pending" ||
     draft.reviewStatus === "under_review" ||
-    draft.reviewStatus === "decision_pending"
+    draft.reviewStatus === "decision_pending" ||
+    draft.reviewStatus === "resubmitted"
   );
-  return { isArchived, isApproved, isRevision, isRejected, isPending, isDraft: !isArchived && !isApproved && !isRevision && !isRejected && !isPending };
+
+  return {
+    isArchived: false,
+    isApproved: false,
+    isRevision: false,
+    isRejected: false,
+    isPending,
+    isDraft: !isPending,
+  };
 }
 
 function ReviewStatusPage() {

@@ -10,7 +10,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getModuleStorageSignedUrl(
+export async function getModuleStorageSignedUrl(
   supabaseAdmin: any,
   storagePath: string,
   expiresIn = 86400,
@@ -460,6 +460,14 @@ export type PublishedModuleTrainer = {
   slug: string | null;
 };
 
+export type CustomQuizQuestion = {
+  id: number | string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation?: string;
+};
+
 export type PublishedModuleDetail = {
   id: string;
   title: string;
@@ -477,7 +485,34 @@ export type PublishedModuleDetail = {
   trainer: PublishedModuleTrainer;
   documents: PublishedModuleDocument[];
   publishedAt: string;
+  quizQuestions?: CustomQuizQuestion[];
 };
+
+function parseQuizQuestions(raw: unknown): CustomQuizQuestion[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const valid: CustomQuizQuestion[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const item = raw[i];
+    if (item && typeof item === "object") {
+      const q = item as Record<string, unknown>;
+      const question = typeof q.question === "string" ? q.question.trim() : "";
+      const rawOptions = Array.isArray(q.options) ? q.options : [];
+      const options = rawOptions.map((o) => String(o ?? "").trim()).filter(Boolean);
+      const correctAnswer = typeof q.correctAnswer === "number" ? q.correctAnswer : Number(q.correctIndex ?? 0);
+      const explanation = typeof q.explanation === "string" ? q.explanation.trim() : undefined;
+      if (question && options.length >= 2) {
+        valid.push({
+          id: (q.id as number | string) ?? (i + 1),
+          question,
+          options,
+          correctAnswer: Math.max(0, Math.min(options.length - 1, isNaN(correctAnswer) ? 0 : correctAnswer)),
+          explanation,
+        });
+      }
+    }
+  }
+  return valid.length > 0 ? valid : undefined;
+}
 
 export const getPublishedModuleDetail = createServerFn({ method: "GET" })
   .validator((d) => z.object({ moduleId: z.string() }).parse(d))
@@ -595,6 +630,12 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
           trainer: subTrainer,
           documents: subDocs,
           publishedAt: String(sub.created_at),
+          quizQuestions: parseQuizQuestions(
+            subMeta.quiz_questions ||
+            subAssessment.quiz_questions ||
+            subPayload.quiz_questions ||
+            (subMeta.assessment_approach as Record<string, unknown> | undefined)?.quiz_questions
+          ),
         };
       }
 
@@ -714,6 +755,11 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
       trainer: trainerInfo,
       documents: documentsWithUrls,
       publishedAt: String(mod.publication_date || mod.created_at),
+      quizQuestions: parseQuizQuestions(
+        meta.quiz_questions ||
+        assessmentApproach.quiz_questions ||
+        (mod as unknown as Record<string, unknown>).quiz_questions
+      ),
     };
   } catch (err) {
     console.error("Error in getPublishedModuleDetail:", err);
