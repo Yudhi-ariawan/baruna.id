@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronRight,
@@ -12,6 +12,7 @@ import {
   Download,
   ExternalLink,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import {
@@ -97,7 +98,21 @@ function MyLearning() {
       a.slug !== "international-training-fisheries-african-countries",
   );
 
-  const { enrollments: shortCourses } = useShortCourses();
+  const { enrollments: shortCourses, syncWithCloud } = useShortCourses();
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  const handleSyncCloud = async () => {
+    setIsSyncingCloud(true);
+    try {
+      await syncWithCloud();
+      barunaToast("Data modul pelatihan berhasil disinkronkan dengan server cloud!");
+    } catch {
+      barunaToast("Gagal menyinkronkan data pelatihan.");
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
   const [aza] = useAza();
   const azaEnrolled = aza.enrolled;
   const azaProgress = azaOverallProgress(aza);
@@ -174,6 +189,15 @@ function MyLearning() {
               Training programs and learning modules will appear here automatically after you enroll.
             </p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={handleSyncCloud}
+                disabled={isSyncingCloud}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-marine/20 bg-marine/5 px-4 py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine/10 disabled:opacity-60 cursor-pointer shadow-sm"
+              >
+                <RefreshCw className={`h-4 w-4 ${isSyncingCloud ? "animate-spin" : ""}`} />
+                {isSyncingCloud ? "Menyinkronkan Cloud..." : "Sinkronkan dari Akun Cloud"}
+              </button>
               <Link
                 to="/academy/programs"
                 className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marine/90 shadow-sm"
@@ -195,9 +219,21 @@ function MyLearning() {
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="font-display text-xl font-bold text-navy">
-                      Self-Paced Training &amp; Learning Modules ({shortCourses.length})
-                    </h2>
+                    <div className="flex items-center gap-3">
+                      <h2 className="font-display text-xl font-bold text-navy">
+                        Self-Paced Training &amp; Learning Modules ({shortCourses.length})
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={handleSyncCloud}
+                        disabled={isSyncingCloud}
+                        title="Sinkronkan dengan server cloud"
+                        className="text-xs font-medium text-slate-500 hover:text-marine inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isSyncingCloud ? "animate-spin" : ""}`} />
+                        {isSyncingCloud ? "Sinkron..." : "Sinkron Cloud"}
+                      </button>
+                    </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Modules by verified BARUNA instructors and experts you are currently enrolled in.
                     </p>
