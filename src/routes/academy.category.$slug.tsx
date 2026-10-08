@@ -40,10 +40,12 @@ export const Route = createFileRoute("/academy/category/$slug")({
     const modules = (await getPublishedModulesCatalog()).filter((module) =>
       academyCategorySlugs(module).includes(normalizedSlug),
     );
-    return { category, modules };
+    // Keep loader data serializable: AcademyCategory contains a Lucide React
+    // component in `icon`, which cannot cross the SSR serialization boundary.
+    return { categorySlug: normalizedSlug, modules };
   },
   head: ({ loaderData }) => {
-    const c = loaderData?.category;
+    const c = loaderData?.categorySlug ? categoryBySlug[loaderData.categorySlug] : undefined;
     if (!c) return {};
     const url = `/academy/category/${c.slug}`;
     return {
@@ -215,7 +217,8 @@ function Pagination() {
 }
 
 function CategoryPage() {
-  const { category, modules } = Route.useLoaderData() as { category: AcademyCategory; modules: PublishedCatalogModule[] };
+  const { categorySlug, modules } = Route.useLoaderData() as { categorySlug: string; modules: PublishedCatalogModule[] };
+  const category = categoryBySlug[categorySlug] as AcademyCategory;
   const instructors = Array.from(
     new Map(modules.map((module) => [module.authorName, module])).values(),
   );
