@@ -3,6 +3,7 @@ import { GraduationCap, CheckCircle2, ShieldCheck, FileEdit, Award, ArrowRight }
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { publicExpertsNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import { TRAINER_APP_STATUSES } from "@/lib/trainerModules";
+import { PROFESSIONAL_TITLE_OPTIONS } from "@/lib/experts";
 
 export const Route = createFileRoute("/experts/become-trainer")({
   head: () => ({
@@ -85,6 +86,23 @@ function BecomeTrainerPage() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <h2 className="font-display text-lg font-bold text-navy">Standard Academic &amp; Professional Titles</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            The unified Expert and Trainer application uses these standardized public-facing titles. Applicants may choose Other / Custom Title when their institutional position is not listed.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {PROFESSIONAL_TITLE_OPTIONS.map((title) => (
+              <span key={title} className="rounded-full border border-marine/20 bg-marine/5 px-3 py-1.5 text-xs font-semibold text-navy">
+                {title}
+              </span>
+            ))}
+            <span className="rounded-full border border-dashed border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+              Other / Custom Title
+            </span>
+          </div>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">

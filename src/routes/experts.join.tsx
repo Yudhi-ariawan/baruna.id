@@ -41,6 +41,8 @@ import { resolveFileContentType } from "@/lib/storage/mime";
 import {
   EXPERTISE_AREAS,
   EXPERT_ROLES,
+  PROFESSIONAL_TITLE_OPTIONS,
+  CUSTOM_PROFESSIONAL_TITLE_VALUE,
   EXPERT_PIPELINE,
   MAX_BYTES,
   emptyExpertApplication,
@@ -191,6 +193,12 @@ function JoinExpertPage() {
   const [files, setFiles] = useState<Partial<Record<ExpertDocumentCategory, File>>>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const selectedProfessionalTitle = !form.title
+    ? ""
+    : PROFESSIONAL_TITLE_OPTIONS.includes(form.title as (typeof PROFESSIONAL_TITLE_OPTIONS)[number])
+      ? form.title
+      : CUSTOM_PROFESSIONAL_TITLE_VALUE;
 
   useEffect(() => {
     let active = true;
@@ -706,12 +714,34 @@ function JoinExpertPage() {
                   </div>
                   <div>
                     <FieldLabel required>{isId ? "Jabatan / Gelar Profesional" : "Professional Title"}</FieldLabel>
-                    <input
+                    <select
                       className={inputClass}
-                      value={form.title}
-                      onChange={(e) => set("title", e.target.value)}
-                      placeholder={isId ? "Contoh: Peneliti Utama Konservasi Laut" : "e.g., Senior Marine Researcher"}
-                    />
+                      value={selectedProfessionalTitle}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === CUSTOM_PROFESSIONAL_TITLE_VALUE) {
+                          if (PROFESSIONAL_TITLE_OPTIONS.includes(form.title as (typeof PROFESSIONAL_TITLE_OPTIONS)[number])) {
+                            set("title", "");
+                          }
+                        } else {
+                          set("title", value);
+                        }
+                      }}
+                    >
+                      <option value="" disabled>{isId ? "Pilih jabatan profesional" : "Select a professional title"}</option>
+                      {PROFESSIONAL_TITLE_OPTIONS.map((title) => (
+                        <option key={title} value={title}>{title}</option>
+                      ))}
+                      <option value={CUSTOM_PROFESSIONAL_TITLE_VALUE}>Other / Custom Title</option>
+                    </select>
+                    {selectedProfessionalTitle === CUSTOM_PROFESSIONAL_TITLE_VALUE && (
+                      <input
+                        className={`${inputClass} mt-2`}
+                        value={form.title}
+                        onChange={(e) => set("title", e.target.value)}
+                        placeholder={isId ? "Masukkan jabatan fungsional lainnya" : "Enter another functional or professional title"}
+                      />
+                    )}
                   </div>
                   <div>
                     <FieldLabel required>{isId ? "Institusi / Organisasi" : "Institution / Organization"}</FieldLabel>

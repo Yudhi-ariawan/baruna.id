@@ -307,6 +307,19 @@ export const EXPERTISE_AREAS = [
 export const EXPERT_ROLES = ["Speaker", "Trainer", "Reviewer", "Mentor", "Technical Expert"] as const;
 export type ExpertRole = (typeof EXPERT_ROLES)[number];
 
+/** Canonical public-facing academic/professional titles used by expert intake. */
+export const PROFESSIONAL_TITLE_OPTIONS = [
+  "Instructor",
+  "Mid-Level Instructor",
+  "Senior Instructor",
+  "Senior Trainer",
+  "Lecturer",
+  "Learning Technology Specialist",
+  "Fisheries Specialist / Researcher",
+] as const;
+export type ProfessionalTitle = (typeof PROFESSIONAL_TITLE_OPTIONS)[number];
+export const CUSTOM_PROFESSIONAL_TITLE_VALUE = "__custom__";
+
 export const EXPERT_STATUSES = ["Applied", "Under Review", "Approved Expert", "Published"] as const;
 export type ExpertStatus = (typeof EXPERT_STATUSES)[number];
 
