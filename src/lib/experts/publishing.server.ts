@@ -584,7 +584,7 @@ export async function publishApprovedModule({
   // 4. Check existing module in module_registry
   const { data: existing } = await supabaseAdmin
     .from("module_registry")
-    .select("id")
+    .select("id, version")
     .eq("source_submission_id", subjectId)
     .maybeSingle();
 
@@ -613,6 +613,7 @@ export async function publishApprovedModule({
         assessment_approach: payload.assessment_approach || {},
         author_expert_id: expert?.id || null,
         metadata: payload.metadata || {},
+        version: Number(existing.version || 1) + 1,
         updated_at: now,
       })
       .eq("id", existing.id);
@@ -620,6 +621,9 @@ export async function publishApprovedModule({
     if (updateErr) {
       throw new Error(updateErr.message || "module_update_failed");
     }
+
+    const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
+    await projectPublishedModuleToKnowledge(existing.id);
 
     return { moduleId: existing.id };
   }

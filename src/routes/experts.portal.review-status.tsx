@@ -310,6 +310,9 @@ function ReviewStatusPage() {
               const latestDecision = d.reviewHistory?.[0];
               const { isArchived, isRevision, isApproved, isRejected, isPending, isDraft } = resolveReviewState(d);
               const files = getDraftFiles(d.payload);
+              const draftPayload = (d.payload as Record<string, unknown>) ?? {};
+              const draftMetadata = (draftPayload.metadata as Record<string, unknown>) ?? {};
+              const isPublishedUpdate = draftMetadata.revision_kind === "published_module_update";
 
               // Tentukan tahapan stepper
               // Step 1: Draf Disusun (Selalu done)
@@ -353,7 +356,7 @@ function ReviewStatusPage() {
                         </Badge>
                       ) : isRevision ? (
                         <Badge className="bg-amber-100 text-amber-800 border-amber-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
-                          <RotateCcw className="h-3.5 w-3.5" /> Perlu Revisi Dokumen
+                          <RotateCcw className="h-3.5 w-3.5" /> {isPublishedUpdate ? "Pembaruan Diminta oleh Verifikator" : "Perlu Revisi Dokumen"}
                         </Badge>
                       ) : isApproved ? (
                         <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
@@ -569,7 +572,9 @@ function ReviewStatusPage() {
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-amber-900">
-                            Verifikator Meminta Perbaikan Kurikulum / Dokumen
+                            {isPublishedUpdate
+                              ? "Pembaruan Modul Tayang Diminta oleh Verifikator"
+                              : "Verifikator Meminta Perbaikan Kurikulum / Dokumen"}
                           </p>
                           {latestDecision?.comment && (
                             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-slate-800">

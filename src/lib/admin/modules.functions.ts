@@ -5,6 +5,11 @@ import { publishApprovedModule } from "@/lib/experts/publishing.server";
 
 const DecisionType = z.enum(["approve", "return_for_revision", "reject", "archive", "restore"]);
 
+const PublishedRevisionRequest = z.object({
+  subjectId: z.string().uuid(),
+  rationale: z.string().trim().min(5).max(5000),
+});
+
 export type AdminModuleDocument = {
   type: string;
   name: string;
@@ -88,6 +93,42 @@ async function assertAdminOrReviewer(
   }
   return false;
 }
+
+async function assertAdministrator(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: { supabase: any; userId: string },
+) {
+  const now = new Date().toISOString();
+  const { data } = await context.supabase
+    .from("rbac_user_roles")
+    .select("rbac_roles!inner(code)")
+    .eq("user_id", context.userId)
+    .eq("status", "active")
+    .lte("valid_from", now)
+    .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .in("rbac_roles.code", ["super_admin", "admin"])
+    .limit(1);
+  return Boolean(data?.length);
+}
+
+export const requestPublishedModuleRevision = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input) => PublishedRevisionRequest.parse(input))
+  .handler(async ({ data: input, context }) => {
+    if (!(await assertAdministrator(context))) throw new Error("forbidden");
+
+    // The RPC creates a new editable branch atomically. It deliberately does
+    // not change module_registry/knowledge_resources publication state.
+    const { data, error } = await context.supabase.rpc(
+      "request_published_module_revision" as never,
+      {
+        _subject_id: input.subjectId,
+        _rationale: input.rationale,
+      } as never,
+    );
+    if (error) throw new Error(error.message);
+    return { success: true, draftId: data as string };
+  });
 
 export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

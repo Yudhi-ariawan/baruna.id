@@ -33,6 +33,7 @@ import {
   listAdminModuleSubmissions,
   getAdminModuleDetail,
   recordAdminModuleDecision,
+  requestPublishedModuleRevision,
   type AdminModuleItem,
   type AdminModuleDetail,
   type AdminModuleDocument,
@@ -151,6 +152,7 @@ function AdminModulesPage() {
   const listFn = useServerFn(listAdminModuleSubmissions);
   const detailFn = useServerFn(getAdminModuleDetail);
   const decisionFn = useServerFn(recordAdminModuleDecision);
+  const publishedRevisionFn = useServerFn(requestPublishedModuleRevision);
 
   const {
     data: modules = [],
@@ -515,6 +517,7 @@ function AdminModulesPage() {
             setSelectedSubjectId(null);
           }}
           decisionFn={decisionFn}
+          publishedRevisionFn={publishedRevisionFn}
         />
       )}
     </div>
@@ -529,6 +532,7 @@ function ModuleDetailModal({
   onClose,
   onSuccess,
   decisionFn,
+  publishedRevisionFn,
 }: {
   subjectId: string;
   detail?: AdminModuleDetail | null;
@@ -537,6 +541,8 @@ function ModuleDetailModal({
   onSuccess: () => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   decisionFn: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  publishedRevisionFn: any;
 }) {
   const [rationale, setRationale] = useState("");
   const [rationaleError, setRationaleError] = useState<string | null>(null);
@@ -601,6 +607,32 @@ function ModuleDetailModal({
       const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat memproses keputusan.";
       toast.error(msg);
       setRationaleError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePublishedRevision = async () => {
+    setRationaleError(null);
+    if (rationale.trim().length < 5) {
+      const message = "Catatan pembaruan modul untuk Trainer wajib diisi (minimal 5 karakter).";
+      setRationaleError(message);
+      toast.error(message);
+      return;
+    }
+    if (!confirm("Buka cabang revisi baru untuk Trainer? Modul yang sedang tayang akan tetap aktif sampai revisi disetujui.")) return;
+
+    try {
+      setSubmitting(true);
+      await publishedRevisionFn({
+        data: { subjectId, rationale: rationale.trim() },
+      });
+      toast.success("Draf pembaruan berhasil dibuka. Versi publik tetap tayang dan Trainer telah menerima permintaan revisi.");
+      onSuccess();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gagal membuka revisi modul tayang.";
+      setRationaleError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -1002,15 +1034,20 @@ function ModuleDetailModal({
                 <div className="rounded-xl border border-border bg-white p-5 space-y-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
-                      Catatan Evaluasi / Umpan Balik Verifikator (Rationale)
+                      {detail.status === "approved"
+                        ? "Catatan Pembaruan Modul untuk Trainer"
+                        : "Catatan Evaluasi / Umpan Balik Verifikator (Rationale)"}
                     </label>
                     <p className="text-xs text-muted-foreground mb-2">
-                      Tuliskan catatan kelayakan, hasil telaah kurikulum modul, atau rincian perbaikan
-                      dokumen yang harus dilengkapi oleh Trainer jika meminta revisi.
+                      {detail.status === "approved"
+                        ? "Catatan ini wajib diisi dan akan tampil pada draf pembaruan Trainer. Versi publik saat ini tetap aktif selama proses revisi."
+                        : "Tuliskan catatan kelayakan, hasil telaah kurikulum modul, atau rincian perbaikan dokumen yang harus dilengkapi oleh Trainer jika meminta revisi."}
                     </p>
                     <Textarea
                       rows={4}
-                      placeholder="Contoh: Modul sangat baik dan relevan. Mohon lampirkan kunci jawaban kuis pada dokumen penilaian dan perbaiki deskripsi silabus..."
+                      placeholder={detail.status === "approved"
+                        ? "Contoh: Perbarui silabus, jam belajar, dan unggah ulang materi sesuai standar kurikulum terbaru..."
+                        : "Contoh: Modul sangat baik dan relevan. Mohon lampirkan kunci jawaban kuis pada dokumen penilaian dan perbaiki deskripsi silabus..."}
                       value={rationale}
                       onChange={(e) => {
                         setRationale(e.target.value);
@@ -1047,6 +1084,17 @@ function ModuleDetailModal({
                             className="w-full sm:w-auto text-xs border-slate-300 text-slate-700 hover:bg-slate-100 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                           >
                             <Archive className="h-4 w-4 shrink-0 text-slate-600" /> Arsipkan Modul (Tarik Tayang)
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={submitting}
+                            onClick={handlePublishedRevision}
+                            className="w-full sm:w-auto text-xs border-amber-300 text-amber-800 hover:bg-amber-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
+                          >
+                            <RotateCcw className={`h-4 w-4 shrink-0 ${submitting ? "animate-spin" : ""}`} />
+                            Buka Revisi / Kembalikan ke Trainer
                           </Button>
 
                           <Button
@@ -1123,4 +1171,3 @@ function ModuleDetailModal({
     </Dialog>
   );
 }
-

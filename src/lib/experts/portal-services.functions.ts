@@ -28,6 +28,19 @@ export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     const bootstrap = data as unknown as TrainerPortalBootstrap;
 
+    // Historical withdrawn branches remain available for audit in the
+    // database, but only the newest active branch belongs in the workspace.
+    if (bootstrap.moduleDrafts) {
+      const seenSubjects = new Set<string>();
+      bootstrap.moduleDrafts = bootstrap.moduleDrafts.filter((draft) => {
+        if (draft.status === "withdrawn") return false;
+        if (!draft.subjectId) return true;
+        if (seenSubjects.has(draft.subjectId)) return false;
+        seenSubjects.add(draft.subjectId);
+        return true;
+      });
+    }
+
     // Pastikan semua module_registry resmi milik pengguna terhubung ke daftar modules
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -84,6 +97,10 @@ export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
               if (draft.subjectId && subjectMap.has(draft.subjectId)) {
                 const s = subjectMap.get(draft.subjectId)!;
                 const meta = (s.metadata as Record<string, unknown>) ?? {};
+
+                if (typeof meta.review_status === "string") {
+                  draft.reviewStatus = meta.review_status;
+                }
 
                 if (s.current_status === "withdrawn" || meta.review_status === "archived") {
                   draft.reviewStatus = "archived";

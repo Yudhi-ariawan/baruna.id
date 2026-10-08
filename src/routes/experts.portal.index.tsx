@@ -52,6 +52,7 @@ function formatDate(dateStr: string) {
 function resolveDraftStatus(d: {
   status: string;
   reviewStatus: string | null;
+  payload?: unknown;
   reviewHistory?: Array<{ decision: string; comment: string | null; actor: string; at: string }>;
 }) {
   const latestDecision = d.reviewHistory?.[0];
@@ -80,9 +81,12 @@ function resolveDraftStatus(d: {
   }
 
   if (d.reviewStatus === "revision_requested" || dec === "return_for_revision") {
+    const payload = (d.payload as Record<string, unknown> | null) ?? {};
+    const metadata = (payload.metadata as Record<string, unknown> | null) ?? {};
+    const isPublishedUpdate = metadata.revision_kind === "published_module_update";
     return {
       status: "revision_requested",
-      label: "Perlu Revisi",
+      label: isPublishedUpdate ? "Pembaruan Diminta oleh Verifikator" : "Perlu Revisi",
       badgeClass: "bg-amber-100 text-amber-800 border-amber-300",
       cardBorder: "border-amber-300 bg-amber-50/30",
       icon: RotateCcw,
@@ -431,7 +435,7 @@ function PortalDashboard() {
                               search={{ draftId: d.id }}
                               className="inline-flex items-center gap-1 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-amber-700 transition"
                             >
-                              <FileEdit className="h-3 w-3" /> Perbaiki
+                              <FileEdit className="h-3 w-3" /> Perbaiki Draf &amp; Unggah Ulang
                             </Link>
                           ) : (
                             <Link
