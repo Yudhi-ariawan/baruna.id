@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { KhResource } from "@/data/demo/knowledgeHub";
+import { primaryModuleCategory } from "@/lib/academy/module-categories";
 
 export type KnowledgeHubStats = {
   totalPublished: number;
@@ -124,12 +125,19 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
       const moduleCode = typeof metadata.module_code === "string" && metadata.module_code.trim() !== ""
         ? metadata.module_code.trim()
         : undefined;
+      const taxonomyCategory = primaryModuleCategory({
+        title: resource.title,
+        summary: resource.summary,
+        topic: (resource.topics ?? []).join(" "),
+        competency: (resource.keywords ?? []).join(" "),
+        metadata,
+      });
       return {
         id: resource.id,
         type: "learning-modules",
         typeLabel: "Learning Module",
         title: resource.title,
-        category: "fisheries-management",
+        category: taxonomyCategory,
         summary: resource.summary ?? "BARUNA learning module.",
         abstract: resource.abstract ?? resource.summary ?? "BARUNA learning module.",
         coverImage: resource.thumbnail_url ?? undefined,

@@ -8,6 +8,7 @@ import { DEMO_CATEGORIES } from "@/data/demo";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge } from "@/components/baruna/knowledge/ResourceCard";
 import { getPublishedLearningModules } from "@/lib/knowledge-hub/knowledge-hub.functions";
+import { MODULE_CATEGORY_LABELS } from "@/lib/academy/module-categories";
 
 const VALID: string[] = [...KH_TYPES.map((t) => t.slug), "library"];
 
@@ -92,6 +93,8 @@ function CataloguePage() {
   }, [base, q, cat, access, year, typeFilter, sort]);
 
   const years = Array.from(new Set(base.map((r) => r.year))).sort((a, b) => b - a);
+  const availableCategories = Array.from(new Set(base.map((r) => r.category).filter(Boolean)))
+    .sort((a, b) => (MODULE_CATEGORY_LABELS[a] ?? a).localeCompare(MODULE_CATEGORY_LABELS[b] ?? b));
   const accessLevels: KhAccessLevel[] = ["Public Access", "Registered User", "Course Participant", "Completion Required"];
 
   const clear = () => { setQ(""); setCat("all"); setAccess("all"); setYear("all"); setTypeFilter("all"); };
@@ -194,7 +197,11 @@ function CataloguePage() {
               )}
               <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded-lg border border-border bg-background px-2 py-1.5 font-semibold text-navy">
                 <option value="all">All Categories</option>
-                {DEMO_CATEGORIES.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+                {availableCategories.map((slug) => (
+                  <option key={slug} value={slug}>
+                    {MODULE_CATEGORY_LABELS[slug] ?? DEMO_CATEGORIES.find((category) => category.slug === slug)?.name ?? slug}
+                  </option>
+                ))}
               </select>
               <select value={access} onChange={(e) => setAccess(e.target.value)} className="rounded-lg border border-border bg-background px-2 py-1.5 font-semibold text-navy">
                 <option value="all">All Access</option>

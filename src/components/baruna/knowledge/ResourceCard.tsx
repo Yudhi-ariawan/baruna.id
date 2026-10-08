@@ -4,9 +4,10 @@ import { courseImages } from "@/data/pages";
 import { useIsSaved, toggleSaved, shareResource } from "@/lib/khSaved";
 import { DEMO_CATEGORIES } from "@/data/demo";
 import type { KhResource } from "@/data/demo/knowledgeHub";
+import { MODULE_CATEGORY_LABELS } from "@/lib/academy/module-categories";
 
 function categoryName(slug: string) {
-  return DEMO_CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
+  return MODULE_CATEGORY_LABELS[slug] ?? DEMO_CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
 }
 
 export function DemoDataBadge() {

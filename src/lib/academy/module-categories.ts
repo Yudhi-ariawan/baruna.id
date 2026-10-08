@@ -1,4 +1,10 @@
-import type { PublishedCatalogModule } from "@/lib/learning/learning.functions";
+export type CategoryClassifiable = {
+  title: string;
+  summary?: string | null;
+  topic?: string | null;
+  competency?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
 
 const CATEGORY_RULES: Array<{ slug: string; terms: string[] }> = [
   { slug: "fish-processing-and-value-addition", terms: ["fish processing", "post-harvest", "post harvest", "value-added", "value added", "food packaging", "fish floss", "fish stick", "churros"] },
@@ -9,11 +15,12 @@ const CATEGORY_RULES: Array<{ slug: string; terms: string[] }> = [
   { slug: "ocean-governance", terms: ["ocean governance", "marine policy", "maritime law", "governance"] },
   { slug: "blue-economy", terms: ["blue economy", "circular economy", "marine business"] },
   { slug: "ocean-literacy", terms: ["ocean literacy", "education", "awareness"] },
+  { slug: "digital-marine", terms: ["website", "web application", "digital", "information system", "informatics", "manajemen informatika"] },
   { slug: "aquaculture", terms: ["aquaculture", "tilapia", "catfish", "biofloc", "hatchery", "fish feed", "fish health", "vaccination", "broodstock", "seed nursing", "water quality"] },
   { slug: "fisheries-management", terms: ["fisheries management", "fishery management", "stock assessment", "capture fisheries", "fisheries policy"] },
 ];
 
-export function academyCategorySlugs(module: PublishedCatalogModule): string[] {
+export function academyCategorySlugs(module: CategoryClassifiable): string[] {
   const metadata = module.metadata ?? {};
   const searchable = [
     module.title,
@@ -43,4 +50,22 @@ export function academyCategorySlugs(module: PublishedCatalogModule): string[] {
   }
 
   return matches;
+}
+
+export const MODULE_CATEGORY_LABELS: Record<string, string> = {
+  "fisheries-management": "Fisheries Management",
+  aquaculture: "Aquaculture",
+  "marine-conservation": "Marine Conservation",
+  "blue-economy": "Blue Economy",
+  "climate-change": "Climate Change",
+  "ocean-governance": "Ocean Governance",
+  "marine-spatial-planning": "Marine Spatial Planning",
+  "fisheries-surveillance": "Fisheries Surveillance",
+  "fish-processing-and-value-addition": "Fish Processing & Value Addition",
+  "ocean-literacy": "Ocean Literacy",
+  "digital-marine": "Digital Marine",
+};
+
+export function primaryModuleCategory(module: CategoryClassifiable): string {
+  return academyCategorySlugs(module)[0] ?? "ocean-literacy";
 }

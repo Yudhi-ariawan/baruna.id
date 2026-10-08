@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { MODULE_CATEGORY_LABELS, primaryModuleCategory } from "@/lib/academy/module-categories";
 
 const COVER_BUCKET = "knowledge-module-covers";
 
@@ -50,6 +51,14 @@ export async function projectPublishedModuleToKnowledge(moduleId: string): Promi
   if (module.current_status !== "published" || module.visibility !== "public") return;
 
   const metadata = record(module.metadata);
+  const outline = record(module.content_outline);
+  const categorySlug = primaryModuleCategory({
+    title: module.title,
+    summary: module.summary,
+    topic: typeof outline.topic === "string" ? outline.topic : "",
+    competency: typeof outline.competency === "string" ? outline.competency : "",
+    metadata,
+  });
   const coverUrl = await publishCover(module.id, metadata);
   const projectedMetadata = {
     ...metadata,
@@ -58,6 +67,8 @@ export async function projectPublishedModuleToKnowledge(moduleId: string): Promi
     module_code: moduleCodeForId(module.id),
     estimated_learning_hours: module.estimated_learning_hours,
     cover_image_url: coverUrl,
+    category_slug: categorySlug,
+    category_label: MODULE_CATEGORY_LABELS[categorySlug],
   };
   const { error: resourceError } = await supabaseAdmin.from("knowledge_resources").upsert({
     id: module.id,
@@ -82,7 +93,7 @@ export async function projectPublishedModuleToKnowledge(moduleId: string): Promi
     publication_year: module.publication_date ? new Date(module.publication_date).getUTCFullYear() : new Date().getUTCFullYear(),
     publisher: "BARUNA Network",
     thumbnail_url: coverUrl,
-    topics: Object.values(record(module.content_outline)).filter((item): item is string => typeof item === "string"),
+    topics: Object.values(outline).filter((item): item is string => typeof item === "string"),
     keywords: ["Learning Module", "Self-Paced", module.title],
     related_expert_ids: module.author_expert_id ? [module.author_expert_id] : [],
     related_module_refs: [module.id],

@@ -46,7 +46,7 @@ export type KhResource = {
   type: KhResourceType;
   typeLabel: string;
   title: string;
-  category: DemoCategorySlug;
+  category: string;
   summary: string;
   abstract: string;
   author: string;
