@@ -49,6 +49,13 @@ export function academyCategorySlugs(module: CategoryClassifiable): string[] {
     return ["fish-processing-and-value-addition"];
   }
 
+  // Aquaculture descriptions commonly mention carbon sources, adaptation, or
+  // water-quality terms. Those incidental words must not reclassify a clearly
+  // cultivation-focused module as Climate Change.
+  if (matches.includes("aquaculture")) {
+    return ["aquaculture"];
+  }
+
   return matches;
 }
 
