@@ -4,7 +4,77 @@ import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { getUpcomingEvents } from "@/data/events";
-import type { HomeMetric, HomeViewer, PublicHomeStats } from "./home.types";
+import type { HomeKnowledgeResource, HomeMetric, HomeViewer, PublicHomeStats } from "./home.types";
+
+const RESOURCE_TYPE_LABELS: Record<string, string> = {
+  publication: "Publication",
+  module: "Learning Module",
+  policy_brief: "Policy Brief",
+  video: "Video",
+  best_practice: "Best Practice",
+  infographic: "Infographic",
+  case_study: "Case Study",
+  toolkit: "Toolkit",
+};
+
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function resourceMetaLabel(metadata: unknown, resourceType: string): string {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return RESOURCE_TYPE_LABELS[resourceType] ?? "Public Resource";
+  }
+  const record = metadata as Record<string, unknown>;
+  const attachments = Array.isArray(record.attached_resources)
+    ? record.attached_resources as Array<Record<string, unknown>>
+    : [];
+  const primary = attachments.find((item) => {
+    const type = String(item.type ?? "").toLowerCase();
+    return type.includes("complete module") || type.includes("publication") || type.includes("document");
+  }) ?? attachments[0];
+  const mime = String(primary?.fileType ?? record.file_type ?? "");
+  const fileName = String(primary?.fileName ?? primary?.name ?? "");
+  const format = mime.includes("pdf") || fileName.toLowerCase().endsWith(".pdf")
+    ? "PDF"
+    : mime.includes("video")
+      ? "Video"
+      : fileName.includes(".")
+        ? fileName.split(".").pop()?.toUpperCase() ?? "File"
+        : RESOURCE_TYPE_LABELS[resourceType] ?? "Resource";
+  const size = formatFileSize(Number(primary?.fileSize ?? primary?.size ?? record.file_size ?? 0));
+  const duration = Number(record.duration_minutes ?? record.duration ?? 0);
+  if (resourceType === "video" && Number.isFinite(duration) && duration > 0) {
+    return `${format} • ${duration} min`;
+  }
+  return size ? `${format} • ${size}` : format;
+}
+
+export const getLatestPublicKnowledgeResources = createServerFn({ method: "GET" }).handler(
+  async (): Promise<HomeKnowledgeResource[]> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("knowledge_resources")
+      .select("id,title,resource_type,metadata,external_url,publication_date,created_at")
+      .eq("current_status", "published")
+      .eq("visibility", "public")
+      .order("publication_date", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(3);
+    if (error) throw new Error(error.message);
+
+    return (data ?? []).map((resource) => ({
+      id: resource.id,
+      title: resource.title,
+      type: resource.resource_type,
+      typeLabel: RESOURCE_TYPE_LABELS[resource.resource_type] ?? resource.resource_type.replaceAll("_", " "),
+      metaLabel: resourceMetaLabel(resource.metadata, resource.resource_type),
+      externalUrl: resource.external_url,
+    }));
+  },
+);
 
 function exactCount(result: { count: number | null; error: { message: string } | null }): number {
   if (result.error) {
@@ -238,7 +308,7 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
     const roleCodes = (assignments ?? [])
       .map((assignment) => assignment.rbac_roles?.code)
       .filter((code): code is string => Boolean(code));
-    const userMeta = (identity?.user?.user_metadata as Record<string, any>) || {};
+    const userMeta = (identity?.user?.user_metadata as Record<string, unknown>) || {};
     if ((userMeta.role === "participant" || (Array.isArray(userMeta.roles) && userMeta.roles.includes("participant"))) && !roleCodes.includes("participant")) {
       roleCodes.push("participant");
     }

@@ -5,6 +5,15 @@ export type PublicHomeStats = {
   upcomingEvents: number;
 };
 
+export type HomeKnowledgeResource = {
+  id: string;
+  title: string;
+  type: string;
+  typeLabel: string;
+  metaLabel: string;
+  externalUrl: string | null;
+};
+
 export type HomeMetricIcon =
   | "book"
   | "certificate"
