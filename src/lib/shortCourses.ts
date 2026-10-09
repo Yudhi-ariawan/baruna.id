@@ -16,6 +16,12 @@ import {
   getUserScopedKey,
   subscribeToAuthChange,
 } from "@/lib/authSession";
+import {
+  getMySelfPacedCourses,
+  syncMySelfPacedCourses,
+  deleteMySelfPacedCourse,
+  type SelfPacedEnrollmentPayload,
+} from "@/lib/learning/self-paced-sync.functions";
 
 const STORE_PREFIX = "baruna:short-courses";
 export const SHORT_COURSES_EVENT = "baruna:short-courses";
@@ -45,6 +51,9 @@ export type ShortCourseEnrollment = {
 
 type Store = Record<string, ShortCourseEnrollment>;
 
+let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let isSyncing = false;
+
 function readStore(): Store {
   if (typeof window === "undefined") return {};
   // Enrollment is account-owned state. Never expose legacy anonymous data to
@@ -57,11 +66,103 @@ function readStore(): Store {
   }
 }
 
+/**
+ * Pushes the current local store to Supabase cloud in the background.
+ */
+function triggerDebouncedCloudSync(store: Store) {
+  if (typeof window === "undefined" || !getActiveUserId()) return;
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => {
+    syncMySelfPacedCourses({ data: { courses: store as Record<string, SelfPacedEnrollmentPayload> } }).catch((err) => {
+      console.warn("[shortCourses] Cloud push sync warning:", err);
+    });
+  }, 800);
+}
+
 function writeStore(store: Store) {
   if (typeof window === "undefined") return;
   if (!getActiveUserId()) return;
   localStorage.setItem(getUserScopedKey(STORE_PREFIX), JSON.stringify(store));
   window.dispatchEvent(new Event(SHORT_COURSES_EVENT));
+  triggerDebouncedCloudSync(store);
+}
+
+/**
+ * Bidirectional cloud synchronization:
+ * - Fetches remote courses from Supabase.
+ * - Merges with local browser courses (keeping best score and completions).
+ * - Pushes any newly found local courses to the cloud.
+ * - Updates localStorage and notifies subscribers.
+ */
+export async function syncWithCloud(): Promise<Store> {
+  if (typeof window === "undefined") return {};
+  const userId = getActiveUserId();
+  if (!userId) return {};
+
+  if (isSyncing) return readStore();
+  isSyncing = true;
+
+  try {
+    const localStore = readStore();
+    const remoteData = await getMySelfPacedCourses();
+    const remoteCourses = (remoteData || {}) as Store;
+
+    let hasLocalChangesToUpload = false;
+    const merged: Store = { ...remoteCourses };
+
+    for (const [code, localItem] of Object.entries(localStore)) {
+      const remoteItem = merged[code];
+      if (!remoteItem) {
+        merged[code] = localItem;
+        hasLocalChangesToUpload = true;
+      } else {
+        const completed = Boolean(remoteItem.completed || localItem.completed);
+        const score = Math.max(remoteItem.score || 0, localItem.score || 0) || undefined;
+        const mergedSteps = {
+          ...(remoteItem.completedSteps || {}),
+          ...(localItem.completedSteps || {}),
+        };
+
+        const localHasHigherProgress =
+          (!remoteItem.completed && localItem.completed) ||
+          (localItem.score || 0) > (remoteItem.score || 0) ||
+          JSON.stringify(remoteItem.completedSteps) !== JSON.stringify(mergedSteps);
+
+        if (localHasHigherProgress) {
+          hasLocalChangesToUpload = true;
+        }
+
+        merged[code] = {
+          ...remoteItem,
+          ...localItem,
+          completed,
+          completedAt: completed ? (remoteItem.completedAt || localItem.completedAt || Date.now()) : undefined,
+          score,
+          completedSteps: mergedSteps,
+        };
+      }
+    }
+
+    // Push upstream if local had courses/progress that remote didn't have yet
+    if (hasLocalChangesToUpload) {
+      await syncMySelfPacedCourses({ data: { courses: merged as Record<string, SelfPacedEnrollmentPayload> } });
+    }
+
+    // Update localStorage if remote had new courses that this device lacked
+    const localJson = localStorage.getItem(getUserScopedKey(STORE_PREFIX)) || "{}";
+    const mergedJson = JSON.stringify(merged);
+    if (localJson !== mergedJson) {
+      localStorage.setItem(getUserScopedKey(STORE_PREFIX), mergedJson);
+      window.dispatchEvent(new Event(SHORT_COURSES_EVENT));
+    }
+
+    return merged;
+  } catch (err) {
+    console.warn("[shortCourses] syncWithCloud warning:", err);
+    return readStore();
+  } finally {
+    isSyncing = false;
+  }
 }
 
 // ── Prior-learning recognition ──────────────────────────────────────────────
@@ -166,6 +267,11 @@ export function resetShortCourse(code: string) {
   const store = readStore();
   delete store[code];
   writeStore(store);
+  if (getActiveUserId()) {
+    deleteMySelfPacedCourse({ data: { code } }).catch((err) => {
+      console.warn("[shortCourses] cloud delete warning:", err);
+    });
+  }
 }
 
 /** Keep dashboard and homepage progress calculations aligned. */
@@ -208,6 +314,7 @@ export function useShortCourses() {
   const [lmsIds, setLmsIds] = useState<Set<string>>(() => lmsCompletedIds());
 
   useEffect(() => {
+    let isMounted = true;
     const sync = () => {
       setStore(readStore());
       setLmsIds(lmsCompletedIds());
@@ -215,8 +322,23 @@ export function useShortCourses() {
     window.addEventListener(SHORT_COURSES_EVENT, sync);
     window.addEventListener(APPS_EVENT, sync);
     window.addEventListener("storage", sync);
-    const unsubAuth = subscribeToAuthChange(sync);
+
+    const handleAuthOrMount = () => {
+      sync();
+      syncWithCloud().then((cloudStore) => {
+        if (isMounted && cloudStore) {
+          setStore(cloudStore);
+        }
+      });
+    };
+
+    const unsubAuth = subscribeToAuthChange(handleAuthOrMount);
+
+    // Initial sync with Supabase cloud on hook mount
+    handleAuthOrMount();
+
     return () => {
+      isMounted = false;
       window.removeEventListener(SHORT_COURSES_EVENT, sync);
       window.removeEventListener(APPS_EVENT, sync);
       window.removeEventListener("storage", sync);
@@ -243,6 +365,7 @@ export function useShortCourses() {
     enroll: enrollShortCourse,
     complete: completeShortCourse,
     reset: resetShortCourse,
+    syncWithCloud,
   };
 }
 
