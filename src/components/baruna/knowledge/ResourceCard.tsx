@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bookmark, Share2, Eye, Play, Clock, GraduationCap, ArrowRight } from "lucide-react";
+import { Bookmark, Share2, Eye, Play, Clock, GraduationCap, ArrowRight, Download } from "lucide-react";
 import { courseImages } from "@/data/pages";
 import { useIsSaved, toggleSaved, shareResource } from "@/lib/khSaved";
 import { DEMO_CATEGORIES } from "@/data/demo";
@@ -29,7 +29,7 @@ export function AccessBadge({ level }: { level: KhResource["access"] }) {
   );
 }
 
-export function ResourceCard({ r, index, demo: _demo = false }: { r: KhResource; index: number; demo?: boolean }) {
+export function ResourceCard({ r, index }: { r: KhResource; index: number; demo?: boolean }) {
   const saved = useIsSaved(r.id);
   const fallbackCover = r.id === "01b19c79-d63a-4ad1-b585-3386820a0cba"
     ? "/sample-module-files/Course_Cover_Image.jpg"
@@ -39,8 +39,8 @@ export function ResourceCard({ r, index, demo: _demo = false }: { r: KhResource;
   const isModule = r.type === "learning-modules";
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
-      <Link to="/knowledge-hub/resource/$id" params={{ id: r.id }} className="relative block h-36 overflow-hidden">
+    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
+      <Link to="/knowledge-hub/resource/$id" params={{ id: r.id }} className="relative block h-36 shrink-0 overflow-hidden">
         <img
           src={cover}
           alt={r.title}
@@ -55,12 +55,12 @@ export function ResourceCard({ r, index, demo: _demo = false }: { r: KhResource;
             }
           }}
         />
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
-          <span className="inline-flex rounded-md bg-navy px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-navy-foreground">
+        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-2">
+          <span className="inline-flex max-w-[65%] rounded-md bg-navy px-2 py-1 text-[0.6rem] font-bold uppercase leading-tight tracking-wide text-navy-foreground shadow-sm">
             {r.typeLabel}
           </span>
           {!r.id.includes("-") || r.id.length > 20 ? (
-            <span className="inline-flex items-center rounded-md bg-green-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-700">
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-md bg-emerald-600/90 px-2 py-1 text-[0.55rem] font-bold uppercase leading-none tracking-wider text-white shadow-sm backdrop-blur-sm">
               Verified
             </span>
           ) : null}
@@ -71,11 +71,11 @@ export function ResourceCard({ r, index, demo: _demo = false }: { r: KhResource;
           </span>
         )}
       </Link>
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex min-w-0 flex-1 flex-col p-4 pb-5">
         <Link to="/knowledge-hub/resource/$id" params={{ id: r.id }} className="line-clamp-2 min-h-[2.75rem] font-display text-sm font-bold text-navy hover:text-marine">
           {r.title}
         </Link>
-        <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{r.summary}</p>
+        <p className="mt-2 line-clamp-2 min-h-8 text-xs text-muted-foreground">{r.summary}</p>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <AccessBadge level={r.access} />
           <span className="inline-flex rounded-md bg-muted px-1.5 py-0.5 text-[0.6rem] font-semibold text-foreground/70">
@@ -101,17 +101,21 @@ export function ResourceCard({ r, index, demo: _demo = false }: { r: KhResource;
         {isVideo && r.speaker && (
           <p className="mt-1 text-[0.7rem] text-muted-foreground">Speaker: {r.speaker}</p>
         )}
-        <div className="mt-auto flex items-center justify-between pt-3">
-          <span className="inline-flex items-center gap-1 text-[0.7rem] text-muted-foreground">
-            <Eye className="h-3 w-3" /> {r.metrics.views.toLocaleString()}
-            <span className="ml-2">{r.metrics.downloads.toLocaleString()} downloads</span>
-          </span>
-          <div className="flex items-center gap-1">
+        <div className="mt-auto border-t border-border/70 pt-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[0.68rem] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <Eye className="h-3 w-3 shrink-0" /> {r.metrics.views.toLocaleString()} views
+            </span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <Download className="h-3 w-3 shrink-0" /> {r.metrics.downloads.toLocaleString()} downloads
+            </span>
+          </div>
+          <div className="mt-2 flex w-full items-center justify-end gap-1.5">
             <button
               type="button"
               aria-label={saved ? "Remove from saved" : "Save resource"}
               onClick={(e) => { e.preventDefault(); toggleSaved(r.id); }}
-              className={`grid h-8 w-8 place-items-center rounded-full border border-border transition-colors ${saved ? "bg-marine text-marine-foreground" : "text-marine hover:bg-marine hover:text-marine-foreground"}`}
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border transition-colors ${saved ? "bg-marine text-marine-foreground" : "text-marine hover:bg-marine hover:text-marine-foreground"}`}
             >
               <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} />
             </button>
@@ -119,14 +123,14 @@ export function ResourceCard({ r, index, demo: _demo = false }: { r: KhResource;
               type="button"
               aria-label="Share resource"
               onClick={(e) => { e.preventDefault(); void shareResource(r.title, `/knowledge-hub/resource/${r.id}`); }}
-              className="grid h-8 w-8 place-items-center rounded-full border border-border text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
             >
               <Share2 className="h-3.5 w-3.5" />
             </button>
             <Link
               to="/knowledge-hub/resource/$id"
               params={{ id: r.id }}
-              className="inline-flex items-center gap-1 rounded-full bg-marine px-3 py-1.5 text-[0.7rem] font-semibold text-marine-foreground transition-transform hover:-translate-y-0.5"
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-marine px-3 py-1.5 text-[0.7rem] font-semibold text-marine-foreground transition-transform hover:-translate-y-0.5"
             >
               View <ArrowRight className="h-3 w-3" />
             </Link>
