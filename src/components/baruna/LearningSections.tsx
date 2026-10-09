@@ -39,6 +39,7 @@ function ContinueCard({
 }) {
   const { t } = useLanguage();
   const progress = shortCourseProgress(enrollment);
+  const isCompleted = enrollment.completed || progress >= 100;
   const title = enrollment.title || module?.title || `BARUNA Learning Module`;
   const cover = module?.coverUrl || defaultCover;
 
@@ -57,12 +58,12 @@ function ContinueCard({
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="line-clamp-2 text-sm font-semibold text-navy">{title}</h3>
-        <p className="mt-2 text-xs font-medium text-muted-foreground">
-          {progress}% {t("learning.completed")}
+        <p className={`mt-2 text-xs font-semibold ${isCompleted ? "text-emerald-700" : "text-muted-foreground"}`}>
+          {isCompleted ? "100% Completed" : `${progress}% ${t("learning.completed")}`}
         </p>
         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-marine"
+            className={`h-full rounded-full ${isCompleted ? "bg-emerald-600" : "bg-marine"}`}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -71,7 +72,7 @@ function ContinueCard({
           params={{ id: enrollment.code }}
           className="mt-auto w-full rounded-lg border border-marine/40 py-1.5 text-center text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
         >
-          {t("learning.continueBtn")}
+          {isCompleted ? "Review Module" : t("learning.continueBtn")}
         </Link>
       </div>
     </article>
@@ -80,11 +81,13 @@ function ContinueCard({
 
 function ContinueLearningState({
   authState,
-  activeEnrollments,
+  displayedEnrollments,
+  hasEnrollments,
   publishedModules,
 }: {
   authState: "loading" | "public" | "authenticated";
-  activeEnrollments: ShortCourseEnrollment[];
+  displayedEnrollments: ShortCourseEnrollment[];
+  hasEnrollments: boolean;
   publishedModules: PublishedCatalogModule[];
 }) {
   if (authState === "loading") {
@@ -114,7 +117,7 @@ function ContinueLearningState({
     );
   }
 
-  if (activeEnrollments.length === 0) {
+  if (!hasEnrollments) {
     return (
       <div className="grid min-h-48 place-items-center rounded-xl border border-dashed border-marine/25 bg-gradient-to-br from-sky-50/70 to-transparent p-5 text-center">
         <div>
@@ -136,7 +139,7 @@ function ContinueLearningState({
   const moduleById = new Map(publishedModules.map((module) => [module.id, module]));
   return (
     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible">
-      {activeEnrollments.slice(0, 2).map((enrollment) => (
+      {displayedEnrollments.slice(0, 2).map((enrollment) => (
         <ContinueCard key={enrollment.code} enrollment={enrollment} module={moduleById.get(enrollment.code)} />
       ))}
     </div>
@@ -202,7 +205,25 @@ export function LearningSections({ publishedModules }: { publishedModules: Publi
   const { t } = useLanguage();
   const { authState } = useHomeExperience();
   const { enrollments } = useShortCourses();
-  const activeEnrollments = enrollments.filter((enrollment) => !enrollment.completed);
+  const newestFirst = (left: ShortCourseEnrollment, right: ShortCourseEnrollment) =>
+    (right.completedAt ?? right.enrolledAt) - (left.completedAt ?? left.enrolledAt);
+  const inProgress = enrollments
+    .filter((enrollment) => {
+      const progress = shortCourseProgress(enrollment);
+      return progress > 0 && progress < 100;
+    })
+    .sort(newestFirst);
+  const completed = enrollments
+    .filter((enrollment) => enrollment.completed || shortCourseProgress(enrollment) >= 100)
+    .sort(newestFirst);
+  const notStarted = enrollments
+    .filter((enrollment) => shortCourseProgress(enrollment) === 0)
+    .sort(newestFirst);
+  const displayedEnrollments = inProgress.length > 0
+    ? inProgress
+    : completed.length > 0
+      ? completed
+      : notStarted;
 
   return (
     <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-6 sm:py-8 w-full overflow-hidden">
@@ -215,7 +236,8 @@ export function LearningSections({ publishedModules }: { publishedModules: Publi
           />
           <ContinueLearningState
             authState={authState}
-            activeEnrollments={activeEnrollments}
+            displayedEnrollments={displayedEnrollments}
+            hasEnrollments={enrollments.length > 0}
             publishedModules={publishedModules}
           />
         </div>
