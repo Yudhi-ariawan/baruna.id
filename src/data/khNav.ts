@@ -18,7 +18,7 @@ import {
   ListChecks,
   type LucideIcon,
 } from "lucide-react";
-import { KH_TYPES, countByType, totalPublished } from "@/data/demo/knowledgeHub";
+import { KH_TYPES, countByType, totalPublished, type KhResourceType } from "@/data/demo/knowledgeHub";
 import type { SidebarSection } from "@/components/baruna/page/Sidebar";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -41,18 +41,21 @@ export const KH_SIDEBAR_META = {
 
 export function knowledgeHubSidebarSections(
   activeType: string | null = null,
+  dynamicCounts?: Partial<Record<KhResourceType, number>>,
 ): SidebarSection[] {
   const browse = KH_TYPES.map((t) => ({
     label: t.label,
     icon: ICONS[t.slug],
-    count: countByType(t.slug),
+    count: dynamicCounts?.[t.slug] ?? countByType(t.slug),
     to: `/knowledge-hub/${t.slug}`,
     active: activeType === t.slug,
   }));
   browse.push({
     label: "Resource Library",
     icon: Library,
-    count: totalPublished(),
+    count: dynamicCounts
+      ? Object.values(dynamicCounts).reduce((total, count) => total + (count ?? 0), 0)
+      : totalPublished(),
     to: "/knowledge-hub/library",
     active: activeType === "library",
   });

@@ -11,11 +11,7 @@ function categoryName(slug: string) {
 }
 
 export function DemoDataBadge() {
-  return (
-    <span className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-amber-700">
-      Demo Data
-    </span>
-  );
+  return null;
 }
 
 export function AccessBadge({ level }: { level: KhResource["access"] }) {
@@ -33,7 +29,7 @@ export function AccessBadge({ level }: { level: KhResource["access"] }) {
   );
 }
 
-export function ResourceCard({ r, index, demo = true }: { r: KhResource; index: number; demo?: boolean }) {
+export function ResourceCard({ r, index, demo: _demo = false }: { r: KhResource; index: number; demo?: boolean }) {
   const saved = useIsSaved(r.id);
   const fallbackCover = r.id === "01b19c79-d63a-4ad1-b585-3386820a0cba"
     ? "/sample-module-files/Course_Cover_Image.jpg"
@@ -63,13 +59,11 @@ export function ResourceCard({ r, index, demo = true }: { r: KhResource; index: 
           <span className="inline-flex rounded-md bg-navy px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-navy-foreground">
             {r.typeLabel}
           </span>
-          {r.id.startsWith("pub-") || r.id.startsWith("lm-") || r.id.startsWith("bp-") || r.id.startsWith("vid-") || r.id.startsWith("pb-") || r.id.startsWith("info-") || r.id.startsWith("cs-") || r.id.startsWith("tk-") || r.id.startsWith("res-") ? (
-            demo ? <DemoDataBadge /> : null
-          ) : (
+          {!r.id.includes("-") || r.id.length > 20 ? (
             <span className="inline-flex items-center rounded-md bg-green-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-700">
               Verified
             </span>
-          )}
+          ) : null}
         </div>
         {isVideo && (
           <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-navy/85 px-1.5 py-0.5 text-[0.6rem] font-semibold text-navy-foreground">
@@ -110,6 +104,7 @@ export function ResourceCard({ r, index, demo = true }: { r: KhResource; index: 
         <div className="mt-auto flex items-center justify-between pt-3">
           <span className="inline-flex items-center gap-1 text-[0.7rem] text-muted-foreground">
             <Eye className="h-3 w-3" /> {r.metrics.views.toLocaleString()}
+            <span className="ml-2">{r.metrics.downloads.toLocaleString()} downloads</span>
           </span>
           <div className="flex items-center gap-1">
             <button

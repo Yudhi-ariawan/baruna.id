@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { KhResource } from "@/data/demo/knowledgeHub";
+import type { KhResource, KhResourceType } from "@/data/demo/knowledgeHub";
 import { primaryModuleCategory } from "@/lib/academy/module-categories";
 
 export type KnowledgeHubStats = {
@@ -19,6 +19,168 @@ const EMPTY_STATS: KnowledgeHubStats = {
 const CACHE_TTL_MS = 60_000;
 let statsCache: { expiresAt: number; value: KnowledgeHubStats } | undefined;
 let moduleCache: { expiresAt: number; value: KhResource[] } | undefined;
+let overviewCache: { expiresAt: number; value: KnowledgeHubOverview } | undefined;
+
+export type KnowledgeHubOverview = {
+  resources: KhResource[];
+  counts: Record<KhResourceType, number>;
+  categories: string[];
+};
+
+const EMPTY_TYPE_COUNTS: Record<KhResourceType, number> = {
+  publications: 0,
+  "learning-modules": 0,
+  "best-practices": 0,
+  videos: 0,
+  "policy-briefs": 0,
+  infographics: 0,
+  "case-studies": 0,
+  toolkits: 0,
+};
+
+function catalogueType(type: string): KhResourceType {
+  if (["module", "training_material"].includes(type)) return "learning-modules";
+  if (type === "best_practice") return "best-practices";
+  if (["video", "podcast", "webinar_recording"].includes(type)) return "videos";
+  if (type === "policy_brief") return "policy-briefs";
+  if (["infographic", "poster"].includes(type)) return "infographics";
+  if (type === "case_study") return "case-studies";
+  if (["toolkit", "tool", "methodology", "model", "dataset", "database"].includes(type)) return "toolkits";
+  return "publications";
+}
+
+function catalogueTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    publication: "Publication",
+    journal_article: "Journal Article",
+    book: "Book",
+    book_chapter: "Book Chapter",
+    working_paper: "Working Paper",
+    technical_report: "Technical Report",
+    policy_brief: "Policy Brief",
+    guideline: "Guideline",
+    standard: "Standard",
+    best_practice: "Best Practice",
+    case_study: "Case Study",
+    infographic: "Infographic",
+    poster: "Poster",
+    video: "Video",
+    podcast: "Podcast",
+    webinar_recording: "Webinar Recording",
+    training_material: "Training Material",
+    module: "Learning Module",
+    toolkit: "Toolkit",
+  };
+  return labels[type] ?? type.replaceAll("_", " ");
+}
+
+function metadataRecord(metadata: unknown): Record<string, unknown> {
+  return metadata && typeof metadata === "object" && !Array.isArray(metadata)
+    ? metadata as Record<string, unknown>
+    : {};
+}
+
+function attachmentMetadata(metadata: Record<string, unknown>) {
+  const attachments = Array.isArray(metadata.attached_resources)
+    ? metadata.attached_resources as Array<Record<string, unknown>>
+    : [];
+  const item = attachments[0];
+  const bytes = Number(item?.fileSize ?? item?.size ?? metadata.file_size ?? 0);
+  const fileName = String(item?.fileName ?? item?.name ?? "");
+  const mime = String(item?.fileType ?? metadata.file_type ?? "");
+  const fileType = mime.includes("pdf") || fileName.toLowerCase().endsWith(".pdf")
+    ? "PDF"
+    : mime.includes("video") ? "Video" : fileName.split(".").pop()?.toUpperCase() || "Digital Resource";
+  const fileSize = Number.isFinite(bytes) && bytes > 0
+    ? bytes >= 1024 * 1024
+      ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(bytes / 1024))} KB`
+    : undefined;
+  return { fileType, fileSize };
+}
+
+export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler(
+  async (): Promise<KnowledgeHubOverview> => {
+    const now = Date.now();
+    if (overviewCache && overviewCache.expiresAt > now) return overviewCache.value;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("knowledge_resources")
+      .select("id,title,summary,abstract,resource_type,language,publication_year,publisher,thumbnail_url,topics,keywords,related_expert_ids,metadata,created_at,updated_at")
+      .eq("current_status", "published")
+      .eq("visibility", "public")
+      .order("publication_date", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const expertIds = [...new Set((data ?? []).flatMap((item) => item.related_expert_ids ?? []))];
+    const { data: experts, error: expertError } = expertIds.length
+      ? await supabaseAdmin.from("experts_directory_v").select("id,display_name,institution,country").in("id", expertIds)
+      : { data: [], error: null };
+    if (expertError) throw new Error(expertError.message);
+    const expertById = new Map((experts ?? []).map((expert) => [expert.id, expert]));
+
+    const resources: KhResource[] = (data ?? []).map((item) => {
+      const metadata = metadataRecord(item.metadata);
+      const expert = expertById.get(item.related_expert_ids?.[0] ?? "");
+      const type = catalogueType(item.resource_type);
+      const taxonomyCategory = type === "learning-modules"
+        ? primaryModuleCategory({
+            title: item.title,
+            summary: item.summary,
+            topic: (item.topics ?? []).join(" "),
+            competency: (item.keywords ?? []).join(" "),
+            metadata,
+          })
+        : item.topics?.[0] || "Marine & Fisheries";
+      const files = attachmentMetadata(metadata);
+      const year = item.publication_year ?? new Date(item.created_at).getFullYear();
+      const learningHours = Number(metadata.estimated_learning_hours ?? 0) || undefined;
+      return {
+        id: item.id,
+        type,
+        typeLabel: catalogueTypeLabel(item.resource_type),
+        title: item.title,
+        category: taxonomyCategory,
+        summary: item.summary ?? item.abstract ?? "BARUNA public knowledge resource.",
+        abstract: item.abstract ?? item.summary ?? "BARUNA public knowledge resource.",
+        author: expert?.display_name ?? String(metadata.author_name ?? item.publisher ?? "BARUNA Network"),
+        contributor: expert?.display_name ?? String(metadata.contributor_name ?? "BARUNA Network"),
+        organization: expert?.institution ?? item.publisher ?? String(metadata.institution ?? "BARUNA Network"),
+        year,
+        language: item.language ?? "English",
+        country: expert?.country ?? String(metadata.country ?? "Indonesia"),
+        keywords: [...(item.keywords ?? []), ...(item.topics ?? [])],
+        access: "Public Access",
+        status: "Published",
+        coverImage: item.thumbnail_url ?? undefined,
+        fileType: files.fileType,
+        fileSize: files.fileSize,
+        learningHours,
+        duration: typeof metadata.duration === "string" ? metadata.duration : undefined,
+        version: String(metadata.version ?? "1.0"),
+        moduleCode: typeof metadata.module_code === "string" ? metadata.module_code : undefined,
+        expertId: expert?.id ?? "",
+        metrics: {
+          views: metricValue(metadata, ["views", "view_count", "viewCount"]),
+          uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),
+          downloads: metricValue(metadata, ["downloads", "download_count", "downloadCount"]),
+          saves: metricValue(metadata, ["saves", "save_count"]),
+          shares: metricValue(metadata, ["shares", "share_count"]),
+        },
+        citation: `${expert?.display_name ?? item.publisher ?? "BARUNA Network"} (${year}). ${item.title}. BARUNA Knowledge Hub.`,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      };
+    });
+    const counts = { ...EMPTY_TYPE_COUNTS };
+    for (const resource of resources) counts[resource.type] += 1;
+    const categories = [...new Set(resources.map((resource) => resource.category).filter(Boolean))].sort();
+    const value = { resources, counts, categories };
+    overviewCache = { value, expiresAt: now + CACHE_TTL_MS };
+    return value;
+  },
+);
 
 function metricValue(metadata: unknown, names: string[]): number {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return 0;

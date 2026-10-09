@@ -30,19 +30,23 @@ import { Panel, SectionHeader, Tag } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages } from "@/data/pages";
 import {
   KH_TYPES,
-  KH_ALL,
-  countByType,
   labelForType,
   type KhResourceType,
 } from "@/data/demo/knowledgeHub";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard } from "@/components/baruna/knowledge/ResourceCard";
-import { DEMO_CATEGORIES } from "@/data/demo";
 import { useLanguage } from "@/lib/i18n";
-import { getKnowledgeHubStats } from "@/lib/knowledge-hub/knowledge-hub.functions";
+import { getKnowledgeHubOverview, getKnowledgeHubStats } from "@/lib/knowledge-hub/knowledge-hub.functions";
+import { MODULE_CATEGORY_LABELS } from "@/lib/academy/module-categories";
 
 export const Route = createFileRoute("/knowledge-hub")({
-  loader: () => getKnowledgeHubStats(),
+  loader: async () => {
+    const [stats, overview] = await Promise.all([
+      getKnowledgeHubStats(),
+      getKnowledgeHubOverview(),
+    ]);
+    return { stats, overview };
+  },
   staleTime: 60_000,
   head: () => ({
     meta: [
@@ -74,24 +78,24 @@ const TYPE_ICONS: Record<KhResourceType, LucideIcon> = {
 
 function KnowledgeHubPage() {
   const [q, setQ] = useState("");
-  const stats = Route.useLoaderData();
+  const { stats, overview } = Route.useLoaderData();
   const total = stats.totalPublished;
   const { t } = useLanguage();
 
-  const latest = useMemo(() => [...KH_ALL].sort((a, b) => b.year - a.year).slice(0, 8), []);
+  const latest = overview.resources.slice(0, 8);
   const results = useMemo(() => {
     if (!q.trim()) return null;
     const needle = q.toLowerCase();
-    return KH_ALL.filter((r) =>
+    return overview.resources.filter((r) =>
       [r.title, r.summary, r.author, r.organization, ...r.keywords].join(" ").toLowerCase().includes(needle),
     ).slice(0, 12);
-  }, [q]);
+  }, [overview.resources, q]);
 
   return (
     <PageShell
       sidebar={{
         ...KH_SIDEBAR_META,
-        sections: knowledgeHubSidebarSections(),
+        sections: knowledgeHubSidebarSections(null, overview.counts),
       }}
       cta={{
         icon: Upload,
@@ -166,7 +170,7 @@ function KnowledgeHubPage() {
               <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
                 {KH_TYPES.map((typeItem) => {
                   const Icon = TYPE_ICONS[typeItem.slug];
-                  const count = countByType(typeItem.slug);
+                  const count = overview.counts[typeItem.slug];
                   return (
                     <li key={typeItem.slug}>
                       <Link
@@ -221,9 +225,19 @@ function KnowledgeHubPage() {
                   {t("bottomGrid.browseAll")} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {latest.map((r, i) => <ResourceCard key={r.id} r={r} index={i} />)}
-              </div>
+              {latest.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {latest.map((r, i) => <ResourceCard key={r.id} r={r} index={i} />)}
+                </div>
+              ) : (
+                <div className="grid min-h-52 place-items-center rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-center">
+                  <div>
+                    <BookOpen className="mx-auto h-9 w-9 text-muted-foreground/60" />
+                    <p className="mt-3 font-display text-base font-bold text-navy">No public resources yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Published Knowledge Hub resources will appear here.</p>
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* Share Knowledge from Your Country */}
@@ -279,11 +293,10 @@ function KnowledgeHubPage() {
             <Panel>
               <SectionHeader title={t("sidebar.byCategory")} action={null} />
               <div className="flex flex-wrap gap-2">
-                {DEMO_CATEGORIES.map((c) => (
-                  <Link key={c.slug} to="/academy/category/$slug" params={{ slug: c.slug }}>
-                    <Tag>{c.name}</Tag>
-                  </Link>
+                {overview.categories.map((category) => (
+                  <Tag key={category}>{MODULE_CATEGORY_LABELS[category] ?? category}</Tag>
                 ))}
+                {overview.categories.length === 0 && <p className="text-xs text-muted-foreground">No categories available yet.</p>}
               </div>
             </Panel>
 
@@ -291,9 +304,9 @@ function KnowledgeHubPage() {
               <SectionHeader title="BARUNA Hub" action={null} />
               <div className="grid grid-cols-2 gap-3">
                 <NumberTile icon={BookOpen} value={total.toString()} label={t("knowledgeHub.totalPublished")} />
-                <NumberTile icon={Users} value={DEMO_CATEGORIES.length.toString()} label={t("sidebar.byCategory")} />
-                <NumberTile icon={Building2} value="9" label={t("sidebar.instructors")} />
-                <NumberTile icon={Globe} value="60+" label={t("footer.countries")} />
+                <NumberTile icon={Users} value={overview.categories.length.toString()} label={t("sidebar.byCategory")} />
+                <NumberTile icon={Building2} value={stats.totalDownloads.toLocaleString()} label={t("knowledgeHub.totalDownloads")} />
+                <NumberTile icon={Globe} value={stats.totalViews.toLocaleString()} label={t("knowledgeHub.totalViews")} />
               </div>
               <Link to="/analytics" className="mt-4 flex w-full items-center justify-center gap-2 text-sm font-semibold text-marine">
                 {t("common.viewAll")} <ArrowRight className="h-4 w-4" />
@@ -303,7 +316,7 @@ function KnowledgeHubPage() {
             <Panel>
               <SectionHeader title={t("knowledgeHub.latestResources")} action={null} />
               <ul className="space-y-2 text-sm">
-                {[...KH_ALL].sort((a, b) => b.metrics.views - a.metrics.views).slice(0, 5).map((r) => (
+                {[...overview.resources].sort((a, b) => b.metrics.views - a.metrics.views).slice(0, 5).map((r) => (
                   <li key={r.id}>
                     <Link to="/knowledge-hub/resource/$id" params={{ id: r.id }} className="flex items-center justify-between gap-2 rounded-lg px-1 py-1 hover:bg-muted">
                       <span className="min-w-0 flex-1">
@@ -314,6 +327,7 @@ function KnowledgeHubPage() {
                     </Link>
                   </li>
                 ))}
+                {overview.resources.length === 0 && <li className="text-xs text-muted-foreground">No published resources yet.</li>}
               </ul>
             </Panel>
           </div>
