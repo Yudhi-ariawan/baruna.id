@@ -15,6 +15,62 @@ export type MyCourseEnrollmentDetail = {
   courseTitle?: string | null;
 };
 
+export async function checkUserHasParticipantRole(
+  supabaseAdmin: any,
+  userId: string,
+): Promise<boolean> {
+  // 1. Check rbac_user_roles table
+  try {
+    const now = new Date().toISOString();
+    const { data: assignments } = await (supabaseAdmin as any)
+      .from("rbac_user_roles")
+      .select("rbac_roles!inner(code)")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .lte("valid_from", now)
+      .or(`valid_until.is.null,valid_until.gt.${now}`)
+      .in("rbac_roles.code", ["participant", "trainer", "expert", "super_admin", "admin"])
+      .limit(1);
+    if (assignments && assignments.length > 0) {
+      return true;
+    }
+  } catch {}
+
+  // 2. Check participant_biodata table (if user submitted biodata form)
+  try {
+    const { data: bio } = await (supabaseAdmin as any)
+      .from("participant_biodata")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (bio?.id) {
+      return true;
+    }
+  } catch {}
+
+  // 3. Fallback: Check auth.users user_metadata
+  try {
+    const { data: userIdent } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const meta = (userIdent?.user?.user_metadata as Record<string, any>) || {};
+    if (
+      meta.role === "participant" ||
+      meta.role === "trainer" ||
+      meta.role === "expert" ||
+      meta.role === "admin" ||
+      meta.role === "super_admin" ||
+      (Array.isArray(meta.roles) &&
+        meta.roles.some((r: string) =>
+          ["participant", "trainer", "expert", "admin", "super_admin"].includes(r),
+        )) ||
+      Boolean(meta.participant_biodata?.nip)
+    ) {
+      return true;
+    }
+  } catch {}
+
+  return false;
+}
+
 export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((input) =>
@@ -27,29 +83,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<MyCourseEnrollmentDetail> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    let hasParticipantRole = false;
-    try {
-      const now = new Date().toISOString();
-      const { data: assignments } = await (supabaseAdmin as any)
-        .from("rbac_user_roles")
-        .select("rbac_roles!inner(code)")
-        .eq("user_id", context.userId)
-        .eq("status", "active")
-        .lte("valid_from", now)
-        .or(`valid_until.is.null,valid_until.gt.${now}`)
-        .eq("rbac_roles.code", "participant")
-        .limit(1);
-      hasParticipantRole = Boolean(assignments?.length);
-    } catch {
-      // Auth metadata remains a compatibility fallback for older approved users.
-      try {
-        const { data: userIdent } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-        const meta = (userIdent?.user?.user_metadata as Record<string, any>) || {};
-        hasParticipantRole =
-          meta.role === "participant" ||
-          (Array.isArray(meta.roles) && meta.roles.includes("participant"));
-      } catch {}
-    }
+    const hasParticipantRole = await checkUserHasParticipantRole(supabaseAdmin, context.userId);
 
     // 1. Try querying primary table: course_enrollment_applications
     try {
@@ -148,6 +182,14 @@ export const submitCourseEnrollmentApplication = createServerFn({ method: "POST"
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 0. Enforce participant prerequisite: user must have completed participant biodata
+    const hasParticipantRole = await checkUserHasParticipantRole(supabaseAdmin, context.userId);
+    if (!hasParticipantRole) {
+      throw new Error(
+        "Anda wajib melengkapi Formulir Biodata Peserta terlebih dahulu sebelum mendaftar pelatihan ini. Silakan buka menu Daftar Peserta.",
+      );
+    }
 
     // Fetch user profile and identity details
     const [{ data: userIdent }, { data: profile }] = await Promise.all([

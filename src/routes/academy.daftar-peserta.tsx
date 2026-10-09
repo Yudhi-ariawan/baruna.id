@@ -1,6 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { ChevronRight, ArrowLeft, LoaderCircle, ShieldAlert } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { ParticipantBiodataForm } from "@/components/baruna/academy/ParticipantBiodataForm";
@@ -8,7 +9,12 @@ import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.funct
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+});
+
 export const Route = createFileRoute("/academy/daftar-peserta")({
+  validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "Form Biodata Peserta — BARUNA Academy" },
@@ -23,6 +29,7 @@ export const Route = createFileRoute("/academy/daftar-peserta")({
 
 function DaftarPesertaPage() {
   const navigate = useNavigate();
+  const { redirect } = useSearch({ from: "/academy/daftar-peserta" });
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -109,7 +116,7 @@ function DaftarPesertaPage() {
             <p className="text-xs mt-1">{(error as any)?.message || "Terjadi kesalahan"}</p>
           </div>
         ) : biodataResult ? (
-          <ParticipantBiodataForm initialData={biodataResult} />
+          <ParticipantBiodataForm initialData={biodataResult} redirect={redirect} />
         ) : null}
       </div>
     </AcademyShell>
