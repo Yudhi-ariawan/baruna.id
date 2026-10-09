@@ -57,6 +57,14 @@ export const id: TranslationSchema = {
   learning: {
     continueTitle: "Lanjutkan Pembelajaran",
     viewAllMyLearning: "Lihat semua pembelajaran saya",
+    guestHeading: "Masuk untuk Melanjutkan Pembelajaran",
+    guestSubtitle:
+      "Silakan login ke akun BARUNA Anda untuk mengakses modul dan melihat riwayat belajar.",
+    guestAction: "Masuk / Login",
+    emptyHeading: "Belum Ada Pelatihan yang Sedang Diikuti",
+    emptySubtitle:
+      "Pilih dan daftarkan diri Anda pada modul di katalog BARUNA Academy untuk mulai belajar.",
+    emptyAction: "Jelajahi Modul",
     completed: "Selesai",
     continueBtn: "Lanjutkan",
     recommendedTitle: "Rekomendasi untuk Anda",

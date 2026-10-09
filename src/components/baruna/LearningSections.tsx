@@ -90,6 +90,8 @@ function ContinueLearningState({
   hasEnrollments: boolean;
   publishedModules: PublishedCatalogModule[];
 }) {
+  const { t } = useLanguage();
+
   if (authState === "loading") {
     return (
       <div className="grid min-h-40 place-items-center rounded-xl border border-border bg-muted/20">
@@ -105,12 +107,12 @@ function ContinueLearningState({
           <span className="animate-login-glow mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-marine/10 text-marine">
             <LockKeyhole className="h-7 w-7" />
           </span>
-          <h3 className="mt-4 font-display text-base font-bold text-navy">Masuk untuk Melanjutkan Pembelajaran</h3>
+          <h3 className="mt-4 font-display text-base font-bold text-navy">{t("learning.guestHeading")}</h3>
           <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-            Silakan login ke akun BARUNA Anda untuk mengakses modul dan melihat riwayat belajar.
+            {t("learning.guestSubtitle")}
           </p>
           <a href="/auth?mode=signin" className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-marine/90">
-            Masuk / Login <ArrowRight className="h-3.5 w-3.5" />
+            {t("learning.guestAction")} <ArrowRight className="h-3.5 w-3.5" />
           </a>
         </div>
       </div>
@@ -124,12 +126,12 @@ function ContinueLearningState({
           <span className="animate-learning-float mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-marine/10 text-marine">
             <GraduationCap className="h-8 w-8" />
           </span>
-          <h3 className="mt-4 font-display text-base font-bold text-navy">Belum Ada Pelatihan yang Sedang Diikuti</h3>
+          <h3 className="mt-4 font-display text-base font-bold text-navy">{t("learning.emptyHeading")}</h3>
           <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-            Pilih dan daftarkan diri Anda pada modul di katalog BARUNA Academy untuk mulai belajar.
+            {t("learning.emptySubtitle")}
           </p>
           <Link to="/academy" className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-marine/90">
-            Jelajahi Modul <ArrowRight className="h-3.5 w-3.5" />
+            {t("learning.emptyAction")} <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>

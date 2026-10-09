@@ -55,6 +55,14 @@ export const en = {
   learning: {
     continueTitle: "Continue Learning",
     viewAllMyLearning: "View all my learning",
+    guestHeading: "Sign In to Continue Learning",
+    guestSubtitle:
+      "Please sign in to your BARUNA account to access modules and view learning history.",
+    guestAction: "Sign In / Login",
+    emptyHeading: "No Active Learning Yet",
+    emptySubtitle:
+      "Select and enroll in modules from the BARUNA Academy catalog to start learning.",
+    emptyAction: "Explore Modules",
     completed: "Completed",
     continueBtn: "Continue",
     recommendedTitle: "Recommended for You",
