@@ -60,7 +60,7 @@ export const getMySelfPacedCourses = createServerFn({ method: "GET" })
     // 1. Try reading from auth.users.user_metadata first for fast, reliable access
     try {
       const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userRecord?.user?.user_metadata as Record<string, any>) || {};
+      const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
       const metaCourses = (meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload>) || {};
       if (metaCourses && typeof metaCourses === "object") {
         for (const [code, item] of Object.entries(metaCourses)) {
@@ -75,6 +75,8 @@ export const getMySelfPacedCourses = createServerFn({ method: "GET" })
 
     // 2. Query primary table `self_paced_enrollments`
     try {
+      // The generated Database type predates this additive migration.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: rows, error: tableErr } = await (supabaseAdmin as any)
         .from("self_paced_enrollments")
         .select("*")
@@ -99,7 +101,8 @@ export const getMySelfPacedCourses = createServerFn({ method: "GET" })
               hours: row.hours || undefined,
               instructor: row.instructor || undefined,
               category: row.category || undefined,
-              completedSteps: (row.completed_steps as any) || {},
+              completedSteps:
+                (row.completed_steps as SelfPacedEnrollmentPayload["completedSteps"]) || {},
             };
           }
         }
@@ -126,11 +129,15 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
     let currentRemote: Record<string, SelfPacedEnrollmentPayload> = {};
     try {
       const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userRecord?.user?.user_metadata as Record<string, any>) || {};
+      const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
       if (meta.self_paced_courses && typeof meta.self_paced_courses === "object") {
-        currentRemote = { ...meta.self_paced_courses };
+        currentRemote = {
+          ...(meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload>),
+        };
       }
-    } catch {}
+    } catch (metaErr) {
+      console.warn("[syncMySelfPacedCourses] existing metadata lookup warning:", metaErr);
+    }
 
     // Merge: combine courses, keeping best score & highest completion
     const merged: Record<string, SelfPacedEnrollmentPayload> = { ...currentRemote };
@@ -162,9 +169,9 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
     // 2. Persist to auth.users.user_metadata (Compact format to prevent JWT header bloat)
     try {
       const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userRecord?.user?.user_metadata as Record<string, any>) || {};
+      const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
 
-      const compactMeta: Record<string, any> = {};
+      const compactMeta: Record<string, Partial<SelfPacedEnrollmentPayload>> = {};
       for (const [c, item] of Object.entries(merged)) {
         compactMeta[c] = {
           code: item.code,
@@ -205,6 +212,8 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
       }));
 
       if (upsertRows.length > 0) {
+        // The generated Database type predates this additive migration.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabaseAdmin as any)
           .from("self_paced_enrollments")
           .upsert(upsertRows, { onConflict: "user_id, code" });
@@ -227,6 +236,8 @@ export const deleteMySelfPacedCourse = createServerFn({ method: "POST" })
 
     // 1. Delete from self_paced_enrollments table
     try {
+      // The generated Database type predates this additive migration.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabaseAdmin as any)
         .from("self_paced_enrollments")
         .delete()
@@ -239,9 +250,10 @@ export const deleteMySelfPacedCourse = createServerFn({ method: "POST" })
     // 2. Delete from auth.users.user_metadata
     try {
       const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userRecord?.user?.user_metadata as Record<string, any>) || {};
-      if (meta.self_paced_courses && meta.self_paced_courses[data.code]) {
-        const copy = { ...meta.self_paced_courses };
+      const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
+      const storedCourses = meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload> | undefined;
+      if (storedCourses?.[data.code]) {
+        const copy = { ...storedCourses };
         delete copy[data.code];
         await supabaseAdmin.auth.admin.updateUserById(context.userId, {
           user_metadata: {
