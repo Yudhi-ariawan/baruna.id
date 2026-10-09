@@ -29,6 +29,7 @@ import { shortCourseProgress, useShortCourses } from "@/lib/shortCourses";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
+import { getAcademyOverviewStats } from "@/lib/academy/academy-overview.functions";
 
 export const Route = createFileRoute("/academy/")({
   loader: async () => {
@@ -158,7 +159,7 @@ function ProgramCard({ p }: { p: Program }) {
 
 function AcademyOverview() {
   const { dbModules } = Route.useLoaderData();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { authState } = useHomeExperience();
   const { enrollments } = useShortCourses();
 
@@ -171,11 +172,17 @@ function AcademyOverview() {
   }, []);
 
   const getBiodataFn = useServerFn(getMyParticipantBiodata);
+  const getAcademyStatsFn = useServerFn(getAcademyOverviewStats);
   const { data: biodataResult } = useQuery({
     queryKey: ["participant-biodata", authUserId],
     queryFn: () => getBiodataFn(),
     enabled: Boolean(authUserId),
     staleTime: 1000 * 60 * 5,
+  });
+  const academyStatsQuery = useQuery({
+    queryKey: ["academy-overview-stats"],
+    queryFn: () => getAcademyStatsFn(),
+    staleTime: 1000 * 60,
   });
 
   const isParticipantRegistered = Boolean(biodataResult?.isRegistered);
@@ -204,18 +211,10 @@ function AcademyOverview() {
   const isAuthenticated = authState === "authenticated";
   const hasJourney = isAuthenticated && enrollments.length > 0;
 
-  const catalogProgramCount = programs.length + dbModules.length;
-  const catalogLearnerCount = programs.reduce(
-    (total, program) => total + Math.max(0, program.participants),
-    0,
-  );
-  const instructorCount = new Set([
-    ...programs.map((program) => (program.instructor || "").trim()).filter(Boolean),
-    ...dbModules.map((module) => (module.authorName || "").trim()).filter(Boolean),
-  ]).size;
-  const countryCount = new Set(
-    programs.map((program) => (program.country || "").trim()).filter(Boolean),
-  ).size;
+  const numberFormatter = new Intl.NumberFormat(language === "id" ? "id-ID" : "en-US");
+  const formatStat = (value: number | undefined) =>
+    value === undefined ? "—" : numberFormatter.format(value);
+  const statsLoading = academyStatsQuery.isPending;
 
   return (
     <AcademyShell active="overview">
@@ -226,10 +225,10 @@ function AcademyOverview() {
           title={t("academy.bannerTitle")}
           description={t("academy.bannerDesc")}
           stats={[
-            { value: String(catalogProgramCount), label: t("footer.programs"), icon: BookOpen },
-            { value: catalogLearnerCount.toLocaleString(), label: t("footer.learners"), icon: Users },
-            { value: String(instructorCount), label: t("sidebar.instructors"), icon: Building2 },
-            { value: String(countryCount), label: t("footer.countries"), icon: Globe },
+            { value: formatStat(academyStatsQuery.data?.programs), label: t("footer.programs"), icon: BookOpen, loading: statsLoading },
+            { value: formatStat(academyStatsQuery.data?.learners), label: t("footer.learners"), icon: Users, loading: statsLoading },
+            { value: formatStat(academyStatsQuery.data?.instructors), label: t("sidebar.instructors"), icon: Building2, loading: statsLoading },
+            { value: formatStat(academyStatsQuery.data?.countries), label: t("footer.countries"), icon: Globe, loading: statsLoading },
           ]}
           side={
             <div className="w-full rounded-2xl border border-navy-foreground/15 bg-navy/85 p-5 text-navy-foreground shadow-card backdrop-blur-md sm:w-72">

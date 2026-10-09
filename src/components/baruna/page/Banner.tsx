@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowRight, type LucideIcon } from "lucide-react";
 
-export type BannerStat = { value: string; label: string; icon?: LucideIcon };
+export type BannerStat = { value: string; label: string; icon?: LucideIcon; loading?: boolean };
 
 export type BannerProps = {
   image: string;
@@ -44,7 +44,14 @@ export function Banner({ image, alt, title, description, stats, cta, side }: Ban
                     <s.icon className="h-5 w-5 text-navy-foreground/80" strokeWidth={1.8} />
                   )}
                   <div className="leading-tight">
-                    <p className="font-display text-xl font-extrabold">{s.value}</p>
+                    {s.loading ? (
+                      <span
+                        className="mb-1 block h-6 w-12 animate-pulse rounded bg-navy-foreground/20"
+                        aria-label={`Loading ${s.label}`}
+                      />
+                    ) : (
+                      <p className="font-display text-xl font-extrabold">{s.value}</p>
+                    )}
                     <p className="text-[0.7rem] text-navy-foreground/75">{s.label}</p>
                   </div>
                 </div>
