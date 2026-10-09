@@ -47,6 +47,8 @@ export type ShortCourseEnrollment = {
     ppt?: boolean;
     quiz?: boolean;
   };
+  /** Set only by an explicit enrol action or an approved server application. */
+  explicitlyEnrolled?: boolean;
 };
 
 type Store = Record<string, ShortCourseEnrollment>;
@@ -60,7 +62,12 @@ function readStore(): Store {
   // a signed-out visitor, even if an old `:guest` key remains in localStorage.
   if (!getActiveUserId()) return {};
   try {
-    return JSON.parse(localStorage.getItem(getUserScopedKey(STORE_PREFIX)) || "{}");
+    const stored = JSON.parse(localStorage.getItem(getUserScopedKey(STORE_PREFIX)) || "{}") as Store;
+    // Historical LMS players created local records merely by being opened.
+    // Never render or upload those implicit records as real enrolments.
+    return Object.fromEntries(
+      Object.entries(stored).filter(([, enrollment]) => enrollment?.explicitlyEnrolled === true),
+    );
   } catch {
     return {};
   }
@@ -209,6 +216,7 @@ export function enrollShortCourse(
       instructor: meta?.instructor,
       category: meta?.category,
       completedSteps: { video: false, pdf: false, ppt: false, quiz: false },
+      explicitlyEnrolled: true,
     };
     writeStore(store);
   }
@@ -220,12 +228,10 @@ export function updateShortCourseSteps(
   steps: { video?: boolean; pdf?: boolean; ppt?: boolean; quiz?: boolean },
 ): ShortCourseEnrollment {
   const store = readStore();
-  const existing = store[code] ?? {
-    code,
-    enrolledAt: Date.now(),
-    completed: false,
-    source: "self-paced",
-  };
+  const existing = store[code];
+  if (!existing?.explicitlyEnrolled) {
+    throw new Error("course_not_enrolled");
+  }
   const updatedSteps = {
     ...(existing.completedSteps ?? {}),
     ...steps,
@@ -244,7 +250,20 @@ export function completeShortCourse(
   source: ShortCourseEnrollment["source"] = "self-paced",
 ): ShortCourseEnrollment {
   const store = readStore();
-  const existing = store[code] ?? { code, enrolledAt: Date.now(), completed: false };
+  const existing =
+    store[code] ??
+    (source === "full-training-program"
+      ? {
+          code,
+          enrolledAt: Date.now(),
+          completed: false,
+          source,
+          explicitlyEnrolled: true,
+        }
+      : undefined);
+  if (!existing?.explicitlyEnrolled) {
+    throw new Error("course_not_enrolled");
+  }
   store[code] = {
     ...existing,
     completed: true,
@@ -284,7 +303,7 @@ export function shortCourseProgress(enrollment: ShortCourseEnrollment): number {
       Number(Boolean(steps.ppt)) +
       Number(Boolean(steps.quiz))
     : 0;
-  return completedSteps > 0 ? Math.round((completedSteps / 4) * 100) : 25;
+  return completedSteps > 0 ? Math.round((completedSteps / 4) * 100) : 0;
 }
 
 /** Is this Master Module already earned as credit via a standalone Short Course

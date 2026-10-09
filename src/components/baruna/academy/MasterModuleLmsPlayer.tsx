@@ -41,12 +41,10 @@ import {
   getQuizRecord,
   isModuleCompleteInApp,
   updateLms,
-  getOrCreateSelfPacedApp,
   SELF_PACED_APP_ID,
 } from "@/lib/application";
 import {
   useShortCourses,
-  enrollShortCourse,
   completeShortCourse,
 } from "@/lib/shortCourses";
 
@@ -80,18 +78,6 @@ export function MasterModuleLmsPlayer({
   const app = useApplication(SELF_PACED_APP_ID);
   const [quizOpen, setQuizOpen] = useState(false);
 
-  useEffect(() => {
-    if (!enrollment) {
-      getOrCreateSelfPacedApp();
-      enrollShortCourse(master.code, {
-        title: master.title,
-        hours: master.hours,
-        instructor: master.instructorSlug,
-        category: master.subCategory,
-      });
-    }
-  }, [enrollment, master]);
-
   const instructor = instructorBySlug[master.instructorSlug];
   const quizRec = app && lmsModule ? getQuizRecord(app, lmsModule.id) : undefined;
   const moduleProgress = app && lmsModule ? getLms(app).modules[lmsModule.id] : undefined;
@@ -103,10 +89,10 @@ export function MasterModuleLmsPlayer({
     : done;
 
   useEffect(() => {
-    if (quizRec?.passed && !enrollment?.completed) {
+    if (quizRec?.passed && enrollment && !enrollment.completed) {
       completeShortCourse(master.code, quizRec.bestScore, "self-paced");
     }
-  }, [quizRec?.passed, quizRec?.bestScore, master.code, enrollment?.completed]);
+  }, [quizRec?.passed, quizRec?.bestScore, master.code, enrollment]);
 
   const toggleResource = (kind: ResourceKind) => {
     if (!app || !lmsModule) return;
@@ -455,4 +441,3 @@ export function MasterModuleLmsPlayer({
     </AcademyShell>
   );
 }
-

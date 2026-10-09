@@ -19,6 +19,7 @@ export type SelfPacedEnrollmentPayload = {
     ppt?: boolean;
     quiz?: boolean;
   };
+  explicitlyEnrolled?: boolean;
 };
 
 const SelfPacedPayloadSchema = z.object({
@@ -43,6 +44,7 @@ const SelfPacedPayloadSchema = z.object({
           quiz: z.boolean().optional(),
         })
         .optional(),
+      explicitlyEnrolled: z.boolean().optional().default(false),
     }),
   ),
 });
@@ -64,7 +66,7 @@ export const getMySelfPacedCourses = createServerFn({ method: "GET" })
       const metaCourses = (meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload>) || {};
       if (metaCourses && typeof metaCourses === "object") {
         for (const [code, item] of Object.entries(metaCourses)) {
-          if (item && item.code) {
+          if (item && item.code && item.explicitlyEnrolled === true) {
             result[code] = item;
           }
         }
@@ -103,6 +105,7 @@ export const getMySelfPacedCourses = createServerFn({ method: "GET" })
               category: row.category || undefined,
               completedSteps:
                 (row.completed_steps as SelfPacedEnrollmentPayload["completedSteps"]) || {},
+              explicitlyEnrolled: true,
             };
           }
         }
@@ -123,7 +126,9 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
   .validator((input) => SelfPacedPayloadSchema.parse(input))
   .handler(async ({ data, context }): Promise<Record<string, SelfPacedEnrollmentPayload>> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const coursesToSync = data.courses;
+    const coursesToSync = Object.fromEntries(
+      Object.entries(data.courses).filter(([, course]) => course.explicitlyEnrolled === true),
+    );
 
     // 1. Fetch current server state to merge
     let currentRemote: Record<string, SelfPacedEnrollmentPayload> = {};
@@ -131,9 +136,10 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
       const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
       const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
       if (meta.self_paced_courses && typeof meta.self_paced_courses === "object") {
-        currentRemote = {
-          ...(meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload>),
-        };
+        const stored = meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload>;
+        currentRemote = Object.fromEntries(
+          Object.entries(stored).filter(([, course]) => course.explicitlyEnrolled === true),
+        );
       }
     } catch (metaErr) {
       console.warn("[syncMySelfPacedCourses] existing metadata lookup warning:", metaErr);
@@ -180,6 +186,7 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
           score: item.score,
           completedSteps: item.completedSteps,
           enrolledAt: item.enrolledAt,
+          explicitlyEnrolled: true,
         };
       }
 

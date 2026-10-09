@@ -46,7 +46,6 @@ import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.funct
 import { useQuery } from "@tanstack/react-query";
 import {
   useShortCourses,
-  enrollShortCourse,
   completeShortCourse,
   updateShortCourseSteps,
 } from "@/lib/shortCourses";
@@ -376,18 +375,6 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
       });
     }
   }, [enrollment?.completedSteps, done]);
-
-  // Ensure user is enrolled when entering learning workspace
-  useEffect(() => {
-    if (!enrollment) {
-      enrollShortCourse(module.id, {
-        title: module.title,
-        hours: module.hours,
-        instructor: module.trainer.name,
-        category: module.topic || "Fisheries Management",
-      });
-    }
-  }, [enrollment, module]);
 
   const handleToggleStep = (step: "video" | "pdf" | "ppt") => {
     const nextState = !completedSteps[step];
