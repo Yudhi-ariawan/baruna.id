@@ -237,3 +237,28 @@
     box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-marine) 15%, transparent);
   }
 }
+
+@keyframes learning-icon-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes login-icon-glow {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-marine) 10%, transparent); }
+  50% { transform: scale(1.04); box-shadow: 0 0 0 10px color-mix(in oklab, var(--color-marine) 0%, transparent); }
+}
+
+.animate-learning-float {
+  animation: learning-icon-float 3.5s ease-in-out infinite;
+}
+
+.animate-login-glow {
+  animation: login-icon-glow 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-learning-float,
+  .animate-login-glow {
+    animation: none;
+  }
+}

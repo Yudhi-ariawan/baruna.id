@@ -1,30 +1,11 @@
-import { ArrowRight, BarChart3, Clock, UserRound } from "lucide-react";
+import { ArrowRight, BarChart3, Clock, GraduationCap, LockKeyhole, UserRound } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import {
-  continueLearning,
-  type ContinueCourse,
-} from "@/data/baruna";
 import { useLanguage } from "@/lib/i18n";
 import type { PublishedCatalogModule } from "@/lib/learning/learning.functions";
 import { MODULE_CATEGORY_LABELS, primaryModuleCategory } from "@/lib/academy/module-categories";
+import { shortCourseProgress, type ShortCourseEnrollment, useShortCourses } from "@/lib/shortCourses";
+import { useHomeExperience } from "@/components/baruna/home-experience";
 import defaultCover from "@/assets/self-paced/m01.jpg";
-
-const badgeBg: Record<string, string> = {
-  COURSE: "bg-badge-course",
-  TRAINING: "bg-badge-training",
-  WEBINAR: "bg-badge-webinar",
-  WORKSHOP: "bg-badge-workshop",
-};
-
-function CategoryBadge({ label }: { label: string }) {
-  return (
-    <span
-      className={`inline-flex rounded-md px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-navy-foreground ${badgeBg[label]}`}
-    >
-      {label}
-    </span>
-  );
-}
 
 function SectionHead({
   title,
@@ -49,40 +30,116 @@ function SectionHead({
   );
 }
 
-function ContinueCard({ course }: { course: ContinueCourse }) {
+function ContinueCard({
+  enrollment,
+  module,
+}: {
+  enrollment: ShortCourseEnrollment;
+  module?: PublishedCatalogModule;
+}) {
   const { t } = useLanguage();
+  const progress = shortCourseProgress(enrollment);
+  const title = enrollment.title || module?.title || `BARUNA Learning Module`;
+  const cover = module?.coverUrl || defaultCover;
 
   return (
     <article className="flex w-[300px] shrink-0 gap-3 rounded-xl border border-border bg-card p-3 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-hover sm:w-auto sm:shrink">
       <div className="relative h-28 w-24 shrink-0 overflow-hidden rounded-lg">
         <img
-          src={course.image}
-          alt={course.title}
+          src={cover}
+          alt={`Cover for ${title}`}
           loading="lazy"
           width={768}
           height={512}
           className="h-full w-full object-cover"
         />
-        <span className="absolute left-1.5 top-1.5">
-          <CategoryBadge label={course.tag} />
-        </span>
+        <span className="absolute left-1.5 top-1.5 rounded-md bg-navy/90 px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide text-white">Self-Paced</span>
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <h3 className="line-clamp-2 text-sm font-semibold text-navy">{course.title}</h3>
+        <h3 className="line-clamp-2 text-sm font-semibold text-navy">{title}</h3>
         <p className="mt-2 text-xs font-medium text-muted-foreground">
-          {course.progress}% {t("learning.completed")}
+          {progress}% {t("learning.completed")}
         </p>
         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-marine"
-            style={{ width: `${course.progress}%` }}
+            style={{ width: `${progress}%` }}
           />
         </div>
-        <button className="mt-auto w-full rounded-lg border border-marine/40 py-1.5 text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground">
+        <Link
+          to="/academy/learn/$id"
+          params={{ id: enrollment.code }}
+          className="mt-auto w-full rounded-lg border border-marine/40 py-1.5 text-center text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+        >
           {t("learning.continueBtn")}
-        </button>
+        </Link>
       </div>
     </article>
+  );
+}
+
+function ContinueLearningState({
+  authState,
+  activeEnrollments,
+  publishedModules,
+}: {
+  authState: "loading" | "public" | "authenticated";
+  activeEnrollments: ShortCourseEnrollment[];
+  publishedModules: PublishedCatalogModule[];
+}) {
+  if (authState === "loading") {
+    return (
+      <div className="grid min-h-40 place-items-center rounded-xl border border-border bg-muted/20">
+        <div className="h-10 w-10 animate-pulse rounded-full bg-marine/15" aria-label="Loading learning history" />
+      </div>
+    );
+  }
+
+  if (authState === "public") {
+    return (
+      <div className="grid min-h-48 place-items-center rounded-xl border border-dashed border-marine/25 bg-gradient-to-br from-marine/5 to-transparent p-5 text-center">
+        <div>
+          <span className="animate-login-glow mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-marine/10 text-marine">
+            <LockKeyhole className="h-7 w-7" />
+          </span>
+          <h3 className="mt-4 font-display text-base font-bold text-navy">Masuk untuk Melanjutkan Pembelajaran</h3>
+          <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
+            Silakan login ke akun BARUNA Anda untuk mengakses modul dan melihat riwayat belajar.
+          </p>
+          <a href="/auth?mode=signin" className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-marine/90">
+            Masuk / Login <ArrowRight className="h-3.5 w-3.5" />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeEnrollments.length === 0) {
+    return (
+      <div className="grid min-h-48 place-items-center rounded-xl border border-dashed border-marine/25 bg-gradient-to-br from-sky-50/70 to-transparent p-5 text-center">
+        <div>
+          <span className="animate-learning-float mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-marine/10 text-marine">
+            <GraduationCap className="h-8 w-8" />
+          </span>
+          <h3 className="mt-4 font-display text-base font-bold text-navy">Belum Ada Pelatihan yang Sedang Diikuti</h3>
+          <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
+            Pilih dan daftarkan diri Anda pada modul di katalog BARUNA Academy untuk mulai belajar.
+          </p>
+          <Link to="/academy" className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-marine/90">
+            Jelajahi Modul <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const moduleById = new Map(publishedModules.map((module) => [module.id, module]));
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible">
+      {activeEnrollments.slice(0, 2).map((enrollment) => (
+        <ContinueCard key={enrollment.code} enrollment={enrollment} module={moduleById.get(enrollment.code)} />
+      ))}
+    </div>
   );
 }
 
@@ -143,6 +200,9 @@ function RecommendedCard({ module }: { module: PublishedCatalogModule }) {
 
 export function LearningSections({ publishedModules }: { publishedModules: PublishedCatalogModule[] }) {
   const { t } = useLanguage();
+  const { authState } = useHomeExperience();
+  const { enrollments } = useShortCourses();
+  const activeEnrollments = enrollments.filter((enrollment) => !enrollment.completed);
 
   return (
     <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-6 sm:py-8 w-full overflow-hidden">
@@ -153,11 +213,11 @@ export function LearningSections({ publishedModules }: { publishedModules: Publi
             action={t("learning.viewAllMyLearning")}
             href="/academy/learn"
           />
-          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-2 sm:overflow-visible">
-            {continueLearning.slice(0, 2).map((c) => (
-              <ContinueCard key={c.title} course={c} />
-            ))}
-          </div>
+          <ContinueLearningState
+            authState={authState}
+            activeEnrollments={activeEnrollments}
+            publishedModules={publishedModules}
+          />
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-soft min-w-0 overflow-hidden">
