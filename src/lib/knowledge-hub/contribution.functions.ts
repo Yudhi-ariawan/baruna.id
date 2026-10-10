@@ -138,9 +138,15 @@ export const createKnowledgeResourceUpload = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const safeName = data.fileName.replace(/[^a-zA-Z0-9._-]+/g, "-");
     const path = `users/${context.userId}/resources/${Date.now()}-${safeName}`;
-    const { data: signed, error } = await supabaseAdmin.storage.from("knowledge-resource-submissions").createSignedUploadUrl(path);
-    if (error) throw new Error(error.message);
-    return { path, token: signed.token };
+    let signedResult = await supabaseAdmin.storage.from("knowledge-resource-submissions").createSignedUploadUrl(path);
+    if (signedResult.error && (signedResult.error.message?.includes("not exist") || (signedResult.error as { statusCode?: string }).statusCode === "404")) {
+      await supabaseAdmin.storage.createBucket("knowledge-resource-submissions", { public: false, fileSizeLimit: 52428800 });
+      signedResult = await supabaseAdmin.storage.from("knowledge-resource-submissions").createSignedUploadUrl(path);
+    }
+    if (signedResult.error || !signedResult.data) {
+      throw new Error(signedResult.error?.message || "Failed to generate upload URL");
+    }
+    return { path, token: signedResult.data.token };
   });
 
 export type KnowledgeContributionItem = {

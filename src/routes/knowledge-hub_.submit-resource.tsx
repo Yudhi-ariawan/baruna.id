@@ -521,16 +521,45 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
       return;
     }
     setProgress(15);
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) { setErr("Please sign in before uploading a file."); setProgress(null); return; }
-    const upload = await createUpload({ data: { fileName: file.name, mimeType: file.type || "application/octet-stream", size: file.size } });
-    const storagePath = upload.path;
-    setProgress(45);
-    const { error: uploadError } = await supabase.storage.from("knowledge-resource-submissions").uploadToSignedUrl(storagePath, upload.token, file, { contentType: file.type });
-    if (uploadError) { setErr(uploadError.message); setProgress(null); return; }
-    setProgress(100);
-    set("file", { name: file.name, size: file.size, type: file.type || "file", uploadedAt: new Date().toISOString(), storagePath });
-    setTimeout(() => setProgress(null), 250);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        setErr("Please sign in before uploading a file.");
+        setProgress(null);
+        return;
+      }
+      const upload = await createUpload({
+        data: {
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
+        },
+      });
+      const storagePath = upload.path;
+      setProgress(50);
+      const { error: uploadError } = await supabase.storage
+        .from("knowledge-resource-submissions")
+        .uploadToSignedUrl(storagePath, upload.token, file, {
+          contentType: file.type || "application/octet-stream",
+        });
+      if (uploadError) {
+        setErr(uploadError.message);
+        setProgress(null);
+        return;
+      }
+      setProgress(100);
+      set("file", {
+        name: file.name,
+        size: file.size,
+        type: file.type || "file",
+        uploadedAt: new Date().toISOString(),
+        storagePath,
+      });
+      setTimeout(() => setProgress(null), 250);
+    } catch (cause) {
+      setErr(cause instanceof Error ? cause.message : "Terjadi kendala saat mengunggah dokumen.");
+      setProgress(null);
+    }
   };
 
   return (
