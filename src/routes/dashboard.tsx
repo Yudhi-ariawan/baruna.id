@@ -10,9 +10,13 @@ import {
   UserRound,
   ShieldCheck,
   ArrowRight,
+  BookOpen,
+  Plus,
+  ListChecks,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { RequireAuth } from "@/components/baruna/auth/RequireAuth";
+import { TrainerKnowledgePublicationsCard } from "@/components/baruna/experts/TrainerKnowledgePublicationsCard";
 import { DEMO_PARTICIPANTS, DEMO_SHORT_COURSES } from "@/data/demo";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import { useLanguage } from "@/lib/i18n";
@@ -178,7 +182,7 @@ function DashboardPage() {
         sidebar={{
           icon: LayoutDashboard,
           title: isId ? "Perjalanan Belajar Saya" : "My Training Journey",
-          subtitle: isId ? "Ruang kerja peserta & pelatihan." : "Personal learning workspace.",
+          subtitle: isId ? "Ruang kerja peserta & kontributor." : "Personal learning & contributor workspace.",
           sections: [
             {
               label: isId ? "Navigasi" : "Navigation",
@@ -188,6 +192,26 @@ function DashboardPage() {
                 { label: isId ? "Pembelajaran Saya" : "My Learning", to: "/academy/learn" },
                 { label: isId ? "Sertifikat" : "Certificates", to: "/academy/certification" },
                 { label: isId ? "Disimpan" : "Saved", to: "/saved" },
+              ],
+            },
+            {
+              label: "Knowledge Hub",
+              items: [
+                {
+                  label: isId ? "Submit Publikasi / Video / Best Practice" : "Submit Resource",
+                  icon: Plus,
+                  to: "/knowledge-hub/submit-resource",
+                },
+                {
+                  label: isId ? "Kontribusi Saya" : "My Contributions",
+                  icon: ListChecks,
+                  to: "/knowledge-hub/my-contributions",
+                },
+                {
+                  label: isId ? "Katalog Knowledge Hub" : "Browse Knowledge Hub",
+                  icon: BookOpen,
+                  to: "/knowledge-hub",
+                },
               ],
             },
           ],
@@ -232,12 +256,12 @@ function DashboardPage() {
               {roleLabel} · {displayName}
             </span>
             <h1 className="mt-3 font-display text-3xl font-extrabold text-navy">
-              {isId ? "Perjalanan Belajar Saya" : "My Training Journey"}
+              {isId ? "Perjalanan Belajar & Kontribusi Saya" : "My Training Journey & Contributions"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {isId
-                ? "Satu tempat untuk seluruh aktivitas dan perkembangan Anda di BARUNA."
-                : "A single place for everything you're doing on BARUNA."}
+                ? "Satu tempat untuk aktivitas pelatihan serta kontribusi publikasi, best practice, dan video Anda di BARUNA."
+                : "A single place for your training progress and Knowledge Hub contributions on BARUNA."}
             </p>
           </div>
           <Link
@@ -247,6 +271,11 @@ function DashboardPage() {
             <UserRound className="h-4 w-4" /> {isId ? "Edit Profil" : "Edit Profile"}
           </Link>
         </div>
+
+        <div className="mt-6">
+          <TrainerKnowledgePublicationsCard variant="participant" />
+        </div>
+
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {cards.map((c) => (
             <div key={c.title} className="rounded-2xl border border-border bg-card p-5 shadow-soft hover:border-marine/40 transition-colors">

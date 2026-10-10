@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -13,7 +14,8 @@ import {
   Clock,
   AlertTriangle,
   RefreshCw,
-  ExternalLink,
+  Award,
+  Video,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
 import { useHomeExperience } from "@/components/baruna/home-experience";
@@ -253,8 +255,18 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
 }
 
 function MyContributionsPage() {
+  const navigate = useNavigate();
   const { authState, viewer } = useHomeExperience();
   const fetchContributions = useServerFn(listMyKnowledgeContributions);
+
+  useEffect(() => {
+    if (authState === "public") {
+      navigate({
+        to: "/auth",
+        search: { mode: "signin", redirect: "/knowledge-hub/my-contributions" },
+      });
+    }
+  }, [authState, navigate]);
 
   const query = useQuery({
     queryKey: ["knowledge-hub", "my-contributions", viewer?.id],
@@ -275,26 +287,51 @@ function MyContributionsPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <Link
-          to="/knowledge-hub"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-marine transition-colors hover:text-navy"
-        >
-          <ArrowLeft className="h-4 w-4" /> Knowledge Hub
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link
+            to="/knowledge-hub"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-marine transition-colors hover:text-navy"
+          >
+            <ArrowLeft className="h-4 w-4" /> Knowledge Hub
+          </Link>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-marine"
+          >
+            Buka Dashboard Saya →
+          </Link>
+        </div>
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-extrabold text-navy">My Contributions</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Lacak seluruh publikasi, modul, laporan, dan dokumen pengetahuan yang Anda ajukan ke Knowledge Hub beserta status kurasinya.
+              Lacak seluruh publikasi, studi kasus, best practice, dan video yang Anda ajukan ke Knowledge Hub beserta status kurasinya.
             </p>
           </div>
-          <Link
-            to="/knowledge-hub/submit-resource"
-            className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy shadow-xs"
-          >
-            <Plus className="h-4 w-4" /> Submit Resource
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/knowledge-hub/submit-resource"
+              search={{ type: "Research Report" }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-4 py-2.5 text-xs font-bold text-marine-foreground transition-colors hover:bg-navy shadow-xs"
+            >
+              <Plus className="h-3.5 w-3.5" /> Submit Publikasi
+            </Link>
+            <Link
+              to="/knowledge-hub/submit-resource"
+              search={{ type: "Best Practice" }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-marine/40 bg-marine/10 px-4 py-2.5 text-xs font-bold text-marine transition-colors hover:bg-marine hover:text-white"
+            >
+              <Award className="h-3.5 w-3.5" /> Submit Best Practice
+            </Link>
+            <Link
+              to="/knowledge-hub/submit-resource"
+              search={{ type: "Video" }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2.5 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-600 hover:text-white"
+            >
+              <Video className="h-3.5 w-3.5" /> Submit Video
+            </Link>
+          </div>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -321,15 +358,32 @@ function MyContributionsPage() {
             <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
               <Globe className="mx-auto h-8 w-8 text-marine" />
               <p className="mt-3 font-display text-lg font-bold text-navy">Belum ada kontribusi tersimpan</p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                Bagikan artikel riset, pedoman teknis, best practice, atau video pertama Anda ke jaringan BARUNA.
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                Bagikan publikasi riset, pedoman teknis, best practice, atau video pertama Anda ke jaringan BARUNA. Semua peserta pelatihan (Participant), pengguna terdaftar (Registered User), dan trainer dapat berkontribusi.
               </p>
-              <Link
-                to="/knowledge-hub/submit-resource"
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy"
-              >
-                <Plus className="h-4 w-4" /> Submit a Resource
-              </Link>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+                <Link
+                  to="/knowledge-hub/submit-resource"
+                  search={{ type: "Research Report" }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-marine px-4 py-2.5 text-xs font-bold text-marine-foreground transition-colors hover:bg-navy"
+                >
+                  <Plus className="h-4 w-4" /> Submit Publikasi Pertama
+                </Link>
+                <Link
+                  to="/knowledge-hub/submit-resource"
+                  search={{ type: "Best Practice" }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-marine/40 bg-marine/10 px-4 py-2.5 text-xs font-bold text-marine transition-colors hover:bg-marine hover:text-white"
+                >
+                  <Award className="h-4 w-4" /> Submit Best Practice
+                </Link>
+                <Link
+                  to="/knowledge-hub/submit-resource"
+                  search={{ type: "Video" }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2.5 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-600 hover:text-white"
+                >
+                  <Video className="h-4 w-4" /> Submit Video
+                </Link>
+              </div>
             </div>
           ) : (
             contributions.map((r) => <ContributionCard key={r.id} r={r} />)
@@ -339,4 +393,5 @@ function MyContributionsPage() {
     </div>
   );
 }
+
 

@@ -13,6 +13,7 @@ import {
   RotateCcw,
   ScrollText,
   Sparkles,
+  Video,
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -71,22 +72,33 @@ function resolvePublicationStatus(item: KnowledgeContributionItem) {
   }
 }
 
-export function TrainerKnowledgePublicationsCard() {
+export function TrainerKnowledgePublicationsCard({
+  variant = "trainer",
+}: {
+  variant?: "trainer" | "participant";
+} = {}) {
   const fetchContributions = useServerFn(listMyKnowledgeContributions);
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["knowledge-hub", "my-contributions"],
     queryFn: () => fetchContributions(),
   });
 
+  const isParticipantVariant = variant === "participant";
+
   return (
     <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
         <div>
           <h2 className="font-display text-base sm:text-lg font-bold text-navy flex items-center gap-2">
-            <ScrollText className="h-4.5 w-4.5 text-sky-600" /> Publikasi, Best Practice &amp; Dokumen Pengetahuan Saya
+            <ScrollText className="h-4.5 w-4.5 text-sky-600" />{" "}
+            {isParticipantVariant
+              ? "Kontribusi Knowledge Hub Saya (Publikasi, Best Practice & Video)"
+              : "Publikasi, Best Practice, Video & Dokumen Pengetahuan Saya"}
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Karya ilmiah, laporan riset, praktik terbaik (best practice), studi kasus, dan naskah publikasi Anda di Knowledge Hub.
+            {isParticipantVariant
+              ? "Bagikan laporan riset, praktik terbaik (best practice), dokumentasi video/webinar, dan naskah pengetahuan Anda ke katalog publik BARUNA."
+              : "Karya ilmiah, laporan riset, praktik terbaik (best practice), video/webinar, dan naskah publikasi Anda di Knowledge Hub."}
           </p>
         </div>
 
@@ -105,6 +117,13 @@ export function TrainerKnowledgePublicationsCard() {
             <Sparkles className="h-3.5 w-3.5" /> Submit Best Practice
           </Link>
           <Link
+            to="/knowledge-hub/submit-resource"
+            search={{ type: "Video" }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-indigo-700 transition"
+          >
+            <Video className="h-3.5 w-3.5" /> Submit Video
+          </Link>
+          <Link
             to="/knowledge-hub/my-contributions"
             className="inline-flex items-center gap-1 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-navy hover:bg-muted transition"
           >
@@ -115,21 +134,39 @@ export function TrainerKnowledgePublicationsCard() {
 
       {isLoading ? (
         <div className="py-8 text-center text-xs text-muted-foreground">
-          Memuat daftar publikasi Anda…
+          Memuat daftar kontribusi Knowledge Hub Anda…
         </div>
       ) : items.length === 0 ? (
         <div className="py-10 text-center">
           <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />
-          <p className="mt-2 text-sm font-semibold text-navy">Belum ada publikasi yang diajukan</p>
-          <p className="text-xs text-muted-foreground mt-0.5 max-w-sm mx-auto">
-            Sebagai Trainer resmi BARUNA, Anda dapat membagikan karya riset, artikel jurnal, atau best practice dari institusi Anda ke Knowledge Hub.
+          <p className="mt-2 text-sm font-semibold text-navy">Belum ada kontribusi yang diajukan</p>
+          <p className="text-xs text-muted-foreground mt-0.5 max-w-md mx-auto">
+            {isParticipantVariant
+              ? "Sebagai Peserta & Kontributor Terdaftar BARUNA, Anda dapat mengirimkan Publikasi, Best Practice lapangan, maupun Video/Webinar untuk dikurasi dan ditayangkan di Knowledge Hub."
+              : "Sebagai Trainer resmi BARUNA, Anda dapat membagikan karya riset, artikel jurnal, video, atau best practice dari institusi Anda ke Knowledge Hub."}
           </p>
-          <Link
-            to="/knowledge-hub/submit-resource"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-700 transition shadow-xs"
-          >
-            Unggah Publikasi Pertama <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <Link
+              to="/knowledge-hub/submit-resource"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-700 transition shadow-xs"
+            >
+              <FileText className="h-3.5 w-3.5" /> Submit Publikasi
+            </Link>
+            <Link
+              to="/knowledge-hub/submit-resource"
+              search={{ type: "Best Practice" }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition shadow-xs"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Submit Best Practice
+            </Link>
+            <Link
+              to="/knowledge-hub/submit-resource"
+              search={{ type: "Video" }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition shadow-xs"
+            >
+              <Video className="h-3.5 w-3.5" /> Submit Video
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="mt-4 divide-y divide-border/60">

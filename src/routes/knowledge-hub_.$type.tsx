@@ -128,6 +128,27 @@ function CataloguePage() {
 
   const clear = () => { setQ(""); setCat("all"); setAccess("all"); setYear("all"); setTypeFilter("all"); };
 
+  const submitPreset = useMemo(() => {
+    switch (type) {
+      case "videos":
+        return { label: "Submit Video", typeParam: "Video" };
+      case "best-practices":
+        return { label: "Submit Best Practice", typeParam: "Best Practice" };
+      case "publications":
+        return { label: "Submit Publication", typeParam: "Research Report" };
+      case "policy-briefs":
+        return { label: "Submit Policy Brief", typeParam: "Policy Brief" };
+      case "case-studies":
+        return { label: "Submit Case Study", typeParam: "Case Study" };
+      case "infographics":
+        return { label: "Submit Infographic", typeParam: "Infographic" };
+      case "toolkits":
+        return { label: "Submit Toolkit", typeParam: "Monitoring Template" };
+      default:
+        return { label: "Submit Resource", typeParam: undefined };
+    }
+  }, [type]);
+
   return (
     <PageShell
       sidebar={{
@@ -139,8 +160,8 @@ function CataloguePage() {
         title: isCanonicalLearning ? "Submit a Complete Learning Module" : "Contribute a Resource",
         description: isCanonicalLearning
           ? "Verified trainers submit the full module package, including video, handbook, slides, assessment, guide, and cover."
-          : "Verified experts, trainers, and partners may submit new resources.",
-        button: isCanonicalLearning ? "Open Trainer Module Form" : "Submit a Resource",
+          : "Participants, registered users, trainers, and experts may submit publications, best practices, and videos.",
+        button: isCanonicalLearning ? "Open Trainer Module Form" : submitPreset.label,
         href: isCanonicalLearning ? "/experts/portal/submit-module" : "/knowledge-hub/submit-resource",
       }}
     >
@@ -167,6 +188,15 @@ function CataloguePage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {!isCanonicalLearning && (
+              <Link
+                to="/knowledge-hub/submit-resource"
+                search={submitPreset.typeParam ? { type: submitPreset.typeParam } : undefined}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-3.5 py-2 text-xs font-bold text-marine-foreground shadow-soft transition-colors hover:bg-navy"
+              >
+                <Upload className="h-3.5 w-3.5" /> {submitPreset.label}
+              </Link>
+            )}
             {(["grid", "list", "compact"] as ViewMode[]).map((v) => {
               const Icon = v === "grid" ? LayoutGrid : v === "list" ? List : AlignJustify;
               return (

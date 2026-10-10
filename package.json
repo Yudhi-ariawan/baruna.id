@@ -12,6 +12,8 @@
     "seed:experts-directory": "bun --env-file=.env scripts/seed-experts-directory.ts",
     "test:rbac": "node --env-file-if-exists=.env scripts/verify-rbac-matrix.mjs",
     "test:lifecycle": "node --env-file-if-exists=.env scripts/test-tdd-business-flows.mjs",
+    "test:kh-roles": "node --env-file-if-exists=.env scripts/test-tdd-knowledge-hub-roles.mjs",
+    "audit:bom-waktu": "npx tsc --noEmit && npm run test:lifecycle && npm run test:kh-roles && npm run build",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

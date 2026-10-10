@@ -198,6 +198,11 @@ export function Navbar() {
                     <LayoutDashboard className="h-4 w-4" /> {t("header.myDashboard")}
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/knowledge-hub/my-contributions">
+                    <BookOpen className="h-4 w-4" /> Kontribusi Knowledge Hub
+                  </Link>
+                </DropdownMenuItem>
                 {viewer.variant === "admin" ||
                 ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(
                   viewer.primaryRoleCode,
@@ -305,6 +310,13 @@ export function Navbar() {
                         className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
                       >
                         <LayoutDashboard className="h-5 w-5" /> {t("header.myDashboard")}
+                      </Link>
+                      <Link
+                        to="/knowledge-hub/my-contributions"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
+                      >
+                        <BookOpen className="h-5 w-5" /> Kontribusi Knowledge Hub
                       </Link>
                       {viewer.variant === "admin" ||
                       ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(

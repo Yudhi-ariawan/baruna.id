@@ -51,3 +51,10 @@ All AI agents and developers working on BARUNA must strictly adhere to the follo
 7. **Strict Validation & Zero-Breakage Policy:**
    - Before completing any task, always verify with `npm run build` (which validates TypeScript, TanStack router routes, Vite bundle, and Nitro SSR output). Exit code must be 0.
 
+## Pintasan Perintah User (Short Commands)
+
+Jika user mengetik kode singkat **`cek bom waktu`** atau **`/audit`** di chat, AI wajib langsung menjalankan **Audit 360° Anti-Bom Waktu & Anti-Konflik** tanpa perlu dijelaskan panjang lebar, meliputi:
+1. **Audit Celah Bug & Bom Waktu Masa Depan:** Memeriksa *edge cases*, *race condition / double-submit*, *null/undefined fallback*, karakter spesial pada query/URL, batas ukuran file, dan *cache invalidation*.
+2. **Audit Konflik Database & RLS:** Memeriksa kesesuaian *unique index*, *foreign key*, *RLS policy*, tanda tangan argumen RPC PostgreSQL, serta sinkronisasi antar-tabel (`review_drafts`, `review_subjects`, `review_decisions`, `knowledge_resources`, `profiles`, `participant_biodata`, `experts`).
+3. **Audit Lintas-Role & Zero-Breakage:** Memastikan alur `trainer`, `participant`, `registered_user`, dan `admin` berjalan mulus tanpa merusak fitur eksisting.
+4. **Eksekusi Test Otomatis (`npm run audit:bom-waktu`):** Menjalankan `npx tsc --noEmit`, `npm run test:lifecycle`, `npm run test:kh-roles`, dan `npm run build` hingga seluruhnya lulus (`exit code 0`).

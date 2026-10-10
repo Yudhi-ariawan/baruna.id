@@ -197,13 +197,22 @@ function SubmitResourcePage() {
   }, [dbDraftQuery.data]);
 
   useEffect(() => {
+    if (edit || dbDraftQuery.data || !initialType) return;
+    setForm((current) => ({
+      ...current,
+      type: initialType,
+      typeGroup: groupForType(initialType),
+    }));
+  }, [initialType, edit, dbDraftQuery.data]);
+
+  useEffect(() => {
     if (!bootstrap.data || existing || dbDraftQuery.data) return;
     setForm((current) => ({
       ...current,
       ...(initialType && !current.type ? { type: initialType, typeGroup: groupForType(initialType) } : {}),
-      author: bootstrap.data.author,
-      institution: bootstrap.data.institution,
-      country: bootstrap.data.country,
+      author: current.author || bootstrap.data.author,
+      institution: current.institution || bootstrap.data.institution,
+      country: current.country || bootstrap.data.country,
       keywords: current.keywords || bootstrap.data.expertiseAreas.join(", "),
     }));
   }, [bootstrap.data, existing, dbDraftQuery.data, initialType]);
@@ -354,12 +363,32 @@ function SubmitResourcePage() {
           <ArrowLeft className="h-4 w-4" /> Knowledge Hub
         </Link>
 
-        <div className="mt-4">
-          <h1 className="font-display text-3xl font-extrabold text-navy">Submit a Resource</h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Share your knowledge, publications, learning materials, and best practices with the
-            global marine and fisheries community.
-          </p>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            {bootstrap.data && (
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-marine/10 px-3 py-1 text-[11px] font-bold text-marine">
+                  <ShieldCheck className="h-3.5 w-3.5" /> {bootstrap.data.contributorRoleLabel}
+                </span>
+                {bootstrap.data.author && (
+                  <span className="text-xs text-muted-foreground">
+                    Kontributor: <strong className="text-navy">{bootstrap.data.author}</strong>
+                    {bootstrap.data.institution ? ` · ${bootstrap.data.institution}` : ""}
+                  </span>
+                )}
+              </div>
+            )}
+            <h1 className="font-display text-3xl font-extrabold text-navy">Submit a Resource</h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Share your knowledge, publications, videos, and best practices with the global marine and fisheries community.
+            </p>
+          </div>
+          <Link
+            to="/knowledge-hub/my-contributions"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-navy shadow-2xs transition hover:border-marine hover:text-marine"
+          >
+            Pantau Kontribusi Saya <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
 
         {/* Stepper */}
@@ -498,11 +527,70 @@ const inputClass =
 
 function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; isTrainer?: boolean }) {
   const navigate = useNavigate();
+  const quickTracks = [
+    {
+      type: "Research Report",
+      title: "Publikasi & Laporan",
+      desc: "Jurnal ilmiah, laporan riset, buku, pedoman teknis, atau policy brief.",
+      badge: "PDF / Dokumen",
+    },
+    {
+      type: "Best Practice",
+      title: "Best Practice",
+      desc: "Praktik terbaik lapangan dengan struktur 8 dimensi standar BARUNA.",
+      badge: "8 Dimensi",
+    },
+    {
+      type: "Video",
+      title: "Video / Webinar / Podcast",
+      desc: "Tautan YouTube/Vimeo atau unggah berkas MP4/WebM/MP3 beserta durasi.",
+      badge: "Multimedia",
+    },
+  ];
+
   return (
     <div>
       <h2 className="font-display text-lg font-bold text-navy">Step 1 — Resource Type</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Choose the category that best fits your resource.</p>
-      <div className="mt-5 space-y-6">
+      <p className="mt-1 text-sm text-muted-foreground">
+        Pilih jalur cepat di bawah ini atau pilih kategori spesifik sesuai jenis karya Anda.
+      </p>
+
+      {/* Quick-select cards for the 3 main tracks: Publication, Best Practice, Video */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {quickTracks.map((qt) => {
+          const isSelected =
+            form.type === qt.type ||
+            (qt.type === "Video" && isVideoResourceType(form.type)) ||
+            (qt.type === "Research Report" && ["Research Report", "Journal Article"].includes(form.type));
+          return (
+            <button
+              key={qt.type}
+              type="button"
+              onClick={() => set("type", qt.type)}
+              className={`flex flex-col justify-between rounded-xl border p-3.5 text-left transition-all ${
+                isSelected
+                  ? "border-marine bg-marine/10 ring-1 ring-marine"
+                  : "border-border bg-muted/20 hover:border-marine/40 hover:bg-muted/50"
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-display text-sm font-bold text-navy">{qt.title}</span>
+                  <span className="rounded-full bg-marine/15 px-2 py-0.5 text-[10px] font-bold text-marine">
+                    {qt.badge}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{qt.desc}</p>
+              </div>
+              <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-marine">
+                {form.type === qt.type ? "✓ Dipilih" : `Pilih ${qt.title} →`}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 space-y-6">
         {RESOURCE_TYPE_GROUPS.map((group) => (
           <div key={group.label}>
             <p className="mb-2 text-sm font-bold text-navy">{group.label}</p>

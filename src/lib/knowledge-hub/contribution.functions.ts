@@ -57,6 +57,9 @@ export type KnowledgeContributorBootstrap = {
   userId: string;
   expertId: string | null;
   isTrainer: boolean;
+  isParticipant: boolean;
+  contributorRole: "trainer" | "participant" | "registered_user";
+  contributorRoleLabel: string;
   author: string;
   institution: string;
   country: string;
@@ -68,8 +71,18 @@ export const getKnowledgeContributorBootstrap = createServerFn({ method: "GET" }
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<KnowledgeContributorBootstrap> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: profile, error: profileError }, { data: expertLink, error: linkError }, identity] = await Promise.all([
-      supabaseAdmin.from("profiles").select("display_name,organization,job_title,phone").eq("id", context.userId).single(),
+    const [
+      { data: profileRow },
+      { data: expertLink },
+      identity,
+      bioRowRes,
+      roleAssignRes,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("display_name,organization,job_title,phone")
+        .eq("id", context.userId)
+        .maybeSingle(),
       supabaseAdmin
         .from("experts")
         .select("id")
@@ -79,25 +92,138 @@ export const getKnowledgeContributorBootstrap = createServerFn({ method: "GET" }
         .limit(1)
         .maybeSingle(),
       supabaseAdmin.auth.admin.getUserById(context.userId),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabaseAdmin as any)
+        .from("participant_biodata")
+        .select("nama, instansi_unit_kerja")
+        .eq("user_id", context.userId)
+        .maybeSingle()
+        .then(
+          (res: { data?: { nama?: string; instansi_unit_kerja?: string } | null }) => res.data ?? null,
+          () => null,
+        ),
+      supabaseAdmin
+        .from("rbac_user_roles")
+        .select("rbac_roles!inner(code)")
+        .eq("user_id", context.userId)
+        .eq("status", "active"),
     ]);
-    if (profileError || !profile) throw new Error("profile_not_found");
-    if (linkError) throw new Error(linkError.message);
-    const { data: expert, error: expertError } = expertLink
-      ? await supabaseAdmin.from("experts_directory_v").select("id,display_name,institution,institution_role,country,expertise_areas").eq("id", expertLink.id).maybeSingle()
-      : { data: null, error: null };
-    if (expertError) throw new Error(expertError.message);
 
-    const isTrainer = Boolean(expert);
+    const userMeta = (identity.data.user?.user_metadata as Record<string, unknown>) ?? {};
+    const metaBiodata =
+      userMeta.participant_biodata && typeof userMeta.participant_biodata === "object"
+        ? (userMeta.participant_biodata as Record<string, unknown>)
+        : null;
+    const email = identity.data.user?.email ?? "";
+    const fallbackDisplayName =
+      (typeof bioRowRes?.nama === "string" && bioRowRes.nama.trim()) ||
+      (typeof metaBiodata?.nama === "string" && metaBiodata.nama.trim()) ||
+      (typeof userMeta.display_name === "string" && userMeta.display_name.trim()) ||
+      (typeof userMeta.full_name === "string" && userMeta.full_name.trim()) ||
+      email.split("@")[0] ||
+      "Kontributor BARUNA";
+    const fallbackOrganization =
+      (typeof bioRowRes?.instansi_unit_kerja === "string" && bioRowRes.instansi_unit_kerja.trim()) ||
+      (typeof metaBiodata?.instansiUnitKerja === "string" && metaBiodata.instansiUnitKerja.trim()) ||
+      (typeof userMeta.organization === "string" && userMeta.organization.trim()) ||
+      "";
+
+    let profile = profileRow;
+    if (!profile) {
+      try {
+        const { data: createdProfile } = await supabaseAdmin
+          .from("profiles")
+          .upsert(
+            {
+              id: context.userId,
+              display_name: fallbackDisplayName,
+              organization: fallbackOrganization || null,
+            },
+            { onConflict: "id" },
+          )
+          .select("display_name,organization,job_title,phone")
+          .maybeSingle();
+        profile = createdProfile ?? {
+          display_name: fallbackDisplayName,
+          organization: fallbackOrganization || null,
+          job_title: null,
+          phone: null,
+        };
+      } catch {
+        profile = {
+          display_name: fallbackDisplayName,
+          organization: fallbackOrganization || null,
+          job_title: null,
+          phone: null,
+        };
+      }
+    }
+
+    const { data: expert } = expertLink
+      ? await supabaseAdmin
+          .from("experts_directory_v")
+          .select("id,display_name,institution,institution_role,country,expertise_areas")
+          .eq("id", expertLink.id)
+          .maybeSingle()
+      : { data: null };
+
+    const activeRoleCodes = new Set(
+      (roleAssignRes.data ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => String(r.rbac_roles?.code ?? ""))
+        .filter(Boolean),
+    );
+
+    const isTrainer = Boolean(expert) || activeRoleCodes.has("expert") || activeRoleCodes.has("trainer");
+    const isParticipant =
+      !isTrainer &&
+      (activeRoleCodes.has("participant") ||
+        activeRoleCodes.has("alumni") ||
+        Boolean(bioRowRes?.nama) ||
+        Boolean(metaBiodata?.nip) ||
+        userMeta.role === "participant");
+
+    const contributorRole: KnowledgeContributorBootstrap["contributorRole"] = isTrainer
+      ? "trainer"
+      : isParticipant
+        ? "participant"
+        : "registered_user";
+
+    const contributorRoleLabel = isTrainer
+      ? "Trainer / Pakar BARUNA"
+      : isParticipant
+        ? "Peserta Pelatihan (Participant)"
+        : "Pengguna Terdaftar (Registered User)";
+
+    const biodataName =
+      (typeof bioRowRes?.nama === "string" && bioRowRes.nama.trim()) ||
+      (typeof metaBiodata?.nama === "string" && metaBiodata.nama.trim()) ||
+      "";
+    const biodataOrganization =
+      (typeof bioRowRes?.instansi_unit_kerja === "string" && bioRowRes.instansi_unit_kerja.trim()) ||
+      (typeof metaBiodata?.instansiUnitKerja === "string" && metaBiodata.instansiUnitKerja.trim()) ||
+      "";
 
     return {
       userId: context.userId,
       expertId: expert?.id ?? null,
       isTrainer,
-      author: expert?.display_name ?? profile.display_name ?? (identity.data.user?.user_metadata?.full_name as string) ?? "",
-      institution: expert?.institution ?? profile.organization ?? "",
+      isParticipant,
+      contributorRole,
+      contributorRoleLabel,
+      author:
+        (expert?.display_name && expert.display_name.trim()) ||
+        biodataName ||
+        (profile?.display_name && profile.display_name.trim()) ||
+        fallbackDisplayName,
+      institution:
+        (expert?.institution && expert.institution.trim()) ||
+        biodataOrganization ||
+        (profile?.organization && profile.organization.trim()) ||
+        fallbackOrganization,
       country: expert?.country ?? "Indonesia",
       expertiseAreas: expert?.expertise_areas ?? [],
-      email: identity.data.user?.email ?? "",
+      email,
     };
   });
 
@@ -139,33 +265,60 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       }
     }
 
-    const { data: expertLink } = await context.supabase
-      .from("experts")
-      .select("id")
-      .eq("current_status", "published")
-      .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: expertLink }, { data: profile }, biodata, identity] = await Promise.all([
+      supabaseAdmin
+        .from("experts")
+        .select("id")
+        .eq("current_status", "published")
+        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("profiles")
+        .select("display_name,organization")
+        .eq("id", context.userId)
+        .maybeSingle(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabaseAdmin as any)
+        .from("participant_biodata")
+        .select("nama, instansi_unit_kerja")
+        .eq("user_id", context.userId)
+        .maybeSingle()
+        .then(
+          (res: { data?: { nama?: string; instansi_unit_kerja?: string } | null }) => res.data ?? null,
+          () => null,
+        ),
+      supabaseAdmin.auth.admin.getUserById(context.userId),
+    ]);
+
+    const userMeta = (identity?.data?.user?.user_metadata as Record<string, unknown>) ?? {};
+    const metaBiodata =
+      userMeta.participant_biodata && typeof userMeta.participant_biodata === "object"
+        ? (userMeta.participant_biodata as Record<string, unknown>)
+        : null;
 
     const { data: expert } = expertLink
-      ? await context.supabase.from("experts_directory_v").select("id,display_name,institution,country,expertise_areas").eq("id", expertLink.id).maybeSingle()
+      ? await supabaseAdmin
+          .from("experts_directory_v")
+          .select("id,display_name,institution,country,expertise_areas")
+          .eq("id", expertLink.id)
+          .maybeSingle()
       : { data: null };
-
-    const { data: profile } = await context.supabase
-      .from("profiles")
-      .select("display_name,organization")
-      .eq("id", context.userId)
-      .maybeSingle();
 
     const authorName =
       (typeof form.author === "string" && form.author.trim()) ||
       expert?.display_name ||
+      biodata?.nama?.trim() ||
+      (typeof metaBiodata?.nama === "string" && metaBiodata.nama.trim()) ||
       profile?.display_name ||
       "BARUNA Contributor";
     const institution =
       (typeof form.institution === "string" && form.institution.trim()) ||
       expert?.institution ||
+      biodata?.instansi_unit_kerja?.trim() ||
+      (typeof metaBiodata?.instansiUnitKerja === "string" && metaBiodata.instansiUnitKerja.trim()) ||
       profile?.organization ||
       "";
     const country =

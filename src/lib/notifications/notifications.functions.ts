@@ -23,7 +23,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
     // 1. Fetch review_subjects submitted by the current user
     const { data: mySubjects, error: subjErr } = await supabaseAdmin
       .from("review_subjects")
-      .select("id, kind, title, current_status, created_at, updated_at")
+      .select("id, kind, title, current_status, metadata, created_at, updated_at")
       .eq("submitted_by", context.userId)
       .order("updated_at", { ascending: false });
 
@@ -45,16 +45,18 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       return [];
     }
 
-    // 3. Fetch linked drafts to generate precise edit URLs
+    // 3. Fetch linked drafts to generate precise edit URLs and check resubmission status
     const { data: drafts } = await supabaseAdmin
       .from("review_drafts")
-      .select("id, linked_subject_id, subject_kind")
+      .select("id, linked_subject_id, subject_kind, status, updated_at")
       .in("linked_subject_id", subjectIds);
 
     const draftMap = new Map<string, string>();
+    const draftStatusMap = new Map<string, string>();
     (drafts ?? []).forEach((d) => {
       if (d.linked_subject_id) {
         draftMap.set(d.linked_subject_id, d.id);
+        draftStatusMap.set(d.linked_subject_id, d.status);
       }
     });
 
@@ -67,28 +69,53 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       const kind = subject?.kind ?? "other";
       const subjectTitle = subject?.title || "Pengajuan Anda";
       const draftId = draftMap.get(dec.subject_id);
+      const draftStatus = draftStatusMap.get(dec.subject_id);
+      const subjectMeta =
+        subject?.metadata && typeof subject.metadata === "object"
+          ? (subject.metadata as Record<string, any>)
+          : {};
+      const isResubmittedAfterDecision =
+        isLatestForSubject &&
+        dec.decision === "return_for_revision" &&
+        (subjectMeta.review_status === "resubmitted" ||
+          draftStatus === "submitted" ||
+          (kind === "expert" &&
+            subject?.current_status === "submitted" &&
+            subject?.updated_at &&
+            new Date(subject.updated_at).getTime() >
+              new Date(dec.decided_at || dec.created_at).getTime() + 2000));
 
       let type: InAppNotification["type"] = "info";
       let title = `Pembaruan Evaluasi: ${subjectTitle}`;
       let targetUrl = "/dashboard";
 
       if (dec.decision === "return_for_revision") {
-        type = "revision_requested";
+        type = isResubmittedAfterDecision ? "info" : "revision_requested";
         if (kind === "expert") {
-          title = `Permintaan Revisi Dokumen: Calon Expert BARUNA`;
+          title = isResubmittedAfterDecision
+            ? `Revisi Terkirim — Menunggu Evaluasi Ulang: Calon Expert BARUNA`
+            : `Permintaan Revisi Dokumen: Calon Expert BARUNA`;
           targetUrl = `/experts/join`;
         } else if (kind === "module") {
-          title = `Permintaan Revisi Modul: "${subjectTitle}"`;
-          targetUrl = draftId
-            ? `/experts/portal/submit-module?draftId=${draftId}`
-            : `/experts/portal/review-status`;
+          title = isResubmittedAfterDecision
+            ? `Revisi Terkirim — Menunggu Evaluasi Ulang: "${subjectTitle}"`
+            : `Permintaan Revisi Modul: "${subjectTitle}"`;
+          targetUrl =
+            draftId && !isResubmittedAfterDecision
+              ? `/experts/portal/submit-module?draftId=${draftId}`
+              : `/experts/portal/review-status`;
         } else if (kind === "knowledge_resource") {
-          title = `Permintaan Revisi Publikasi: "${subjectTitle}"`;
-          targetUrl = draftId
-            ? `/knowledge-hub/submit-resource?edit=${draftId}`
-            : `/knowledge-hub/my-contributions`;
+          title = isResubmittedAfterDecision
+            ? `Revisi Terkirim — Menunggu Evaluasi Ulang: "${subjectTitle}"`
+            : `Permintaan Revisi Publikasi: "${subjectTitle}"`;
+          targetUrl =
+            draftId && !isResubmittedAfterDecision
+              ? `/knowledge-hub/submit-resource?edit=${draftId}`
+              : `/knowledge-hub/my-contributions`;
         } else {
-          title = `Permintaan Revisi Berkas: ${subjectTitle}`;
+          title = isResubmittedAfterDecision
+            ? `Revisi Terkirim — Menunggu Evaluasi Ulang: ${subjectTitle}`
+            : `Permintaan Revisi Berkas: ${subjectTitle}`;
           targetUrl = `/knowledge-hub/my-contributions`;
         }
       } else if (dec.decision === "approve") {
