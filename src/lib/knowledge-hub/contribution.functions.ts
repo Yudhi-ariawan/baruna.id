@@ -115,8 +115,15 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
     const rawExtUrl = typeof form.externalUrl === "string" ? form.externalUrl.trim() : "";
     const cleanExternalUrl = rawExtUrl && /^https?:\/\/\S+/i.test(rawExtUrl) ? rawExtUrl : undefined;
 
+    const coverObj = form.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
+    if (coverObj?.size && coverObj.size > 2 * 1024 * 1024) {
+      throw new Error("Ukuran foto banner melebihi batas maksimal 2MB.");
+    }
+
     const patch: Json = {
       ...form,
+      coverFile: coverObj,
+      coverFilePath: coverObj?.storagePath,
       externalUrl: cleanExternalUrl,
       title,
       resource_type: resourceType,
@@ -226,6 +233,10 @@ export type SavedDraftDetail = {
   fileName?: string;
   fileSize?: number;
   filePath?: string;
+  coverFileName?: string;
+  coverFileSize?: number;
+  coverFilePath?: string;
+  coverPreviewUrl?: string;
 };
 
 export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
@@ -243,8 +254,22 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
     if (error || !draft) return null;
     const p = (draft.payload as Record<string, unknown>) ?? {};
     const fileObj = p.file as { name?: string; size?: number; storagePath?: string } | undefined;
+    const coverObj = p.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
     const { groupForType } = await import("@/lib/resources");
     const rawType = String(p.type || p.resource_type || "Research Report");
+
+    const coverPath = coverObj?.storagePath || (typeof p.coverFilePath === "string" ? p.coverFilePath : undefined);
+    let coverPreviewUrl: string | undefined = undefined;
+    if (coverPath) {
+      try {
+        const { data: signedCover } = await supabaseAdmin.storage
+          .from("knowledge-resource-submissions")
+          .createSignedUrl(coverPath, 3600);
+        coverPreviewUrl = signedCover?.signedUrl ?? undefined;
+      } catch {
+        // ignore
+      }
+    }
 
     return {
       draftId: draft.id,
@@ -266,6 +291,10 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
       fileName: fileObj?.name || (typeof p.fileName === "string" ? p.fileName : undefined),
       fileSize: fileObj?.size || (typeof p.fileSize === "number" ? p.fileSize : undefined),
       filePath: fileObj?.storagePath || (typeof p.uploadedFilePath === "string" ? p.uploadedFilePath : undefined),
+      coverFileName: coverObj?.name || (typeof p.coverFileName === "string" ? p.coverFileName : (coverPath ? "banner-image.jpg" : undefined)),
+      coverFileSize: coverObj?.size || (typeof p.coverFileSize === "number" ? p.coverFileSize : undefined),
+      coverFilePath: coverPath,
+      coverPreviewUrl,
     };
   });
 

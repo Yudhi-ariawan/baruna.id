@@ -15,6 +15,7 @@ import {
   Link2,
   ShieldCheck,
   ClipboardList,
+  Image as ImageIcon,
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
@@ -102,6 +103,7 @@ function SubmitResourcePage() {
           keywords: existing.keywords,
           topicCategory: existing.topicCategory,
           file: existing.file,
+          coverFile: existing.coverFile ?? null,
           externalUrl: existing.externalUrl,
           accessLevel: existing.accessLevel,
           declaration: existing.declaration,
@@ -154,6 +156,16 @@ function SubmitResourcePage() {
               storagePath: d.filePath,
             }
           : curr.file,
+        coverFile: d.coverFileName || d.coverFilePath
+          ? {
+              name: d.coverFileName || "banner-image.jpg",
+              size: d.coverFileSize || 0,
+              type: (d.coverFileName || "").toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg',
+              uploadedAt: new Date().toISOString(),
+              storagePath: d.coverFilePath,
+              previewUrl: d.coverPreviewUrl,
+            }
+          : curr.coverFile,
       }));
     }
   }, [dbDraftQuery.data]);
@@ -551,17 +563,109 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
 function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
   const createUpload = useServerFn(createKnowledgeResourceUpload);
   const inputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
   const [progress, setProgress] = useState<number | null>(null);
+  const [coverProgress, setCoverProgress] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [coverErr, setCoverErr] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [coverDragging, setCoverDragging] = useState(false);
+
+  const handleCoverFile = async (file: File | null) => {
+    if (!file) return;
+    setCoverErr(null);
+
+    if (!file.type.startsWith("image/")) {
+      setCoverErr("Hanya file gambar (JPG, PNG, WEBP) yang diperbolehkan untuk foto banner.");
+      return;
+    }
+
+    // 2 MB max per AGENTS.md rule 6
+    const MAX_COVER_BYTES = 2 * 1024 * 1024;
+    if (file.size > MAX_COVER_BYTES) {
+      setCoverErr("Ukuran foto banner maksimal 2 MB.");
+      return;
+    }
+
+    setCoverProgress(20);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        setCoverErr("Silakan masuk terlebih dahulu sebelum mengunggah banner.");
+        setCoverProgress(null);
+        return;
+      }
+
+      const upload = await createUpload({
+        data: {
+          fileName: file.name,
+          mimeType: file.type || "image/jpeg",
+          size: file.size,
+        },
+      });
+
+      const storagePath = upload.path;
+      setCoverProgress(60);
+
+      const { error: uploadError } = await supabase.storage
+        .from("knowledge-resource-submissions")
+        .uploadToSignedUrl(storagePath, upload.token, file, {
+          contentType: file.type || "image/jpeg",
+        });
+
+      if (uploadError) {
+        setCoverErr(uploadError.message);
+        setCoverProgress(null);
+        return;
+      }
+
+      setCoverProgress(100);
+      const previewUrl = URL.createObjectURL(file);
+
+      set("coverFile", {
+        name: file.name,
+        size: file.size,
+        type: file.type || "image/jpeg",
+        uploadedAt: new Date().toISOString(),
+        storagePath,
+        previewUrl,
+      });
+
+      setTimeout(() => setCoverProgress(null), 250);
+    } catch (cause) {
+      setCoverErr(cause instanceof Error ? cause.message : "Terjadi kendala saat mengunggah foto banner.");
+      setCoverProgress(null);
+    }
+  };
 
   const handleFile = async (file: File | null) => {
     if (!file) return;
     setErr(null);
-    if (file.size > MAX_BYTES) {
-      setErr("File is too large (max 50 MB).");
+
+    const name = file.name.toLowerCase();
+    const isPdf = name.endsWith(".pdf");
+    const isPpt = name.endsWith(".ppt") || name.endsWith(".pptx");
+    const isImg = file.type.startsWith("image/");
+
+    // Validation per AGENTS.md rule 6: PDFs <= 10MB, PPT <= 25MB, Images <= 2MB
+    if (isPdf && file.size > 10 * 1024 * 1024) {
+      setErr("Ukuran file PDF maksimal 10 MB.");
       return;
     }
+    if (isPpt && file.size > 25 * 1024 * 1024) {
+      setErr("Ukuran file presentasi (PPT/PPTX) maksimal 25 MB.");
+      return;
+    }
+    if (isImg && file.size > 2 * 1024 * 1024) {
+      setErr("Ukuran file gambar dokumen maksimal 2 MB.");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setErr("File terlalu besar (maksimal 50 MB).");
+      return;
+    }
+
     setProgress(15);
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -605,62 +709,177 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
   };
 
   return (
-    <div>
-      <h2 className="font-display text-lg font-bold text-navy">Step 3 — File Upload</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Upload your file (PDF, PPT, DOC, XLS, MP4, image) or provide an external URL.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-lg font-bold text-navy">Step 3 — Upload Berkas & Media</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Unggah dokumen materi publikasi dan foto banner sampul untuk katalog Knowledge Hub.
+        </p>
+      </div>
 
-      {form.file ? (
-        <div className="mt-5 flex items-center gap-3 rounded-xl border border-eco-community/40 bg-eco-community/5 p-4">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-eco-community/15 text-eco-community">
-            <FileText className="h-5 w-5" />
+      {/* ── Section A: Foto Sampul / Banner (Cover Image) ── */}
+      <div className="rounded-2xl border border-border bg-slate-50/60 p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-navy flex items-center gap-1.5">
+              <ImageIcon className="h-4 w-4 text-marine" />
+              Foto Sampul / Banner (Opsional)
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Tampil sebagai latar belakang banner halaman publikasi dan kartu katalog. Rekomendasi rasio 16:9 (contoh: 1200x675 px), maks 2 MB.
+            </p>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-navy">{form.file.name}</p>
-            <p className="text-xs text-muted-foreground">{formatBytes(form.file.size)} · Uploaded</p>
-          </div>
-          <button type="button" onClick={() => set("file", null)} aria-label="Remove file" className="grid h-8 w-8 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ) : (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); void handleFile(e.dataTransfer.files?.[0] ?? null); }}
-          className={`mt-5 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-            dragging ? "border-marine bg-marine/5" : "border-border"
-          }`}
-        >
-          {progress !== null ? (
-            <div>
-              <p className="text-sm font-semibold text-navy">Uploading… {progress}%</p>
-              <div className="mx-auto mt-3 h-2 w-64 max-w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-          ) : (
-            <>
-              <Upload className="mx-auto h-8 w-8 text-marine" />
-              <p className="mt-3 text-sm font-semibold text-navy">Drag & drop your file here</p>
-              <p className="text-xs text-muted-foreground">or</p>
-              <button type="button" onClick={() => inputRef.current?.click()} className="mt-2 rounded-lg border border-marine px-4 py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground">
-                Choose File
-              </button>
-              <p className="mt-3 text-xs text-muted-foreground">PDF, PPT/PPTX, DOC/DOCX, XLS/XLSX, MP4, images · max 50 MB</p>
-            </>
+          {form.coverFile && (
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+              Banner Terpasang
+            </span>
           )}
-          <input ref={inputRef} type="file" accept={ACCEPTED_FILE_TYPES} className="hidden" onChange={(e) => void handleFile(e.target.files?.[0] ?? null)} />
         </div>
-      )}
-      {err && <p className="mt-3 text-sm font-medium text-destructive">{err}</p>}
 
-      <div className="mt-5">
-        <FieldLabel>External URL (optional)</FieldLabel>
+        {form.coverFile ? (
+          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <div className="relative h-44 sm:h-52 w-full bg-slate-900/10 overflow-hidden">
+              <img
+                src={form.coverFile.previewUrl || form.coverFile.storagePath}
+                alt="Banner Preview"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-3 left-3 text-white pointer-events-none">
+                <p className="text-xs font-bold truncate max-w-sm">{form.coverFile.name}</p>
+                <p className="text-[10px] text-white/80">{formatBytes(form.coverFile.size)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => set("coverFile", null)}
+                className="absolute top-3 right-3 grid h-8 w-8 place-items-center rounded-full bg-navy/80 text-white shadow-md hover:bg-destructive transition"
+                title="Hapus foto banner"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            onDragOver={(e) => { e.preventDefault(); setCoverDragging(true); }}
+            onDragLeave={() => setCoverDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setCoverDragging(false); void handleCoverFile(e.dataTransfer.files?.[0] ?? null); }}
+            className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors bg-white ${
+              coverDragging ? "border-marine bg-marine/5" : "border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            {coverProgress !== null ? (
+              <div className="py-2">
+                <p className="text-xs font-semibold text-navy">Mengunggah banner… {coverProgress}%</p>
+                <div className="mx-auto mt-2 h-1.5 w-48 max-w-full overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${coverProgress}%` }} />
+                </div>
+              </div>
+            ) : (
+              <>
+                <ImageIcon className="mx-auto h-7 w-7 text-marine/80" />
+                <p className="mt-2 text-xs font-semibold text-navy">Tarik & lepas foto banner di sini, atau</p>
+                <button
+                  type="button"
+                  onClick={() => coverInputRef.current?.click()}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-marine/40 bg-white px-3 py-1.5 text-xs font-semibold text-marine hover:bg-marine hover:text-white transition"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Pilih Foto Banner
+                </button>
+                <p className="mt-2 text-[11px] text-muted-foreground">Format JPG, PNG, WEBP · Maksimal 2 MB (opsional, jika kosong menggunakan default)</p>
+              </>
+            )}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => void handleCoverFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+        )}
+        {coverErr && <p className="text-xs font-medium text-destructive">{coverErr}</p>}
+      </div>
+
+      {/* ── Section B: Dokumen Materi Utama (File Upload) ── */}
+      <div className="space-y-2">
+        <FieldLabel>Dokumen Materi Publikasi</FieldLabel>
+        <p className="text-xs text-muted-foreground">
+          Unggah naskah lengkap (PDF maks 10MB, PPT/PPTX maks 25MB, DOC, XLS, MP4).
+        </p>
+
+        {form.file ? (
+          <div className="flex items-center gap-3 rounded-xl border border-eco-community/40 bg-eco-community/5 p-4">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-eco-community/15 text-eco-community">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-navy">{form.file.name}</p>
+              <p className="text-xs text-muted-foreground">{formatBytes(form.file.size)} · Siap Dikirim</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set("file", null)}
+              aria-label="Remove file"
+              className="grid h-8 w-8 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); void handleFile(e.dataTransfer.files?.[0] ?? null); }}
+            className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+              dragging ? "border-marine bg-marine/5" : "border-border"
+            }`}
+          >
+            {progress !== null ? (
+              <div>
+                <p className="text-sm font-semibold text-navy">Mengunggah berkas… {progress}%</p>
+                <div className="mx-auto mt-3 h-2 w-64 max-w-full overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            ) : (
+              <>
+                <Upload className="mx-auto h-8 w-8 text-marine" />
+                <p className="mt-3 text-sm font-semibold text-navy">Tarik & lepas dokumen utama di sini</p>
+                <p className="text-xs text-muted-foreground">atau</p>
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  className="mt-2 rounded-lg border border-marine px-4 py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+                >
+                  Pilih Dokumen
+                </button>
+                <p className="mt-3 text-xs text-muted-foreground">PDF (≤10MB), PPT/PPTX (≤25MB), DOC, XLS, MP4</p>
+              </>
+            )}
+            <input
+              ref={inputRef}
+              type="file"
+              accept={ACCEPTED_FILE_TYPES}
+              className="hidden"
+              onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+        )}
+        {err && <p className="text-sm font-medium text-destructive">{err}</p>}
+      </div>
+
+      {/* ── Section C: Tautan Eksternal (Opsional) ── */}
+      <div>
+        <FieldLabel>Tautan Eksternal / Repositori Online (Opsional)</FieldLabel>
         <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3">
           <Link2 className="h-4 w-4 text-muted-foreground" />
-          <input className="w-full bg-transparent py-2.5 text-sm outline-none" value={form.externalUrl} onChange={(e) => set("externalUrl", e.target.value)} placeholder="https://…" />
+          <input
+            className="w-full bg-transparent py-2.5 text-sm outline-none"
+            value={form.externalUrl}
+            onChange={(e) => set("externalUrl", e.target.value)}
+            placeholder="https://doi.org/… atau https://…"
+          />
         </div>
       </div>
     </div>
@@ -728,7 +947,26 @@ function StepReview({ form }: { form: ResourceDraft }) {
         <Row label="Language" value={form.language} />
         <Row label="Keywords" value={form.keywords} />
         <Row label="Topic Category" value={form.topicCategory} />
-        <Row label="File" value={form.file ? `${form.file.name} (${formatBytes(form.file.size)})` : form.externalUrl || ""} />
+        <Row
+          label="Foto Banner"
+          value={
+            form.coverFile ? (
+              <div className="flex items-center gap-3">
+                {form.coverFile.previewUrl && (
+                  <img
+                    src={form.coverFile.previewUrl}
+                    alt="Cover preview"
+                    className="h-10 w-16 rounded object-cover border border-slate-200"
+                  />
+                )}
+                <span>{form.coverFile.name} ({formatBytes(form.coverFile.size)})</span>
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic">Banner Bawaan (Default BARUNA)</span>
+            )
+          }
+        />
+        <Row label="File Dokumen" value={form.file ? `${form.file.name} (${formatBytes(form.file.size)})` : form.externalUrl || ""} />
         <Row label="Access Level" value={form.accessLevel} />
         <Row label="Declaration" value={form.declaration ? "Confirmed" : "Not confirmed"} />
       </div>

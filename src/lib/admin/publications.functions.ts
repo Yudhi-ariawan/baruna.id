@@ -59,6 +59,12 @@ export type AdminPublicationItem = {
     path?: string;
     downloadUrl?: string | null;
   };
+  coverInfo?: {
+    name: string;
+    size?: number;
+    path?: string;
+    downloadUrl?: string | null;
+  };
   lastRevisionRationale?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -235,6 +241,21 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
         }
       }
 
+      const coverPayload = payload.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
+      const coverAttachedPath = coverPayload?.storagePath || (typeof payload.coverFilePath === "string" ? payload.coverFilePath : undefined);
+
+      let coverDownloadUrl: string | null = null;
+      if (coverAttachedPath) {
+        try {
+          const { data: signedCover } = await supabaseAdmin.storage
+            .from("knowledge-resource-submissions")
+            .createSignedUrl(coverAttachedPath, 3600);
+          coverDownloadUrl = signedCover?.signedUrl ?? null;
+        } catch {
+          // ignore signed url error
+        }
+      }
+
       const keywordsList = Array.isArray(payload.keywords)
         ? (payload.keywords as string[])
         : payload.keywords
@@ -271,6 +292,14 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
               size: filePayload?.size ?? (Number(payload.fileSize) || undefined),
               path: attachedPath,
               downloadUrl,
+            }
+          : undefined,
+        coverInfo: coverPayload?.name || payload.coverFileName || coverAttachedPath
+          ? {
+              name: coverPayload?.name || String(payload.coverFileName || "cover-image.jpg"),
+              size: coverPayload?.size ?? (Number(payload.coverFileSize) || undefined),
+              path: coverAttachedPath,
+              downloadUrl: coverDownloadUrl,
             }
           : undefined,
         lastRevisionRationale: latestDec?.rationale || (typeof subjMeta.last_rationale === "string" ? subjMeta.last_rationale : null),
@@ -474,10 +503,30 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
       const rawThumbUrl = typeof payload.thumbnailUrl === "string" ? payload.thumbnailUrl.trim() : "";
       const validThumbnailUrl = rawThumbUrl && /^https?:\/\/\S+/i.test(rawThumbUrl) ? rawThumbUrl : null;
 
+      const coverPayload = payload.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
+      const coverAttachedPath = coverPayload?.storagePath || (typeof payload.coverFilePath === "string" ? payload.coverFilePath : undefined);
+
+      let resolvedThumbnailUrl: string | null = null;
+      if (coverAttachedPath) {
+        try {
+          const { data: signedCover } = await supabaseAdmin.storage
+            .from("knowledge-resource-submissions")
+            .createSignedUrl(coverAttachedPath, 31536000);
+          resolvedThumbnailUrl = signedCover?.signedUrl ?? null;
+        } catch {
+          // ignore
+        }
+      }
+      if (!resolvedThumbnailUrl) {
+        resolvedThumbnailUrl = validThumbnailUrl;
+      }
+
       const resourceMetadata: Record<string, unknown> = {
         ...payload,
+        coverFilePath: coverAttachedPath,
+        coverFile: coverPayload,
         externalUrl: validExternalUrl,
-        thumbnailUrl: validThumbnailUrl,
+        thumbnailUrl: resolvedThumbnailUrl,
         author_name: payload.author,
         contributor_name: payload.author,
         institution: payload.institution,
@@ -509,7 +558,7 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
             publication_date: new Date().toISOString(),
             audit_ref: decisionId,
             external_url: validExternalUrl,
-            thumbnail_url: validThumbnailUrl,
+            thumbnail_url: resolvedThumbnailUrl,
             metadata: resourceMetadata as never,
             updated_at: new Date().toISOString(),
           })
@@ -541,7 +590,7 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           publication_year: Number(payload.year) || new Date().getFullYear(),
           publisher: typeof payload.institution === "string" ? payload.institution : "BARUNA Contributor",
           external_url: validExternalUrl,
-          thumbnail_url: validThumbnailUrl,
+          thumbnail_url: resolvedThumbnailUrl,
           topics,
           keywords,
           geographic_focus: coverage,

@@ -17,6 +17,7 @@ import {
   Clock,
   History,
   RotateCcw,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -378,6 +379,30 @@ export function AdminPublicationDetailModal({
                     <p className="text-xs text-muted-foreground italic">Tidak ada berkas yang diunggah.</p>
                   )}
                 </div>
+
+                {/* Banner / Cover Image */}
+                {item.coverInfo && (
+                  <div className="border-t border-border pt-4">
+                    <h4 className="text-xs font-bold text-navy uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <ImageIcon className="h-4 w-4 text-marine" /> Foto Sampul / Banner
+                    </h4>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs space-y-3">
+                      {item.coverInfo.downloadUrl ? (
+                        <div className="relative h-44 w-full overflow-hidden rounded-lg bg-slate-900/10 border border-slate-200">
+                          <img
+                            src={item.coverInfo.downloadUrl}
+                            alt="Cover Banner"
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ) : null}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                        <span className="font-semibold text-navy truncate">{item.coverInfo.name}</span>
+                        <span>{formatBytes(item.coverInfo.size)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Revision Rationale (if revision requested) */}
                 {item.lastRevisionRationale && (
