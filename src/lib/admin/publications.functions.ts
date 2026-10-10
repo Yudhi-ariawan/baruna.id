@@ -598,6 +598,27 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           : [],
       };
 
+      let relatedExpertIds: string[] = [];
+      if (subj.submitted_by) {
+        const { data: expertMatch } = await supabaseAdmin
+          .from("experts")
+          .select("id")
+          .or(`created_by.eq.${subj.submitted_by},original_contributor_id.eq.${subj.submitted_by}`)
+          .eq("current_status", "published")
+          .limit(1)
+          .maybeSingle();
+        if (expertMatch?.id) {
+          relatedExpertIds = [expertMatch.id];
+        }
+      }
+
+      const resolvedTitle = (typeof payload.title === "string" && payload.title) || subj.title || "Untitled Resource";
+      const resolvedSummary = (typeof payload.description === "string" && payload.description) || (typeof payload.abstract === "string" && payload.abstract) || "BARUNA public knowledge resource.";
+      const resolvedAbstract = (typeof payload.abstract === "string" && payload.abstract) || (typeof payload.description === "string" && payload.description) || "BARUNA public knowledge resource.";
+      const resolvedLanguage = typeof payload.language === "string" ? payload.language : "Indonesian";
+      const resolvedYear = Number(payload.year) || new Date().getFullYear();
+      const resolvedPublisher = typeof payload.institution === "string" ? payload.institution : "BARUNA Contributor";
+
       if (existingKr) {
         const { error: updateErr } = await supabaseAdmin
           .from("knowledge_resources")
@@ -610,8 +631,19 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
             approval_date: new Date().toISOString(),
             publication_date: new Date().toISOString(),
             audit_ref: decisionId,
+            resource_type: mappedType,
+            title: resolvedTitle,
+            summary: resolvedSummary,
+            abstract: resolvedAbstract,
+            language: resolvedLanguage,
+            publication_year: resolvedYear,
+            publisher: resolvedPublisher,
             external_url: validExternalUrl,
             thumbnail_url: resolvedThumbnailUrl,
+            topics,
+            keywords,
+            geographic_focus: coverage,
+            ...(relatedExpertIds.length > 0 ? { related_expert_ids: relatedExpertIds } : {}),
             metadata: resourceMetadata as never,
             updated_at: new Date().toISOString(),
           })
@@ -639,17 +671,18 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           current_status: "published",
           audit_ref: decisionId,
           resource_type: mappedType,
-          title: (typeof payload.title === "string" && payload.title) || subj.title || "Untitled Resource",
-          summary: (typeof payload.description === "string" && payload.description) || (typeof payload.abstract === "string" && payload.abstract) || "BARUNA public knowledge resource.",
-          abstract: (typeof payload.abstract === "string" && payload.abstract) || (typeof payload.description === "string" && payload.description) || "BARUNA public knowledge resource.",
-          language: typeof payload.language === "string" ? payload.language : "Indonesian",
-          publication_year: Number(payload.year) || new Date().getFullYear(),
-          publisher: typeof payload.institution === "string" ? payload.institution : "BARUNA Contributor",
+          title: resolvedTitle,
+          summary: resolvedSummary,
+          abstract: resolvedAbstract,
+          language: resolvedLanguage,
+          publication_year: resolvedYear,
+          publisher: resolvedPublisher,
           external_url: validExternalUrl,
           thumbnail_url: resolvedThumbnailUrl,
           topics,
           keywords,
           geographic_focus: coverage,
+          ...(relatedExpertIds.length > 0 ? { related_expert_ids: relatedExpertIds } : {}),
           metadata: resourceMetadata as never,
         });
 
@@ -672,6 +705,9 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           })
           .eq("id", draft.id);
       }
+
+      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+      clearKnowledgeHubCache();
 
       return { success: true, decisionId, decision: input.decision };
     }

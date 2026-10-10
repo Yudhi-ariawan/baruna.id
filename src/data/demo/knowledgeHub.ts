@@ -77,6 +77,12 @@ export type KhResource = {
   relatedPartnerSlug?: string;
   relatedArchive?: string;
   expertId: string;
+  relatedExpert?: {
+    slug: string;
+    name: string;
+    title: string;
+    avatarUrl: string | null;
+  } | null;
   metrics: {
     views: number;
     uniqueViewers: number;

@@ -176,6 +176,7 @@ function ResourceDetailPage() {
   const partner = r.relatedPartnerSlug ? DEMO_PARTNERS.find((p) => p.slug === r.relatedPartnerSlug) : undefined;
   const related = useMemo(() => relatedResources(r, 4), [r]);
 
+  const isDemo = r.id.startsWith("pub-") || r.id.startsWith("lm-") || r.id.startsWith("bp-") || r.id.startsWith("vid-") || r.id.startsWith("pb-") || r.id.startsWith("info-") || r.id.startsWith("cs-") || r.id.startsWith("tk-") || r.id.startsWith("res-");
   const cover = r.coverImage || courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
   const downloadFn = useServerFn(getKnowledgeResourceDownload);
   const [downloading, setDownloading] = useState(false);
@@ -257,11 +258,11 @@ function ResourceDetailPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-navy/85 to-transparent" />
                 <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
                   <span className="inline-flex rounded-md bg-navy px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-navy-foreground">{r.typeLabel}</span>
-                  {r.id.startsWith("pub-") || r.id.startsWith("lm-") || r.id.startsWith("bp-") || r.id.startsWith("vid-") || r.id.startsWith("pb-") || r.id.startsWith("info-") || r.id.startsWith("cs-") || r.id.startsWith("tk-") || r.id.startsWith("res-") ? (
+                  {isDemo ? (
                     <DemoDataBadge />
                   ) : (
                     <span className="inline-flex items-center rounded-md bg-green-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-700">
-                      Verified Module
+                      {r.type === "learning-modules" ? "Verified Module" : "Verified Resource"}
                     </span>
                   )}
                 </div>
@@ -339,7 +340,9 @@ function ResourceDetailPage() {
             <Panel>
               <h2 className="font-display text-base font-bold text-navy">Abstract</h2>
               <p className="mt-2 text-sm leading-relaxed text-foreground/85">{r.abstract}</p>
-              <p className="mt-3 text-sm leading-relaxed text-foreground/85">{r.summary}</p>
+              {r.summary && r.summary !== r.abstract && (
+                <p className="mt-3 text-sm leading-relaxed text-foreground/85">{r.summary}</p>
+              )}
             </Panel>
 
             {r.type === "learning-modules" && masterModule && (
@@ -417,7 +420,7 @@ function ResourceDetailPage() {
               </Panel>
             )}
 
-            {r.type === "best-practices" && (
+            {r.type === "best-practices" && isDemo && (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Practice Structure</h2>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -433,7 +436,7 @@ function ResourceDetailPage() {
               </Panel>
             )}
 
-            {r.type === "case-studies" && (
+            {r.type === "case-studies" && isDemo && (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Case Study</h2>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -449,7 +452,7 @@ function ResourceDetailPage() {
               </Panel>
             )}
 
-            {r.type === "toolkits" && (
+            {r.type === "toolkits" && isDemo && (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Included Tools</h2>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -462,7 +465,7 @@ function ResourceDetailPage() {
               </Panel>
             )}
 
-            {r.type === "policy-briefs" && (
+            {r.type === "policy-briefs" && isDemo && (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Policy Brief</h2>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-2">

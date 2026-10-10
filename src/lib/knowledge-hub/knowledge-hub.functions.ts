@@ -100,6 +100,10 @@ function attachmentMetadata(metadata: Record<string, unknown>) {
   return { fileType, fileSize };
 }
 
+export function clearKnowledgeHubCache(): void {
+  overviewCache = null;
+}
+
 export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler(
   async (): Promise<KnowledgeHubOverview> => {
     const now = Date.now();
@@ -116,7 +120,10 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
 
     const expertIds = [...new Set((data ?? []).flatMap((item) => item.related_expert_ids ?? []))];
     const { data: experts, error: expertError } = expertIds.length
-      ? await supabaseAdmin.from("experts_directory_v").select("id,display_name,institution,country").in("id", expertIds)
+      ? await supabaseAdmin
+          .from("experts_directory_v")
+          .select("id,display_name,headline,institution,country,avatar_url,slug")
+          .in("id", expertIds)
       : { data: [], error: null };
     if (expertError) throw new Error(expertError.message);
     const expertById = new Map((experts ?? []).map((expert) => [expert.id, expert]));
@@ -137,6 +144,19 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
       const files = attachmentMetadata(metadata);
       const year = item.publication_year ?? new Date(item.created_at).getFullYear();
       const learningHours = Number(metadata.estimated_learning_hours ?? 0) || undefined;
+
+      const rawAccess = String(metadata.accessLevel ?? metadata.accessType ?? "Open Access");
+      let access: KhResource["access"] = "Public Access";
+      if (rawAccess === "BARUNA Members Only" || rawAccess === "registered") {
+        access = "Registered User";
+      } else if (rawAccess === "Restricted Access" || rawAccess === "restricted") {
+        access = "Restricted Internal";
+      } else if (rawAccess === "Course Participant") {
+        access = "Course Participant";
+      } else if (rawAccess === "Completion Required") {
+        access = "Completion Required";
+      }
+
       return {
         id: item.id,
         type,
@@ -152,7 +172,7 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
         language: item.language ?? "English",
         country: expert?.country ?? String(metadata.country ?? "Indonesia"),
         keywords: [...(item.keywords ?? []), ...(item.topics ?? [])],
-        access: "Public Access",
+        access,
         status: "Published",
         coverImage: item.thumbnail_url ?? undefined,
         externalUrl: item.external_url ?? (typeof metadata.externalUrl === "string" ? metadata.externalUrl : undefined),
@@ -163,6 +183,14 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
         version: String(metadata.version ?? "1.0"),
         moduleCode: typeof metadata.module_code === "string" ? metadata.module_code : undefined,
         expertId: expert?.id ?? "",
+        relatedExpert: expert
+          ? {
+              slug: expert.slug || "",
+              name: expert.display_name,
+              title: expert.headline || "Verified BARUNA Expert",
+              avatarUrl: expert.avatar_url || null,
+            }
+          : null,
         metrics: {
           views: metricValue(metadata, ["views", "view_count", "viewCount"]),
           uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),
