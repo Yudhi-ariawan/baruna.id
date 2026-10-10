@@ -128,6 +128,38 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
     if (data.submit) {
       const submitted = await context.supabase.rpc("kr_draft_submit", { _draft_id: draftId });
       if (submitted.error) throw new Error(submitted.error.message);
+
+      // Update linked subject to resubmitted if previously revised
+      const { data: dRow } = await context.supabase
+        .from("review_drafts")
+        .select("linked_subject_id")
+        .eq("id", draftId)
+        .single();
+
+      if (dRow?.linked_subject_id) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: subj } = await supabaseAdmin
+          .from("review_subjects")
+          .select("current_status, metadata")
+          .eq("id", dRow.linked_subject_id)
+          .single();
+
+        const sm = (subj?.metadata as Record<string, unknown>) ?? {};
+        const wasRevised = sm.review_status === "revision_requested" || typeof sm.last_rationale === "string";
+
+        await supabaseAdmin
+          .from("review_subjects")
+          .update({
+            current_status: "pending",
+            metadata: {
+              ...sm,
+              review_status: wasRevised ? "resubmitted" : "pending",
+              resubmitted_at: wasRevised ? new Date().toISOString() : undefined,
+            } as never,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", dRow.linked_subject_id);
+      }
     }
     return { draftId, status: data.submit ? "submitted" : "draft" };
   });
@@ -167,6 +199,7 @@ export type KnowledgeContributionItem = {
   updatedAt: string;
   fileInfo?: { name: string; size?: number };
   reviewNote?: string;
+  isResubmitted?: boolean;
 };
 
 export type SavedDraftDetail = {
@@ -287,18 +320,25 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       let status: KnowledgeContributionItem["status"] = "draft";
       let statusLabel = "Draf";
 
+      const isResubmitted =
+        subMeta.review_status === "resubmitted" ||
+        (d.status === "submitted" && (subMeta.review_status === "revision_requested" || typeof subMeta.last_rationale === "string"));
+
       if (d.status === "draft") {
         status = "draft";
         statusLabel = "Draf";
       } else if (subject?.current_status === "approved" || subMeta.review_status === "approved") {
         status = "approved";
-        statusLabel = "Disetujui";
-      } else if (subject?.current_status === "revision_requested" || subMeta.review_status === "revision_requested") {
-        status = "revision_requested";
-        statusLabel = "Perlu Revisi";
+        statusLabel = "Disetujui & Tayang";
       } else if (subject?.current_status === "rejected" || subMeta.review_status === "rejected") {
         status = "rejected";
         statusLabel = "Ditolak";
+      } else if (isResubmitted) {
+        status = "under_review";
+        statusLabel = "Revisi Terkirim (Dalam Peninjauan)";
+      } else if (subject?.current_status === "revision_requested" || subMeta.review_status === "revision_requested") {
+        status = "revision_requested";
+        statusLabel = "Perlu Revisi";
       } else {
         status = "under_review";
         statusLabel = "Dalam Peninjauan";
@@ -324,6 +364,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
         updatedAt: d.updated_at,
         fileInfo: fileData?.name || payload.fileName ? { name: fileData?.name || String(payload.fileName), size: fileData?.size || Number(payload.fileSize) || undefined } : undefined,
         reviewNote: note,
+        isResubmitted: Boolean(isResubmitted),
       });
       seenTitles.add(d.title.trim().toLowerCase());
     }

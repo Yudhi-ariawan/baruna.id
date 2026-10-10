@@ -138,6 +138,22 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
         </div>
       )}
 
+      {r.isResubmitted && r.status === "under_review" && (
+        <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/80 p-3 text-xs text-indigo-900">
+          <strong className="block font-bold mb-1 flex items-center gap-1.5 text-indigo-800">
+            <RotateCcw className="h-3.5 w-3.5 text-indigo-600" /> Revisi Telah Dikirim:
+          </strong>
+          <p className="leading-relaxed">
+            Perubahan Anda telah dikirimkan kembali ke kurator dan saat ini sedang menunggu peninjauan ulang oleh admin.
+          </p>
+          {r.reviewNote && (
+            <p className="mt-1.5 text-[11px] text-indigo-700/90 italic">
+              Catatan revisi sebelumnya: "{r.reviewNote}"
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
         {isPublished ? (
           r.resourceId ? (

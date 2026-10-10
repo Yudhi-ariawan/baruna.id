@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Clock,
   History,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -144,10 +145,19 @@ export function AdminPublicationDetailModal({
                       ? "bg-amber-100 text-amber-800 border-amber-200"
                       : item.status === "rejected"
                         ? "bg-red-100 text-red-800 border-red-200"
-                        : "bg-blue-100 text-blue-800 border-blue-200"
+                        : item.status === "resubmitted"
+                          ? "bg-indigo-100 text-indigo-800 border-indigo-200 font-bold"
+                          : "bg-blue-100 text-blue-800 border-blue-200"
                 }
               >
-                {item.statusLabel}
+                {item.status === "resubmitted" ? (
+                  <span className="flex items-center gap-1">
+                    <RotateCcw className="h-3 w-3" />
+                    {item.statusLabel}
+                  </span>
+                ) : (
+                  item.statusLabel
+                )}
               </Badge>
               {item.isPublished && (
                 <Badge className="bg-marine text-white">Tayang Publik</Badge>
@@ -190,6 +200,41 @@ export function AdminPublicationDetailModal({
           <div className="p-6 space-y-6">
             {activeTab === "detail" ? (
               <>
+                {/* Resubmitted Notification Alert */}
+                {item.isResubmitted && (
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50/90 p-4 text-xs text-indigo-950 shadow-2xs">
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-100 text-indigo-700">
+                        <RotateCcw className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-bold text-sm text-indigo-900">
+                            Revisi Telah Diajukan Ulang oleh Kontributor
+                          </p>
+                          {item.resubmittedAt && (
+                            <span className="text-[11px] font-medium text-indigo-700">
+                              {formatDate(item.resubmittedAt)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-indigo-800 leading-relaxed">
+                          Kontributor/Trainer telah memperbarui naskah atau dokumen terlampir sesuai catatan revisi sebelumnya. Silakan tinjau kembali berkas dan informasi publikasi ini untuk memberikan keputusan persetujuan.
+                        </p>
+                        {item.lastRevisionRationale && (
+                          <div className="mt-2 rounded-lg bg-white/90 border border-indigo-200/80 p-3 text-[11px] text-slate-700">
+                            <span className="font-bold text-slate-900 block mb-0.5">
+                              Catatan Revisi dari Admin Sebelumnya:
+                            </span>
+                            <p className="italic text-slate-700 leading-relaxed">
+                              "{item.lastRevisionRationale}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* Contributor Info Card */}
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                   <h4 className="text-xs font-bold text-navy uppercase tracking-wider mb-2 flex items-center gap-1.5">

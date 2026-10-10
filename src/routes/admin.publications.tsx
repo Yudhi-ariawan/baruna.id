@@ -17,6 +17,7 @@ import {
   Building2,
   RefreshCw,
   User,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -89,7 +90,7 @@ function AdminPublicationsPage() {
   const filteredItems = useMemo(() => {
     return rawItems.filter((item) => {
       // Tab filter
-      if (activeTab === "pending" && item.status !== "pending" && item.status !== "under_review") return false;
+      if (activeTab === "pending" && item.status !== "pending" && item.status !== "under_review" && item.status !== "resubmitted") return false;
       if (activeTab === "revision" && item.status !== "revision_requested") return false;
       if (activeTab === "approved" && item.status !== "approved") return false;
       if (activeTab === "rejected" && item.status !== "rejected") return false;
@@ -272,10 +273,19 @@ function AdminPublicationsPage() {
                               ? "bg-amber-100 text-amber-800 border-amber-200"
                               : item.status === "rejected"
                                 ? "bg-red-100 text-red-800 border-red-200"
-                                : "bg-blue-100 text-blue-800 border-blue-200"
+                                : item.status === "resubmitted"
+                                  ? "bg-indigo-100 text-indigo-800 border-indigo-200 font-bold"
+                                  : "bg-blue-100 text-blue-800 border-blue-200"
                         }`}
                       >
-                        {item.statusLabel}
+                        {item.status === "resubmitted" ? (
+                          <span className="flex items-center gap-1">
+                            <RotateCcw className="h-3 w-3" />
+                            {item.statusLabel}
+                          </span>
+                        ) : (
+                          item.statusLabel
+                        )}
                       </Badge>
                       {item.topic && (
                         <span className="text-[11px] text-muted-foreground">
@@ -287,6 +297,15 @@ function AdminPublicationsPage() {
                     <h3 className="text-base font-bold text-navy font-display line-clamp-1">
                       {item.title}
                     </h3>
+
+                    {item.isResubmitted && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-indigo-800 bg-indigo-50 border border-indigo-200/80 rounded-md px-2.5 py-1">
+                        <RotateCcw className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                        <span>
+                          <strong>Revisi Diajukan Ulang</strong> {item.resubmittedAt ? `pada ${formatDate(item.resubmittedAt)}` : ""}. Menunggu kurasi admin.
+                        </span>
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1 font-medium text-navy">

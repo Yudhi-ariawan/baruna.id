@@ -41,8 +41,10 @@ export type AdminPublicationItem = {
   authorEmail: string | null;
   authorInstitution: string | null;
   authorCountry: string | null;
-  status: "pending" | "under_review" | "approved" | "rejected" | "revision_requested";
+  status: "pending" | "under_review" | "approved" | "rejected" | "revision_requested" | "resubmitted";
   statusLabel: string;
+  isResubmitted?: boolean;
+  resubmittedAt?: string | null;
   abstract: string | null;
   coverage: string | null;
   year: number | null;
@@ -186,6 +188,16 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
       const latestDec = subjDecisions[0];
       const published = publishedBySubjId.get(subj.id);
 
+      // Check if this was a resubmitted revision
+      const isResubmitted =
+        subjMeta.review_status === "resubmitted" ||
+        (draft?.status === "submitted" &&
+          (subjMeta.review_status === "revision_requested" ||
+            latestDec?.decision === "return_for_revision"));
+      const resubmittedAt =
+        (typeof subjMeta.resubmitted_at === "string" ? subjMeta.resubmitted_at : null) ||
+        (isResubmitted ? draft?.updated_at || subj.updated_at : null);
+
       // Determine effective status
       let status: AdminPublicationItem["status"] = "pending";
       let statusLabel = "Menunggu Kurasi";
@@ -196,6 +208,9 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
       } else if (subj.current_status === "rejected" || subjMeta.review_status === "rejected" || latestDec?.decision === "reject") {
         status = "rejected";
         statusLabel = "Ditolak";
+      } else if (isResubmitted) {
+        status = "resubmitted";
+        statusLabel = "Revisi Diajukan Ulang";
       } else if (subjMeta.review_status === "revision_requested" || latestDec?.decision === "return_for_revision") {
         status = "revision_requested";
         statusLabel = "Perlu Revisi";
@@ -240,6 +255,8 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
         authorCountry: typeof payload.country === "string" ? payload.country : "Indonesia",
         status,
         statusLabel,
+        isResubmitted: Boolean(isResubmitted),
+        resubmittedAt,
         abstract: (typeof payload.abstract === "string" && payload.abstract) || (typeof payload.description === "string" && payload.description) || null,
         coverage: typeof payload.geographicCoverage === "string" ? payload.geographicCoverage : typeof payload.coverage === "string" ? payload.coverage : null,
         year: Number(payload.year) || null,
@@ -273,7 +290,7 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
 
     const stats: AdminPublicationStats = {
       total: items.length,
-      pending: items.filter((i) => i.status === "pending" || i.status === "under_review").length,
+      pending: items.filter((i) => i.status === "pending" || i.status === "under_review" || i.status === "resubmitted").length,
       revision: items.filter((i) => i.status === "revision_requested").length,
       approved: items.filter((i) => i.status === "approved").length,
       rejected: items.filter((i) => i.status === "rejected").length,
