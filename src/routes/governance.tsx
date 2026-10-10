@@ -93,11 +93,6 @@ function GovernanceShell() {
             </Link>
           ) : null}
           {isAdmin || isMgmt ? (
-            <Link to="/governance/decisions" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
-              Pending Decisions
-            </Link>
-          ) : null}
-          {isAdmin || isMgmt ? (
             <Link to="/governance/templates" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
               Templates
             </Link>

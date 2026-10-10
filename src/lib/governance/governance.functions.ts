@@ -388,56 +388,10 @@ export const recordFinalDecision = createServerFn({ method: "POST" })
       })
       .parse(d),
   )
-  .handler(async ({ data, context }) => {
-    // Route through the atomic SECURITY DEFINER RPCs. They perform:
-    // role gating, subject lookup + lock, decision insert, subject status
-    // transition, record supersession, and audit-log write in one transaction.
-    if (data.decision === "return_for_revision") {
-      const { data: id, error } = await context.supabase.rpc("return_for_revision", {
-        _subject_id: data.subjectId,
-        _rationale: data.rationale ?? "",
-
-      });
-      if (error) throw new Error(error.message);
-      return { id: id as string, decision: data.decision };
-    }
-    const { data: id, error } = await context.supabase.rpc("finalize_decision", {
-      _subject_id: data.subjectId,
-      _decision: data.decision,
-      _rationale: data.rationale ?? "",
-    });
-    if (error) throw new Error(error.message);
-
-    if (data.decision === "approve") {
-      try {
-        const { data: sub } = await context.supabase
-          .from("review_subjects")
-          .select("kind, submitted_by")
-          .eq("id", data.subjectId)
-          .single();
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const clientAny = context.supabase as any;
-
-        if (sub?.kind === "expert") {
-          await publishApprovedExpert({
-            subjectId: data.subjectId,
-            decisionId: id,
-            decidedBy: context.userId,
-          });
-        } else if (sub?.kind === "module") {
-          await publishApprovedModuleRecord({
-            subjectId: data.subjectId,
-            decisionId: id,
-            decidedBy: context.userId,
-          });
-        }
-      } catch (publishErr) {
-        console.error("[recordFinalDecision] publish error:", publishErr);
-      }
-    }
-
-    return { id: id as string, decision: data.decision };
+  .handler(async () => {
+    throw new Error(
+      "Persetujuan dan revisi melalui Portal Governance telah dinonaktifkan. Silakan gunakan menu Verifikasi Expert (/admin/experts), Verifikasi Modul (/admin/modules), atau Verifikasi Publikasi (/admin/publications) di Portal Admin.",
+    );
   });
 
 export const listApprovedModulesForPublication = createServerFn({ method: "GET" })

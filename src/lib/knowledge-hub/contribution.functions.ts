@@ -80,6 +80,13 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
     }
     const title = rawTitle || (form.type ? `Draf Publikasi - ${form.type}` : "Draf Publikasi Baru");
     const resourceType = typeMap[String(form.type ?? "")] ?? "training_material";
+    // Enforce canonical 7-document module submission pipeline for Learning Modules
+    if (resourceType === "module") {
+      throw new Error(
+        "Pengajuan Learning Module wajib melalui Portal Pengajuan Modul Pembelajaran (/experts/portal/submit-module) agar kelengkapan 7 dokumen standar dan registrasi Academy terdata penuh.",
+      );
+    }
+
     let draftId = data.draftId;
     if (!draftId) {
       const created = await context.supabase.rpc("kr_draft_create", {
@@ -99,11 +106,6 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
     const { data: expert } = expertLink
       ? await context.supabase.from("experts_directory_v").select("id,display_name,institution,country,expertise_areas").eq("id", expertLink.id).maybeSingle()
       : { data: null };
-
-    // Enforce trainer requirement strictly on Training Modules
-    if (resourceType === "module" && !expert) {
-      throw new Error("Trainer / Expert role is required to submit Learning Modules.");
-    }
 
     const { data: profile } = await context.supabase
       .from("profiles")

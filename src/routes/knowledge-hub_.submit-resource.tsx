@@ -488,6 +488,7 @@ const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-marine focus:ring-1 focus:ring-marine";
 
 function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; isTrainer?: boolean }) {
+  const navigate = useNavigate();
   return (
     <div>
       <h2 className="font-display text-lg font-bold text-navy">Step 1 — Resource Type</h2>
@@ -506,8 +507,21 @@ function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; i
                     key={t}
                     type="button"
                     disabled={disabled}
-                    onClick={() => !disabled && set("type", t)}
-                    title={disabled ? "Pengajuan Modul Pembelajaran membutuhkan kualifikasi Trainer/Pakar resmi" : undefined}
+                    onClick={() => {
+                      if (disabled) return;
+                      if (isModule) {
+                        navigate({ to: "/experts/portal/submit-module" });
+                        return;
+                      }
+                      set("type", t);
+                    }}
+                    title={
+                      disabled
+                        ? "Pengajuan Modul Pembelajaran membutuhkan kualifikasi Trainer/Pakar resmi"
+                        : isModule
+                          ? "Akan diarahkan ke Portal Pengajuan Modul Pembelajaran (7 Dokumen Standar)"
+                          : undefined
+                    }
                     className={`rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all ${
                       disabled
                         ? "opacity-60 bg-muted/50 border-dashed border-border cursor-not-allowed text-muted-foreground"
@@ -527,7 +541,7 @@ function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; i
                               : "bg-amber-100 text-amber-800"
                           }`}
                         >
-                          {isTrainer ? "Trainer" : "Khusus Trainer"}
+                          {isTrainer ? "Portal Modul →" : "Khusus Trainer"}
                         </span>
                       )}
                     </div>

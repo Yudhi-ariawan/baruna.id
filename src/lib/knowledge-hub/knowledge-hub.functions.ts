@@ -49,7 +49,7 @@ const EMPTY_TYPE_COUNTS: Record<KhResourceType, number> = {
 };
 
 function catalogueType(type: string): KhResourceType {
-  if (["module", "training_material"].includes(type)) return "learning-modules";
+  if (type === "module") return "learning-modules";
   if (type === "best_practice") return "best-practices";
   if (["video", "podcast", "webinar_recording"].includes(type)) return "videos";
   if (type === "policy_brief") return "policy-briefs";
@@ -77,7 +77,7 @@ function catalogueTypeLabel(type: string): string {
     video: "Video",
     podcast: "Podcast",
     webinar_recording: "Webinar Recording",
-    training_material: "Training Material",
+    training_material: "Presentation Slides",
     module: "Learning Module",
     toolkit: "Toolkit",
   };
@@ -133,7 +133,10 @@ async function ensurePublishedModulesProjected(supabaseAdmin: any): Promise<void
         .eq("visibility", "public"),
     ]);
 
+    const regSet = new Set((regMods ?? []).map((m: { id: string }) => m.id));
     const khSet = new Set((khMods ?? []).map((r: { id: string }) => r.id));
+
+    // 1. Forward sync: published in module_registry -> project to knowledge_resources
     const missing = (regMods ?? []).filter((m: { id: string }) => !khSet.has(m.id));
     if (missing.length > 0) {
       const { projectPublishedModuleToKnowledge } = await import(
@@ -146,6 +149,22 @@ async function ensurePublishedModulesProjected(supabaseAdmin: any): Promise<void
           console.warn("[ensurePublishedModulesProjected] Failed to project module", mod.id, projErr);
         }
       }
+    }
+
+    // 2. Reverse sync: if a module in knowledge_resources is no longer published+public in module_registry, archive it
+    const staleKhIds = (khMods ?? [])
+      .filter((r: { id: string }) => !regSet.has(r.id))
+      .map((r: { id: string }) => r.id);
+    if (staleKhIds.length > 0) {
+      await supabaseAdmin
+        .from("knowledge_resources")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", staleKhIds)
+        .eq("resource_type", "module");
     }
   } catch (err) {
     console.warn("[ensurePublishedModulesProjected] Check skipped:", err);
@@ -491,11 +510,13 @@ export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
     const filePath =
       typeof file?.filePath === "string"
         ? file.filePath
-        : typeof metadata.filePath === "string"
-          ? metadata.filePath
-          : typeof metadata.uploadedFilePath === "string"
-            ? metadata.uploadedFilePath
-            : undefined;
+        : typeof file?.path === "string"
+          ? file.path
+          : typeof metadata.filePath === "string"
+            ? metadata.filePath
+            : typeof metadata.uploadedFilePath === "string"
+              ? metadata.uploadedFilePath
+              : undefined;
 
     const fileName = String(
       file?.fileName ?? file?.name ?? metadata.fileName ?? "dokumen-publikasi-baruna.pdf"
@@ -503,12 +524,18 @@ export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
 
     let downloadUrl: string | null = null;
     if (filePath) {
-      const { data: signed, error: signError } = await supabaseAdmin.storage
-        .from("knowledge-resource-submissions")
-        .createSignedUrl(filePath, 3600, { download: fileName });
-
-      if (!signError && signed?.signedUrl) {
-        downloadUrl = signed.signedUrl;
+      const explicitBucket = typeof file?.bucket === "string" ? file.bucket : null;
+      const buckets = Array.from(
+        new Set([explicitBucket, "knowledge-resource-submissions", "expert-applications", "module-attachments"].filter(Boolean) as string[]),
+      );
+      for (const bucketName of buckets) {
+        const { data: signed, error: signError } = await supabaseAdmin.storage
+          .from(bucketName)
+          .createSignedUrl(filePath, 3600, { download: fileName });
+        if (!signError && signed?.signedUrl) {
+          downloadUrl = signed.signedUrl;
+          break;
+        }
       }
     }
 

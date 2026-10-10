@@ -375,15 +375,15 @@ function AdminOverviewPage() {
               </Link>
 
               <Link
-                to="/governance/subjects"
+                to="/admin/publications"
                 className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 hover:border-marine/40 hover:bg-white hover:shadow-2xs transition"
               >
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-amber-100 text-amber-700 shrink-0">
                   <Layers className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold text-xs text-navy">Audit &amp; Approvals</p>
-                  <p className="text-[11px] text-muted-foreground">Riwayat keputusan &amp; log tata kelola</p>
+                  <p className="font-bold text-xs text-navy">Verifikasi Publikasi</p>
+                  <p className="text-[11px] text-muted-foreground">Kurasi jurnal, riset &amp; best practice</p>
                 </div>
               </Link>
             </div>

@@ -1,10 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { CheckCircle2, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { getReviewSubjectFull } from "@/lib/governance/governance-ops.functions";
-import { recordFinalDecision } from "@/lib/governance/governance.functions";
 import { AssignmentPanel } from "@/components/governance/AssignmentPanel";
 
 export const Route = createFileRoute("/governance/subjects/$id")({
@@ -13,32 +11,11 @@ export const Route = createFileRoute("/governance/subjects/$id")({
 
 function SubjectDetail() {
   const { id } = Route.useParams();
-  const qc = useQueryClient();
   const fn = useServerFn(getReviewSubjectFull);
-  const decideFn = useServerFn(recordFinalDecision);
-  const [rationale, setRationale] = useState("");
-  const [decisionNotice, setDecisionNotice] = useState<string | null>(null);
 
   const q = useQuery({
     queryKey: ["governance", "subjects", "detail", id],
     queryFn: () => fn({ data: { id } }),
-  });
-
-  const decideM = useMutation({
-    mutationFn: (decision: "approve" | "reject" | "return_for_revision") =>
-      decideFn({ data: { subjectId: id, decision, rationale: rationale.trim() || undefined } }),
-    onSuccess: (_, decision) => {
-      const labels = {
-        approve: "Persetujuan (Approve) berhasil! Expert/Modul telah disetujui & dipublikasikan.",
-        reject: "Pengajuan telah ditolak (Reject).",
-        return_for_revision: "Pengajuan dikembalikan untuk perbaikan (Return for revision).",
-      };
-      setDecisionNotice(labels[decision] ?? `Keputusan disimpan: ${decision}`);
-      qc.invalidateQueries({ queryKey: ["governance", "subjects", "detail", id] });
-      qc.invalidateQueries({ queryKey: ["governance", "subjects"] });
-      qc.invalidateQueries({ queryKey: ["governance", "decisions"] });
-    },
-    onError: (err: Error) => setDecisionNotice(`Error: ${err.message}`),
   });
 
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -46,6 +23,18 @@ function SubjectDetail() {
   if (!q.data) return <p className="text-sm">Subject not found.</p>;
 
   const { subject, revisions, assignments, records, decisions, drafts } = q.data;
+  const adminVerificationRoute =
+    subject.kind === "expert"
+      ? ("/admin/experts" as const)
+      : subject.kind === "module"
+        ? ("/admin/modules" as const)
+        : ("/admin/publications" as const);
+  const adminVerificationLabel =
+    subject.kind === "expert"
+      ? "Buka Verifikasi Expert"
+      : subject.kind === "module"
+        ? "Buka Verifikasi Modul"
+        : "Buka Verifikasi Publikasi";
 
   return (
     <div className="space-y-6">
@@ -72,85 +61,15 @@ function SubjectDetail() {
             View audit trail
           </Link>
           <Link
-            to="/governance/decisions"
-            className="rounded border border-border px-3 py-1.5 text-xs hover:bg-muted"
+            to={adminVerificationRoute}
+            className="inline-flex items-center gap-1.5 rounded bg-marine px-3 py-1.5 text-xs font-semibold text-white hover:bg-navy"
           >
-            Decision workspace
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {adminVerificationLabel}
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>
-
-      {/* Admin Action Decision Card */}
-      <section className="rounded-xl border border-marine/20 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-marine" />
-            <h3 className="text-base font-bold text-navy">Keputusan Admin / Administrative Decision</h3>
-          </div>
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-              subject.current_status === "approved"
-                ? "bg-emerald-100 text-emerald-800"
-                : subject.current_status === "rejected"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-amber-100 text-amber-800"
-            }`}
-          >
-            Status: {subject.current_status}
-          </span>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          <label className="block text-xs font-medium text-foreground/80">
-            Catatan Keputusan / Rationale (opsional):
-          </label>
-          <textarea
-            value={rationale}
-            onChange={(e) => setRationale(e.target.value)}
-            placeholder="Tuliskan catatan alasan persetujuan, revisi, atau penolakan..."
-            className="w-full rounded-lg border border-border bg-background p-2.5 text-sm outline-none focus:border-marine"
-            rows={2}
-          />
-
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <button
-              disabled={decideM.isPending}
-              onClick={() => decideM.mutate("approve")}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Setujui (Approve)
-            </button>
-            <button
-              disabled={decideM.isPending}
-              onClick={() => decideM.mutate("return_for_revision")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Minta Revisi
-            </button>
-            <button
-              disabled={decideM.isPending}
-              onClick={() => decideM.mutate("reject")}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
-            >
-              <XCircle className="h-4 w-4" />
-              Tolak (Reject)
-            </button>
-            {decideM.isPending && (
-              <span className="text-xs font-medium text-muted-foreground animate-pulse">
-                Memproses keputusan...
-              </span>
-            )}
-          </div>
-
-          {decisionNotice && (
-            <p className="mt-2 rounded-lg bg-slate-100 p-2.5 text-xs font-semibold text-navy">
-              {decisionNotice}
-            </p>
-          )}
-        </div>
-      </section>
 
       <Section title={`Revisions (${revisions.length})`}>
         {revisions.length === 0 ? (

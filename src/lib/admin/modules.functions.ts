@@ -692,6 +692,9 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
         });
       }
 
+      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+      clearKnowledgeHubCache();
+
       return { success: true, decisionId: `restore-${input.subjectId}`, decision: input.decision };
     }
 
@@ -767,6 +770,29 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
         })
         .eq("linked_subject_id", input.subjectId);
 
+      // Unpublish any existing module_registry / knowledge_resources rows while under revision
+      await supabaseAdmin
+        .from("module_registry")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("source_submission_id", input.subjectId);
+
+      await supabaseAdmin
+        .from("knowledge_resources")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("source_submission_id", input.subjectId)
+        .eq("resource_type", "module");
+
+      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+      clearKnowledgeHubCache();
+
       return { success: true, decisionId, decision: input.decision };
     }
 
@@ -825,13 +851,43 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
     }
 
     if (input.decision === "reject") {
+      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
       await supabaseAdmin
         .from("review_subjects")
         .update({
           current_status: "rejected",
+          metadata: {
+            ...currentMeta,
+            review_status: "rejected",
+            last_decision: "reject",
+            last_rationale: rationaleText,
+            rejected_at: new Date().toISOString(),
+          } as never,
           updated_at: new Date().toISOString(),
         })
         .eq("id", input.subjectId);
+
+      await supabaseAdmin
+        .from("module_registry")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("source_submission_id", input.subjectId);
+
+      await supabaseAdmin
+        .from("knowledge_resources")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("source_submission_id", input.subjectId)
+        .eq("resource_type", "module");
+
+      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+      clearKnowledgeHubCache();
 
       return { success: true, decisionId, decision: input.decision };
     }

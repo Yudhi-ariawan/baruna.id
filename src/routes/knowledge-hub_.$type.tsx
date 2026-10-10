@@ -71,8 +71,20 @@ function CataloguePage() {
   const { type, dbResources, dbCounts } = Route.useLoaderData();
   const isLibrary = type === "library";
   const isCanonicalLearning = type === "learning-modules";
-  const staticList: KhResource[] = isCanonicalLearning ? [] : isLibrary ? KH_ALL : resourcesByType(type);
-  const base: KhResource[] = [...(dbResources ?? []), ...staticList];
+  const staticList: KhResource[] = isCanonicalLearning
+    ? []
+    : isLibrary
+      ? KH_ALL.filter((r) => r.type !== "learning-modules")
+      : resourcesByType(type);
+  const base: KhResource[] = useMemo(() => {
+    const combined = [...(dbResources ?? []), ...staticList];
+    const seen = new Set<string>();
+    return combined.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [dbResources, staticList]);
   const label = isLibrary ? "Resource Library" : labelForType(type);
   const sidebarCounts = useMemo(() => {
     const out: Partial<Record<KhResourceType, number>> = {};

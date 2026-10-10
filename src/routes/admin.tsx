@@ -221,12 +221,6 @@ function AdminShell() {
           icon: GraduationCap,
           description: "Pendaftaran & role participant",
         },
-        {
-          label: "Persetujuan / Approvals",
-          to: "/governance/subjects" as const,
-          icon: ClipboardCheck,
-          description: "Tata kelola & audit",
-        },
       ],
     },
   ];
