@@ -14,6 +14,7 @@ import {
   Download,
   ShieldCheck,
   RotateCcw,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +52,7 @@ export function CourseEnrollmentAction({
   const [userId, setUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [needBiodataDialogOpen, setNeedBiodataDialogOpen] = useState(false);
   const [notes, setNotes] = useState("");
 
   const { get } = useShortCourses();
@@ -121,6 +123,18 @@ export function CourseEnrollmentAction({
       });
       return;
     }
+
+    if (isLoading) {
+      toast.info(isId ? "Sedang memverifikasi status akun Anda..." : "Verifying your account status...");
+      return;
+    }
+
+    // Wajib memiliki role participant (telah melengkapi formulir biodata peserta) sebelum dapat enroll
+    if (!serverStatus?.hasParticipantRole) {
+      setNeedBiodataDialogOpen(true);
+      return;
+    }
+
     setApplyDialogOpen(true);
   };
 
@@ -182,12 +196,15 @@ export function CourseEnrollmentAction({
       <>
         <button
           onClick={handleStartApply}
-          className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs"
+          className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs cursor-pointer"
         >
-          {isId ? "Daftar Pelatihan (Ajukan Kepesertaan)" : "Enroll in Course (Apply for Access)"} <ArrowRight className="h-4 w-4" />
+          {serverStatus && !serverStatus.hasParticipantRole
+            ? (isId ? "Daftar Pelatihan (Lengkapi Biodata)" : "Enroll in Course (Fill Participant Form)")
+            : (isId ? "Daftar Pelatihan (Ajukan Kepesertaan)" : "Enroll in Course (Apply for Access)")} <ArrowRight className="h-4 w-4" />
         </button>
 
         {applyDialogOpen && renderApplyModal()}
+        {needBiodataDialogOpen && renderNeedBiodataModal()}
       </>
     );
   }
@@ -281,23 +298,121 @@ export function CourseEnrollmentAction({
       ) : isRejected ? (
         <button
           onClick={handleStartApply}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700 transition"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700 transition cursor-pointer"
         >
           <RotateCcw className="h-4 w-4" /> {isId ? "Ajukan Ulang Pendaftaran" : "Reapply for Enrollment"}
         </button>
       ) : (
-        <button
-          onClick={handleStartApply}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition"
-        >
-          {isId ? "Daftar Pelatihan (Ajukan Akses)" : "Enroll in Course (Apply for Access)"} <ArrowRight className="h-4 w-4" />
-        </button>
+        <div className="space-y-2">
+          {userId && serverStatus && !serverStatus.hasParticipantRole && (
+            <div className="rounded-xl border border-amber-200/90 bg-amber-50/70 p-3 text-xs text-amber-900 space-y-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                <span>{isId ? "Prasyarat: Isi Formulir Peserta" : "Prerequisite: Fill Participant Form"}</span>
+              </div>
+              <p className="text-[0.72rem] text-amber-800/90 leading-relaxed">
+                {isId
+                  ? "Akun Anda saat ini berstatus Registered User. Anda wajib melengkapi Formulir Biodata Peserta sebelum dapat mendaftar pelatihan ini."
+                  : "Your account is currently a Registered User. You must complete the Participant Biodata Form before enrolling in this course."}
+              </p>
+              <button
+                type="button"
+                onClick={() => setNeedBiodataDialogOpen(true)}
+                className="inline-flex items-center gap-1 text-[0.72rem] font-bold text-marine hover:underline cursor-pointer"
+              >
+                {isId ? "Buka Formulir Peserta →" : "Open Participant Form →"}
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={handleStartApply}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-marine py-3 text-sm font-bold text-white shadow-sm hover:bg-marine/90 transition cursor-pointer"
+          >
+            {serverStatus && !serverStatus.hasParticipantRole
+              ? (isId ? "Daftar Pelatihan (Lengkapi Biodata)" : "Enroll in Course (Fill Participant Form)")
+              : (isId ? "Daftar Pelatihan (Ajukan Akses)" : "Enroll in Course (Apply for Access)")} <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
       {/* Apply Modal Dialog */}
       {applyDialogOpen && renderApplyModal()}
+      {needBiodataDialogOpen && renderNeedBiodataModal()}
     </div>
   );
+
+  function renderNeedBiodataModal() {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+        <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4 animate-in fade-in-50 zoom-in-95">
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-100 text-amber-700">
+                <FileText className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="font-display text-base font-bold text-navy">
+                  Lengkapi Formulir Peserta Terlebih Dahulu
+                </h3>
+                <p className="text-[0.7rem] text-muted-foreground">
+                  Prasyarat Pendaftaran Pelatihan (SOP PB-ACA-03)
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setNeedBiodataDialogOpen(false)}
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900 space-y-2">
+            <p className="font-bold flex items-center gap-1.5 text-amber-800">
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+              Peran Akun Saat Ini: Registered User
+            </p>
+            <p className="text-[0.75rem] text-amber-800/90 leading-relaxed">
+              Sebelum dapat mengajukan pendaftaran pelatihan ini ke Administrator, Anda wajib melengkapi <strong>Formulir Biodata Peserta Resmi</strong> (NIP, instansi, jabatan, dan golongan).
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-muted/40 p-3.5 text-xs space-y-2 text-foreground/80">
+            <p className="font-semibold text-navy">Mengapa Anda Wajib Mengisi Formulir Peserta?</p>
+            <ul className="space-y-1.5 text-[0.75rem] list-disc list-inside text-muted-foreground">
+              <li>Mengubah peran akun Anda secara resmi menjadi <strong>Participant (Peserta Pelatihan)</strong>.</li>
+              <li>Data NIP, jabatan, dan instansi otomatis tercetak pada <strong>Sertifikat STTP Resmi</strong> kelulusan Anda.</li>
+              <li>Memenuhi syarat administrasi verifikasi kuota peserta pelatihan Kementerian Kelautan dan Perikanan (KKP).</li>
+            </ul>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={() => setNeedBiodataDialogOpen(false)}
+              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNeedBiodataDialogOpen(false);
+                navigate({
+                  to: "/academy/daftar-peserta",
+                  search: { redirect: window.location.pathname },
+                });
+              }}
+              className="flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2 text-xs font-bold text-white hover:bg-navy transition shadow-xs cursor-pointer"
+            >
+              Isi Formulir Peserta Sekarang <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   function renderApplyModal() {
     return (
@@ -319,7 +434,7 @@ export function CourseEnrollmentAction({
             </div>
             <button
               onClick={() => setApplyDialogOpen(false)}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition cursor-pointer"
             >
               ✕
             </button>
@@ -335,10 +450,10 @@ export function CourseEnrollmentAction({
 
           <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-xs text-blue-900 space-y-1">
             <p className="font-bold flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-marine" /> Alur Kepesertaan Resmi:
+              <Sparkles className="h-4 w-4 text-marine" /> Alur Kepesertaan Resmi (PB-ACA-03):
             </p>
             <p className="text-[0.75rem] text-blue-800 leading-relaxed">
-              Setelah diajukan, permohonan Anda akan ditinjau oleh Administrator BARUNA. Setelah disetujui (ACC), akun Anda otomatis mendapatkan peran <strong>Participant</strong> dan ruang belajar akan terbuka penuh.
+              Data profil Anda telah terverifikasi sebagai <strong>Participant (Peserta Resmi)</strong>. Permohonan pendaftaran kelas ini akan ditinjau oleh Administrator BARUNA untuk alokasi kuota. Setelah disetujui (ACC), akses ke ruang belajar akan otomatis terbuka penuh.
             </p>
           </div>
 
@@ -359,7 +474,7 @@ export function CourseEnrollmentAction({
             <button
               type="button"
               onClick={() => setApplyDialogOpen(false)}
-              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted transition"
+              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted transition cursor-pointer"
             >
               Batal
             </button>
@@ -367,7 +482,7 @@ export function CourseEnrollmentAction({
               type="button"
               disabled={submitMutation.isPending}
               onClick={() => submitMutation.mutate()}
-              className="flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2 text-xs font-bold text-white hover:bg-marine/90 transition shadow-xs disabled:opacity-50 cursor-pointer"
             >
               {submitMutation.isPending ? "Mengirim..." : "Kirim Pengajuan Pendaftaran"}
             </button>

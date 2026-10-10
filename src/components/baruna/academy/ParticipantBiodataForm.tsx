@@ -32,9 +32,10 @@ import {
 
 interface ParticipantBiodataFormProps {
   initialData: GetMyParticipantBiodataResult;
+  redirect?: string;
 }
 
-export function ParticipantBiodataForm({ initialData }: ParticipantBiodataFormProps) {
+export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBiodataFormProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const saveFn = useServerFn(saveParticipantBiodata);
@@ -146,6 +147,7 @@ export function ParticipantBiodataForm({ initialData }: ParticipantBiodataFormPr
       }
       queryClient.invalidateQueries({ queryKey: ["participant-biodata"] });
       queryClient.invalidateQueries({ queryKey: ["my-participant-biodata"] });
+      queryClient.invalidateQueries({ queryKey: ["course-enrollment-status"] });
       queryClient.invalidateQueries({ queryKey: ["account", "profile"] });
       queryClient.invalidateQueries({ queryKey: ["home", "viewer"] });
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
@@ -197,10 +199,16 @@ export function ParticipantBiodataForm({ initialData }: ParticipantBiodataFormPr
             </div>
           </div>
           <button
-            onClick={() => navigate({ to: "/academy" })}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-800 transition shadow-xs"
+            onClick={() => {
+              if (redirect) {
+                navigate({ to: redirect as any });
+              } else {
+                navigate({ to: "/academy" });
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-800 transition shadow-xs cursor-pointer"
           >
-            Lanjut Pilih Pelatihan <ArrowRight className="h-3.5 w-3.5" />
+            {redirect ? "Lanjut ke Pelatihan" : "Lanjut Pilih Pelatihan"} <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
