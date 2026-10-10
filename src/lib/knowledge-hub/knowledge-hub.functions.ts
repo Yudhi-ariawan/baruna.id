@@ -157,6 +157,20 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
         access = "Completion Required";
       }
 
+      const explicitAuthor =
+        (typeof metadata.author_name === "string" && metadata.author_name.trim()) ||
+        (typeof metadata.author === "string" && metadata.author.trim()) ||
+        null;
+      const explicitOrg =
+        (typeof metadata.institution === "string" && metadata.institution.trim()) ||
+        (typeof item.publisher === "string" && item.publisher.trim()) ||
+        null;
+      const explicitCountry =
+        (typeof metadata.country === "string" && metadata.country.trim()) ||
+        null;
+
+      const resolvedAuthor = explicitAuthor ?? expert?.display_name ?? "BARUNA Network";
+
       return {
         id: item.id,
         type,
@@ -165,12 +179,12 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
         category: taxonomyCategory,
         summary: item.summary ?? item.abstract ?? "BARUNA public knowledge resource.",
         abstract: item.abstract ?? item.summary ?? "BARUNA public knowledge resource.",
-        author: expert?.display_name ?? String(metadata.author_name ?? item.publisher ?? "BARUNA Network"),
-        contributor: expert?.display_name ?? String(metadata.contributor_name ?? "BARUNA Network"),
-        organization: expert?.institution ?? item.publisher ?? String(metadata.institution ?? "BARUNA Network"),
+        author: resolvedAuthor,
+        contributor: expert?.display_name ?? String(metadata.contributor_name ?? resolvedAuthor),
+        organization: explicitOrg ?? expert?.institution ?? "BARUNA Network",
         year,
         language: item.language ?? "English",
-        country: expert?.country ?? String(metadata.country ?? "Indonesia"),
+        country: explicitCountry ?? expert?.country ?? "Indonesia",
         keywords: [...(item.keywords ?? []), ...(item.topics ?? [])],
         access,
         status: "Published",
@@ -198,7 +212,7 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
           saves: metricValue(metadata, ["saves", "save_count"]),
           shares: metricValue(metadata, ["shares", "share_count"]),
         },
-        citation: `${expert?.display_name ?? item.publisher ?? "BARUNA Network"} (${year}). ${item.title}. BARUNA Knowledge Hub.`,
+        citation: `${resolvedAuthor} (${year}). ${item.title}. BARUNA Knowledge Hub.`,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
       };
