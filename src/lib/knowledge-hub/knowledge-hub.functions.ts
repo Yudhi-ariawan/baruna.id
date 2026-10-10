@@ -116,12 +116,49 @@ export function clearKnowledgeHubCache(): void {
   store.modules = undefined;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function ensurePublishedModulesProjected(supabaseAdmin: any): Promise<void> {
+  try {
+    const [{ data: regMods }, { data: khMods }] = await Promise.all([
+      supabaseAdmin
+        .from("module_registry")
+        .select("id")
+        .eq("current_status", "published")
+        .eq("visibility", "public"),
+      supabaseAdmin
+        .from("knowledge_resources")
+        .select("id")
+        .eq("resource_type", "module")
+        .eq("current_status", "published")
+        .eq("visibility", "public"),
+    ]);
+
+    const khSet = new Set((khMods ?? []).map((r: { id: string }) => r.id));
+    const missing = (regMods ?? []).filter((m: { id: string }) => !khSet.has(m.id));
+    if (missing.length > 0) {
+      const { projectPublishedModuleToKnowledge } = await import(
+        "@/lib/knowledge-hub/module-projection.server"
+      );
+      for (const mod of missing) {
+        try {
+          await projectPublishedModuleToKnowledge(mod.id);
+        } catch (projErr) {
+          console.warn("[ensurePublishedModulesProjected] Failed to project module", mod.id, projErr);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[ensurePublishedModulesProjected] Check skipped:", err);
+  }
+}
+
 export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler(
   async (): Promise<KnowledgeHubOverview> => {
     const now = Date.now();
     const store = khCache();
     if (store.overview && store.overview.expiresAt > now) return store.overview.value;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await ensurePublishedModulesProjected(supabaseAdmin);
     const { data, error } = await supabaseAdmin
       .from("knowledge_resources")
       .select("id,title,summary,abstract,resource_type,language,publication_year,publisher,thumbnail_url,external_url,topics,keywords,related_expert_ids,metadata,created_at,updated_at")
@@ -316,20 +353,22 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
     if (store.modules && store.modules.expiresAt > now) return store.modules.value;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await ensurePublishedModulesProjected(supabaseAdmin);
     const { data, error } = await supabaseAdmin
       .from("knowledge_resources")
       .select("id,title,summary,abstract,language,publication_year,publisher,thumbnail_url,topics,keywords,related_expert_ids,external_url,metadata,created_at,updated_at")
       .eq("resource_type", "module")
       .eq("current_status", "published")
       .eq("visibility", "public")
-      .order("publication_date", { ascending: false });
+      .order("publication_date", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
     const expertIds = [...new Set((data ?? []).flatMap((resource) => resource.related_expert_ids ?? []))];
     const { data: experts, error: expertError } = expertIds.length
       ? await supabaseAdmin
           .from("experts_directory_v")
-          .select("id,display_name,institution,country")
+          .select("id,display_name,headline,institution,country,avatar_url,slug")
           .in("id", expertIds)
       : { data: [], error: null };
     if (expertError) throw new Error(expertError.message);
@@ -349,7 +388,7 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
           : undefined;
       const moduleCode = typeof metadata.module_code === "string" && metadata.module_code.trim() !== ""
         ? metadata.module_code.trim()
-        : undefined;
+        : `BARUNA-MOD-${resource.id.slice(0, 8).toUpperCase()}`;
       const taxonomyCategory = primaryModuleCategory({
         title: resource.title,
         summary: resource.summary,
@@ -357,6 +396,18 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
         competency: (resource.keywords ?? []).join(" "),
         metadata,
       });
+      const resolvedAuthor =
+        expert?.display_name ??
+        (typeof metadata.author_name === "string" && metadata.author_name.trim()
+          ? metadata.author_name.trim()
+          : typeof metadata.copyright_holder === "string" && metadata.copyright_holder.trim()
+            ? metadata.copyright_holder.trim()
+            : "BARUNA Expert");
+      const resolvedOrg =
+        expert?.institution ??
+        (typeof metadata.institution === "string" && metadata.institution.trim()
+          ? metadata.institution.trim()
+          : resource.publisher ?? "BARUNA Network");
       return {
         id: resource.id,
         type: "learning-modules",
@@ -366,9 +417,9 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
         summary: resource.summary ?? "BARUNA learning module.",
         abstract: resource.abstract ?? resource.summary ?? "BARUNA learning module.",
         coverImage: resource.thumbnail_url ?? undefined,
-        author: expert?.display_name ?? String(metadata.author_name ?? "BARUNA Expert"),
-        contributor: expert?.display_name ?? "BARUNA Network",
-        organization: expert?.institution ?? resource.publisher ?? String(metadata.institution ?? "BARUNA Network"),
+        author: resolvedAuthor,
+        contributor: expert?.display_name ?? resolvedAuthor,
+        organization: resolvedOrg,
         year,
         language: resource.language ?? "English",
         country: expert?.country ?? String(metadata.country ?? "Indonesia"),
@@ -381,8 +432,16 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
           ? Number(learningHours)
           : undefined,
         moduleCode,
-        shortCourseCode: typeof metadata.short_course_id === "string" ? metadata.short_course_id : undefined,
+        shortCourseCode: typeof metadata.short_course_id === "string" ? metadata.short_course_id : resource.id,
         expertId: expert?.id ?? "",
+        relatedExpert: expert
+          ? {
+              slug: expert.slug || "",
+              name: expert.display_name,
+              title: expert.headline || "Verified BARUNA Expert",
+              avatarUrl: expert.avatar_url || null,
+            }
+          : null,
         metrics: {
           views: metricValue(metadata, ["views", "view_count"]),
           uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),
@@ -390,7 +449,7 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
           saves: metricValue(metadata, ["saves", "save_count"]),
           shares: metricValue(metadata, ["shares", "share_count"]),
         },
-        citation: `${expert?.display_name ?? "BARUNA Expert"} (${year}). ${resource.title}. BARUNA Knowledge Hub.`,
+        citation: `${resolvedAuthor} (${year}). ${resource.title}. BARUNA Knowledge Hub.`,
         createdAt: resource.created_at,
         updatedAt: resource.updated_at,
       };

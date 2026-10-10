@@ -624,6 +624,9 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
         .eq("source_submission_id", input.subjectId)
         .eq("resource_type", "module");
 
+      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+      clearKnowledgeHubCache();
+
       try {
         await supabaseAdmin.from("governance_audit_log").insert({
           event_type: "module_archived",
