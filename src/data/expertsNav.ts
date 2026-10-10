@@ -18,6 +18,7 @@ import {
   Inbox,
   UserSquare2,
   ClipboardCheck,
+  FileText,
 } from "lucide-react";
 import type { SidebarSection } from "@/components/baruna/page/Sidebar";
 
@@ -57,8 +58,13 @@ export function trainerPortalNav(activeTo?: string): SidebarSection[] {
     { label: "Learner Statistics", icon: BarChart3, to: "/experts/portal/analytics" },
     { label: "Service Requests", icon: Inbox, to: "/experts/portal/service-requests" },
   ];
+  const knowledgeItems = [
+    { label: "Submit Publication", icon: FileText, to: "/knowledge-hub/submit-resource" },
+    { label: "My Contributions", icon: ScrollText, to: "/knowledge-hub/my-contributions" },
+  ];
   return [
     { label: "Trainer Portal", items: items.map((i) => ({ ...i, active: i.to === activeTo })) },
+    { label: "Knowledge Hub", items: knowledgeItems.map((i) => ({ ...i, active: i.to === activeTo })) },
     {
       label: "Back",
       items: [{ label: "Public Experts", icon: Users, to: "/experts" }],

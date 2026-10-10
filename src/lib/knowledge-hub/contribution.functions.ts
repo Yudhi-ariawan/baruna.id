@@ -21,29 +21,49 @@ const typeMap: Record<string, ResourceType> = {
   "Assessment Tool": "tool", "Data Collection Form": "tool", Checklist: "tool", "Spreadsheet Tool": "tool",
 };
 
+export type KnowledgeContributorBootstrap = {
+  userId: string;
+  expertId: string | null;
+  isTrainer: boolean;
+  author: string;
+  institution: string;
+  country: string;
+  expertiseAreas: string[];
+  email: string;
+};
+
 export const getKnowledgeContributorBootstrap = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<KnowledgeContributorBootstrap> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [{ data: profile, error: profileError }, { data: expertLink, error: linkError }, identity] = await Promise.all([
       supabaseAdmin.from("profiles").select("display_name,organization,job_title,phone").eq("id", context.userId).single(),
-      supabaseAdmin.from("experts").select("id").eq("original_contributor_id", context.userId).maybeSingle(),
+      supabaseAdmin
+        .from("experts")
+        .select("id")
+        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+        .order("current_status", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
       supabaseAdmin.auth.admin.getUserById(context.userId),
     ]);
     if (profileError || !profile) throw new Error("profile_not_found");
     if (linkError) throw new Error(linkError.message);
     const { data: expert, error: expertError } = expertLink
-      ? await supabaseAdmin.from("experts_directory_v").select("id,display_name,institution,institution_role,country,expertise_areas").eq("id", expertLink.id).single()
+      ? await supabaseAdmin.from("experts_directory_v").select("id,display_name,institution,institution_role,country,expertise_areas").eq("id", expertLink.id).maybeSingle()
       : { data: null, error: null };
     if (expertError) throw new Error(expertError.message);
-    if (!expert) throw new Error("Only verified BARUNA experts may submit resources.");
+
+    const isTrainer = Boolean(expert);
+
     return {
       userId: context.userId,
-      expertId: expert.id,
-      author: expert.display_name ?? profile.display_name ?? "",
-      institution: expert.institution ?? profile.organization ?? "",
-      country: expert.country ?? "Indonesia",
-      expertiseAreas: expert.expertise_areas ?? [],
+      expertId: expert?.id ?? null,
+      isTrainer,
+      author: expert?.display_name ?? profile.display_name ?? (identity.data.user?.user_metadata?.full_name as string) ?? "",
+      institution: expert?.institution ?? profile.organization ?? "",
+      country: expert?.country ?? "Indonesia",
+      expertiseAreas: expert?.expertise_areas ?? [],
       email: identity.data.user?.email ?? "",
     };
   });
@@ -64,20 +84,42 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       if (created.error) throw new Error(created.error.message);
       draftId = created.data;
     }
-    const { data: expertLink } = await context.supabase.from("experts").select("id").eq("original_contributor_id", context.userId).single();
+    const { data: expertLink } = await context.supabase
+      .from("experts")
+      .select("id")
+      .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+      .order("current_status", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     const { data: expert } = expertLink
-      ? await context.supabase.from("experts_directory_v").select("id,display_name,institution,country,expertise_areas").eq("id", expertLink.id).single()
+      ? await context.supabase.from("experts_directory_v").select("id,display_name,institution,country,expertise_areas").eq("id", expertLink.id).maybeSingle()
       : { data: null };
-    if (!expert) throw new Error("verified_expert_required");
+
+    // Enforce trainer requirement strictly on Training Modules
+    if (resourceType === "module" && !expert) {
+      throw new Error("Trainer / Expert role is required to submit Learning Modules.");
+    }
+
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("display_name,organization")
+      .eq("id", context.userId)
+      .maybeSingle();
+
+    const authorName = expert?.display_name ?? String(form.author ?? profile?.display_name ?? "BARUNA Contributor");
+    const institution = expert?.institution ?? String(form.institution ?? profile?.organization ?? "");
+    const country = expert?.country ?? String(form.country ?? "Indonesia");
+
     const patch: Json = {
       ...form,
       title,
       resource_type: resourceType,
-      author_expert_id: expert.id,
-      author_name: expert.display_name,
-      institution: expert.institution,
-      country: expert.country,
-      expertise_areas: expert.expertise_areas,
+      author_expert_id: expert?.id ?? null,
+      author_name: authorName,
+      institution,
+      country,
+      expertise_areas: expert?.expertise_areas ?? (form.keywords ? String(form.keywords).split(",").map((s) => s.trim()) : []),
       original_contributor_id: context.userId,
     } as Json;
     const updated = await context.supabase.rpc("kr_draft_update", { _draft_id: draftId, _patch: patch });
@@ -94,11 +136,134 @@ export const createKnowledgeResourceUpload = createServerFn({ method: "POST" })
   .inputValidator((input) => UploadInput.parse(input))
   .handler(async ({ context, data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: expert } = await supabaseAdmin.from("experts").select("id").eq("original_contributor_id", context.userId).maybeSingle();
-    if (!expert) throw new Error("verified_expert_required");
     const safeName = data.fileName.replace(/[^a-zA-Z0-9._-]+/g, "-");
     const path = `users/${context.userId}/resources/${Date.now()}-${safeName}`;
     const { data: signed, error } = await supabaseAdmin.storage.from("knowledge-resource-submissions").createSignedUploadUrl(path);
     if (error) throw new Error(error.message);
     return { path, token: signed.token };
+  });
+
+export type KnowledgeContributionItem = {
+  id: string;
+  draftId?: string;
+  resourceId?: string;
+  title: string;
+  type: string;
+  typeGroup: string;
+  status: "draft" | "submitted" | "under_review" | "approved" | "published" | "revision_requested" | "rejected";
+  statusLabel: string;
+  createdAt: string;
+  updatedAt: string;
+  fileInfo?: { name: string; size?: number };
+  reviewNote?: string;
+};
+
+export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<KnowledgeContributionItem[]> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Get user's review_drafts of subject_kind = 'knowledge_resource'
+    const { data: drafts, error: draftsError } = await supabaseAdmin
+      .from("review_drafts")
+      .select("id, title, payload, status, linked_subject_id, created_at, updated_at")
+      .eq("submitter_id", context.userId)
+      .eq("subject_kind", "knowledge_resource")
+      .order("updated_at", { ascending: false });
+
+    if (draftsError) {
+      console.warn("[listMyKnowledgeContributions] drafts query error:", draftsError);
+    }
+
+    // 2. If there are linked subjects, fetch their status & metadata
+    const subjectIds = (drafts ?? [])
+      .map((d) => d.linked_subject_id)
+      .filter((id): id is string => Boolean(id));
+
+    const { data: subjects } = subjectIds.length > 0
+      ? await supabaseAdmin
+          .from("review_subjects")
+          .select("id, current_status, metadata")
+          .in("id", subjectIds)
+      : { data: [] };
+
+    const subjectMap = new Map((subjects ?? []).map((s) => [s.id, s]));
+
+    // 3. Get published/approved knowledge_resources created by this user
+    const { data: publishedKrs, error: krsError } = await supabaseAdmin
+      .from("knowledge_resources")
+      .select("id, title, resource_type, current_status, publication_date, metadata, created_at, updated_at")
+      .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+      .order("updated_at", { ascending: false });
+
+    if (krsError) {
+      console.warn("[listMyKnowledgeContributions] krs query error:", krsError);
+    }
+
+    const { groupForType } = await import("@/lib/resources");
+
+    const results: KnowledgeContributionItem[] = [];
+    const seenTitles = new Set<string>();
+
+    for (const d of drafts ?? []) {
+      const payload = (d.payload as Record<string, unknown>) ?? {};
+      const subject = d.linked_subject_id ? subjectMap.get(d.linked_subject_id) : undefined;
+      const subMeta = (subject?.metadata as Record<string, unknown>) ?? {};
+
+      let status: KnowledgeContributionItem["status"] = "draft";
+      let statusLabel = "Draf";
+
+      if (d.status === "draft") {
+        status = "draft";
+        statusLabel = "Draf";
+      } else if (subject?.current_status === "approved" || subMeta.review_status === "approved") {
+        status = "approved";
+        statusLabel = "Disetujui";
+      } else if (subject?.current_status === "revision_requested" || subMeta.review_status === "revision_requested") {
+        status = "revision_requested";
+        statusLabel = "Perlu Revisi";
+      } else if (subject?.current_status === "rejected" || subMeta.review_status === "rejected") {
+        status = "rejected";
+        statusLabel = "Ditolak";
+      } else {
+        status = "under_review";
+        statusLabel = "Dalam Peninjauan";
+      }
+
+      const rawType = String(payload.type ?? payload.resource_type ?? "Research Report");
+      const fileData = payload.file as { name?: string; size?: number } | undefined;
+
+      results.push({
+        id: d.id,
+        draftId: d.id,
+        title: d.title,
+        type: rawType,
+        typeGroup: groupForType(rawType),
+        status,
+        statusLabel,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at,
+        fileInfo: fileData?.name ? { name: fileData.name, size: fileData.size } : undefined,
+        reviewNote: typeof subMeta.review_note === "string" ? subMeta.review_note : undefined,
+      });
+      seenTitles.add(d.title.trim().toLowerCase());
+    }
+
+    for (const kr of publishedKrs ?? []) {
+      if (seenTitles.has(kr.title.trim().toLowerCase())) continue;
+      const rawType = String(kr.resource_type ?? "Journal Article");
+      results.push({
+        id: kr.id,
+        resourceId: kr.id,
+        title: kr.title,
+        type: rawType,
+        typeGroup: groupForType(rawType),
+        status: kr.current_status === "published" ? "published" : "approved",
+        statusLabel: kr.current_status === "published" ? "Tayang di Katalog" : "Disetujui",
+        createdAt: kr.created_at,
+        updatedAt: kr.updated_at,
+      });
+    }
+
+    return results;
   });

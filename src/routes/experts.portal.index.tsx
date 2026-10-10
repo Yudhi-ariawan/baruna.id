@@ -26,6 +26,7 @@ import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import { LEVEL_LABEL, formatUsp } from "@/lib/trainerModules";
 import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
 import { Badge } from "@/components/ui/badge";
+import { TrainerKnowledgePublicationsCard } from "@/components/baruna/experts/TrainerKnowledgePublicationsCard";
 
 export const Route = createFileRoute("/experts/portal/")({
   head: () => ({
@@ -252,6 +253,12 @@ function PortalDashboard() {
                 <FileEdit className="h-4 w-4 text-marine" /> Submit Modul Baru
               </Link>
               <Link
+                to="/knowledge-hub/submit-resource"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 border border-white/25 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-white/25 transition"
+              >
+                <FileText className="h-4 w-4 text-sky-200" /> Submit Publikasi
+              </Link>
+              <Link
                 to="/experts/portal/review-status"
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 border border-white/20 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition"
               >
@@ -452,6 +459,9 @@ function PortalDashboard() {
                 </div>
               )}
             </section>
+
+            {/* Section: Publikasi & Dokumen Pengetahuan Saya (Knowledge Hub) */}
+            <TrainerKnowledgePublicationsCard />
 
             {/* Section: Katalog Kursus Aktif di Academy */}
             <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft">

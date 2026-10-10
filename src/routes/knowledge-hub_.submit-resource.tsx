@@ -52,8 +52,9 @@ export const Route = createFileRoute("/knowledge-hub_/submit-resource")({
     ],
     links: [{ rel: "canonical", href: "/knowledge-hub/submit-resource" }],
   }),
-  validateSearch: (s: Record<string, unknown>): { edit?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { edit?: string; type?: string } => ({
     edit: typeof s.edit === "string" ? s.edit : undefined,
+    type: typeof s.type === "string" ? s.type : undefined,
   }),
   component: SubmitResourcePage,
 });
@@ -73,7 +74,7 @@ function SubmitResourcePage() {
   const { authState, viewer } = useHomeExperience();
   const bootstrapFn = useServerFn(getKnowledgeContributorBootstrap);
   const saveFn = useServerFn(saveKnowledgeResourceDraft);
-  const { edit } = useSearch({ from: Route.id });
+  const { edit, type: initialType } = useSearch({ from: Route.id });
   const existing = useMemo(() => (edit ? getResource(edit) : undefined), [edit]);
 
   const [step, setStep] = useState(1);
@@ -119,12 +120,13 @@ function SubmitResourcePage() {
     if (!bootstrap.data || existing) return;
     setForm((current) => ({
       ...current,
+      ...(initialType && !current.type ? { type: initialType, typeGroup: groupForType(initialType) } : {}),
       author: bootstrap.data.author,
       institution: bootstrap.data.institution,
       country: bootstrap.data.country,
       keywords: current.keywords || bootstrap.data.expertiseAreas.join(", "),
     }));
-  }, [bootstrap.data, existing]);
+  }, [bootstrap.data, existing, initialType]);
 
   const set = <K extends keyof ResourceDraft>(key: K, value: ResourceDraft[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -180,7 +182,32 @@ function SubmitResourcePage() {
     return <div className="min-h-screen bg-background"><Navbar /><main className="mx-auto max-w-2xl px-4 py-20 text-center text-sm text-muted-foreground">Checking contributor access…</main></div>;
   }
   if (bootstrap.isError) {
-    return <div className="min-h-screen bg-background"><Navbar /><main className="mx-auto max-w-2xl px-4 py-20 text-center"><h1 className="font-display text-2xl font-bold text-navy">Verified expert access required</h1><p className="mt-3 text-sm text-muted-foreground">{bootstrap.error instanceof Error ? bootstrap.error.message : "This workspace is reserved for verified BARUNA experts."}</p></main></div>;
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <h1 className="font-display text-2xl font-bold text-navy">Kendala Memuat Akses Kontributor</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {bootstrap.error instanceof Error ? bootstrap.error.message : "Terjadi kesalahan saat memeriksa akun kontributor Anda."}
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link
+              to="/auth"
+              search={{ mode: "signin", redirect: "/knowledge-hub/submit-resource" }}
+              className="inline-flex rounded-xl bg-marine px-5 py-2.5 text-xs font-bold text-white hover:bg-navy"
+            >
+              Masuk Kembali
+            </Link>
+            <Link
+              to="/knowledge-hub"
+              className="inline-flex rounded-xl border border-border px-5 py-2.5 text-xs font-bold text-navy hover:bg-muted"
+            >
+              Ke Knowledge Hub
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   if (submitted) {
@@ -279,7 +306,7 @@ function SubmitResourcePage() {
         </div>
 
         <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
-          {step === 1 && <StepType form={form} set={set} />}
+          {step === 1 && <StepType form={form} set={set} isTrainer={bootstrap.data?.isTrainer} />}
           {step === 2 && <StepInfo form={form} set={set} />}
           {step === 3 && <StepFile form={form} set={set} />}
           {step === 4 && <StepAccess form={form} set={set} />}
@@ -353,7 +380,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-marine focus:ring-1 focus:ring-marine";
 
-function StepType({ form, set }: { form: ResourceDraft; set: SetFn }) {
+function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; isTrainer?: boolean }) {
   return (
     <div>
       <h2 className="font-display text-lg font-bold text-navy">Step 1 — Resource Type</h2>
@@ -365,19 +392,38 @@ function StepType({ form, set }: { form: ResourceDraft; set: SetFn }) {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {group.types.map((t) => {
                 const active = form.type === t;
+                const isModule = t === "Training Module";
+                const disabled = isModule && !isTrainer;
                 return (
                   <button
                     key={t}
                     type="button"
-                    onClick={() => set("type", t)}
+                    disabled={disabled}
+                    onClick={() => !disabled && set("type", t)}
+                    title={disabled ? "Pengajuan Modul Pembelajaran membutuhkan kualifikasi Trainer/Pakar resmi" : undefined}
                     className={`rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all ${
-                      active
-                        ? "border-marine bg-marine/10 text-marine"
-                        : "border-border text-foreground/80 hover:border-marine/40 hover:bg-muted"
+                      disabled
+                        ? "opacity-60 bg-muted/50 border-dashed border-border cursor-not-allowed text-muted-foreground"
+                        : active
+                          ? "border-marine bg-marine/10 text-marine"
+                          : "border-border text-foreground/80 hover:border-marine/40 hover:bg-muted"
                     }`}
                   >
                     {active && <Check className="mb-1 h-4 w-4" />}
-                    {t}
+                    <div className="flex items-center justify-between gap-1">
+                      <span>{t}</span>
+                      {isModule && (
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            isTrainer
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {isTrainer ? "Trainer" : "Khusus Trainer"}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}
