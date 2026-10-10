@@ -208,6 +208,9 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
 
     const patch: Json = {
       ...form,
+      duration: typeof form.duration === "string" && form.duration.trim() ? form.duration.trim() : null,
+      speaker: typeof form.speaker === "string" && form.speaker.trim() ? form.speaker.trim() : authorName,
+      videoKind: typeof form.type === "string" ? form.type : null,
       coverFile: coverObj ?? null,
       coverFilePath: coverObj?.storagePath ?? null,
       file: fileObj ?? null,
@@ -328,6 +331,8 @@ export type SavedDraftDetail = {
   language: string;
   keywords: string;
   topicCategory: string;
+  duration?: string;
+  speaker?: string;
   externalUrl: string;
   accessLevel: AccessLevel;
   declaration: boolean;
@@ -400,6 +405,8 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
       language: String(p.language || "Indonesian"),
       keywords: Array.isArray(p.keywords) ? (p.keywords as string[]).join(", ") : String(p.keywords || ""),
       topicCategory: String(p.topicCategory || p.topic || "General"),
+      duration: typeof p.duration === "string" ? p.duration : "",
+      speaker: typeof p.speaker === "string" ? p.speaker : "",
       externalUrl: String(p.externalUrl || ""),
       accessLevel: (p.accessLevel as AccessLevel) || "Open Access",
       declaration: Boolean(p.declaration),

@@ -67,7 +67,7 @@ export function ResourceCard({ r, index }: { r: KhResource; index: number; demo?
         </div>
         {isVideo && (
           <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-navy/85 px-1.5 py-0.5 text-[0.6rem] font-semibold text-navy-foreground">
-            <Play className="h-3 w-3" /> {r.duration}
+            <Play className="h-3 w-3 fill-current" /> {r.duration || r.videoKind || "Video"}
           </span>
         )}
       </Link>

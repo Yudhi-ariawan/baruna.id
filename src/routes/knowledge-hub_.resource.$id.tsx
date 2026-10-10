@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Bookmark, Share2, Download, Play, Users, GraduationCap, CalendarDays, MessagesSquare,
   Building2, FileText, ArrowRight, ArrowLeft, AlertCircle, Eye, Clock, Layers, Award,
-  BookOpen, ExternalLink, Loader2,
+  BookOpen, ExternalLink, Loader2, X, Volume2,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Panel } from "@/components/baruna/page/primitives";
@@ -28,6 +28,7 @@ import {
   getKnowledgeHubOverview,
   getKnowledgeResourceDownload,
 } from "@/lib/knowledge-hub/knowledge-hub.functions";
+import { getVideoEmbedUrl, isDirectMediaUrl } from "@/lib/knowledge-hub/video-utils";
 
 export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
   staleTime: 0,
@@ -182,6 +183,73 @@ function ResourceDetailPage() {
   const cover = r.coverImage || courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
   const downloadFn = useServerFn(getKnowledgeResourceDownload);
   const [downloading, setDownloading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [inlineMedia, setInlineMedia] = useState<{ url: string; kind: "embed" | "video" | "audio" } | null>(null);
+  const [loadingMedia, setLoadingMedia] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
+
+  useEffect(() => {
+    setIsPlaying(false);
+    setInlineMedia(null);
+    setShowTranscript(false);
+  }, [r.id]);
+
+  const handlePlayMedia = async () => {
+    const embedUrl = getVideoEmbedUrl(r.externalUrl, true);
+    if (embedUrl) {
+      setInlineMedia({ url: embedUrl, kind: "embed" });
+      setIsPlaying(true);
+      return;
+    }
+
+    const directKind = isDirectMediaUrl(r.externalUrl);
+    if (directKind && r.externalUrl) {
+      setInlineMedia({ url: r.externalUrl, kind: directKind });
+      setIsPlaying(true);
+      return;
+    }
+
+    if (!r.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id)) {
+      if (r.externalUrl) {
+        window.open(r.externalUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+      toast.info("Ini adalah video percontohan (demo). Untuk video asli yang diunggah atau ditautkan ke YouTube/Vimeo, pemutar video tampil langsung di halaman ini.");
+      return;
+    }
+
+    setLoadingMedia(true);
+    try {
+      const res = await downloadFn({ data: { resourceId: r.id, inline: true } });
+      if (res.downloadUrl) {
+        const isAudio =
+          res.mimeType?.startsWith("audio/") ||
+          isDirectMediaUrl(res.fileName) === "audio" ||
+          r.videoKind === "Podcast";
+        setInlineMedia({ url: res.downloadUrl, kind: isAudio ? "audio" : "video" });
+        setIsPlaying(true);
+      } else if (res.externalUrl) {
+        const extEmbed = getVideoEmbedUrl(res.externalUrl, true);
+        const extDirect = isDirectMediaUrl(res.externalUrl);
+        if (extEmbed) {
+          setInlineMedia({ url: extEmbed, kind: "embed" });
+          setIsPlaying(true);
+        } else if (extDirect) {
+          setInlineMedia({ url: res.externalUrl, kind: extDirect });
+          setIsPlaying(true);
+        } else {
+          window.open(res.externalUrl, "_blank", "noopener,noreferrer");
+          toast.info("Membuka tautan media eksternal...");
+        }
+      } else {
+        toast.error("Tidak ada berkas video/audio atau tautan streaming pada materi ini.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal memuat pemutar media.");
+    } finally {
+      setLoadingMedia(false);
+    }
+  };
 
   const handleDownload = async () => {
     if (!r.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id)) {
@@ -243,43 +311,98 @@ function ResourceDetailPage() {
         <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
           <div className="space-y-6">
             <Panel className="overflow-hidden p-0">
-              <div className="relative h-56 sm:h-72">
-                <img
-                  src={cover}
-                  alt={r.title}
-                  className="h-full w-full object-cover"
-                  width={1600}
-                  height={720}
-                  onError={(e) => {
-                    const fallback = courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
-                    if (e.currentTarget.src !== fallback) {
-                      e.currentTarget.src = fallback;
-                    }
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-navy/85 to-transparent" />
-                <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
-                  <span className="inline-flex rounded-md bg-navy px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-navy-foreground">{r.typeLabel}</span>
-                  {isDemo ? (
-                    <DemoDataBadge />
+              {isPlaying && inlineMedia && inlineMedia.kind !== "audio" ? (
+                <div className="relative aspect-video w-full bg-slate-950">
+                  {inlineMedia.kind === "embed" ? (
+                    <iframe
+                      src={inlineMedia.url}
+                      title={r.title}
+                      className="h-full w-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
                   ) : (
-                    <span className="inline-flex items-center rounded-md bg-green-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-700">
-                      {r.type === "learning-modules" ? "Verified Module" : "Verified Resource"}
-                    </span>
+                    <video
+                      src={inlineMedia.url}
+                      controls
+                      autoPlay
+                      className="h-full w-full object-contain bg-black"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsPlaying(false)}
+                    className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-navy/85 px-3 py-1.5 text-xs font-semibold text-white shadow-md hover:bg-navy transition"
+                  >
+                    <X className="h-3.5 w-3.5" /> Tutup Pemutar
+                  </button>
+                </div>
+              ) : (
+                <div className="relative h-56 sm:h-72">
+                  <img
+                    src={cover}
+                    alt={r.title}
+                    className="h-full w-full object-cover"
+                    width={1600}
+                    height={720}
+                    onError={(e) => {
+                      const fallback = courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
+                      if (e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy/85 to-transparent" />
+                  <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
+                    <span className="inline-flex rounded-md bg-navy px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-navy-foreground">{r.typeLabel}</span>
+                    {isDemo ? (
+                      <DemoDataBadge />
+                    ) : (
+                      <span className="inline-flex items-center rounded-md bg-green-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-700">
+                        {r.type === "learning-modules" ? "Verified Module" : "Verified Resource"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 text-navy-foreground">
+                    <h1 className="font-display text-2xl font-extrabold sm:text-3xl">{r.title}</h1>
+                    <p className="mt-1 text-xs text-navy-foreground/80">{r.author} · {r.organization} · {r.year} · {r.language}</p>
+                  </div>
+                  {r.type === "videos" && !isPlaying && (
+                    <button
+                      type="button"
+                      onClick={() => void handlePlayMedia()}
+                      disabled={loadingMedia}
+                      className="absolute inset-0 grid place-items-center group cursor-pointer"
+                      aria-label="Play video"
+                    >
+                      <span className="grid h-16 w-16 place-items-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform group-hover:scale-110">
+                        {loadingMedia ? (
+                          <Loader2 className="h-7 w-7 animate-spin" />
+                        ) : (
+                          <Play className="h-7 w-7 fill-current ml-0.5" />
+                        )}
+                      </span>
+                    </button>
                   )}
                 </div>
-                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 text-navy-foreground">
-                  <h1 className="font-display text-2xl font-extrabold sm:text-3xl">{r.title}</h1>
-                  <p className="mt-1 text-xs text-navy-foreground/80">{r.author} · {r.organization} · {r.year} · {r.language}</p>
-                </div>
-                {r.type === "videos" && (
-                  <button className="absolute inset-0 grid place-items-center" aria-label="Play video">
-                    <span className="grid h-16 w-16 place-items-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-110">
-                      <Play className="h-7 w-7" />
-                    </span>
+              )}
+
+              {isPlaying && inlineMedia?.kind === "audio" && (
+                <div className="flex flex-wrap items-center gap-3 bg-slate-900 px-5 py-3.5 text-white border-t border-slate-800">
+                  <Volume2 className="h-5 w-5 text-accent shrink-0" />
+                  <span className="text-xs font-semibold truncate max-w-xs">{r.title}</span>
+                  <audio src={inlineMedia.url} controls autoPlay className="h-9 flex-1 min-w-[220px]" />
+                  <button
+                    type="button"
+                    onClick={() => setIsPlaying(false)}
+                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                    title="Tutup Pemutar Audio"
+                  >
+                    <X className="h-4 w-4" />
                   </button>
-                )}
-              </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center gap-2 border-t border-border p-4">
                 <AccessBadge level={r.access} />
                 {category && (
@@ -311,6 +434,21 @@ function ResourceDetailPage() {
                     </Link>
                   ) : (
                     <div className="flex flex-wrap items-center gap-2">
+                      {r.type === "videos" && (
+                        <button
+                          type="button"
+                          onClick={() => void handlePlayMedia()}
+                          disabled={loadingMedia}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-xs font-bold text-accent-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+                        >
+                          {loadingMedia ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Play className="h-3.5 w-3.5 fill-current" />
+                          )}
+                          {isPlaying ? "Putar Ulang" : r.videoKind === "Podcast" ? "Dengarkan Podcast" : "Tonton Video"}
+                        </button>
+                      )}
                       {r.externalUrl && (
                         <a
                           href={r.externalUrl}
@@ -497,14 +635,29 @@ function ResourceDetailPage() {
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Video Details</h2>
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <Stat label="Duration" value={r.duration ?? "—"} />
-                  <Stat label="Type" value={r.videoKind ?? "Video"} />
-                  <Stat label="Speaker" value={r.speaker ?? "—"} />
+                  <Stat label="Duration" value={r.duration || "—"} />
+                  <Stat label="Type" value={r.videoKind || "Video"} />
+                  <Stat label="Speaker" value={r.speaker || r.author || "—"} />
                   <Stat label="Language" value={r.language} />
                 </div>
-                <button className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-marine hover:border-marine">
-                  <FileText className="h-3.5 w-3.5" /> View Transcript
-                </button>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTranscript((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-marine hover:border-marine transition-colors"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    {showTranscript ? "Hide Transcript / Notes" : "View Transcript / Notes"}
+                  </button>
+                </div>
+                {showTranscript && (
+                  <div className="mt-3 rounded-xl border border-border bg-muted/40 p-4 text-xs leading-relaxed text-foreground/85 whitespace-pre-line">
+                    <p className="font-bold text-navy mb-1.5">
+                      Ringkasan & Catatan Materi ({r.videoKind || "Video"} — {r.speaker || r.author})
+                    </p>
+                    {r.abstract || r.summary || "Tidak ada catatan transkrip tambahan untuk materi video ini."}
+                  </div>
+                )}
               </Panel>
             )}
 

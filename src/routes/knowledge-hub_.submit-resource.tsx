@@ -40,6 +40,11 @@ import {
   BestPracticeStructureForm,
   BestPracticeStructurePreview,
 } from "@/components/baruna/knowledge/BestPracticeStructureFields";
+import {
+  formatMediaDuration,
+  getVideoEmbedUrl,
+  isVideoResourceType,
+} from "@/lib/knowledge-hub/video-utils";
 
 export const Route = createFileRoute("/knowledge-hub_/submit-resource")({
   head: () => ({
@@ -107,6 +112,8 @@ function SubmitResourcePage() {
           language: existing.language,
           keywords: existing.keywords,
           topicCategory: existing.topicCategory,
+          duration: existing.duration ?? "",
+          speaker: existing.speaker ?? "",
           file: existing.file,
           coverFile: existing.coverFile ?? null,
           externalUrl: existing.externalUrl,
@@ -158,6 +165,8 @@ function SubmitResourcePage() {
         language: d.language || curr.language,
         keywords: d.keywords || curr.keywords,
         topicCategory: d.topicCategory || curr.topicCategory,
+        duration: d.duration ?? curr.duration,
+        speaker: d.speaker ?? curr.speaker,
         externalUrl: d.externalUrl || curr.externalUrl,
         accessLevel: d.accessLevel || curr.accessLevel,
         declaration: d.declaration || curr.declaration,
@@ -598,6 +607,30 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
           <FieldLabel required>Resource Category</FieldLabel>
           <input className={`${inputClass} bg-muted/50`} value={form.type ? `${form.type} · ${groupForType(form.type)}` : ""} readOnly placeholder="Selected in Step 1" />
         </div>
+        {isVideoResourceType(form.type) && (
+          <>
+            <div>
+              <FieldLabel>Durasi Video / Audio (Duration)</FieldLabel>
+              <input
+                className={inputClass}
+                value={form.duration ?? ""}
+                maxLength={40}
+                onChange={(e) => set("duration", e.target.value)}
+                placeholder="Contoh: 18:45 atau 45 min (terisi otomatis jika unggah file MP4)"
+              />
+            </div>
+            <div>
+              <FieldLabel>Pembicara / Narasumber (Speaker)</FieldLabel>
+              <input
+                className={inputClass}
+                value={form.speaker ?? ""}
+                maxLength={120}
+                onChange={(e) => set("speaker", e.target.value)}
+                placeholder={form.author ? `Default: ${form.author}` : "Nama pembicara / narasumber utama"}
+              />
+            </div>
+          </>
+        )}
         <div className="sm:col-span-2">
           <FieldLabel required>Keywords</FieldLabel>
           <input className={inputClass} value={form.keywords} maxLength={200} onChange={(e) => set("keywords", e.target.value)} placeholder="Comma-separated, e.g. tilapia, hatchery, biofloc" />
@@ -775,12 +808,40 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
         uploadedAt: new Date().toISOString(),
         storagePath,
       });
+
+      // Auto-detect media duration for uploaded video/audio files when duration is not yet filled
+      if (
+        !form.duration &&
+        (file.type.startsWith("video/") ||
+          file.type.startsWith("audio/") ||
+          /\.(mp4|webm|mp3|wav|m4a)$/i.test(file.name))
+      ) {
+        try {
+          const tempUrl = URL.createObjectURL(file);
+          const mediaEl = document.createElement(file.type.startsWith("audio/") ? "audio" : "video");
+          mediaEl.preload = "metadata";
+          mediaEl.onloadedmetadata = () => {
+            URL.revokeObjectURL(tempUrl);
+            const formatted = formatMediaDuration(mediaEl.duration);
+            if (formatted) {
+              set("duration", formatted);
+            }
+          };
+          mediaEl.onerror = () => URL.revokeObjectURL(tempUrl);
+          mediaEl.src = tempUrl;
+        } catch {
+          // Ignore metadata probing errors
+        }
+      }
+
       setTimeout(() => setProgress(null), 250);
     } catch (cause) {
       setErr(cause instanceof Error ? cause.message : "Terjadi kendala saat mengunggah dokumen.");
       setProgress(null);
     }
   };
+
+  const videoEmbedPreviewUrl = getVideoEmbedUrl(form.externalUrl, false);
 
   return (
     <div className="space-y-6">
@@ -877,9 +938,13 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
 
       {/* ── Section B: Dokumen Materi Utama (File Upload) ── */}
       <div className="space-y-2">
-        <FieldLabel>Dokumen Materi Publikasi</FieldLabel>
+        <FieldLabel>
+          {isVideoResourceType(form.type) ? "Berkas Video / Audio (MP4, WEBM, MP3)" : "Dokumen Materi Publikasi"}
+        </FieldLabel>
         <p className="text-xs text-muted-foreground">
-          Unggah naskah lengkap (PDF maks 10MB, PPT/PPTX maks 25MB, DOC, XLS, MP4).
+          {isVideoResourceType(form.type)
+            ? "Unggah berkas video/audio langsung (MP4, WEBM, MP3 maks 50MB) atau cantumkan tautan YouTube / Vimeo di bawah."
+            : "Unggah naskah lengkap (PDF maks 10MB, PPT/PPTX maks 25MB, DOC, XLS, MP4)."}
         </p>
 
         {form.file ? (
@@ -928,7 +993,7 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
                 >
                   Pilih Dokumen
                 </button>
-                <p className="mt-3 text-xs text-muted-foreground">PDF (≤10MB), PPT/PPTX (≤25MB), DOC, XLS, MP4</p>
+                <p className="mt-3 text-xs text-muted-foreground">PDF (≤10MB), PPT/PPTX (≤25MB), DOC, XLS, MP4, MP3 (≤50MB)</p>
               </>
             )}
             <input
@@ -944,17 +1009,47 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
       </div>
 
       {/* ── Section C: Tautan Eksternal (Opsional) ── */}
-      <div>
-        <FieldLabel>Tautan Eksternal / Repositori Online (Opsional)</FieldLabel>
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3">
-          <Link2 className="h-4 w-4 text-muted-foreground" />
-          <input
-            className="w-full bg-transparent py-2.5 text-sm outline-none"
-            value={form.externalUrl}
-            onChange={(e) => set("externalUrl", e.target.value)}
-            placeholder="https://doi.org/… atau https://…"
-          />
+      <div className="space-y-3">
+        <div>
+          <FieldLabel>
+            {isVideoResourceType(form.type)
+              ? "Tautan Video / Podcast Eksternal (YouTube, Vimeo, atau URL Streaming)"
+              : "Tautan Eksternal / Repositori Online (Opsional)"}
+          </FieldLabel>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3">
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+            <input
+              className="w-full bg-transparent py-2.5 text-sm outline-none"
+              value={form.externalUrl}
+              onChange={(e) => set("externalUrl", e.target.value)}
+              placeholder={
+                isVideoResourceType(form.type)
+                  ? "https://www.youtube.com/watch?v=… atau https://vimeo.com/…"
+                  : "https://doi.org/… atau https://…"
+              }
+            />
+          </div>
         </div>
+
+        {videoEmbedPreviewUrl && (
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-sm">
+            <div className="aspect-video w-full">
+              <iframe
+                src={videoEmbedPreviewUrl}
+                title="Pratinjau Video"
+                className="h-full w-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="bg-slate-900 px-3 py-2 text-[11px] text-slate-300 flex items-center justify-between">
+              <span>Pratinjau Pemutar Video Tersemat (YouTube / Vimeo)</span>
+              {!form.coverFile && (
+                <span className="text-emerald-400 font-semibold">Thumbnail otomatis aktif</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1019,6 +1114,12 @@ function StepReview({ form }: { form: ResourceDraft }) {
         <Row label="Country" value={form.country} />
         <Row label="Year" value={form.year} />
         <Row label="Language" value={form.language} />
+        {isVideoResourceType(form.type) && (
+          <>
+            <Row label="Duration" value={form.duration} />
+            <Row label="Speaker / Host" value={form.speaker} />
+          </>
+        )}
         <Row label="Keywords" value={form.keywords} />
         <Row label="Topic Category" value={form.topicCategory} />
         <Row

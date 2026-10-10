@@ -38,6 +38,7 @@ const MIME_MAP: Record<string, string> = {
   mp3: "audio/mpeg",
   wav: "audio/wav",
   ogg: "audio/ogg",
+  m4a: "audio/mp4",
   zip: "application/zip",
   rar: "application/vnd.rar",
   "7z": "application/x-7z-compressed",
@@ -99,7 +100,7 @@ export function getDocumentPreviewKind(fileName?: string | null, mimeType?: stri
     return "video";
   }
 
-  if (mime.startsWith("audio/") || ["mp3", "wav", "ogg"].includes(ext)) {
+  if (mime.startsWith("audio/") || ["mp3", "wav", "ogg", "m4a"].includes(ext)) {
     return "audio";
   }
 

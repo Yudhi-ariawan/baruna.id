@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { KhResource, KhResourceType } from "@/data/demo/knowledgeHub";
 import { primaryModuleCategory } from "@/lib/academy/module-categories";
+import { getYouTubeThumbnailUrl } from "@/lib/knowledge-hub/video-utils";
 
 export type KnowledgeHubStats = {
   totalPublished: number;
@@ -90,17 +91,28 @@ function metadataRecord(metadata: unknown): Record<string, unknown> {
     : {};
 }
 
-function attachmentMetadata(metadata: Record<string, unknown>) {
+function attachmentMetadata(metadata: Record<string, unknown>, resourceType?: string) {
   const attachments = Array.isArray(metadata.attached_resources)
     ? metadata.attached_resources as Array<Record<string, unknown>>
     : [];
   const item = attachments[0];
   const bytes = Number(item?.fileSize ?? item?.size ?? metadata.file_size ?? 0);
   const fileName = String(item?.fileName ?? item?.name ?? "");
-  const mime = String(item?.fileType ?? metadata.file_type ?? "");
-  const fileType = mime.includes("pdf") || fileName.toLowerCase().endsWith(".pdf")
+  const lowerName = fileName.toLowerCase();
+  const mime = String(item?.fileType ?? metadata.file_type ?? "").toLowerCase();
+  const fileType = mime.includes("pdf") || lowerName.endsWith(".pdf")
     ? "PDF"
-    : mime.includes("video") ? "Video" : fileName.split(".").pop()?.toUpperCase() || "Digital Resource";
+    : mime.includes("video") || lowerName.endsWith(".mp4") || lowerName.endsWith(".webm")
+      ? "MP4 Video"
+      : mime.includes("audio") || lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") || lowerName.endsWith(".m4a")
+        ? "Audio"
+        : fileName
+          ? fileName.split(".").pop()?.toUpperCase() || "Digital Resource"
+          : ["video", "webinar_recording"].includes(resourceType ?? "")
+            ? "Video Stream"
+            : resourceType === "podcast"
+              ? "Audio Stream"
+              : "Digital Resource";
   const fileSize = Number.isFinite(bytes) && bytes > 0
     ? bytes >= 1024 * 1024
       ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -217,7 +229,7 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
             metadata,
           })
         : item.topics?.[0] || "Marine & Fisheries";
-      const files = attachmentMetadata(metadata);
+      const files = attachmentMetadata(metadata, item.resource_type);
       const year = item.publication_year ?? new Date(item.created_at).getFullYear();
       const learningHours = Number(metadata.estimated_learning_hours ?? 0) || undefined;
 
@@ -246,6 +258,15 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
         null;
 
       const resolvedAuthor = explicitAuthor ?? expert?.display_name ?? "BARUNA Network";
+      const resolvedExternalUrl =
+        item.external_url ?? (typeof metadata.externalUrl === "string" ? metadata.externalUrl : undefined);
+      const resolvedCoverImage =
+        item.thumbnail_url ?? getYouTubeThumbnailUrl(resolvedExternalUrl) ?? undefined;
+      const resolvedSpeaker =
+        (typeof metadata.speaker === "string" && metadata.speaker.trim()) || resolvedAuthor;
+      const resolvedVideoKind =
+        (typeof metadata.videoKind === "string" && metadata.videoKind.trim()) ||
+        catalogueTypeLabel(item.resource_type);
 
       return {
         id: item.id,
@@ -264,12 +285,14 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
         keywords: [...(item.keywords ?? []), ...(item.topics ?? [])],
         access,
         status: "Published",
-        coverImage: item.thumbnail_url ?? undefined,
-        externalUrl: item.external_url ?? (typeof metadata.externalUrl === "string" ? metadata.externalUrl : undefined),
+        coverImage: resolvedCoverImage,
+        externalUrl: resolvedExternalUrl,
         fileType: files.fileType,
         fileSize: files.fileSize,
         learningHours,
-        duration: typeof metadata.duration === "string" ? metadata.duration : undefined,
+        duration: typeof metadata.duration === "string" && metadata.duration.trim() ? metadata.duration.trim() : undefined,
+        speaker: resolvedSpeaker,
+        videoKind: resolvedVideoKind,
         version: String(metadata.version ?? "1.0"),
         moduleCode: typeof metadata.module_code === "string" ? metadata.module_code : undefined,
         expertId: expert?.id ?? "",
@@ -496,12 +519,15 @@ export type KnowledgeResourceDownloadResult = {
   resourceId: string;
   downloadUrl: string | null;
   fileName: string;
+  mimeType: string | null;
   externalUrl: string | null;
 };
 
 export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ resourceId: z.string().uuid() }).parse(input))
-  .handler(async ({ data: { resourceId } }): Promise<KnowledgeResourceDownloadResult> => {
+  .inputValidator((input) =>
+    z.object({ resourceId: z.string().uuid(), inline: z.boolean().optional() }).parse(input),
+  )
+  .handler(async ({ data: { resourceId, inline } }): Promise<KnowledgeResourceDownloadResult> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: resource, error } = await supabaseAdmin
       .from("knowledge_resources")
@@ -521,31 +547,47 @@ export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
       : [];
 
     const file = attachments[0];
+    const fileObj =
+      metadata.file && typeof metadata.file === "object" && !Array.isArray(metadata.file)
+        ? (metadata.file as Record<string, unknown>)
+        : undefined;
     const filePath =
       typeof file?.filePath === "string"
         ? file.filePath
         : typeof file?.path === "string"
           ? file.path
-          : typeof metadata.filePath === "string"
-            ? metadata.filePath
-            : typeof metadata.uploadedFilePath === "string"
-              ? metadata.uploadedFilePath
-              : undefined;
+          : typeof fileObj?.storagePath === "string"
+            ? fileObj.storagePath
+            : typeof metadata.filePath === "string"
+              ? metadata.filePath
+              : typeof metadata.uploadedFilePath === "string"
+                ? metadata.uploadedFilePath
+                : undefined;
 
     const fileName = String(
-      file?.fileName ?? file?.name ?? metadata.fileName ?? "dokumen-publikasi-baruna.pdf"
+      file?.fileName ?? file?.name ?? fileObj?.name ?? metadata.fileName ?? "dokumen-publikasi-baruna.pdf",
     );
+    const mimeType =
+      typeof file?.fileType === "string"
+        ? file.fileType
+        : typeof fileObj?.type === "string"
+          ? fileObj.type
+          : null;
 
     let downloadUrl: string | null = null;
     if (filePath) {
       const explicitBucket = typeof file?.bucket === "string" ? file.bucket : null;
       const buckets = Array.from(
-        new Set([explicitBucket, "knowledge-resource-submissions", "expert-applications", "module-attachments"].filter(Boolean) as string[]),
+        new Set(
+          [explicitBucket, "knowledge-resource-submissions", "expert-applications", "module-attachments"].filter(
+            Boolean,
+          ) as string[],
+        ),
       );
       for (const bucketName of buckets) {
         const { data: signed, error: signError } = await supabaseAdmin.storage
           .from(bucketName)
-          .createSignedUrl(filePath, 3600, { download: fileName });
+          .createSignedUrl(filePath, 3600, inline ? undefined : { download: fileName });
         if (!signError && signed?.signedUrl) {
           downloadUrl = signed.signedUrl;
           break;
@@ -557,6 +599,7 @@ export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
       resourceId,
       downloadUrl,
       fileName,
+      mimeType,
       externalUrl: resource.external_url ?? (typeof metadata.externalUrl === "string" ? metadata.externalUrl : null),
     };
   });

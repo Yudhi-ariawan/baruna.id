@@ -38,6 +38,7 @@ import {
   recordAdminPublicationDecision,
   type AdminPublicationItem,
 } from "@/lib/admin/publications.functions";
+import { getVideoEmbedUrl, isDirectMediaUrl } from "@/lib/knowledge-hub/video-utils";
 
 interface Props {
   item: AdminPublicationItem | null;
@@ -264,6 +265,18 @@ export function AdminPublicationDetailModal({
                         {item.year || "—"} · {item.language || "Indonesian"}
                       </span>
                     </div>
+                    {(item.duration || item.speaker) && (
+                      <>
+                        <div>
+                          <span className="text-muted-foreground block">Durasi Video / Audio:</span>
+                          <span className="font-semibold text-navy">{item.duration || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Narasumber / Pembicara:</span>
+                          <span className="font-semibold text-navy">{item.speaker || "—"}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -326,12 +339,12 @@ export function AdminPublicationDetailModal({
                 )}
 
                 {/* Attached File / Document */}
-                <div className="border-t border-border pt-4">
-                  <h4 className="text-xs font-bold text-navy uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <FileText className="h-4 w-4 text-marine" /> Dokumen Terlampir
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h4 className="text-xs font-bold text-navy uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="h-4 w-4 text-marine" /> Dokumen & Media Terlampir
                   </h4>
 
-                  {item.fileInfo ? (
+                  {item.fileInfo && (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-marine/10 text-marine">
@@ -355,7 +368,7 @@ export function AdminPublicationDetailModal({
                               className="text-xs gap-1.5 font-semibold text-navy hover:bg-slate-100"
                             >
                               <Eye className="h-3.5 w-3.5 text-marine" />
-                              Preview Dokumen
+                              Preview Berkas
                             </Button>
                             <a
                               href={item.fileInfo.downloadUrl}
@@ -372,19 +385,49 @@ export function AdminPublicationDetailModal({
                         )}
                       </div>
                     </div>
-                  ) : item.externalUrl ? (
-                    <div className="rounded-xl border border-border p-3 text-xs flex items-center justify-between">
-                      <span className="text-muted-foreground truncate">Tautan Eksternal: {item.externalUrl}</span>
-                      <a
-                        href={item.externalUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-marine hover:underline inline-flex items-center gap-1 font-semibold shrink-0"
-                      >
-                        Buka Tautan <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
+                  )}
+
+                  {item.externalUrl && (
+                    <div className="space-y-2.5">
+                      <div className="rounded-xl border border-border bg-white p-3 text-xs flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground truncate">
+                          Tautan Eksternal: <strong className="text-navy">{item.externalUrl}</strong>
+                        </span>
+                        <a
+                          href={item.externalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-marine hover:underline inline-flex items-center gap-1 font-semibold shrink-0"
+                        >
+                          Buka Tautan <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      </div>
+
+                      {getVideoEmbedUrl(item.externalUrl, false) ? (
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-sm">
+                          <div className="aspect-video w-full">
+                            <iframe
+                              src={getVideoEmbedUrl(item.externalUrl, false)!}
+                              title={item.title}
+                              className="h-full w-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        </div>
+                      ) : isDirectMediaUrl(item.externalUrl) === "video" ? (
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 p-2">
+                          <video src={item.externalUrl} controls className="w-full max-h-80 rounded-lg" />
+                        </div>
+                      ) : isDirectMediaUrl(item.externalUrl) === "audio" ? (
+                        <div className="rounded-xl border border-slate-200 bg-slate-900 p-4">
+                          <audio src={item.externalUrl} controls className="w-full" />
+                        </div>
+                      ) : null}
                     </div>
-                  ) : (
+                  )}
+
+                  {!item.fileInfo && !item.externalUrl && (
                     <p className="text-xs text-muted-foreground italic">Tidak ada berkas yang diunggah.</p>
                   )}
                 </div>

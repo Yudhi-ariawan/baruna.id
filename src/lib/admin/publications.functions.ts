@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { groupForType } from "@/lib/resources";
+import { getYouTubeThumbnailUrl } from "@/lib/knowledge-hub/video-utils";
 
 type ResourceType = Database["public"]["Enums"]["resource_type_v1"];
 const typeMap: Record<string, ResourceType> = {
@@ -108,6 +109,8 @@ export type AdminPublicationItem = {
   license: string | null;
   accessType: string | null;
   keywords: string[];
+  duration?: string | null;
+  speaker?: string | null;
   externalUrl: string | null;
   fileInfo?: {
     name: string;
@@ -352,6 +355,8 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
         license: typeof payload.license === "string" ? payload.license : "CC BY-NC 4.0",
         accessType: typeof payload.accessType === "string" ? payload.accessType : "open",
         keywords: keywordsList,
+        duration: typeof payload.duration === "string" && payload.duration.trim() ? payload.duration.trim() : null,
+        speaker: typeof payload.speaker === "string" && payload.speaker.trim() ? payload.speaker.trim() : null,
         externalUrl: typeof payload.externalUrl === "string" && payload.externalUrl.trim() ? payload.externalUrl.trim() : null,
         fileInfo: filePayload?.name || payload.fileName
           ? {
@@ -612,8 +617,24 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
         );
       }
       if (!resolvedThumbnailUrl) {
-        resolvedThumbnailUrl = validThumbnailUrl;
+        resolvedThumbnailUrl = validThumbnailUrl || getYouTubeThumbnailUrl(validExternalUrl);
       }
+
+      const attachedFileName = String(fileData?.name || payload.fileName || "document.pdf");
+      const attachedLower = attachedFileName.toLowerCase();
+      const resolvedFileType = attachedLower.endsWith(".pdf")
+        ? "application/pdf"
+        : attachedLower.endsWith(".mp4")
+          ? "video/mp4"
+          : attachedLower.endsWith(".webm")
+            ? "video/webm"
+            : attachedLower.endsWith(".mp3")
+              ? "audio/mpeg"
+              : attachedLower.endsWith(".wav")
+                ? "audio/wav"
+                : attachedLower.endsWith(".m4a")
+                  ? "audio/mp4"
+                  : fileData?.type || "application/octet-stream";
 
       const resourceMetadata: Record<string, unknown> = {
         ...payload,
@@ -625,15 +646,19 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
         contributor_name: payload.author,
         institution: payload.institution,
         country: payload.country,
+        duration: typeof payload.duration === "string" && payload.duration.trim() ? payload.duration.trim() : undefined,
+        speaker:
+          (typeof payload.speaker === "string" && payload.speaker.trim()) ||
+          (typeof payload.author === "string" && payload.author.trim()) ||
+          undefined,
+        videoKind: rawType,
         attached_resources: filePath
           ? [
               {
-                fileName: fileData?.name || payload.fileName || "document.pdf",
+                fileName: attachedFileName,
                 fileSize: fileData?.size || Number(payload.fileSize) || 0,
                 filePath,
-                fileType: (fileData?.name || String(payload.fileName || "")).toLowerCase().endsWith(".pdf")
-                  ? "application/pdf"
-                  : "application/octet-stream",
+                fileType: resolvedFileType,
               },
             ]
           : [],

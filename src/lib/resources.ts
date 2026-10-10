@@ -86,7 +86,7 @@ export const ACCESS_LEVELS = ["Open Access", "BARUNA Members Only", "Restricted 
 export type AccessLevel = (typeof ACCESS_LEVELS)[number];
 
 export const ACCEPTED_FILE_TYPES =
-  ".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.jpg,.jpeg,.png,.webp";
+  ".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.webm,.mp3,.wav,.m4a,.jpg,.jpeg,.png,.webp";
 
 // ── Status pipeline ─────────────────────────────────────────────────────────
 export const RESOURCE_STATUSES = [
@@ -138,6 +138,8 @@ export type Resource = {
   language: string;
   keywords: string;
   topicCategory: string;
+  duration?: string;
+  speaker?: string;
   file: ResourceFileMeta | null;
   coverFile?: ResourceFileMeta | null;
   externalUrl: string;
@@ -164,6 +166,8 @@ export const emptyResourceDraft: ResourceDraft = {
   language: "English",
   keywords: "",
   topicCategory: "",
+  duration: "",
+  speaker: "",
   file: null,
   coverFile: null,
   externalUrl: "",
