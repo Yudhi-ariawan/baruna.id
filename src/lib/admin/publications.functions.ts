@@ -1,0 +1,539 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database, Json } from "@/integrations/supabase/types";
+import { groupForType } from "@/lib/resources";
+
+type ResourceType = Database["public"]["Enums"]["resource_type_v1"];
+const typeMap: Record<string, ResourceType> = {
+  "Training Module": "module",
+  "Presentation Slides": "training_material",
+  "Technical Guideline": "guideline",
+  "SOP / Manual": "guideline",
+  Handbook: "book",
+  "E-Book": "book",
+  "Research Report": "technical_report",
+  "Journal Article": "journal_article",
+  "Policy Brief": "policy_brief",
+  "Case Study": "case_study",
+  "Best Practice": "best_practice",
+  "Webinar Recording": "webinar_recording",
+  Video: "video",
+  Podcast: "podcast",
+  Infographic: "infographic",
+  "Photo Documentation": "poster",
+  "Monitoring Template": "tool",
+  "Assessment Tool": "tool",
+  "Data Collection Form": "tool",
+  Checklist: "tool",
+  "Spreadsheet Tool": "tool",
+};
+
+export type AdminPublicationItem = {
+  subjectId: string;
+  draftId: string | null;
+  submitterId: string | null;
+  title: string;
+  type: string;
+  typeGroup: string;
+  topic: string | null;
+  authorName: string;
+  authorEmail: string | null;
+  authorInstitution: string | null;
+  authorCountry: string | null;
+  status: "pending" | "under_review" | "approved" | "rejected" | "revision_requested";
+  statusLabel: string;
+  abstract: string | null;
+  coverage: string | null;
+  year: number | null;
+  language: string | null;
+  license: string | null;
+  accessType: string | null;
+  keywords: string[];
+  externalUrl: string | null;
+  fileInfo?: {
+    name: string;
+    size?: number;
+    path?: string;
+    downloadUrl?: string | null;
+  };
+  lastRevisionRationale?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isPublished?: boolean;
+  publishedResourceId?: string | null;
+  decisionsHistory?: Array<{
+    id: string;
+    decision: string;
+    rationale: string | null;
+    decidedBy: string | null;
+    createdAt: string;
+  }>;
+};
+
+export type AdminPublicationStats = {
+  total: number;
+  pending: number;
+  revision: number;
+  approved: number;
+  rejected: number;
+};
+
+async function assertAdminOrReviewer(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: { supabase: any; userId: string },
+) {
+  const allowed = ["super_admin", "admin", "management", "qa_reviewer", "verifier", "approver"];
+  const now = new Date().toISOString();
+  const { data: assignments } = await context.supabase
+    .from("rbac_user_roles")
+    .select("rbac_roles!inner(code)")
+    .eq("user_id", context.userId)
+    .eq("status", "active")
+    .lte("valid_from", now)
+    .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .in("rbac_roles.code", allowed)
+    .limit(1);
+
+  if (assignments && assignments.length > 0) return true;
+
+  for (const role of allowed.slice(0, 2)) {
+    const { data } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: role,
+    });
+    if (data) return true;
+  }
+  return false;
+}
+
+export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ items: AdminPublicationItem[]; stats: AdminPublicationStats }> => {
+    if (!(await assertAdminOrReviewer(context))) {
+      throw new Error("Akses ditolak: Hanya administrator atau kurator yang dapat mengakses data ini.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Fetch review_subjects where kind = 'knowledge_resource'
+    const { data: subjects, error: subjError } = await supabaseAdmin
+      .from("review_subjects")
+      .select("id, kind, title, description, external_ref, submitted_by, current_status, metadata, created_at, updated_at")
+      .eq("kind", "knowledge_resource")
+      .order("updated_at", { ascending: false });
+
+    if (subjError) {
+      console.error("[listAdminPublicationSubmissions] subjects query error:", subjError);
+    }
+
+    // 2. Fetch linked review_drafts
+    const { data: drafts } = await supabaseAdmin
+      .from("review_drafts")
+      .select("id, title, payload, status, linked_subject_id, submitter_id, created_at, updated_at")
+      .eq("subject_kind", "knowledge_resource");
+
+    const draftBySubjectId = new Map(
+      (drafts ?? []).filter((d) => d.linked_subject_id).map((d) => [d.linked_subject_id as string, d]),
+    );
+
+    // 3. Fetch latest decisions
+    const subjectIds = (subjects ?? []).map((s) => s.id);
+    const { data: decisions } = subjectIds.length > 0
+      ? await supabaseAdmin
+          .from("review_decisions")
+          .select("id, subject_id, decision, rationale, decided_by, created_at")
+          .in("subject_id", subjectIds)
+          .order("created_at", { ascending: false })
+      : { data: [] };
+
+    const decisionsBySubject = new Map<string, typeof decisions>();
+    for (const d of decisions ?? []) {
+      const list = decisionsBySubject.get(d.subject_id) ?? [];
+      list.push(d);
+      decisionsBySubject.set(d.subject_id, list);
+    }
+
+    // 4. Fetch published knowledge_resources
+    const { data: publishedKrs } = subjectIds.length > 0
+      ? await supabaseAdmin
+          .from("knowledge_resources")
+          .select("id, source_submission_id, current_status")
+          .in("source_submission_id", subjectIds)
+      : { data: [] };
+
+    const publishedBySubjId = new Map((publishedKrs ?? []).map((k) => [k.source_submission_id, k]));
+
+    // 5. Fetch submitter profiles
+    const submitterIds = [...new Set((subjects ?? []).map((s) => s.submitted_by).filter(Boolean))];
+    const { data: profiles } = submitterIds.length > 0
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("id, display_name, organization, job_title")
+          .in("id", submitterIds)
+      : { data: [] };
+
+    const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    const items: AdminPublicationItem[] = [];
+
+    for (const subj of subjects ?? []) {
+      const draft = draftBySubjectId.get(subj.id);
+      const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
+      const payload = (draft?.payload as Record<string, unknown>) ?? {};
+      const profile = subj.submitted_by ? profileById.get(subj.submitted_by) : undefined;
+      const subjDecisions = decisionsBySubject.get(subj.id) ?? [];
+      const latestDec = subjDecisions[0];
+      const published = publishedBySubjId.get(subj.id);
+
+      // Determine effective status
+      let status: AdminPublicationItem["status"] = "pending";
+      let statusLabel = "Menunggu Kurasi";
+
+      if (subj.current_status === "approved" || subjMeta.review_status === "approved" || published?.current_status === "published") {
+        status = "approved";
+        statusLabel = "Disetujui & Tayang";
+      } else if (subj.current_status === "rejected" || subjMeta.review_status === "rejected" || latestDec?.decision === "reject") {
+        status = "rejected";
+        statusLabel = "Ditolak";
+      } else if (subjMeta.review_status === "revision_requested" || latestDec?.decision === "return_for_revision") {
+        status = "revision_requested";
+        statusLabel = "Perlu Revisi";
+      } else if (subj.current_status === "under_review") {
+        status = "under_review";
+        statusLabel = "Sedang Ditinjau";
+      }
+
+      const rawType = String(payload.type ?? payload.resource_type ?? "Research Report");
+      const filePayload = payload.file as { name?: string; size?: number; storagePath?: string } | undefined;
+      const attachedPath = filePayload?.storagePath || (typeof payload.uploadedFilePath === "string" ? payload.uploadedFilePath : undefined);
+
+      let downloadUrl: string | null = null;
+      if (attachedPath) {
+        try {
+          const { data: signed } = await supabaseAdmin.storage
+            .from("knowledge-resource-submissions")
+            .createSignedUrl(attachedPath, 3600);
+          downloadUrl = signed?.signedUrl ?? null;
+        } catch {
+          // ignore signed url error
+        }
+      }
+
+      const keywordsList = Array.isArray(payload.keywords)
+        ? (payload.keywords as string[])
+        : payload.keywords
+          ? String(payload.keywords).split(",").map((s) => s.trim())
+          : [];
+
+      items.push({
+        subjectId: subj.id,
+        draftId: draft?.id ?? null,
+        submitterId: subj.submitted_by,
+        title: (typeof payload.title === "string" && payload.title) || subj.title || "Tanpa Judul",
+        type: rawType,
+        typeGroup: groupForType(rawType),
+        topic: typeof payload.topicCategory === "string" ? payload.topicCategory : typeof payload.topic === "string" ? payload.topic : null,
+        authorName: (typeof payload.author === "string" && payload.author) || profile?.display_name || "Kontributor",
+        authorEmail: typeof payload.email === "string" ? payload.email : null,
+        authorInstitution: (typeof payload.institution === "string" && payload.institution) || profile?.organization || null,
+        authorCountry: typeof payload.country === "string" ? payload.country : "Indonesia",
+        status,
+        statusLabel,
+        abstract: (typeof payload.abstract === "string" && payload.abstract) || (typeof payload.description === "string" && payload.description) || null,
+        coverage: typeof payload.geographicCoverage === "string" ? payload.geographicCoverage : typeof payload.coverage === "string" ? payload.coverage : null,
+        year: Number(payload.year) || null,
+        language: typeof payload.language === "string" ? payload.language : "Indonesian",
+        license: typeof payload.license === "string" ? payload.license : "CC BY-NC 4.0",
+        accessType: typeof payload.accessType === "string" ? payload.accessType : "open",
+        keywords: keywordsList,
+        externalUrl: typeof payload.externalUrl === "string" ? payload.externalUrl : null,
+        fileInfo: filePayload?.name || payload.fileName
+          ? {
+              name: filePayload?.name || String(payload.fileName),
+              size: filePayload?.size ?? (Number(payload.fileSize) || undefined),
+              path: attachedPath,
+              downloadUrl,
+            }
+          : undefined,
+        lastRevisionRationale: latestDec?.rationale || (typeof subjMeta.last_rationale === "string" ? subjMeta.last_rationale : null),
+        createdAt: subj.created_at,
+        updatedAt: subj.updated_at,
+        isPublished: published?.current_status === "published",
+        publishedResourceId: published?.id ?? null,
+        decisionsHistory: (subjDecisions ?? []).map((d) => ({
+          id: d.id,
+          decision: d.decision,
+          rationale: d.rationale,
+          decidedBy: d.decided_by,
+          createdAt: d.created_at,
+        })),
+      });
+    }
+
+    const stats: AdminPublicationStats = {
+      total: items.length,
+      pending: items.filter((i) => i.status === "pending" || i.status === "under_review").length,
+      revision: items.filter((i) => i.status === "revision_requested").length,
+      approved: items.filter((i) => i.status === "approved").length,
+      rejected: items.filter((i) => i.status === "rejected").length,
+    };
+
+    return { items, stats };
+  });
+
+const DecisionInput = z.object({
+  subjectId: z.string().uuid(),
+  decision: z.enum(["approve", "return_for_revision", "reject"]),
+  rationale: z.string().max(5000).optional(),
+});
+
+export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => DecisionInput.parse(input))
+  .handler(async ({ data: input, context }) => {
+    if (!(await assertAdminOrReviewer(context))) {
+      throw new Error("forbidden: Akses tidak mencukupi untuk mengambil keputusan kurasi.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Fetch subject
+    const { data: subj, error: subjErr } = await supabaseAdmin
+      .from("review_subjects")
+      .select("id, kind, title, description, external_ref, submitted_by, current_status, metadata")
+      .eq("id", input.subjectId)
+      .single();
+
+    if (subjErr || !subj) {
+      throw new Error("Data submission publikasi tidak ditemukan.");
+    }
+
+    // 2. Fetch linked draft and revisions
+    const { data: draft } = await supabaseAdmin
+      .from("review_drafts")
+      .select("id, title, payload, status")
+      .eq("linked_subject_id", input.subjectId)
+      .maybeSingle();
+
+    const payload = (draft?.payload as Record<string, unknown>) ?? {};
+    const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
+
+    const rationaleText =
+      input.rationale?.trim() ||
+      (input.decision === "return_for_revision"
+        ? "Perlu perbaikan kelengkapan naskah publikasi atau dokumen terlampir."
+        : input.decision === "approve"
+          ? "Publikasi disetujui & ditayangkan ke publik di Knowledge Hub."
+          : "Publikasi ditolak.");
+
+    // Query previous decisions to chain supersedes if needed
+    const { data: prevDecisions } = await supabaseAdmin
+      .from("review_decisions")
+      .select("id, decision, supersedes_decision_id, created_at")
+      .eq("subject_id", input.subjectId)
+      .order("created_at", { ascending: false });
+
+    let supersedesDecisionId: string | null = null;
+    if (input.decision === "approve" || input.decision === "reject") {
+      const existingNullFinal = prevDecisions?.find(
+        (d) => !d.supersedes_decision_id && (d.decision === "approve" || d.decision === "reject"),
+      );
+      if (existingNullFinal) {
+        supersedesDecisionId = existingNullFinal.id;
+      } else if (prevDecisions && prevDecisions.length > 0) {
+        supersedesDecisionId = prevDecisions[0].id;
+      }
+    }
+
+    // Insert decision record
+    const { data: decRecord, error: decErr } = await supabaseAdmin
+      .from("review_decisions")
+      .insert({
+        subject_id: input.subjectId,
+        decided_by: context.userId,
+        decision: input.decision,
+        rationale: rationaleText,
+        supersedes_decision_id: supersedesDecisionId,
+      })
+      .select("id")
+      .single();
+
+    if (decErr || !decRecord) {
+      throw new Error(decErr?.message || "Gagal mencatat keputusan evaluasi.");
+    }
+
+    const decisionId = decRecord.id;
+
+    // Handle Return for Revision
+    if (input.decision === "return_for_revision") {
+      await supabaseAdmin
+        .from("review_subjects")
+        .update({
+          current_status: "pending",
+          metadata: {
+            ...currentMeta,
+            review_status: "revision_requested",
+            last_decision: "return_for_revision",
+            last_rationale: rationaleText,
+            revised_at: new Date().toISOString(),
+          } as never,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.subjectId);
+
+      if (draft) {
+        await supabaseAdmin
+          .from("review_drafts")
+          .update({
+            status: "draft",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", draft.id);
+      }
+
+      return { success: true, decisionId, decision: input.decision };
+    }
+
+    // Handle Reject
+    if (input.decision === "reject") {
+      await supabaseAdmin
+        .from("review_subjects")
+        .update({
+          current_status: "rejected",
+          metadata: {
+            ...currentMeta,
+            review_status: "rejected",
+            last_decision: "reject",
+            last_rationale: rationaleText,
+          } as never,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.subjectId);
+
+      return { success: true, decisionId, decision: input.decision };
+    }
+
+    // Handle Approve & Publish
+    if (input.decision === "approve") {
+      await supabaseAdmin
+        .from("review_subjects")
+        .update({
+          current_status: "approved",
+          metadata: {
+            ...currentMeta,
+            review_status: "approved",
+            last_decision: "approve",
+            last_rationale: rationaleText,
+            approved_at: new Date().toISOString(),
+          } as never,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.subjectId);
+
+      // Check if already in knowledge_resources
+      const { data: existingKr } = await supabaseAdmin
+        .from("knowledge_resources")
+        .select("id")
+        .eq("source_submission_id", input.subjectId)
+        .maybeSingle();
+
+      const rawType = String(payload.type ?? "Research Report");
+      const mappedType: ResourceType = typeMap[rawType] ?? "technical_report";
+      const fileData = payload.file as { name?: string; size?: number; storagePath?: string; type?: string } | undefined;
+      const filePath = fileData?.storagePath || (typeof payload.uploadedFilePath === "string" ? payload.uploadedFilePath : undefined);
+
+      const topics = payload.topicCategory ? [String(payload.topicCategory)] : payload.topic ? [String(payload.topic)] : [];
+      const keywords = Array.isArray(payload.keywords)
+        ? (payload.keywords as string[])
+        : payload.keywords
+          ? String(payload.keywords).split(",").map((s) => s.trim())
+          : [];
+      const coverage = payload.geographicCoverage ? [String(payload.geographicCoverage)] : payload.coverage ? [String(payload.coverage)] : [];
+
+      const resourceMetadata: Record<string, unknown> = {
+        ...payload,
+        author_name: payload.author,
+        contributor_name: payload.author,
+        institution: payload.institution,
+        country: payload.country,
+        attached_resources: filePath
+          ? [
+              {
+                fileName: fileData?.name || payload.fileName || "document.pdf",
+                fileSize: fileData?.size || Number(payload.fileSize) || 0,
+                filePath,
+                fileType: (fileData?.name || String(payload.fileName || "")).toLowerCase().endsWith(".pdf")
+                  ? "application/pdf"
+                  : "application/octet-stream",
+              },
+            ]
+          : [],
+      };
+
+      if (existingKr) {
+        await supabaseAdmin
+          .from("knowledge_resources")
+          .update({
+            current_status: "published",
+            visibility: "public",
+            verification_status: "governance_verified",
+            approved_by: context.userId,
+            published_by: context.userId,
+            approval_date: new Date().toISOString(),
+            publication_date: new Date().toISOString(),
+            audit_ref: decisionId,
+            metadata: resourceMetadata as never,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingKr.id);
+      } else {
+        const { error: insertErr } = await supabaseAdmin.from("knowledge_resources").insert({
+          source_type: "external_submission",
+          source_submission_id: input.subjectId,
+          created_by: subj.submitted_by || context.userId,
+          original_contributor_id: subj.submitted_by || context.userId,
+          approved_by: context.userId,
+          published_by: context.userId,
+          approval_date: new Date().toISOString(),
+          publication_date: new Date().toISOString(),
+          verification_status: "governance_verified",
+          visibility: "public",
+          current_status: "published",
+          audit_ref: decisionId,
+          resource_type: mappedType,
+          title: (typeof payload.title === "string" && payload.title) || subj.title || "Untitled Resource",
+          summary: (typeof payload.description === "string" && payload.description) || (typeof payload.abstract === "string" && payload.abstract) || "BARUNA public knowledge resource.",
+          abstract: (typeof payload.abstract === "string" && payload.abstract) || (typeof payload.description === "string" && payload.description) || "BARUNA public knowledge resource.",
+          language: typeof payload.language === "string" ? payload.language : "Indonesian",
+          publication_year: Number(payload.year) || new Date().getFullYear(),
+          publisher: typeof payload.institution === "string" ? payload.institution : "BARUNA Contributor",
+          external_url: typeof payload.externalUrl === "string" ? payload.externalUrl : null,
+          topics,
+          keywords,
+          geographic_focus: coverage,
+          metadata: resourceMetadata as never,
+        });
+
+        if (insertErr) {
+          console.error("[recordAdminPublicationDecision] insert knowledge_resources error:", insertErr);
+          throw new Error(`Gagal mempublikasikan ke katalog Knowledge Hub: ${insertErr.message}`);
+        }
+      }
+
+      // Mark draft as published if exists
+      if (draft) {
+        await supabaseAdmin
+          .from("review_drafts")
+          .update({
+            status: "published",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", draft.id);
+      }
+
+      return { success: true, decisionId, decision: input.decision };
+    }
+
+    return { success: true, decisionId, decision: input.decision };
+  });

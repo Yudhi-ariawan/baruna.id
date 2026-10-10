@@ -50,6 +50,7 @@ import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminEnrollmentsRouteImport } from './routes/admin.enrollments'
 import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
 import { Route as AdminModulesRouteImport } from './routes/admin.modules'
+import { Route as AdminPublicationsRouteImport } from './routes/admin.publications'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard_.admin'
@@ -335,6 +336,11 @@ const AdminExpertsRoute = AdminExpertsRouteImport.update({
 const AdminModulesRoute = AdminModulesRouteImport.update({
   id: '/modules',
   path: '/modules',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPublicationsRoute = AdminPublicationsRouteImport.update({
+  id: '/publications',
+  path: '/publications',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminReviewsRoute = AdminReviewsRouteImport.update({
@@ -802,6 +808,7 @@ export interface FileRoutesByFullPath {
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
+  '/admin/publications': typeof AdminPublicationsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard/admin': typeof DashboardAdminRoute
@@ -918,6 +925,7 @@ export interface FileRoutesByTo {
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
+  '/admin/publications': typeof AdminPublicationsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard/admin': typeof DashboardAdminRoute
@@ -1042,6 +1050,7 @@ export interface FileRoutesById {
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
   '/admin/modules': typeof AdminModulesRoute
+  '/admin/publications': typeof AdminPublicationsRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard_/admin': typeof DashboardAdminRoute
@@ -1168,6 +1177,7 @@ export interface FileRouteTypes {
     | '/admin/enrollments'
     | '/admin/experts'
     | '/admin/modules'
+    | '/admin/publications'
     | '/admin/reviews'
     | '/admin/users'
     | '/dashboard/admin'
@@ -1284,6 +1294,7 @@ export interface FileRouteTypes {
     | '/admin/enrollments'
     | '/admin/experts'
     | '/admin/modules'
+    | '/admin/publications'
     | '/admin/reviews'
     | '/admin/users'
     | '/dashboard/admin'
@@ -1407,6 +1418,7 @@ export interface FileRouteTypes {
     | '/admin/enrollments'
     | '/admin/experts'
     | '/admin/modules'
+    | '/admin/publications'
     | '/admin/reviews'
     | '/admin/users'
     | '/dashboard_/admin'
@@ -1811,6 +1823,13 @@ declare module '@tanstack/react-router' {
       path: '/modules'
       fullPath: '/admin/modules'
       preLoaderRoute: typeof AdminModulesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/publications': {
+      id: '/admin/publications'
+      path: '/publications'
+      fullPath: '/admin/publications'
+      preLoaderRoute: typeof AdminPublicationsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/reviews': {
@@ -2498,6 +2517,7 @@ interface AdminRouteChildren {
   AdminEnrollmentsRoute: typeof AdminEnrollmentsRoute
   AdminExpertsRoute: typeof AdminExpertsRoute
   AdminModulesRoute: typeof AdminModulesRoute
+  AdminPublicationsRoute: typeof AdminPublicationsRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -2508,6 +2528,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminEnrollmentsRoute: AdminEnrollmentsRoute,
   AdminExpertsRoute: AdminExpertsRoute,
   AdminModulesRoute: AdminModulesRoute,
+  AdminPublicationsRoute: AdminPublicationsRoute,
   AdminReviewsRoute: AdminReviewsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,

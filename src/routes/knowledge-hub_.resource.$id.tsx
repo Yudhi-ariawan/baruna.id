@@ -21,7 +21,7 @@ import { ResourceCard, DemoDataBadge, AccessBadge } from "@/components/baruna/kn
 import { toggleSaved, useIsSaved, shareResource } from "@/lib/khSaved";
 import { courseImages } from "@/data/pages";
 import { getPublishedModuleDetail } from "@/lib/learning/learning.functions";
-import { getPublishedLearningModules } from "@/lib/knowledge-hub/knowledge-hub.functions";
+import { getPublishedLearningModules, getKnowledgeHubOverview } from "@/lib/knowledge-hub/knowledge-hub.functions";
 
 export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
   loader: async ({ params }) => {
@@ -83,6 +83,14 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
       }
     } catch (err) {
       console.warn("Failed to load module detail from database:", err);
+    }
+
+    try {
+      const overview = await getKnowledgeHubOverview();
+      const match = overview.resources.find((item) => item.id === params.id);
+      if (match) return { resource: match };
+    } catch (err) {
+      console.warn("Failed to find resource in knowledge hub overview:", err);
     }
 
     throw notFound();

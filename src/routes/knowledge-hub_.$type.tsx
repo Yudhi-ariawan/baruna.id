@@ -7,7 +7,7 @@ import { KH_ALL, KH_TYPES, labelForType, resourcesByType, type KhResource, type 
 import { DEMO_CATEGORIES } from "@/data/demo";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge } from "@/components/baruna/knowledge/ResourceCard";
-import { getPublishedLearningModules } from "@/lib/knowledge-hub/knowledge-hub.functions";
+import { getPublishedLearningModules, getKnowledgeHubOverview } from "@/lib/knowledge-hub/knowledge-hub.functions";
 import { MODULE_CATEGORY_LABELS } from "@/lib/academy/module-categories";
 
 const VALID: string[] = [...KH_TYPES.map((t) => t.slug), "library"];
@@ -17,12 +17,17 @@ export const Route = createFileRoute("/knowledge-hub_/$type")({
     if (!VALID.includes(params.type)) throw notFound();
 
     let dbResources: KhResource[] = [];
-    if (params.type === "learning-modules") {
-      try {
+    try {
+      if (params.type === "learning-modules") {
         dbResources = await getPublishedLearningModules();
-      } catch (err) {
-        console.warn("Failed to load published modules catalog:", err);
+      } else {
+        const overview = await getKnowledgeHubOverview();
+        dbResources = params.type === "library"
+          ? overview.resources
+          : overview.resources.filter((r) => r.type === params.type);
       }
+    } catch (err) {
+      console.warn("Failed to load published resources catalog:", err);
     }
 
     return { type: params.type as KhResourceType | "library", dbResources };

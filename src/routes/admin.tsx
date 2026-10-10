@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   ExternalLink,
+  FileText,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -207,6 +208,12 @@ function AdminShell() {
           to: "/admin/modules" as const,
           icon: BookOpen,
           description: "Kurasi materi pelatihan",
+        },
+        {
+          label: "Verifikasi Publikasi",
+          to: "/admin/publications" as const,
+          icon: FileText,
+          description: "Kurasi jurnal & riset",
         },
         {
           label: "Persetujuan Peserta",
