@@ -158,11 +158,36 @@ export type KnowledgeContributionItem = {
   typeGroup: string;
   status: "draft" | "submitted" | "under_review" | "approved" | "published" | "revision_requested" | "rejected";
   statusLabel: string;
+  description?: string;
+  topicCategory?: string;
+  institution?: string;
+  country?: string;
   createdAt: string;
   updatedAt: string;
   fileInfo?: { name: string; size?: number };
   reviewNote?: string;
 };
+
+export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ draftId: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: draft, error } = await supabaseAdmin
+      .from("review_drafts")
+      .select("id, title, payload, status, linked_subject_id")
+      .eq("id", data.draftId)
+      .eq("submitter_id", context.userId)
+      .maybeSingle();
+
+    if (error || !draft) return null;
+    return {
+      draftId: draft.id,
+      title: draft.title,
+      status: draft.status,
+      payload: (draft.payload as Record<string, unknown>) ?? {},
+    };
+  });
 
 export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -198,7 +223,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
     // 3. Get published/approved knowledge_resources created by this user
     const { data: publishedKrs, error: krsError } = await supabaseAdmin
       .from("knowledge_resources")
-      .select("id, title, resource_type, current_status, publication_date, metadata, created_at, updated_at")
+      .select("id, title, resource_type, summary, abstract, topics, current_status, publication_date, metadata, created_at, updated_at")
       .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
       .order("updated_at", { ascending: false });
 
@@ -238,6 +263,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
 
       const rawType = String(payload.type ?? payload.resource_type ?? "Research Report");
       const fileData = payload.file as { name?: string; size?: number } | undefined;
+      const note = typeof subMeta.last_rationale === "string" ? subMeta.last_rationale : typeof subMeta.review_note === "string" ? subMeta.review_note : undefined;
 
       results.push({
         id: d.id,
@@ -247,10 +273,14 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
         typeGroup: groupForType(rawType),
         status,
         statusLabel,
+        description: typeof payload.description === "string" ? payload.description : typeof payload.abstract === "string" ? payload.abstract : undefined,
+        topicCategory: typeof payload.topicCategory === "string" ? payload.topicCategory : typeof payload.topic === "string" ? payload.topic : undefined,
+        institution: typeof payload.institution === "string" ? payload.institution : undefined,
+        country: typeof payload.country === "string" ? payload.country : undefined,
         createdAt: d.created_at,
         updatedAt: d.updated_at,
-        fileInfo: fileData?.name ? { name: fileData.name, size: fileData.size } : undefined,
-        reviewNote: typeof subMeta.review_note === "string" ? subMeta.review_note : undefined,
+        fileInfo: fileData?.name || payload.fileName ? { name: fileData?.name || String(payload.fileName), size: fileData?.size || Number(payload.fileSize) || undefined } : undefined,
+        reviewNote: note,
       });
       seenTitles.add(d.title.trim().toLowerCase());
     }
@@ -258,6 +288,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
     for (const kr of publishedKrs ?? []) {
       if (seenTitles.has(kr.title.trim().toLowerCase())) continue;
       const rawType = String(kr.resource_type ?? "Journal Article");
+      const krMeta = (kr.metadata as Record<string, unknown>) ?? {};
       results.push({
         id: kr.id,
         resourceId: kr.id,
@@ -266,6 +297,10 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
         typeGroup: groupForType(rawType),
         status: kr.current_status === "published" ? "published" : "approved",
         statusLabel: kr.current_status === "published" ? "Tayang di Katalog" : "Disetujui",
+        description: kr.summary || kr.abstract || undefined,
+        topicCategory: kr.topics?.[0] || undefined,
+        institution: typeof krMeta.institution === "string" ? krMeta.institution : undefined,
+        country: typeof krMeta.country === "string" ? krMeta.country : undefined,
         createdAt: kr.created_at,
         updatedAt: kr.updated_at,
       });

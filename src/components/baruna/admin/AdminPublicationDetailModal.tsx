@@ -515,3 +515,4 @@ export function AdminPublicationDetailModal({
     </>
   );
 }
+

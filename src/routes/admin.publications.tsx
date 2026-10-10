@@ -340,3 +340,4 @@ function AdminPublicationsPage() {
     </div>
   );
 }
+

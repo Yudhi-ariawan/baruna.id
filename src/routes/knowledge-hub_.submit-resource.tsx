@@ -20,7 +20,7 @@ import {
 import { Navbar } from "@/components/baruna/Navbar";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import { supabase } from "@/integrations/supabase/client";
-import { createKnowledgeResourceUpload, getKnowledgeContributorBootstrap, saveKnowledgeResourceDraft } from "@/lib/knowledge-hub/contribution.functions";
+import { createKnowledgeResourceUpload, getKnowledgeContributorBootstrap, getKnowledgeResourceDraft, saveKnowledgeResourceDraft } from "@/lib/knowledge-hub/contribution.functions";
 import {
   RESOURCE_TYPE_GROUPS,
   TOPIC_CATEGORIES,
@@ -77,6 +77,15 @@ function SubmitResourcePage() {
   const { edit, type: initialType } = useSearch({ from: Route.id });
   const existing = useMemo(() => (edit ? getResource(edit) : undefined), [edit]);
 
+  const getDraftFn = useServerFn(getKnowledgeResourceDraft);
+  const isUuid = Boolean(edit && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(edit));
+
+  const dbDraftQuery = useQuery({
+    queryKey: ["knowledge-hub", "draft", edit],
+    queryFn: () => getDraftFn({ data: { draftId: edit! } }),
+    enabled: Boolean(isUuid && authState === "authenticated"),
+  });
+
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<ResourceDraft>(() =>
     existing
@@ -101,7 +110,7 @@ function SubmitResourcePage() {
   );
   const [submitted, setSubmitted] = useState<null | "draft" | "submitted">(null);
   const [error, setError] = useState<string | null>(null);
-  const [draftId, setDraftId] = useState<string | undefined>();
+  const [draftId, setDraftId] = useState<string | undefined>(isUuid ? edit : undefined);
   const [saving, setSaving] = useState(false);
   const bootstrap = useQuery({
     queryKey: ["knowledge-hub", "contributor", viewer?.id],
@@ -117,7 +126,35 @@ function SubmitResourcePage() {
   }, [authState, navigate]);
 
   useEffect(() => {
-    if (!bootstrap.data || existing) return;
+    if (dbDraftQuery.data) {
+      const p = dbDraftQuery.data.payload;
+      setDraftId(dbDraftQuery.data.draftId);
+      setForm((curr) => ({
+        ...curr,
+        type: String(p.type || p.resource_type || curr.type || ""),
+        typeGroup: groupForType(String(p.type || p.resource_type || curr.type || "")),
+        title: dbDraftQuery.data.title || curr.title,
+        description: String(p.description || p.abstract || curr.description || ""),
+        author: String(p.author || p.author_name || curr.author || ""),
+        institution: String(p.institution || curr.institution || ""),
+        country: String(p.country || curr.country || "Indonesia"),
+        year: String(p.year || p.publication_year || curr.year || ""),
+        language: String(p.language || curr.language || "Indonesian"),
+        keywords: Array.isArray(p.keywords) ? (p.keywords as string[]).join(", ") : String(p.keywords || curr.keywords || ""),
+        topicCategory: String(p.topicCategory || p.topic || curr.topicCategory || ""),
+        geographicCoverage: String(p.geographicCoverage || p.coverage || curr.geographicCoverage || ""),
+        targetAudience: String(p.targetAudience || curr.targetAudience || ""),
+        externalUrl: String(p.externalUrl || curr.externalUrl || ""),
+        license: String(p.license || curr.license || "CC BY-NC 4.0"),
+        accessType: String(p.accessType || curr.accessType || "open"),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        file: (p.file as any) ?? curr.file,
+      }));
+    }
+  }, [dbDraftQuery.data]);
+
+  useEffect(() => {
+    if (!bootstrap.data || existing || dbDraftQuery.data) return;
     setForm((current) => ({
       ...current,
       ...(initialType && !current.type ? { type: initialType, typeGroup: groupForType(initialType) } : {}),
@@ -126,7 +163,7 @@ function SubmitResourcePage() {
       country: bootstrap.data.country,
       keywords: current.keywords || bootstrap.data.expertiseAreas.join(", "),
     }));
-  }, [bootstrap.data, existing, initialType]);
+  }, [bootstrap.data, existing, dbDraftQuery.data, initialType]);
 
   const set = <K extends keyof ResourceDraft>(key: K, value: ResourceDraft[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
