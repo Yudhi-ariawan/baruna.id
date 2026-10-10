@@ -200,7 +200,22 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
                       ? "case-studies"
                       : r.type === "Policy Brief" || r.type === "policy_brief"
                         ? "policy-briefs"
-                        : "publications",
+                        : ["Video", "Webinar Recording", "Podcast", "video", "webinar_recording", "podcast"].includes(r.type)
+                          ? "videos"
+                          : ["Infographic", "Photo Documentation", "infographic", "poster"].includes(r.type)
+                            ? "infographics"
+                            : [
+                                "Monitoring Template",
+                                "Assessment Tool",
+                                "Data Collection Form",
+                                "Checklist",
+                                "Spreadsheet Tool",
+                                "Toolkit",
+                                "tool",
+                                "toolkit",
+                              ].includes(r.type)
+                              ? "toolkits"
+                              : "publications",
               }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:bg-muted"
             >

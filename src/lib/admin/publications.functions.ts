@@ -253,6 +253,41 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
 
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
+    // 6. Batch-generate signed URLs for all attached files and covers in 1 storage call (avoids N+1 sequential calls)
+    const storagePathsSet = new Set<string>();
+    for (const subj of subjects ?? []) {
+      const draft = draftBySubjectId.get(subj.id);
+      const payload = (draft?.payload as Record<string, unknown>) ?? {};
+      const filePayload = payload.file as { storagePath?: string } | undefined;
+      const attachedPath =
+        filePayload?.storagePath ||
+        (typeof payload.uploadedFilePath === "string" ? payload.uploadedFilePath : undefined);
+      if (attachedPath) storagePathsSet.add(attachedPath);
+
+      const coverPayload = payload.coverFile as { storagePath?: string } | undefined;
+      const coverAttachedPath =
+        coverPayload?.storagePath ||
+        (typeof payload.coverFilePath === "string" ? payload.coverFilePath : undefined);
+      if (coverAttachedPath) storagePathsSet.add(coverAttachedPath);
+    }
+
+    const signedUrlByPath = new Map<string, string>();
+    const allStoragePaths = [...storagePathsSet];
+    if (allStoragePaths.length > 0) {
+      try {
+        const { data: batchSigned } = await supabaseAdmin.storage
+          .from("knowledge-resource-submissions")
+          .createSignedUrls(allStoragePaths, 3600);
+        for (const entry of batchSigned ?? []) {
+          if (entry.path && entry.signedUrl) {
+            signedUrlByPath.set(entry.path, entry.signedUrl);
+          }
+        }
+      } catch {
+        // Fallback ignored if bucket is empty or unreachable
+      }
+    }
+
     const items: AdminPublicationItem[] = [];
 
     for (const subj of subjects ?? []) {
@@ -298,33 +333,11 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
       const rawType = String(payload.type ?? payload.resource_type ?? "Research Report");
       const filePayload = payload.file as { name?: string; size?: number; storagePath?: string } | undefined;
       const attachedPath = filePayload?.storagePath || (typeof payload.uploadedFilePath === "string" ? payload.uploadedFilePath : undefined);
-
-      let downloadUrl: string | null = null;
-      if (attachedPath) {
-        try {
-          const { data: signed } = await supabaseAdmin.storage
-            .from("knowledge-resource-submissions")
-            .createSignedUrl(attachedPath, 3600);
-          downloadUrl = signed?.signedUrl ?? null;
-        } catch {
-          // ignore signed url error
-        }
-      }
+      const downloadUrl = attachedPath ? (signedUrlByPath.get(attachedPath) ?? null) : null;
 
       const coverPayload = payload.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
       const coverAttachedPath = coverPayload?.storagePath || (typeof payload.coverFilePath === "string" ? payload.coverFilePath : undefined);
-
-      let coverDownloadUrl: string | null = null;
-      if (coverAttachedPath) {
-        try {
-          const { data: signedCover } = await supabaseAdmin.storage
-            .from("knowledge-resource-submissions")
-            .createSignedUrl(coverAttachedPath, 3600);
-          coverDownloadUrl = signedCover?.signedUrl ?? null;
-        } catch {
-          // ignore signed url error
-        }
-      }
+      const coverDownloadUrl = coverAttachedPath ? (signedUrlByPath.get(coverAttachedPath) ?? null) : null;
 
       const keywordsList = Array.isArray(payload.keywords)
         ? (payload.keywords as string[])
@@ -442,6 +455,7 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
 
     const payload = (draft?.payload as Record<string, unknown>) ?? {};
     const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
+    const latestTitle = (typeof payload.title === "string" && payload.title.trim()) || draft?.title || subj.title || "Untitled Resource";
 
     const rationaleText =
       input.rationale?.trim() ||
@@ -494,6 +508,7 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
       await supabaseAdmin
         .from("review_subjects")
         .update({
+          title: latestTitle,
           current_status: "pending",
           metadata: {
             ...currentMeta,
@@ -536,6 +551,7 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
       await supabaseAdmin
         .from("review_subjects")
         .update({
+          title: latestTitle,
           current_status: "rejected",
           metadata: {
             ...currentMeta,
@@ -567,6 +583,7 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
       await supabaseAdmin
         .from("review_subjects")
         .update({
+          title: latestTitle,
           current_status: "approved",
           metadata: {
             ...currentMeta,
