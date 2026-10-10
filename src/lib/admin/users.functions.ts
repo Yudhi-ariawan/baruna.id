@@ -132,7 +132,11 @@ export const listUsers = createServerFn({ method: "GET" })
           .from("profiles")
           .select("id, display_name, avatar_url, phone, job_title, organization, is_active")
           .in("id", userIds),
-        db.from("rbac_user_roles").select("user_id, rbac_roles(code)").in("user_id", userIds),
+        db
+          .from("rbac_user_roles")
+          .select("user_id, rbac_roles(code)")
+          .in("user_id", userIds)
+          .eq("status", "active"),
       ]);
     if (profileError) throw new Error(profileError.message);
     if (roleError) throw new Error(roleError.message);

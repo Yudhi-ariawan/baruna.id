@@ -122,16 +122,17 @@ export const Route = createFileRoute("/academy/learn/$id")({
     }
 
     // 2. Check if it's a dynamic module from module_registry
-    try {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
-      if (isUuid) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
+    if (isUuid) {
+      try {
         const publishedModule = await getPublishedModuleDetail({ data: { moduleId: params.id } });
         if (publishedModule) {
           return { kind: "dynamic", module: publishedModule };
         }
+      } catch (err) {
+        console.warn("Could not load dynamic module for learn route:", err);
       }
-    } catch (err) {
-      console.warn("Could not load dynamic module for learn route:", err);
+      throw notFound();
     }
 
     // 3. Otherwise treat as a program / application ID

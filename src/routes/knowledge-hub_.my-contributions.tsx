@@ -129,10 +129,35 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
 
       {r.status !== "draft" && <Pipeline status={r.status} />}
 
-      {isRevision && r.reviewNote && (
-        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
-          <strong className="block font-bold mb-1 flex items-center gap-1.5 text-amber-800">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Catatan Kurator / Administrator:
+      {(isRevision || r.status === "rejected" || r.status === "archived") && r.reviewNote && (
+        <div
+          className={`mt-3 rounded-xl border p-3 text-xs ${
+            r.status === "rejected"
+              ? "border-red-200 bg-red-50/80 text-red-900"
+              : r.status === "archived"
+                ? "border-slate-200 bg-slate-50/80 text-slate-800"
+                : "border-amber-200 bg-amber-50/80 text-amber-900"
+          }`}
+        >
+          <strong
+            className={`block font-bold mb-1 flex items-center gap-1.5 ${
+              r.status === "rejected"
+                ? "text-red-800"
+                : r.status === "archived"
+                  ? "text-slate-700"
+                  : "text-amber-800"
+            }`}
+          >
+            <AlertTriangle
+              className={`h-3.5 w-3.5 ${
+                r.status === "rejected"
+                  ? "text-red-600"
+                  : r.status === "archived"
+                    ? "text-slate-500"
+                    : "text-amber-600"
+              }`}
+            />{" "}
+            Catatan Kurator / Administrator:
           </strong>
           <p className="leading-relaxed">{r.reviewNote}</p>
         </div>

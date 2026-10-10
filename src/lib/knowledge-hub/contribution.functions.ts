@@ -301,7 +301,7 @@ export type KnowledgeContributionItem = {
   title: string;
   type: string;
   typeGroup: string;
-  status: "draft" | "submitted" | "under_review" | "approved" | "published" | "revision_requested" | "rejected";
+  status: "draft" | "submitted" | "under_review" | "approved" | "published" | "revision_requested" | "rejected" | "archived";
   statusLabel: string;
   description?: string;
   topicCategory?: string;
@@ -496,13 +496,23 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       let status: KnowledgeContributionItem["status"] = "draft";
       let statusLabel = "Draf";
 
+      const isArchived =
+        subject?.current_status === "withdrawn" ||
+        subject?.current_status === "archived" ||
+        subMeta.review_status === "archived" ||
+        matchedKr?.current_status === "archived";
+
       const isResubmitted =
-        subMeta.review_status === "resubmitted" ||
-        (d.status === "submitted" && (subMeta.review_status === "revision_requested" || typeof subMeta.last_rationale === "string"));
+        !isArchived &&
+        (subMeta.review_status === "resubmitted" ||
+          (d.status === "submitted" && (subMeta.review_status === "revision_requested" || typeof subMeta.last_rationale === "string")));
 
       if (d.status === "draft") {
         status = "draft";
         statusLabel = "Draf";
+      } else if (isArchived) {
+        status = "archived";
+        statusLabel = "Diarsipkan";
       } else if (subject?.current_status === "approved" || subMeta.review_status === "approved" || matchedKr?.current_status === "published") {
         status = "approved";
         statusLabel = "Disetujui & Tayang";
@@ -522,7 +532,14 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
 
       const rawType = String(payload.type ?? payload.resource_type ?? "Research Report");
       const fileData = payload.file as { name?: string; size?: number } | undefined;
-      const note = typeof subMeta.last_rationale === "string" ? subMeta.last_rationale : typeof subMeta.review_note === "string" ? subMeta.review_note : undefined;
+      const note =
+        isArchived && typeof subMeta.archived_reason === "string"
+          ? subMeta.archived_reason
+          : typeof subMeta.last_rationale === "string"
+            ? subMeta.last_rationale
+            : typeof subMeta.review_note === "string"
+              ? subMeta.review_note
+              : undefined;
 
       results.push({
         id: d.id,
@@ -550,14 +567,15 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       if (seenKrIds.has(kr.id) || seenTitles.has(kr.title.trim().toLowerCase())) continue;
       const rawType = String(kr.resource_type ?? "Journal Article");
       const krMeta = (kr.metadata as Record<string, unknown>) ?? {};
+      const isKrArchived = kr.current_status === "archived";
       results.push({
         id: kr.id,
         resourceId: kr.id,
         title: kr.title,
         type: rawType,
         typeGroup: groupForType(rawType),
-        status: kr.current_status === "published" ? "published" : "approved",
-        statusLabel: kr.current_status === "published" ? "Tayang di Katalog" : "Disetujui",
+        status: isKrArchived ? "archived" : kr.current_status === "published" ? "published" : "approved",
+        statusLabel: isKrArchived ? "Diarsipkan" : kr.current_status === "published" ? "Tayang di Katalog" : "Disetujui",
         description: kr.summary || kr.abstract || undefined,
         topicCategory: kr.topics?.[0] || undefined,
         institution: typeof krMeta.institution === "string" ? krMeta.institution : undefined,

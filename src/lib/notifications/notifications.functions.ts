@@ -82,26 +82,39 @@ export const listMyNotifications = createServerFn({ method: "GET" })
           targetUrl = draftId
             ? `/experts/portal/submit-module?draftId=${draftId}`
             : `/experts/portal/review-status`;
+        } else if (kind === "knowledge_resource") {
+          title = `Permintaan Revisi Publikasi: "${subjectTitle}"`;
+          targetUrl = draftId
+            ? `/knowledge-hub/submit-resource?edit=${draftId}`
+            : `/knowledge-hub/my-contributions`;
         } else {
           title = `Permintaan Revisi Berkas: ${subjectTitle}`;
-          targetUrl = `/my-submissions`;
+          targetUrl = `/knowledge-hub/my-contributions`;
         }
       } else if (dec.decision === "approve") {
         type = "approved";
         if (kind === "expert") {
           title = `Selamat! Pengajuan Expert Anda Telah Disetujui`;
-          targetUrl = `/experts/profile`;
+          targetUrl = `/experts/portal`;
         } else if (kind === "module") {
           title = `Selamat! Modul "${subjectTitle}" Telah Disetujui & Tayang`;
           targetUrl = `/experts/portal/review-status`;
+        } else if (kind === "knowledge_resource") {
+          title = `Selamat! Publikasi "${subjectTitle}" Telah Disetujui & Tayang`;
+          targetUrl = `/knowledge-hub/my-contributions`;
         } else {
           title = `Pengajuan Disetujui: ${subjectTitle}`;
-          targetUrl = `/my-submissions`;
+          targetUrl = `/knowledge-hub/my-contributions`;
         }
       } else if (dec.decision === "reject") {
         type = "rejected";
         title = `Pengajuan Ditolak: ${subjectTitle}`;
-        targetUrl = kind === "expert" ? `/experts/join` : `/experts/portal/review-status`;
+        targetUrl =
+          kind === "expert"
+            ? `/experts/join`
+            : kind === "module"
+              ? `/experts/portal/review-status`
+              : `/knowledge-hub/my-contributions`;
       }
 
       const body =

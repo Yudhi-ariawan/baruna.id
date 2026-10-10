@@ -454,10 +454,16 @@ export const decideAdminCourseEnrollment = createServerFn({ method: "POST" })
             },
           };
 
+          const higherRoles = ["super_admin", "admin", "management", "qa_reviewer", "approver", "expert"];
+          const existingPrimaryRole = typeof existingMeta.role === "string" ? existingMeta.role : "";
+          const preservedPrimaryRole = higherRoles.includes(existingPrimaryRole)
+            ? existingPrimaryRole
+            : updatedRoles.find((r) => higherRoles.includes(r)) || "participant";
+
           await supabaseAdmin.auth.admin.updateUserById(input.userId, {
             user_metadata: {
               ...existingMeta,
-              role: "participant",
+              role: preservedPrimaryRole,
               roles: updatedRoles,
               approved_courses: approvedCourses,
               course_enrollments: courseEnrollments,
