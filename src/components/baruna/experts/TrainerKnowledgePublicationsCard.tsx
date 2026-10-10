@@ -164,7 +164,7 @@ export function TrainerKnowledgePublicationsCard() {
                       </>
                     )}
                   </p>
-                  {item.reviewNote && (
+                  {item.reviewNote && (item.status === "revision_requested" || item.status === "rejected") && (
                     <p className="text-[11px] text-amber-800 bg-amber-50 rounded px-2 py-1 border border-amber-200 mt-1">
                       Catatan Verifikator: {item.reviewNote}
                     </p>
@@ -172,13 +172,23 @@ export function TrainerKnowledgePublicationsCard() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-                  {item.status === "published" ? (
-                    <Link
-                      to="/knowledge-hub"
-                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-emerald-50 text-emerald-800 px-2.5 py-1.5 text-xs font-medium hover:bg-emerald-100 transition"
-                    >
-                      Katalog <ExternalLink className="h-3 w-3" />
-                    </Link>
+                  {item.status === "published" || item.status === "approved" ? (
+                    item.resourceId ? (
+                      <Link
+                        to="/knowledge-hub/resource/$id"
+                        params={{ id: item.resourceId }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 px-2.5 py-1.5 text-xs font-semibold hover:bg-emerald-100 transition"
+                      >
+                        Lihat di Katalog <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/knowledge-hub"
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 px-2.5 py-1.5 text-xs font-semibold hover:bg-emerald-100 transition"
+                      >
+                        Lihat di Katalog <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    )
                   ) : item.status === "revision_requested" ? (
                     <Link
                       to="/knowledge-hub/submit-resource"

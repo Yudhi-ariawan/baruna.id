@@ -167,7 +167,16 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
           ) : (
             <Link
               to="/knowledge-hub/$type"
-              params={{ type: "publications" }}
+              params={{
+                type:
+                  r.type === "Best Practice" || r.type === "best_practice"
+                    ? "best-practices"
+                    : r.type === "Case Study" || r.type === "case_study"
+                      ? "case-studies"
+                      : r.type === "Policy Brief" || r.type === "policy_brief"
+                        ? "policy-briefs"
+                        : "publications",
+              }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:bg-muted"
             >
               <Eye className="h-3.5 w-3.5 text-marine" /> Lihat di Katalog Publik

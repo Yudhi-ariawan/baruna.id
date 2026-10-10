@@ -187,6 +187,21 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
         }
       : null;
 
+    if (data.submit && resourceType === "best_practice") {
+      if (
+        !practiceStructure?.challenge ||
+        !practiceStructure?.context ||
+        !practiceStructure?.intervention ||
+        !practiceStructure?.steps ||
+        !practiceStructure?.results ||
+        !practiceStructure?.lessons
+      ) {
+        throw new Error(
+          "Untuk tipe Best Practice, kolom Tantangan, Konteks Lokasi, Intervensi, Langkah Implementasi, Capaian Terukur, dan Pembelajaran Kunci wajib dilengkapi."
+        );
+      }
+    }
+
     const patch: Json = {
       ...form,
       coverFile: coverObj ?? null,
@@ -209,9 +224,15 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       country,
       expertise_areas: expert?.expertise_areas ?? (form.keywords ? String(form.keywords).split(",").map((s) => s.trim()) : []),
       original_contributor_id: context.userId,
+      ...(data.submit ? { last_submitted_at: new Date().toISOString() } : {}),
     } as Json;
     const updated = await context.supabase.rpc("kr_draft_update", { _draft_id: draftId, _patch: patch });
-    if (updated.error) throw new Error(updated.error.message);
+    if (updated.error) {
+      if (updated.error.message?.includes("draft_not_editable")) {
+        throw new Error("Pengajuan ini sedang dalam proses kurasi dan tidak dapat diubah sebelum ada permintaan revisi dari kurator.");
+      }
+      throw new Error(updated.error.message);
+    }
     if (data.submit) {
       const submitted = await context.supabase.rpc("kr_draft_submit", { _draft_id: draftId });
       if (submitted.error) throw new Error(submitted.error.message);
@@ -434,7 +455,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
     // 3. Get published/approved knowledge_resources created by this user
     const { data: publishedKrs, error: krsError } = await supabaseAdmin
       .from("knowledge_resources")
-      .select("id, title, resource_type, summary, abstract, topics, current_status, publication_date, metadata, created_at, updated_at")
+      .select("id, title, resource_type, summary, abstract, topics, current_status, publication_date, source_submission_id, metadata, created_at, updated_at")
       .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
       .order("updated_at", { ascending: false });
 
@@ -442,15 +463,31 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       console.warn("[listMyKnowledgeContributions] krs query error:", krsError);
     }
 
+    const krBySubmissionId = new Map(
+      (publishedKrs ?? [])
+        .filter((k) => Boolean(k.source_submission_id))
+        .map((k) => [k.source_submission_id as string, k]),
+    );
+    const krByTitle = new Map(
+      (publishedKrs ?? []).map((k) => [k.title.trim().toLowerCase(), k]),
+    );
+
     const { groupForType } = await import("@/lib/resources");
 
     const results: KnowledgeContributionItem[] = [];
     const seenTitles = new Set<string>();
+    const seenKrIds = new Set<string>();
 
     for (const d of drafts ?? []) {
       const payload = (d.payload as Record<string, unknown>) ?? {};
       const subject = d.linked_subject_id ? subjectMap.get(d.linked_subject_id) : undefined;
       const subMeta = (subject?.metadata as Record<string, unknown>) ?? {};
+      const matchedKr =
+        (d.linked_subject_id ? krBySubmissionId.get(d.linked_subject_id) : undefined) ??
+        krByTitle.get(d.title.trim().toLowerCase());
+      if (matchedKr) {
+        seenKrIds.add(matchedKr.id);
+      }
 
       let status: KnowledgeContributionItem["status"] = "draft";
       let statusLabel = "Draf";
@@ -462,7 +499,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       if (d.status === "draft") {
         status = "draft";
         statusLabel = "Draf";
-      } else if (subject?.current_status === "approved" || subMeta.review_status === "approved") {
+      } else if (subject?.current_status === "approved" || subMeta.review_status === "approved" || matchedKr?.current_status === "published") {
         status = "approved";
         statusLabel = "Disetujui & Tayang";
       } else if (subject?.current_status === "rejected" || subMeta.review_status === "rejected") {
@@ -486,6 +523,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       results.push({
         id: d.id,
         draftId: d.id,
+        resourceId: matchedKr?.id,
         title: d.title,
         type: rawType,
         typeGroup: groupForType(rawType),
@@ -505,7 +543,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
     }
 
     for (const kr of publishedKrs ?? []) {
-      if (seenTitles.has(kr.title.trim().toLowerCase())) continue;
+      if (seenKrIds.has(kr.id) || seenTitles.has(kr.title.trim().toLowerCase())) continue;
       const rawType = String(kr.resource_type ?? "Journal Article");
       const krMeta = (kr.metadata as Record<string, unknown>) ?? {};
       results.push({

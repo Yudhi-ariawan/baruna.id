@@ -136,10 +136,15 @@ function SubmitResourcePage() {
     }
   }, [authState, navigate]);
 
+  const isReadOnly = dbDraftQuery.data?.status === "submitted";
+
   useEffect(() => {
     if (dbDraftQuery.data) {
       const d = dbDraftQuery.data;
       setDraftId(d.draftId);
+      if (d.status === "submitted") {
+        setStep(5);
+      }
       setForm((curr) => ({
         ...curr,
         type: d.type || curr.type,
@@ -199,18 +204,32 @@ function SubmitResourcePage() {
 
   const canNext = useMemo(() => {
     if (step === 1) return !!form.type;
-    if (step === 2)
-      return (
+    if (step === 2) {
+      const baseOk = Boolean(
         form.title.trim() &&
-        form.description.trim() &&
-        form.author.trim() &&
-        form.institution.trim() &&
-        form.country.trim() &&
-        form.year.trim() &&
-        form.language.trim() &&
-        form.keywords.trim() &&
-        form.topicCategory.trim()
+          form.description.trim() &&
+          form.author.trim() &&
+          form.institution.trim() &&
+          form.country.trim() &&
+          form.year.trim() &&
+          form.language.trim() &&
+          form.keywords.trim() &&
+          form.topicCategory.trim(),
       );
+      if (!baseOk) return false;
+      if (form.type === "Best Practice") {
+        const ps = form.practiceStructure;
+        return Boolean(
+          ps.challenge.trim() &&
+            ps.context.trim() &&
+            ps.intervention.trim() &&
+            ps.steps.trim() &&
+            ps.results.trim() &&
+            ps.lessons.trim(),
+        );
+      }
+      return true;
+    }
     if (step === 3) return !!form.file || !!form.externalUrl.trim();
     if (step === 4) return form.declaration;
     return true;
@@ -218,7 +237,11 @@ function SubmitResourcePage() {
 
   const goNext = () => {
     if (!canNext) {
-      setError("Please complete the required fields before continuing.");
+      setError(
+        step === 2 && form.type === "Best Practice"
+          ? "Mohon lengkapi seluruh kolom wajib informasi dasar dan Struktur Praktik Terbaik (Best Practice) bertanda * sebelum melanjutkan."
+          : "Please complete the required fields before continuing.",
+      );
       return;
     }
     setError(null);
@@ -371,6 +394,13 @@ function SubmitResourcePage() {
           })}
         </div>
 
+        {isReadOnly && (
+          <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50/90 px-4 py-3 text-xs text-blue-900">
+            <strong className="font-bold block mb-0.5">Mode Pratinjau Pengajuan (Baca-Saja)</strong>
+            Naskah ini telah dikirimkan ke kurator dan sedang dalam proses peninjauan atau telah disetujui. Anda dapat mengedit kembali apabila kurator meminta revisi.
+          </div>
+        )}
+
         <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
           {step === 1 && <StepType form={form} set={set} isTrainer={bootstrap.data?.isTrainer} />}
           {step === 2 && <StepInfo form={form} set={set} />}
@@ -397,31 +427,42 @@ function SubmitResourcePage() {
               )}
             </div>
             <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => void persist("draft")}
-                disabled={saving}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-marine px-4 py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
-              >
-                Save Draft
-              </button>
-              {step < 5 ? (
-                <button
-                  type="button"
-                  onClick={goNext}
+              {isReadOnly ? (
+                <Link
+                  to="/knowledge-hub/my-contributions"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy"
                 >
-                  Continue <ArrowRight className="h-4 w-4" />
-                </button>
+                  Kembali ke My Contributions <ArrowRight className="h-4 w-4" />
+                </Link>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => void persist("submitted")}
-                  disabled={!form.declaration || saving}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
-                >
-                  Submit Resource <Check className="h-4 w-4" />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void persist("draft")}
+                    disabled={saving}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-marine px-4 py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+                  >
+                    Save Draft
+                  </button>
+                  {step < 5 ? (
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy"
+                    >
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void persist("submitted")}
+                      disabled={!form.declaration || saving}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+                    >
+                      Submit Resource <Check className="h-4 w-4" />
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>

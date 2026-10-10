@@ -201,11 +201,12 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
       console.error("[listAdminPublicationSubmissions] subjects query error:", subjError);
     }
 
-    // 2. Fetch linked review_drafts
+    // 2. Fetch linked review_drafts (ordered ascending so the latest draft wins in the Map)
     const { data: drafts } = await supabaseAdmin
       .from("review_drafts")
       .select("id, title, payload, status, linked_subject_id, submitter_id, created_at, updated_at")
-      .eq("subject_kind", "knowledge_resource");
+      .eq("subject_kind", "knowledge_resource")
+      .order("updated_at", { ascending: true });
 
     const draftBySubjectId = new Map(
       (drafts ?? []).filter((d) => d.linked_subject_id).map((d) => [d.linked_subject_id as string, d]),
@@ -425,11 +426,13 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
       throw new Error("Data submission publikasi tidak ditemukan.");
     }
 
-    // 2. Fetch linked draft and revisions
+    // 2. Fetch latest linked draft
     const { data: draft } = await supabaseAdmin
       .from("review_drafts")
       .select("id, title, payload, status")
       .eq("linked_subject_id", input.subjectId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     const payload = (draft?.payload as Record<string, unknown>) ?? {};
@@ -526,6 +529,18 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           updated_at: new Date().toISOString(),
         })
         .eq("id", input.subjectId);
+
+      await supabaseAdmin
+        .from("knowledge_resources")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("source_submission_id", input.subjectId);
+
+      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+      clearKnowledgeHubCache();
 
       return { success: true, decisionId, decision: input.decision };
     }
@@ -709,12 +724,12 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
         }
       }
 
-      // Mark draft as published if exists
+      // Ensure draft status is canonical ('submitted') if exists
       if (draft) {
         await supabaseAdmin
           .from("review_drafts")
           .update({
-            status: "published",
+            status: "submitted",
             updated_at: new Date().toISOString(),
           })
           .eq("id", draft.id);
