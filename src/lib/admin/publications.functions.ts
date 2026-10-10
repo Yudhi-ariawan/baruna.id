@@ -264,7 +264,7 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
         license: typeof payload.license === "string" ? payload.license : "CC BY-NC 4.0",
         accessType: typeof payload.accessType === "string" ? payload.accessType : "open",
         keywords: keywordsList,
-        externalUrl: typeof payload.externalUrl === "string" ? payload.externalUrl : null,
+        externalUrl: typeof payload.externalUrl === "string" && payload.externalUrl.trim() ? payload.externalUrl.trim() : null,
         fileInfo: filePayload?.name || payload.fileName
           ? {
               name: filePayload?.name || String(payload.fileName),
@@ -468,8 +468,16 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           : [];
       const coverage = payload.geographicCoverage ? [String(payload.geographicCoverage)] : payload.coverage ? [String(payload.coverage)] : [];
 
+      const rawExtUrl = typeof payload.externalUrl === "string" ? payload.externalUrl.trim() : "";
+      const validExternalUrl = rawExtUrl && /^https?:\/\/\S+/i.test(rawExtUrl) ? rawExtUrl : null;
+
+      const rawThumbUrl = typeof payload.thumbnailUrl === "string" ? payload.thumbnailUrl.trim() : "";
+      const validThumbnailUrl = rawThumbUrl && /^https?:\/\/\S+/i.test(rawThumbUrl) ? rawThumbUrl : null;
+
       const resourceMetadata: Record<string, unknown> = {
         ...payload,
+        externalUrl: validExternalUrl,
+        thumbnailUrl: validThumbnailUrl,
         author_name: payload.author,
         contributor_name: payload.author,
         institution: payload.institution,
@@ -489,7 +497,7 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
       };
 
       if (existingKr) {
-        await supabaseAdmin
+        const { error: updateErr } = await supabaseAdmin
           .from("knowledge_resources")
           .update({
             current_status: "published",
@@ -500,10 +508,17 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
             approval_date: new Date().toISOString(),
             publication_date: new Date().toISOString(),
             audit_ref: decisionId,
+            external_url: validExternalUrl,
+            thumbnail_url: validThumbnailUrl,
             metadata: resourceMetadata as never,
             updated_at: new Date().toISOString(),
           })
           .eq("id", existingKr.id);
+
+        if (updateErr) {
+          console.error("[recordAdminPublicationDecision] update knowledge_resources error:", updateErr);
+          throw new Error(`Gagal memperbarui publikasi ke katalog Knowledge Hub: ${updateErr.message}`);
+        }
       } else {
         const { error: insertErr } = await supabaseAdmin.from("knowledge_resources").insert({
           source_type: "external_submission",
@@ -525,7 +540,8 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           language: typeof payload.language === "string" ? payload.language : "Indonesian",
           publication_year: Number(payload.year) || new Date().getFullYear(),
           publisher: typeof payload.institution === "string" ? payload.institution : "BARUNA Contributor",
-          external_url: typeof payload.externalUrl === "string" ? payload.externalUrl : null,
+          external_url: validExternalUrl,
+          thumbnail_url: validThumbnailUrl,
           topics,
           keywords,
           geographic_focus: coverage,

@@ -112,8 +112,12 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
     const institution = expert?.institution ?? String(form.institution ?? profile?.organization ?? "");
     const country = expert?.country ?? String(form.country ?? "Indonesia");
 
+    const rawExtUrl = typeof form.externalUrl === "string" ? form.externalUrl.trim() : "";
+    const cleanExternalUrl = rawExtUrl && /^https?:\/\/\S+/i.test(rawExtUrl) ? rawExtUrl : undefined;
+
     const patch: Json = {
       ...form,
+      externalUrl: cleanExternalUrl,
       title,
       resource_type: resourceType,
       author_expert_id: expert?.id ?? null,
