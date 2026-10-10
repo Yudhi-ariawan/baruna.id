@@ -29,12 +29,17 @@ import {
   ACCESS_LEVELS,
   ACCEPTED_FILE_TYPES,
   emptyResourceDraft,
+  emptyBestPracticeStructure,
   getResource,
   formatBytes,
   groupForType,
   type ResourceDraft,
   type AccessLevel,
 } from "@/lib/resources";
+import {
+  BestPracticeStructureForm,
+  BestPracticeStructurePreview,
+} from "@/components/baruna/knowledge/BestPracticeStructureFields";
 
 export const Route = createFileRoute("/knowledge-hub_/submit-resource")({
   head: () => ({
@@ -107,8 +112,12 @@ function SubmitResourcePage() {
           externalUrl: existing.externalUrl,
           accessLevel: existing.accessLevel,
           declaration: existing.declaration,
+          practiceStructure: existing.practiceStructure ?? { ...emptyBestPracticeStructure },
         }
-      : { ...emptyResourceDraft },
+      : {
+          ...emptyResourceDraft,
+          ...(initialType ? { type: initialType, typeGroup: groupForType(initialType) } : {}),
+        },
   );
   const [submitted, setSubmitted] = useState<null | "draft" | "submitted">(null);
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +156,9 @@ function SubmitResourcePage() {
         externalUrl: d.externalUrl || curr.externalUrl,
         accessLevel: d.accessLevel || curr.accessLevel,
         declaration: d.declaration || curr.declaration,
+        practiceStructure: d.practiceStructure
+          ? { ...emptyBestPracticeStructure, ...d.practiceStructure }
+          : curr.practiceStructure,
         file: d.fileName
           ? {
               name: d.fileName,
@@ -556,6 +568,13 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
           </div>
         </div>
       </div>
+
+      {form.type === "Best Practice" && (
+        <BestPracticeStructureForm
+          value={form.practiceStructure}
+          onChange={(next) => set("practiceStructure", next)}
+        />
+      )}
     </div>
   );
 }
@@ -970,6 +989,11 @@ function StepReview({ form }: { form: ResourceDraft }) {
         <Row label="Access Level" value={form.accessLevel} />
         <Row label="Declaration" value={form.declaration ? "Confirmed" : "Not confirmed"} />
       </div>
+      {form.type === "Best Practice" && (
+        <div className="mt-4">
+          <BestPracticeStructurePreview value={form.practiceStructure} />
+        </div>
+      )}
       {!form.declaration && (
         <p className="mt-4 flex items-center gap-2 text-sm font-medium text-destructive">
           <Globe className="h-4 w-4" /> Please confirm the rights declaration in Step 4 before submitting.

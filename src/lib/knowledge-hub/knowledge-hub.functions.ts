@@ -207,6 +207,10 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
               avatarUrl: expert.avatar_url || null,
             }
           : null,
+        practiceStructure:
+          metadata.practiceStructure && typeof metadata.practiceStructure === "object" && !Array.isArray(metadata.practiceStructure)
+            ? (metadata.practiceStructure as KhResource["practiceStructure"])
+            : null,
         metrics: {
           views: metricValue(metadata, ["views", "view_count", "viewCount"]),
           uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),

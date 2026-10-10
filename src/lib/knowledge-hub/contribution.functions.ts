@@ -111,9 +111,20 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       .eq("id", context.userId)
       .maybeSingle();
 
-    const authorName = expert?.display_name ?? String(form.author ?? profile?.display_name ?? "BARUNA Contributor");
-    const institution = expert?.institution ?? String(form.institution ?? profile?.organization ?? "");
-    const country = expert?.country ?? String(form.country ?? "Indonesia");
+    const authorName =
+      (typeof form.author === "string" && form.author.trim()) ||
+      expert?.display_name ||
+      profile?.display_name ||
+      "BARUNA Contributor";
+    const institution =
+      (typeof form.institution === "string" && form.institution.trim()) ||
+      expert?.institution ||
+      profile?.organization ||
+      "";
+    const country =
+      (typeof form.country === "string" && form.country.trim()) ||
+      expert?.country ||
+      "Indonesia";
 
     const rawExtUrl = typeof form.externalUrl === "string" ? form.externalUrl.trim() : "";
     const cleanExternalUrl = rawExtUrl && /^https?:\/\/\S+/i.test(rawExtUrl) ? rawExtUrl : undefined;
@@ -159,6 +170,23 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       }
     }
 
+    const rawPractice =
+      form.practiceStructure && typeof form.practiceStructure === "object" && !Array.isArray(form.practiceStructure)
+        ? (form.practiceStructure as Record<string, unknown>)
+        : null;
+    const practiceStructure = rawPractice
+      ? {
+          challenge: String(rawPractice.challenge ?? "").trim(),
+          context: String(rawPractice.context ?? "").trim(),
+          intervention: String(rawPractice.intervention ?? "").trim(),
+          steps: String(rawPractice.steps ?? "").trim(),
+          stakeholders: String(rawPractice.stakeholders ?? "").trim(),
+          results: String(rawPractice.results ?? "").trim(),
+          lessons: String(rawPractice.lessons ?? "").trim(),
+          replication: String(rawPractice.replication ?? "").trim(),
+        }
+      : null;
+
     const patch: Json = {
       ...form,
       coverFile: coverObj ?? null,
@@ -167,10 +195,16 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       filePath: fileObj?.storagePath ?? null,
       uploadedFilePath: fileObj?.storagePath ?? null,
       externalUrl: cleanExternalUrl ?? null,
+      practiceStructure,
+      geographicCoverage:
+        (typeof form.geographicCoverage === "string" && form.geographicCoverage.trim()) ||
+        practiceStructure?.context ||
+        null,
       title,
       resource_type: resourceType,
       author_expert_id: expert?.id ?? null,
       author_name: authorName,
+      author: authorName,
       institution,
       country,
       expertise_areas: expert?.expertise_areas ?? (form.keywords ? String(form.keywords).split(",").map((s) => s.trim()) : []),
@@ -272,6 +306,16 @@ export type SavedDraftDetail = {
   externalUrl: string;
   accessLevel: AccessLevel;
   declaration: boolean;
+  practiceStructure?: {
+    challenge: string;
+    context: string;
+    intervention: string;
+    steps: string;
+    stakeholders: string;
+    results: string;
+    lessons: string;
+    replication: string;
+  };
   fileName?: string;
   fileSize?: number;
   filePath?: string;
@@ -297,6 +341,10 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
     const p = (draft.payload as Record<string, unknown>) ?? {};
     const fileObj = p.file as { name?: string; size?: number; storagePath?: string } | undefined;
     const coverObj = p.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
+    const rawPractice =
+      p.practiceStructure && typeof p.practiceStructure === "object" && !Array.isArray(p.practiceStructure)
+        ? (p.practiceStructure as Record<string, unknown>)
+        : undefined;
     const { groupForType } = await import("@/lib/resources");
     const rawType = String(p.type || p.resource_type || "Research Report");
 
@@ -330,6 +378,18 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
       externalUrl: String(p.externalUrl || ""),
       accessLevel: (p.accessLevel as AccessLevel) || "Open Access",
       declaration: Boolean(p.declaration),
+      practiceStructure: rawPractice
+        ? {
+            challenge: String(rawPractice.challenge ?? ""),
+            context: String(rawPractice.context ?? ""),
+            intervention: String(rawPractice.intervention ?? ""),
+            steps: String(rawPractice.steps ?? ""),
+            stakeholders: String(rawPractice.stakeholders ?? ""),
+            results: String(rawPractice.results ?? ""),
+            lessons: String(rawPractice.lessons ?? ""),
+            replication: String(rawPractice.replication ?? ""),
+          }
+        : undefined,
       fileName: fileObj?.name || (typeof p.fileName === "string" ? p.fileName : undefined),
       fileSize: fileObj?.size || (typeof p.fileSize === "number" ? p.fileSize : undefined),
       filePath: fileObj?.storagePath || (typeof p.uploadedFilePath === "string" ? p.uploadedFilePath : undefined),

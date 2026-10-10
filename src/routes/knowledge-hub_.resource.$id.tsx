@@ -420,7 +420,21 @@ function ResourceDetailPage() {
               </Panel>
             )}
 
-            {r.type === "best-practices" && isDemo && (
+            {r.type === "best-practices" && r.practiceStructure && Object.values(r.practiceStructure).some((v) => typeof v === "string" && v.trim()) ? (
+              <Panel>
+                <h2 className="font-display text-base font-bold text-navy">Practice Structure</h2>
+                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {r.practiceStructure.challenge && <Field term="Challenge" desc={r.practiceStructure.challenge} />}
+                  {r.practiceStructure.context && <Field term="Context" desc={r.practiceStructure.context} />}
+                  {r.practiceStructure.intervention && <Field term="Intervention" desc={r.practiceStructure.intervention} />}
+                  {r.practiceStructure.steps && <Field term="Steps" desc={r.practiceStructure.steps} />}
+                  {r.practiceStructure.stakeholders && <Field term="Stakeholders" desc={r.practiceStructure.stakeholders} />}
+                  {r.practiceStructure.results && <Field term="Results" desc={r.practiceStructure.results} />}
+                  {r.practiceStructure.lessons && <Field term="Lessons" desc={r.practiceStructure.lessons} />}
+                  {r.practiceStructure.replication && <Field term="Replication" desc={r.practiceStructure.replication} />}
+                </dl>
+              </Panel>
+            ) : r.type === "best-practices" && isDemo ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Practice Structure</h2>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -434,7 +448,7 @@ function ResourceDetailPage() {
                   <Field term="Replication" desc={BEST_PRACTICE_STRUCTURE.replication} />
                 </dl>
               </Panel>
-            )}
+            ) : null}
 
             {r.type === "case-studies" && isDemo && (
               <Panel>

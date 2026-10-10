@@ -259,6 +259,13 @@ function PortalDashboard() {
                 <FileText className="h-4 w-4 text-sky-200" /> Submit Publikasi
               </Link>
               <Link
+                to="/knowledge-hub/submit-resource"
+                search={{ type: "Best Practice" }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/20 border border-emerald-300/35 px-4 py-2.5 text-xs font-bold text-emerald-100 shadow-sm hover:bg-emerald-500/30 transition"
+              >
+                <Sparkles className="h-4 w-4 text-emerald-300" /> Submit Best Practice
+              </Link>
+              <Link
                 to="/experts/portal/review-status"
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 border border-white/20 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition"
               >

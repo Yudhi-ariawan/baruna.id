@@ -122,6 +122,16 @@ export type AdminPublicationItem = {
     downloadUrl?: string | null;
   };
   lastRevisionRationale?: string | null;
+  practiceStructure?: {
+    challenge?: string;
+    context?: string;
+    intervention?: string;
+    steps?: string;
+    stakeholders?: string;
+    results?: string;
+    lessons?: string;
+    replication?: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
   isPublished?: boolean;
@@ -359,6 +369,10 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
             }
           : undefined,
         lastRevisionRationale: latestDec?.rationale || (typeof subjMeta.last_rationale === "string" ? subjMeta.last_rationale : null),
+        practiceStructure:
+          payload.practiceStructure && typeof payload.practiceStructure === "object" && !Array.isArray(payload.practiceStructure)
+            ? (payload.practiceStructure as AdminPublicationItem["practiceStructure"])
+            : null,
         createdAt: subj.created_at,
         updatedAt: subj.updated_at,
         isPublished: published?.current_status === "published",

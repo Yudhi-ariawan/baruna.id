@@ -83,6 +83,16 @@ export type KhResource = {
     title: string;
     avatarUrl: string | null;
   } | null;
+  practiceStructure?: {
+    challenge?: string;
+    context?: string;
+    intervention?: string;
+    steps?: string;
+    stakeholders?: string;
+    results?: string;
+    lessons?: string;
+    replication?: string;
+  } | null;
   metrics: {
     views: number;
     uniqueViewers: number;

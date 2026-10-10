@@ -20,6 +20,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { BestPracticeStructurePreview } from "@/components/baruna/knowledge/BestPracticeStructureFields";
 import {
   Dialog,
   DialogContent,
@@ -272,6 +273,11 @@ export function AdminPublicationDetailModal({
                     {item.abstract || "Tidak ada abstrak atau deskripsi yang disertakan."}
                   </div>
                 </div>
+
+                {/* Best Practice Structure (if applicable) */}
+                {item.practiceStructure && (
+                  <BestPracticeStructurePreview value={item.practiceStructure} />
+                )}
 
                 {/* Metadata Badges */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

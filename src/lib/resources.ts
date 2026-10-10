@@ -103,6 +103,28 @@ export const REVIEW_PIPELINE: ResourceStatus[] = ["Submitted", "Under Review", "
 
 export type ResourceFileMeta = { name: string; size: number; type: string; uploadedAt: string; storagePath?: string; previewUrl?: string };
 
+export type BestPracticeStructure = {
+  challenge: string;
+  context: string;
+  intervention: string;
+  steps: string;
+  stakeholders: string;
+  results: string;
+  lessons: string;
+  replication: string;
+};
+
+export const emptyBestPracticeStructure: BestPracticeStructure = {
+  challenge: "",
+  context: "",
+  intervention: "",
+  steps: "",
+  stakeholders: "",
+  results: "",
+  lessons: "",
+  replication: "",
+};
+
 export type Resource = {
   id: string;
   type: string;
@@ -121,6 +143,7 @@ export type Resource = {
   externalUrl: string;
   accessLevel: AccessLevel;
   declaration: boolean;
+  practiceStructure?: BestPracticeStructure;
   status: ResourceStatus;
   reviewNote?: string;
   createdAt: string;
@@ -146,6 +169,7 @@ export const emptyResourceDraft: ResourceDraft = {
   externalUrl: "",
   accessLevel: "Open Access",
   declaration: false,
+  practiceStructure: { ...emptyBestPracticeStructure },
 };
 
 // ── Seed examples (mirrors the BARUNA spec so the tracker is never empty) ─────

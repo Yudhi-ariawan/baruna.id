@@ -12,6 +12,7 @@ import {
   Plus,
   RotateCcw,
   ScrollText,
+  Sparkles,
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -82,19 +83,26 @@ export function TrainerKnowledgePublicationsCard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-4">
         <div>
           <h2 className="font-display text-base sm:text-lg font-bold text-navy flex items-center gap-2">
-            <ScrollText className="h-4.5 w-4.5 text-sky-600" /> Publikasi &amp; Dokumen Pengetahuan Saya
+            <ScrollText className="h-4.5 w-4.5 text-sky-600" /> Publikasi, Best Practice &amp; Dokumen Pengetahuan Saya
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Karya ilmiah, laporan riset, studi kasus, dan naskah publikasi Anda di Knowledge Hub.
+            Karya ilmiah, laporan riset, praktik terbaik (best practice), studi kasus, dan naskah publikasi Anda di Knowledge Hub.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-center">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
           <Link
             to="/knowledge-hub/submit-resource"
             className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-sky-700 transition"
           >
             <Plus className="h-3.5 w-3.5" /> Submit Publikasi
+          </Link>
+          <Link
+            to="/knowledge-hub/submit-resource"
+            search={{ type: "Best Practice" }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-700 transition"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> Submit Best Practice
           </Link>
           <Link
             to="/knowledge-hub/my-contributions"
