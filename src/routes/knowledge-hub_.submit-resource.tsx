@@ -218,7 +218,7 @@ function SubmitResourcePage() {
       );
       if (!baseOk) return false;
       if (form.type === "Best Practice") {
-        const ps = form.practiceStructure;
+        const ps = form.practiceStructure ?? emptyBestPracticeStructure;
         return Boolean(
           ps.challenge.trim() &&
             ps.context.trim() &&
