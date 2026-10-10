@@ -493,6 +493,51 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
 
     const decisionId = decRecord.id;
 
+    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
+
+    const deactivatePublishedExpertState = async () => {
+      const { data: expertRecord } = await supabaseAdmin
+        .from("experts")
+        .select("id")
+        .eq("source_submission_id", input.subjectId)
+        .maybeSingle();
+
+      if (expertRecord) {
+        await supabaseAdmin
+          .from("experts")
+          .update({
+            current_status: "archived",
+            visibility: "private",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", expertRecord.id);
+
+        await supabaseAdmin
+          .from("expert_trainer_status")
+          .update({ trainer_status: "inactive" })
+          .eq("expert_id", expertRecord.id);
+      }
+
+      if (subj.submitted_by) {
+        const { data: expertRole } = await supabaseAdmin
+          .from("rbac_roles")
+          .select("id")
+          .eq("code", "expert")
+          .maybeSingle();
+
+        if (expertRole) {
+          await supabaseAdmin
+            .from("rbac_user_roles")
+            .update({
+              status: "revoked",
+              valid_until: new Date().toISOString(),
+            })
+            .eq("user_id", subj.submitted_by)
+            .eq("role_id", expertRole.id);
+        }
+      }
+    };
+
     if (input.decision === "return_for_revision") {
       const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
       await supabaseAdmin
@@ -519,6 +564,9 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
           updated_at: new Date().toISOString(),
         })
         .eq("linked_subject_id", input.subjectId);
+
+      await deactivatePublishedExpertState();
+      clearExpertStatsCache();
 
       return { success: true, decisionId, decision: input.decision };
     }
@@ -547,6 +595,7 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
         );
       }
 
+      clearExpertStatsCache();
       return { success: true, decisionId, decision: input.decision };
     }
 
@@ -559,9 +608,13 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
         })
         .eq("id", input.subjectId);
 
+      await deactivatePublishedExpertState();
+      clearExpertStatsCache();
+
       return { success: true, decisionId, decision: input.decision };
     }
 
+    clearExpertStatsCache();
     return { success: true, decisionId, decision: input.decision };
   });
 
@@ -572,10 +625,12 @@ export const syncExpertToDirectory = createServerFn({ method: "POST" })
     if (!(await assertAdminOrReviewer(context))) {
       throw new Error("forbidden");
     }
+    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
     const result = await publishApprovedExpert({
       subjectId: input.subjectId,
       decidedBy: context.userId,
     });
+    clearExpertStatsCache();
     return { success: true, ...result };
   });
 
@@ -595,12 +650,13 @@ export const archiveAdminExpert = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
     const rationaleText = input.rationale?.trim() || "Diarsipkan oleh Administrator.";
 
     // 1. Fetch current subject
     const { data: subj, error: subjErr } = await supabaseAdmin
       .from("review_subjects")
-      .select("id, current_status, metadata")
+      .select("id, submitted_by, current_status, metadata")
       .eq("id", input.subjectId)
       .single();
 
@@ -643,7 +699,7 @@ export const archiveAdminExpert = createServerFn({ method: "POST" })
       }
     }
 
-    // 3. Update public.experts if published
+    // 3. Update public.experts, expert_trainer_status, and rbac_user_roles
     const { data: expertRecord } = await supabaseAdmin
       .from("experts")
       .select("id, current_status")
@@ -667,6 +723,27 @@ export const archiveAdminExpert = createServerFn({ method: "POST" })
         })
         .eq("expert_id", expertRecord.id);
     }
+
+    if (subj.submitted_by) {
+      const { data: expertRole } = await supabaseAdmin
+        .from("rbac_roles")
+        .select("id")
+        .eq("code", "expert")
+        .maybeSingle();
+
+      if (expertRole) {
+        await supabaseAdmin
+          .from("rbac_user_roles")
+          .update({
+            status: "revoked",
+            valid_until: new Date().toISOString(),
+          })
+          .eq("user_id", subj.submitted_by)
+          .eq("role_id", expertRole.id);
+      }
+    }
+
+    clearExpertStatsCache();
 
     // 4. Safe Governance Audit Log (append-only table, avoids review_decisions unique constraint collision)
     try {
@@ -700,11 +777,12 @@ export const unarchiveAdminExpert = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
 
     // 1. Fetch current subject
     const { data: subj, error: subjErr } = await supabaseAdmin
       .from("review_subjects")
-      .select("id, current_status, metadata")
+      .select("id, submitted_by, current_status, metadata")
       .eq("id", input.subjectId)
       .single();
 
@@ -735,7 +813,7 @@ export const unarchiveAdminExpert = createServerFn({ method: "POST" })
       })
       .eq("id", input.subjectId);
 
-    // 3. Update public.experts if published
+    // 3. Update public.experts, expert_trainer_status, and rbac_user_roles if published
     const { data: expertRecord } = await supabaseAdmin
       .from("experts")
       .select("id")
@@ -758,12 +836,33 @@ export const unarchiveAdminExpert = createServerFn({ method: "POST" })
           trainer_status: "active",
         })
         .eq("expert_id", expertRecord.id);
+
+      if (subj.submitted_by) {
+        const { data: expertRole } = await supabaseAdmin
+          .from("rbac_roles")
+          .select("id")
+          .eq("code", "expert")
+          .maybeSingle();
+
+        if (expertRole) {
+          await supabaseAdmin
+            .from("rbac_user_roles")
+            .update({
+              status: "active",
+              valid_until: null,
+            })
+            .eq("user_id", subj.submitted_by)
+            .eq("role_id", expertRole.id);
+        }
+      }
     } else if (prevStatus === "approved") {
       await publishApprovedExpert({
         subjectId: input.subjectId,
         decidedBy: context.userId,
       });
     }
+
+    clearExpertStatsCache();
 
     // 4. Safe Governance Audit Log
     try {

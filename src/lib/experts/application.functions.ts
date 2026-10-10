@@ -145,6 +145,7 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
             .from("experts")
             .select("id, slug, display_name, current_status")
             .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+            .neq("current_status", "archived")
             .order("updated_at", { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -157,8 +158,9 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
         try {
           const { data } = await supabaseAdmin
             .from("rbac_user_roles")
-            .select("id, rbac_roles!inner(code)")
+            .select("id, status, rbac_roles!inner(code)")
             .eq("user_id", context.userId)
+            .eq("status", "active")
             .eq("rbac_roles.code", "expert")
             .limit(1)
             .maybeSingle();
@@ -183,7 +185,7 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
     const hasExpertRbacRole = Boolean(expertRbac?.id);
 
     const isAlreadyExpert = Boolean(
-      existingExpert || hasApprovedApplication || hasExpertRbacRole,
+      hasPublishedExpert || hasApprovedApplication || hasExpertRbacRole,
     );
 
     const pendingApplication = !isAlreadyExpert
@@ -241,9 +243,13 @@ export const saveExpertApplicationDraft = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       draftId = createdId as string;
     }
+    const patchPayload = {
+      ...data.payload,
+      last_saved_at: new Date().toISOString(),
+    };
     const { error } = await context.supabase.rpc("expert_draft_update", {
       _draft_id: draftId,
-      _patch: data.payload as never,
+      _patch: patchPayload as never,
     });
     if (error) throw new Error(error.message);
     return { draftId };
@@ -316,13 +322,16 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
       })
       .eq("id", input.subjectId);
 
-    // 4. Record a revision snapshot in review_subject_revisions
-    const { count } = await supabaseAdmin
+    // 4. Record a revision snapshot in review_subject_revisions using max(revision) + 1
+    const { data: latestRev } = await supabaseAdmin
       .from("review_subject_revisions")
-      .select("*", { count: "exact", head: true })
-      .eq("subject_id", input.subjectId);
+      .select("revision")
+      .eq("subject_id", input.subjectId)
+      .order("revision", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    const revNum = (count ?? 0) + 1;
+    const revNum = Number(latestRev?.revision ?? 0) + 1;
     await supabaseAdmin.from("review_subject_revisions").insert({
       subject_id: input.subjectId,
       draft_id: input.draftId,

@@ -21,9 +21,125 @@ const ModuleSubmission = z.object({
   submit: z.boolean(),
 });
 
+async function ensureExpertTrainerProvisioned(userId: string): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { slugifyExpertName } = await import("./publishing.server");
+
+    const [{ data: existingExpert }, { data: activeExpertRole }] = await Promise.all([
+      supabaseAdmin
+        .from("experts")
+        .select("id, slug, display_name, current_status")
+        .or(`original_contributor_id.eq.${userId},created_by.eq.${userId}`)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("rbac_user_roles")
+        .select("id, status, rbac_roles!inner(code)")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .eq("rbac_roles.code", "expert")
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    if (existingExpert?.current_status === "archived") {
+      return;
+    }
+
+    const isPublishedExpert = existingExpert?.current_status === "published";
+    const hasActiveRole = Boolean(activeExpertRole?.id);
+
+    if (!isPublishedExpert && !hasActiveRole) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    let expertId = existingExpert?.id ?? null;
+
+    if (!expertId && hasActiveRole) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("display_name, organization, job_title")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const displayName = (profile?.display_name || "BARUNA Expert").trim();
+      const slug = `${slugifyExpertName(displayName)}-${userId.slice(0, 8)}`;
+      const headline = (profile?.job_title || "Marine & Fisheries Expert").trim();
+
+      const { data: inserted } = await supabaseAdmin
+        .from("experts")
+        .insert({
+          source_type: "admin_created",
+          original_contributor_id: userId,
+          created_by: userId,
+          approved_by: userId,
+          published_by: userId,
+          approval_date: now,
+          publication_date: now,
+          verification_status: "governance_verified",
+          visibility: "public",
+          current_status: "published",
+          display_name: displayName,
+          slug,
+          headline,
+          bio: "",
+          country: "Indonesia",
+          languages: ["Indonesian", "English"],
+          expertise_areas: [],
+        })
+        .select("id")
+        .single();
+
+      if (inserted?.id) {
+        expertId = inserted.id;
+        if (profile?.organization || headline) {
+          await supabaseAdmin.from("expert_employment").insert({
+            expert_id: expertId,
+            organization: profile?.organization || "BARUNA Network",
+            role: headline,
+            is_current: true,
+            visibility: "public",
+          });
+        }
+      }
+    }
+
+    if (expertId) {
+      const { data: trainerRow } = await supabaseAdmin
+        .from("expert_trainer_status")
+        .select("id, trainer_status")
+        .eq("expert_id", expertId)
+        .maybeSingle();
+
+      if (!trainerRow) {
+        await supabaseAdmin.from("expert_trainer_status").insert({
+          expert_id: expertId,
+          trainer_status: "active",
+          trainer_level: "certified",
+          unique_graduated_participants: 0,
+          granted_at: now,
+          effective_from: now,
+          version: 1,
+        });
+      } else if (trainerRow.trainer_status !== "active" && isPublishedExpert) {
+        await supabaseAdmin
+          .from("expert_trainer_status")
+          .update({ trainer_status: "active" })
+          .eq("id", trainerRow.id);
+      }
+    }
+  } catch (err) {
+    console.warn("[ensureExpertTrainerProvisioned] warning:", err);
+  }
+}
+
 export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<TrainerPortalBootstrap> => {
+    await ensureExpertTrainerProvisioned(context.userId);
     const { data, error } = await context.supabase.rpc("trainer_portal_bootstrap");
     if (error) throw new Error(error.message);
     const bootstrap = data as unknown as TrainerPortalBootstrap;
@@ -195,6 +311,7 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => ModuleSubmission.parse(input))
   .handler(async ({ context, data }) => {
+    await ensureExpertTrainerProvisioned(context.userId);
     const access = await context.supabase.rpc("trainer_portal_bootstrap");
     if (access.error || (access.data as { access?: string } | null)?.access !== "active_trainer") {
       throw new Error("active_trainer_required");
@@ -253,9 +370,13 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
       };
     }
 
+    const patchPayload = data.submit
+      ? { ...data.payload, last_submitted_at: new Date().toISOString() }
+      : data.payload;
+
     const updated = await context.supabase.rpc("module_draft_update", {
       _draft_id: draftId,
-      _patch: data.payload as Json,
+      _patch: patchPayload as Json,
     });
     if (updated.error) throw new Error(updated.error.message);
 

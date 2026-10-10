@@ -20,6 +20,89 @@ function mapToProficiencyEnum(level: string): "A1" | "A2" | "B1" | "B2" | "C1" |
   return "C1";
 }
 
+const PUBLIC_AVATAR_BUCKET = "expert-avatars";
+
+export async function publishExpertAvatar(
+  subjectId: string,
+  sourcePath: string,
+  fileName?: string,
+): Promise<string | null> {
+  if (!sourcePath || !sourcePath.trim()) return null;
+  const trimmed = sourcePath.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  try {
+    const { data: blob, error: downloadError } = await supabaseAdmin.storage
+      .from("expert-applications")
+      .download(trimmed);
+
+    if (downloadError || !blob) {
+      const { data: signed } = await supabaseAdmin.storage
+        .from("expert-applications")
+        .createSignedUrl(trimmed, 31536000);
+      return signed?.signedUrl ?? trimmed;
+    }
+
+    const buckets = await supabaseAdmin.storage.listBuckets();
+    if (!buckets.data?.some((b) => b.id === PUBLIC_AVATAR_BUCKET)) {
+      const created = await supabaseAdmin.storage.createBucket(PUBLIC_AVATAR_BUCKET, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+        allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+      });
+      if (created.error && !created.error.message?.includes("already exists")) {
+        console.warn("[publishExpertAvatar] createBucket notice:", created.error);
+      }
+    }
+
+    const extension =
+      String(fileName || trimmed)
+        .split(".")
+        .pop()
+        ?.toLowerCase()
+        .replace(/[^a-z0-9]/g, "") || "jpg";
+    const destination = `experts/${subjectId}/avatar.${extension}`;
+    const contentType =
+      blob.type || (extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : "image/jpeg");
+
+    const uploaded = await supabaseAdmin.storage
+      .from(PUBLIC_AVATAR_BUCKET)
+      .upload(destination, blob, { contentType, upsert: true });
+
+    if (uploaded.error) {
+      const { data: signed } = await supabaseAdmin.storage
+        .from("expert-applications")
+        .createSignedUrl(trimmed, 31536000);
+      return signed?.signedUrl ?? trimmed;
+    }
+
+    return supabaseAdmin.storage.from(PUBLIC_AVATAR_BUCKET).getPublicUrl(destination).data.publicUrl;
+  } catch (err) {
+    console.warn("[publishExpertAvatar] error:", err);
+    return trimmed;
+  }
+}
+
+export async function resolvePublicAvatarUrl(
+  rawAvatarUrl: string | null | undefined,
+): Promise<string | null> {
+  if (!rawAvatarUrl || !rawAvatarUrl.trim()) return null;
+  const url = rawAvatarUrl.trim();
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  try {
+    const { data: signed } = await supabaseAdmin.storage
+      .from("expert-applications")
+      .createSignedUrl(url, 86400);
+    return signed?.signedUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function publishApprovedExpert({
   subjectId,
   decisionId,
@@ -92,7 +175,11 @@ export async function publishApprovedExpert({
     const isImage =
       docType.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(docName);
     if (isImage) {
-      avatarUrl = photoDoc.path;
+      avatarUrl = await publishExpertAvatar(
+        subjectId,
+        photoDoc.path,
+        typeof photoDoc.name === "string" ? photoDoc.name : undefined,
+      );
     }
   }
 
@@ -211,35 +298,31 @@ export async function publishApprovedExpert({
     }
   }
 
-  // 5. Upsert public.expert_trainer_status (if roles include Trainer)
-  const roles = Array.isArray(payload.roles) ? (payload.roles as string[]) : [];
-  const isTrainer = roles.some((r) => String(r).toLowerCase().includes("trainer"));
-  if (isTrainer) {
-    const { data: existingTrainer } = await supabaseAdmin
+  // 5. Upsert public.expert_trainer_status (grant active trainer access for all approved experts so /experts/portal works seamlessly)
+  const { data: existingTrainer } = await supabaseAdmin
+    .from("expert_trainer_status")
+    .select("id")
+    .eq("expert_id", expertId)
+    .maybeSingle();
+
+  const trainerData = {
+    expert_id: expertId,
+    trainer_status: "active" as const,
+    trainer_level: "certified" as const,
+    unique_graduated_participants: 0,
+    granted_by: decidedBy || null,
+    granted_at: now,
+    effective_from: now,
+    version: 1,
+  };
+
+  if (existingTrainer) {
+    await supabaseAdmin
       .from("expert_trainer_status")
-      .select("id")
-      .eq("expert_id", expertId)
-      .maybeSingle();
-
-    const trainerData = {
-      expert_id: expertId,
-      trainer_status: "active" as const,
-      trainer_level: "certified" as const,
-      unique_graduated_participants: 0,
-      granted_by: decidedBy || null,
-      granted_at: now,
-      effective_from: now,
-      version: 1,
-    };
-
-    if (existingTrainer) {
-      await supabaseAdmin
-        .from("expert_trainer_status")
-        .update(trainerData)
-        .eq("id", existingTrainer.id);
-    } else {
-      await supabaseAdmin.from("expert_trainer_status").insert(trainerData);
-    }
+      .update(trainerData)
+      .eq("id", existingTrainer.id);
+  } else {
+    await supabaseAdmin.from("expert_trainer_status").insert(trainerData);
   }
 
   // 6. Sync relational child tables: expert_languages, expert_projects, expert_publications
@@ -407,91 +490,6 @@ export async function publishApprovedExpert({
         phone: typeof payload.phone === "string" ? payload.phone : undefined,
       })
       .eq("id", subject.submitted_by);
-  }
-
-  // 7. Sync expert_languages child records if structuredLanguages provided
-  const structuredLanguages = Array.isArray(payload.structuredLanguages)
-    ? (payload.structuredLanguages as Array<{ language: string; proficiency?: string }>)
-    : [];
-  if (structuredLanguages.length > 0) {
-    for (const item of structuredLanguages) {
-      if (!item.language || typeof item.language !== "string") continue;
-      const langName = item.language.trim();
-      const langCode = langName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 10) || "lang";
-      const rawProf = (item.proficiency || "").trim();
-      const validEnums = ["A1", "A2", "B1", "B2", "C1", "C2", "native"] as const;
-      let profLevel: (typeof validEnums)[number] = "C1";
-      if (validEnums.includes(rawProf as (typeof validEnums)[number])) {
-        profLevel = rawProf as (typeof validEnums)[number];
-      } else {
-        const lower = rawProf.toLowerCase();
-        if (lower === "native") profLevel = "native";
-        else if (lower === "fluent" || lower === "bilingual") profLevel = "C2";
-        else if (lower === "professional" || lower === "advanced") profLevel = "C1";
-        else if (lower === "intermediate" || lower === "conversational") profLevel = "B2";
-        else if (lower === "basic" || lower === "beginner") profLevel = "A2";
-      }
-
-      await supabaseAdmin.from("expert_languages").upsert(
-        {
-          expert_id: expertId,
-          language_code: langCode,
-          language_name: langName,
-          proficiency_level: profLevel,
-          visibility: "public",
-        },
-        { onConflict: "expert_id, language_code" }
-      );
-    }
-  }
-
-  // 8. Sync expert_projects child records if structuredProjects provided
-  const structuredProjects = Array.isArray(payload.structuredProjects)
-    ? (payload.structuredProjects as Array<{
-        name: string;
-        institution?: string;
-        role?: string;
-        description?: string;
-        url?: string;
-      }>)
-    : [];
-  if (structuredProjects.length > 0) {
-    for (const item of structuredProjects) {
-      if (!item.name || typeof item.name !== "string") continue;
-      await supabaseAdmin.from("expert_projects").insert({
-        expert_id: expertId,
-        project_name: item.name.trim(),
-        institution_or_funder: item.institution?.trim() || null,
-        role: item.role?.trim() || null,
-        description: item.description?.trim() || null,
-        evidence_ref: item.url?.trim() || null,
-        visibility: "public",
-      });
-    }
-  }
-
-  // 9. Sync expert_publications child records if structuredPublications provided
-  const structuredPublications = Array.isArray(payload.structuredPublications)
-    ? (payload.structuredPublications as Array<{
-        title: string;
-        venue?: string;
-        year?: string | number;
-        url?: string;
-      }>)
-    : [];
-  if (structuredPublications.length > 0) {
-    for (const item of structuredPublications) {
-      if (!item.title || typeof item.title !== "string") continue;
-      const parsedYear = item.year ? parseInt(String(item.year), 10) : null;
-      await supabaseAdmin.from("expert_publications").insert({
-        expert_id: expertId,
-        title: item.title.trim(),
-        venue: item.venue?.trim() || null,
-        year: Number.isFinite(parsedYear) ? parsedYear : null,
-        url: item.url?.trim() || null,
-        visibility: "public",
-      });
-    }
   }
 
   return { expertId, slug };

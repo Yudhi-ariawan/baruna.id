@@ -25,6 +25,10 @@ let expertStatsCache:
   | { expiresAt: number; value: PublicExpertStats }
   | undefined;
 
+export function clearExpertStatsCache(): void {
+  expertStatsCache = undefined;
+}
+
 function normalizedUnique(values: Array<string | null | undefined>): number {
   return new Set(
     values.map((value) => value?.trim().toLocaleLowerCase()).filter(Boolean),

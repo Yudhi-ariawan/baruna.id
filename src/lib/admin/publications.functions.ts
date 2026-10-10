@@ -511,6 +511,18 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           .eq("id", draft.id);
       }
 
+      await supabaseAdmin
+        .from("knowledge_resources")
+        .update({
+          current_status: "archived",
+          visibility: "private",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("source_submission_id", input.subjectId);
+
+      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+      clearKnowledgeHubCache();
+
       return { success: true, decisionId, decision: input.decision };
     }
 

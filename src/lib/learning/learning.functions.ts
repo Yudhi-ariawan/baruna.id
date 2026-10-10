@@ -522,6 +522,7 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
 
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { resolvePublicAvatarUrl } = await import("@/lib/experts/publishing.server");
 
       const { data: mod, error: mErr } = await supabaseAdmin
         .from("module_registry")
@@ -531,6 +532,10 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
 
       if (mErr) {
         console.error("Error querying module_registry:", mErr);
+      }
+
+      if (mod && (mod.current_status !== "published" || mod.visibility !== "public")) {
+        return null;
       }
 
       if (!mod) {
@@ -569,7 +574,7 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
               name: exp.display_name || "BARUNA Trainer",
               headline: exp.headline || null,
               institution: exp.institution || null,
-              avatarUrl: exp.avatar_url || null,
+              avatarUrl: await resolvePublicAvatarUrl(exp.avatar_url),
               slug: exp.slug || null,
             };
           }
@@ -660,7 +665,7 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
           name: exp.display_name || "BARUNA Trainer",
           headline: exp.headline || null,
           institution: exp.institution || null,
-          avatarUrl: exp.avatar_url || null,
+          avatarUrl: await resolvePublicAvatarUrl(exp.avatar_url),
           slug: exp.slug || null,
         };
       } else {
@@ -674,7 +679,7 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
             name: rawExp.display_name || "BARUNA Trainer",
             headline: rawExp.headline || null,
             institution: null,
-            avatarUrl: rawExp.avatar_url || null,
+            avatarUrl: await resolvePublicAvatarUrl(rawExp.avatar_url),
             slug: rawExp.slug || null,
           };
         }
@@ -789,6 +794,7 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
   .handler(async (): Promise<PublishedCatalogModule[]> => {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { resolvePublicAvatarUrl } = await import("@/lib/experts/publishing.server");
       const { data: dbMods, error } = await supabaseAdmin
         .from("module_registry")
         .select("id, title, summary, language, estimated_learning_hours, created_at, author_expert_id, metadata, content_outline, current_status, visibility")
@@ -806,9 +812,17 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
           .select("id, display_name, avatar_url, slug")
           .in("id", expertIds);
         if (expList && expList.length > 0) {
-          expertMap = Object.fromEntries(
-            expList.map((e) => [e.id, { name: e.display_name || "BARUNA Trainer", avatarUrl: e.avatar_url, slug: e.slug }])
+          const resolvedExpList = await Promise.all(
+            expList.map(async (e) => [
+              e.id,
+              {
+                name: e.display_name || "BARUNA Trainer",
+                avatarUrl: await resolvePublicAvatarUrl(e.avatar_url),
+                slug: e.slug,
+              },
+            ] as const),
           );
+          expertMap = Object.fromEntries(resolvedExpList);
         } else {
           const { data: profList } = await supabaseAdmin
             .from("profiles")

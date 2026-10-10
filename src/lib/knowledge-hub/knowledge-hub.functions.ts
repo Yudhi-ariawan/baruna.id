@@ -187,6 +187,7 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
+    const { resolvePublicAvatarUrl } = await import("@/lib/experts/publishing.server");
     const expertIds = [...new Set((data ?? []).flatMap((item) => item.related_expert_ids ?? []))];
     const { data: experts, error: expertError } = expertIds.length
       ? await supabaseAdmin
@@ -195,7 +196,13 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
           .in("id", expertIds)
       : { data: [], error: null };
     if (expertError) throw new Error(expertError.message);
-    const expertById = new Map((experts ?? []).map((expert) => [expert.id, expert]));
+    const resolvedExperts = await Promise.all(
+      (experts ?? []).map(async (expert) => ({
+        ...expert,
+        avatar_url: await resolvePublicAvatarUrl(expert.avatar_url),
+      })),
+    );
+    const expertById = new Map(resolvedExperts.map((expert) => [expert.id, expert]));
 
     const resources: KhResource[] = (data ?? []).map((item) => {
       const metadata = metadataRecord(item.metadata);
@@ -383,6 +390,7 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
+    const { resolvePublicAvatarUrl } = await import("@/lib/experts/publishing.server");
     const expertIds = [...new Set((data ?? []).flatMap((resource) => resource.related_expert_ids ?? []))];
     const { data: experts, error: expertError } = expertIds.length
       ? await supabaseAdmin
@@ -391,7 +399,13 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
           .in("id", expertIds)
       : { data: [], error: null };
     if (expertError) throw new Error(expertError.message);
-    const expertById = new Map((experts ?? []).map((expert) => [expert.id, expert]));
+    const resolvedExperts = await Promise.all(
+      (experts ?? []).map(async (expert) => ({
+        ...expert,
+        avatar_url: await resolvePublicAvatarUrl(expert.avatar_url),
+      })),
+    );
+    const expertById = new Map(resolvedExperts.map((expert) => [expert.id, expert]));
 
     const value: KhResource[] = (data ?? []).map((resource) => {
       const metadata = resource.metadata && typeof resource.metadata === "object" && !Array.isArray(resource.metadata)

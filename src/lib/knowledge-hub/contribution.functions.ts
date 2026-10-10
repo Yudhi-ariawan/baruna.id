@@ -42,8 +42,9 @@ export const getKnowledgeContributorBootstrap = createServerFn({ method: "GET" }
       supabaseAdmin
         .from("experts")
         .select("id")
+        .eq("current_status", "published")
         .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
-        .order("current_status", { ascending: false })
+        .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
       supabaseAdmin.auth.admin.getUserById(context.userId),
@@ -98,8 +99,9 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
     const { data: expertLink } = await context.supabase
       .from("experts")
       .select("id")
+      .eq("current_status", "published")
       .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
-      .order("current_status", { ascending: false })
+      .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
