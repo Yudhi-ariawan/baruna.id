@@ -101,7 +101,9 @@ function attachmentMetadata(metadata: Record<string, unknown>) {
 }
 
 export function clearKnowledgeHubCache(): void {
-  overviewCache = null;
+  overviewCache = undefined;
+  statsCache = undefined;
+  moduleCache = undefined;
 }
 
 export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler(
