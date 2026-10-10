@@ -127,28 +127,33 @@ function SubmitResourcePage() {
 
   useEffect(() => {
     if (dbDraftQuery.data) {
-      const p = dbDraftQuery.data.payload;
-      setDraftId(dbDraftQuery.data.draftId);
+      const d = dbDraftQuery.data;
+      setDraftId(d.draftId);
       setForm((curr) => ({
         ...curr,
-        type: String(p.type || p.resource_type || curr.type || ""),
-        typeGroup: groupForType(String(p.type || p.resource_type || curr.type || "")),
-        title: dbDraftQuery.data.title || curr.title,
-        description: String(p.description || p.abstract || curr.description || ""),
-        author: String(p.author || p.author_name || curr.author || ""),
-        institution: String(p.institution || curr.institution || ""),
-        country: String(p.country || curr.country || "Indonesia"),
-        year: String(p.year || p.publication_year || curr.year || ""),
-        language: String(p.language || curr.language || "Indonesian"),
-        keywords: Array.isArray(p.keywords) ? (p.keywords as string[]).join(", ") : String(p.keywords || curr.keywords || ""),
-        topicCategory: String(p.topicCategory || p.topic || curr.topicCategory || ""),
-        geographicCoverage: String(p.geographicCoverage || p.coverage || curr.geographicCoverage || ""),
-        targetAudience: String(p.targetAudience || curr.targetAudience || ""),
-        externalUrl: String(p.externalUrl || curr.externalUrl || ""),
-        license: String(p.license || curr.license || "CC BY-NC 4.0"),
-        accessType: String(p.accessType || curr.accessType || "open"),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        file: (p.file as any) ?? curr.file,
+        type: d.type || curr.type,
+        typeGroup: d.typeGroup || curr.typeGroup,
+        title: d.title || curr.title,
+        description: d.description || curr.description,
+        author: d.author || curr.author,
+        institution: d.institution || curr.institution,
+        country: d.country || curr.country,
+        year: d.year || curr.year,
+        language: d.language || curr.language,
+        keywords: d.keywords || curr.keywords,
+        topicCategory: d.topicCategory || curr.topicCategory,
+        externalUrl: d.externalUrl || curr.externalUrl,
+        accessLevel: d.accessLevel || curr.accessLevel,
+        declaration: d.declaration || curr.declaration,
+        file: d.fileName
+          ? {
+              name: d.fileName,
+              size: d.fileSize || 0,
+              type: d.fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+              uploadedAt: new Date().toISOString(),
+              storagePath: d.filePath,
+            }
+          : curr.file,
       }));
     }
   }, [dbDraftQuery.data]);

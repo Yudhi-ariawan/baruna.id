@@ -168,10 +168,32 @@ export type KnowledgeContributionItem = {
   reviewNote?: string;
 };
 
+export type SavedDraftDetail = {
+  draftId: string;
+  title: string;
+  status: string;
+  type: string;
+  typeGroup: string;
+  description: string;
+  author: string;
+  institution: string;
+  country: string;
+  year: string;
+  language: string;
+  keywords: string;
+  topicCategory: string;
+  externalUrl: string;
+  accessLevel: "Public Access" | "Registered User" | "Course Participant" | "Completion Required";
+  declaration: boolean;
+  fileName?: string;
+  fileSize?: number;
+  filePath?: string;
+};
+
 export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ draftId: z.string().uuid() }).parse(input))
-  .handler(async ({ context, data }) => {
+  .handler(async ({ context, data }): Promise<SavedDraftDetail | null> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: draft, error } = await supabaseAdmin
       .from("review_drafts")
@@ -181,11 +203,31 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
       .maybeSingle();
 
     if (error || !draft) return null;
+    const p = (draft.payload as Record<string, unknown>) ?? {};
+    const fileObj = p.file as { name?: string; size?: number; storagePath?: string } | undefined;
+    const { groupForType } = await import("@/lib/resources");
+    const rawType = String(p.type || p.resource_type || "Research Report");
+
     return {
       draftId: draft.id,
       title: draft.title,
       status: draft.status,
-      payload: (draft.payload as Record<string, unknown>) ?? {},
+      type: rawType,
+      typeGroup: groupForType(rawType),
+      description: String(p.description || p.abstract || ""),
+      author: String(p.author || p.author_name || ""),
+      institution: String(p.institution || ""),
+      country: String(p.country || "Indonesia"),
+      year: String(p.year || new Date().getFullYear()),
+      language: String(p.language || "Indonesian"),
+      keywords: Array.isArray(p.keywords) ? (p.keywords as string[]).join(", ") : String(p.keywords || ""),
+      topicCategory: String(p.topicCategory || p.topic || "General"),
+      externalUrl: String(p.externalUrl || ""),
+      accessLevel: (p.accessLevel as SavedDraftDetail["accessLevel"]) || "Public Access",
+      declaration: Boolean(p.declaration),
+      fileName: fileObj?.name || (typeof p.fileName === "string" ? p.fileName : undefined),
+      fileSize: fileObj?.size || (typeof p.fileSize === "number" ? p.fileSize : undefined),
+      filePath: fileObj?.storagePath || (typeof p.uploadedFilePath === "string" ? p.uploadedFilePath : undefined),
     };
   });
 

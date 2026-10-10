@@ -140,13 +140,23 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
 
       <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
         {isPublished ? (
-          <Link
-            to={r.resourceId ? "/knowledge-hub/resource/$id" : "/knowledge-hub/publications"}
-            params={r.resourceId ? { id: r.resourceId } : undefined}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:bg-muted"
-          >
-            <Eye className="h-3.5 w-3.5 text-marine" /> Lihat di Katalog Publik
-          </Link>
+          r.resourceId ? (
+            <Link
+              to="/knowledge-hub/resource/$id"
+              params={{ id: r.resourceId }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:bg-muted"
+            >
+              <Eye className="h-3.5 w-3.5 text-marine" /> Lihat di Katalog Publik
+            </Link>
+          ) : (
+            <Link
+              to="/knowledge-hub/$type"
+              params={{ type: "publications" }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:bg-muted"
+            >
+              <Eye className="h-3.5 w-3.5 text-marine" /> Lihat di Katalog Publik
+            </Link>
+          )
         ) : (
           <Link
             to="/knowledge-hub/submit-resource"
@@ -264,3 +274,4 @@ function MyContributionsPage() {
     </div>
   );
 }
+
