@@ -30,6 +30,8 @@ import {
 } from "@/lib/knowledge-hub/knowledge-hub.functions";
 
 export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
+  staleTime: 0,
+  gcTime: 0,
   loader: async ({ params }) => {
     const demoResource = getResourceById(params.id);
     if (demoResource) return { resource: demoResource };

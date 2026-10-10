@@ -17,10 +17,19 @@ const EMPTY_STATS: KnowledgeHubStats = {
   categoryCount: 0,
 };
 
-const CACHE_TTL_MS = 60_000;
-let statsCache: { expiresAt: number; value: KnowledgeHubStats } | undefined;
-let moduleCache: { expiresAt: number; value: KhResource[] } | undefined;
-let overviewCache: { expiresAt: number; value: KnowledgeHubOverview } | undefined;
+const CACHE_TTL_MS = 5_000;
+type KhCacheStore = {
+  stats?: { expiresAt: number; value: KnowledgeHubStats };
+  modules?: { expiresAt: number; value: KhResource[] };
+  overview?: { expiresAt: number; value: KnowledgeHubOverview };
+};
+const gCache = globalThis as unknown as { __barunaKhCache?: KhCacheStore };
+function khCache(): KhCacheStore {
+  if (!gCache.__barunaKhCache) {
+    gCache.__barunaKhCache = {};
+  }
+  return gCache.__barunaKhCache;
+}
 
 export type KnowledgeHubOverview = {
   resources: KhResource[];
@@ -101,15 +110,17 @@ function attachmentMetadata(metadata: Record<string, unknown>) {
 }
 
 export function clearKnowledgeHubCache(): void {
-  overviewCache = undefined;
-  statsCache = undefined;
-  moduleCache = undefined;
+  const store = khCache();
+  store.overview = undefined;
+  store.stats = undefined;
+  store.modules = undefined;
 }
 
 export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler(
   async (): Promise<KnowledgeHubOverview> => {
     const now = Date.now();
-    if (overviewCache && overviewCache.expiresAt > now) return overviewCache.value;
+    const store = khCache();
+    if (store.overview && store.overview.expiresAt > now) return store.overview.value;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("knowledge_resources")
@@ -227,7 +238,7 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
     for (const resource of resources) counts[resource.type] += 1;
     const categories = [...new Set(resources.map((resource) => resource.category).filter(Boolean))].sort();
     const value = { resources, counts, categories };
-    overviewCache = { value, expiresAt: now + CACHE_TTL_MS };
+    store.overview = { value, expiresAt: now + CACHE_TTL_MS };
     return value;
   },
 );
@@ -256,7 +267,8 @@ function metricValue(metadata: unknown, names: string[]): number {
 export const getKnowledgeHubStats = createServerFn({ method: "GET" }).handler(
   async (): Promise<KnowledgeHubStats> => {
     const now = Date.now();
-    if (statsCache && statsCache.expiresAt > now) return statsCache.value;
+    const store = khCache();
+    if (store.stats && store.stats.expiresAt > now) return store.stats.value;
 
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -287,7 +299,7 @@ export const getKnowledgeHubStats = createServerFn({ method: "GET" }).handler(
         ).size,
       };
 
-      statsCache = { value, expiresAt: now + CACHE_TTL_MS };
+      store.stats = { value, expiresAt: now + CACHE_TTL_MS };
       return value;
     } catch (error) {
       console.warn("Knowledge Hub statistics query failed:", error);
@@ -300,7 +312,8 @@ export const getKnowledgeHubStats = createServerFn({ method: "GET" }).handler(
 export const getPublishedLearningModules = createServerFn({ method: "GET" }).handler(
   async (): Promise<KhResource[]> => {
     const now = Date.now();
-    if (moduleCache && moduleCache.expiresAt > now) return moduleCache.value;
+    const store = khCache();
+    if (store.modules && store.modules.expiresAt > now) return store.modules.value;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
@@ -382,7 +395,7 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
         updatedAt: resource.updated_at,
       };
     });
-    moduleCache = { value, expiresAt: now + CACHE_TTL_MS };
+    store.modules = { value, expiresAt: now + CACHE_TTL_MS };
     return value;
   },
 );

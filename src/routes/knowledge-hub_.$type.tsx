@@ -3,7 +3,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Search, X, LayoutGrid, List, AlignJustify, BookOpen, Upload, Filter, Compass } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Panel } from "@/components/baruna/page/primitives";
-import { KH_ALL, KH_TYPES, labelForType, resourcesByType, type KhResource, type KhResourceType, type KhAccessLevel } from "@/data/demo/knowledgeHub";
+import { KH_ALL, KH_TYPES, countByType, labelForType, resourcesByType, type KhResource, type KhResourceType, type KhAccessLevel } from "@/data/demo/knowledgeHub";
 import { DEMO_CATEGORIES } from "@/data/demo";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge } from "@/components/baruna/knowledge/ResourceCard";
@@ -13,15 +13,19 @@ import { MODULE_CATEGORY_LABELS } from "@/lib/academy/module-categories";
 const VALID: string[] = [...KH_TYPES.map((t) => t.slug), "library"];
 
 export const Route = createFileRoute("/knowledge-hub_/$type")({
+  staleTime: 0,
+  gcTime: 0,
   loader: async ({ params }) => {
     if (!VALID.includes(params.type)) throw notFound();
 
     let dbResources: KhResource[] = [];
+    let dbCounts: Partial<Record<KhResourceType, number>> | undefined;
     try {
+      const overview = await getKnowledgeHubOverview();
+      dbCounts = overview.counts;
       if (params.type === "learning-modules") {
         dbResources = await getPublishedLearningModules();
       } else {
-        const overview = await getKnowledgeHubOverview();
         dbResources = params.type === "library"
           ? overview.resources
           : overview.resources.filter((r) => r.type === params.type);
@@ -30,7 +34,7 @@ export const Route = createFileRoute("/knowledge-hub_/$type")({
       console.warn("Failed to load published resources catalog:", err);
     }
 
-    return { type: params.type as KhResourceType | "library", dbResources };
+    return { type: params.type as KhResourceType | "library", dbResources, dbCounts };
   },
   head: ({ params }) => {
     const label = params.type === "library" ? "Resource Library" : labelForType(params.type as KhResourceType);
@@ -64,12 +68,20 @@ type SortKey = "relevant" | "newest" | "most-viewed" | "most-downloaded" | "alph
 type ViewMode = "grid" | "list" | "compact";
 
 function CataloguePage() {
-  const { type, dbResources } = Route.useLoaderData();
+  const { type, dbResources, dbCounts } = Route.useLoaderData();
   const isLibrary = type === "library";
   const isCanonicalLearning = type === "learning-modules";
   const staticList: KhResource[] = isCanonicalLearning ? [] : isLibrary ? KH_ALL : resourcesByType(type);
   const base: KhResource[] = [...(dbResources ?? []), ...staticList];
   const label = isLibrary ? "Resource Library" : labelForType(type);
+  const sidebarCounts = useMemo(() => {
+    const out: Partial<Record<KhResourceType, number>> = {};
+    for (const t of KH_TYPES) {
+      const dbCount = dbCounts?.[t.slug] ?? 0;
+      out[t.slug] = t.slug === "learning-modules" ? dbCount : countByType(t.slug) + dbCount;
+    }
+    return out;
+  }, [dbCounts]);
 
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
@@ -108,7 +120,7 @@ function CataloguePage() {
     <PageShell
       sidebar={{
         ...KH_SIDEBAR_META,
-        sections: knowledgeHubSidebarSections(type),
+        sections: knowledgeHubSidebarSections(type, sidebarCounts),
       }}
       cta={{
         icon: Upload,

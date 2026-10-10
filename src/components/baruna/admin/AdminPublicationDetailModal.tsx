@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -70,6 +71,7 @@ export function AdminPublicationDetailModal({
   onClose,
   onDecisionSuccess,
 }: Props) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const recordDecision = useServerFn(recordAdminPublicationDecision);
 
@@ -99,6 +101,7 @@ export function AdminPublicationDetailModal({
       }
       queryClient.invalidateQueries({ queryKey: ["admin", "publications"] });
       queryClient.invalidateQueries({ queryKey: ["knowledge-hub"] });
+      void router.invalidate();
       setDecisionMode("none");
       setRationale("");
       onClose();

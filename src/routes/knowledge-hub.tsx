@@ -47,7 +47,8 @@ export const Route = createFileRoute("/knowledge-hub")({
     ]);
     return { stats, overview };
   },
-  staleTime: 60_000,
+  staleTime: 0,
+  gcTime: 0,
   head: () => ({
     meta: [
       { title: "Knowledge Hub — BARUNA" },
