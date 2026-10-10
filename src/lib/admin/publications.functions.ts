@@ -29,6 +29,62 @@ const typeMap: Record<string, ResourceType> = {
   "Spreadsheet Tool": "tool",
 };
 
+const PUBLIC_COVER_BUCKET = "knowledge-resource-covers";
+
+async function publishResourceCover(
+  subjectId: string,
+  sourcePath: string,
+  fileName?: string
+): Promise<string | null> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  try {
+    const { data: blob, error: downloadError } = await supabaseAdmin.storage
+      .from("knowledge-resource-submissions")
+      .download(sourcePath);
+
+    if (downloadError || !blob) {
+      console.warn("[publishResourceCover] Download failed, falling back to signed url:", downloadError);
+      const { data: signed } = await supabaseAdmin.storage
+        .from("knowledge-resource-submissions")
+        .createSignedUrl(sourcePath, 31536000);
+      return signed?.signedUrl ?? null;
+    }
+
+    const buckets = await supabaseAdmin.storage.listBuckets();
+    if (!buckets.data?.some((b) => b.id === PUBLIC_COVER_BUCKET)) {
+      const created = await supabaseAdmin.storage.createBucket(PUBLIC_COVER_BUCKET, {
+        public: true,
+        fileSizeLimit: 10 * 1024 * 1024,
+        allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+      });
+      if (created.error && !created.error.message?.includes("already exists")) {
+        console.warn("[publishResourceCover] createBucket notice:", created.error);
+      }
+    }
+
+    const extension = String(fileName || sourcePath).split(".").pop()?.toLowerCase() || "jpg";
+    const destination = `publications/${subjectId}/cover.${extension}`;
+    const contentType = blob.type || (extension === "png" ? "image/png" : "image/jpeg");
+
+    const uploaded = await supabaseAdmin.storage
+      .from(PUBLIC_COVER_BUCKET)
+      .upload(destination, blob, { contentType, upsert: true });
+
+    if (uploaded.error) {
+      console.warn("[publishResourceCover] upload to public covers failed, falling back to signed url:", uploaded.error);
+      const { data: signed } = await supabaseAdmin.storage
+        .from("knowledge-resource-submissions")
+        .createSignedUrl(sourcePath, 31536000);
+      return signed?.signedUrl ?? null;
+    }
+
+    return supabaseAdmin.storage.from(PUBLIC_COVER_BUCKET).getPublicUrl(destination).data.publicUrl;
+  } catch (err) {
+    console.warn("[publishResourceCover] error:", err);
+    return null;
+  }
+}
+
 export type AdminPublicationItem = {
   subjectId: string;
   draftId: string | null;
@@ -508,14 +564,11 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
 
       let resolvedThumbnailUrl: string | null = null;
       if (coverAttachedPath) {
-        try {
-          const { data: signedCover } = await supabaseAdmin.storage
-            .from("knowledge-resource-submissions")
-            .createSignedUrl(coverAttachedPath, 31536000);
-          resolvedThumbnailUrl = signedCover?.signedUrl ?? null;
-        } catch {
-          // ignore
-        }
+        resolvedThumbnailUrl = await publishResourceCover(
+          input.subjectId,
+          coverAttachedPath,
+          coverPayload?.name || (typeof payload.coverFileName === "string" ? payload.coverFileName : undefined)
+        );
       }
       if (!resolvedThumbnailUrl) {
         resolvedThumbnailUrl = validThumbnailUrl;
@@ -566,6 +619,9 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
 
         if (updateErr) {
           console.error("[recordAdminPublicationDecision] update knowledge_resources error:", updateErr);
+          if (updateErr.code === "23505" || updateErr.message?.includes("ux_kr_extern_url_active")) {
+            throw new Error("Gagal memperbarui: Tautan eksternal / repositori sudah digunakan oleh publikasi aktif lain.");
+          }
           throw new Error(`Gagal memperbarui publikasi ke katalog Knowledge Hub: ${updateErr.message}`);
         }
       } else {
@@ -599,6 +655,9 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
 
         if (insertErr) {
           console.error("[recordAdminPublicationDecision] insert knowledge_resources error:", insertErr);
+          if (insertErr.code === "23505" || insertErr.message?.includes("ux_kr_extern_url_active")) {
+            throw new Error("Gagal mempublikasikan: Tautan eksternal / repositori sudah digunakan oleh publikasi aktif lain.");
+          }
           throw new Error(`Gagal mempublikasikan ke katalog Knowledge Hub: ${insertErr.message}`);
         }
       }

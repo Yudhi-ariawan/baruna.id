@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import type { KhResource, KhResourceType } from "@/data/demo/knowledgeHub";
 import { primaryModuleCategory } from "@/lib/academy/module-categories";
 
@@ -106,7 +107,7 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("knowledge_resources")
-      .select("id,title,summary,abstract,resource_type,language,publication_year,publisher,thumbnail_url,topics,keywords,related_expert_ids,metadata,created_at,updated_at")
+      .select("id,title,summary,abstract,resource_type,language,publication_year,publisher,thumbnail_url,external_url,topics,keywords,related_expert_ids,metadata,created_at,updated_at")
       .eq("current_status", "published")
       .eq("visibility", "public")
       .order("publication_date", { ascending: false, nullsFirst: false })
@@ -154,6 +155,7 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
         access: "Public Access",
         status: "Published",
         coverImage: item.thumbnail_url ?? undefined,
+        externalUrl: item.external_url ?? (typeof metadata.externalUrl === "string" ? metadata.externalUrl : undefined),
         fileType: files.fileType,
         fileSize: files.fileSize,
         learningHours,
@@ -336,3 +338,64 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
     return value;
   },
 );
+
+export type KnowledgeResourceDownloadResult = {
+  resourceId: string;
+  downloadUrl: string | null;
+  fileName: string;
+  externalUrl: string | null;
+};
+
+export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ resourceId: z.string().uuid() }).parse(input))
+  .handler(async ({ data: { resourceId } }): Promise<KnowledgeResourceDownloadResult> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: resource, error } = await supabaseAdmin
+      .from("knowledge_resources")
+      .select("id, title, external_url, metadata")
+      .eq("id", resourceId)
+      .eq("current_status", "published")
+      .eq("visibility", "public")
+      .maybeSingle();
+
+    if (error || !resource) {
+      throw new Error("Publikasi tidak ditemukan atau tidak tersedia untuk publik.");
+    }
+
+    const metadata = metadataRecord(resource.metadata);
+    const attachments = Array.isArray(metadata.attached_resources)
+      ? (metadata.attached_resources as Array<Record<string, unknown>>)
+      : [];
+
+    const file = attachments[0];
+    const filePath =
+      typeof file?.filePath === "string"
+        ? file.filePath
+        : typeof metadata.filePath === "string"
+          ? metadata.filePath
+          : typeof metadata.uploadedFilePath === "string"
+            ? metadata.uploadedFilePath
+            : undefined;
+
+    const fileName = String(
+      file?.fileName ?? file?.name ?? metadata.fileName ?? "dokumen-publikasi-baruna.pdf"
+    );
+
+    let downloadUrl: string | null = null;
+    if (filePath) {
+      const { data: signed, error: signError } = await supabaseAdmin.storage
+        .from("knowledge-resource-submissions")
+        .createSignedUrl(filePath, 3600, { download: fileName });
+
+      if (!signError && signed?.signedUrl) {
+        downloadUrl = signed.signedUrl;
+      }
+    }
+
+    return {
+      resourceId,
+      downloadUrl,
+      fileName,
+      externalUrl: resource.external_url ?? (typeof metadata.externalUrl === "string" ? metadata.externalUrl : null),
+    };
+  });

@@ -74,8 +74,11 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
   .inputValidator((input) => SubmissionInput.parse(input))
   .handler(async ({ context, data }) => {
     const form = data.form as Record<string, unknown>;
-    const title = String(form.title ?? "").trim();
-    if (!title) throw new Error("title_required");
+    const rawTitle = String(form.title ?? "").trim();
+    if (!rawTitle && data.submit) {
+      throw new Error("Judul publikasi wajib diisi sebelum mengirim pengajuan.");
+    }
+    const title = rawTitle || (form.type ? `Draf Publikasi - ${form.type}` : "Draf Publikasi Baru");
     const resourceType = typeMap[String(form.type ?? "")] ?? "training_material";
     let draftId = data.draftId;
     if (!draftId) {
@@ -120,11 +123,50 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       throw new Error("Ukuran foto banner melebihi batas maksimal 2MB.");
     }
 
+    const fileObj = form.file as { name?: string; size?: number; storagePath?: string; type?: string } | undefined;
+    if (fileObj?.size) {
+      const fileNameLower = (fileObj.name || "").toLowerCase();
+      const isPdf = fileNameLower.endsWith(".pdf");
+      const isPpt = fileNameLower.endsWith(".ppt") || fileNameLower.endsWith(".pptx");
+      if (isPdf && fileObj.size > 10 * 1024 * 1024) {
+        throw new Error("Ukuran file PDF melebihi batas maksimal 10MB.");
+      }
+      if (isPpt && fileObj.size > 25 * 1024 * 1024) {
+        throw new Error("Ukuran file presentasi (PPT/PPTX) melebihi batas maksimal 25MB.");
+      }
+      if (fileObj.size > 50 * 1024 * 1024) {
+        throw new Error("Ukuran file melebihi batas maksimal 50MB.");
+      }
+    }
+
+    if (data.submit && !fileObj?.storagePath && !cleanExternalUrl) {
+      throw new Error("Wajib menyertakan minimal salah satu: berkas dokumen atau tautan eksternal.");
+    }
+
+    // Check duplicate external URL if submitting
+    if (cleanExternalUrl && data.submit) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const normUrl = cleanExternalUrl.replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
+      const { data: existingActive } = await supabaseAdmin
+        .from("knowledge_resources")
+        .select("id, title")
+        .neq("current_status", "archived")
+        .ilike("external_url", `%${normUrl}%`)
+        .limit(1);
+
+      if (existingActive && existingActive.length > 0) {
+        throw new Error("Tautan eksternal / repositori ini sudah terdaftar pada publikasi lain yang telah aktif di Knowledge Hub.");
+      }
+    }
+
     const patch: Json = {
       ...form,
-      coverFile: coverObj,
-      coverFilePath: coverObj?.storagePath,
-      externalUrl: cleanExternalUrl,
+      coverFile: coverObj ?? null,
+      coverFilePath: coverObj?.storagePath ?? null,
+      file: fileObj ?? null,
+      filePath: fileObj?.storagePath ?? null,
+      uploadedFilePath: fileObj?.storagePath ?? null,
+      externalUrl: cleanExternalUrl ?? null,
       title,
       resource_type: resourceType,
       author_expert_id: expert?.id ?? null,

@@ -59,6 +59,8 @@ export type KhResource = {
   access: KhAccessLevel;
   status: KhStatus;
   coverImage?: string;
+  downloadUrl?: string;
+  externalUrl?: string;
   fileType: string;
   fileSize?: string;
   pages?: number;

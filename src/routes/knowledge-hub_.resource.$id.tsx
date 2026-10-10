@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import {
   Bookmark, Share2, Download, Play, Users, GraduationCap, CalendarDays, MessagesSquare,
   Building2, FileText, ArrowRight, ArrowLeft, AlertCircle, Eye, Clock, Layers, Award,
-  BookOpen,
+  BookOpen, ExternalLink, Loader2,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Panel } from "@/components/baruna/page/primitives";
@@ -21,7 +23,11 @@ import { ResourceCard, DemoDataBadge, AccessBadge } from "@/components/baruna/kn
 import { toggleSaved, useIsSaved, shareResource } from "@/lib/khSaved";
 import { courseImages } from "@/data/pages";
 import { getPublishedModuleDetail } from "@/lib/learning/learning.functions";
-import { getPublishedLearningModules, getKnowledgeHubOverview } from "@/lib/knowledge-hub/knowledge-hub.functions";
+import {
+  getPublishedLearningModules,
+  getKnowledgeHubOverview,
+  getKnowledgeResourceDownload,
+} from "@/lib/knowledge-hub/knowledge-hub.functions";
 
 export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
   loader: async ({ params }) => {
@@ -171,7 +177,37 @@ function ResourceDetailPage() {
   const related = useMemo(() => relatedResources(r, 4), [r]);
 
   const cover = r.coverImage || courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
-  const canDownload = r.access === "Public Access";
+  const downloadFn = useServerFn(getKnowledgeResourceDownload);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!r.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id)) {
+      if (r.downloadUrl) {
+        window.open(r.downloadUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+      toast.info("Ini adalah data percontohan (demo resource).");
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const res = await downloadFn({ data: { resourceId: r.id } });
+      if (res.downloadUrl) {
+        window.open(res.downloadUrl, "_blank", "noopener,noreferrer");
+        toast.success("Membuka tautan berkas dokumen...");
+      } else if (res.externalUrl) {
+        window.open(res.externalUrl, "_blank", "noopener,noreferrer");
+        toast.info("Membuka repositori eksternal materi.");
+      } else {
+        toast.error("Tidak ada berkas fisik yang dilampirkan pada materi ini.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal mengunduh berkas materi.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Gated-access modal state (shown when a locked module action is clicked).
   const [gateOpen, setGateOpen] = useState(false);
@@ -270,14 +306,31 @@ function ResourceDetailPage() {
                       <GraduationCap className="h-3.5 w-3.5" />
                       Buka Program di Academy
                     </Link>
-                  ) : canDownload ? (
-                    <button className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground">
-                      <Download className="h-3.5 w-3.5" /> Download
-                    </button>
                   ) : (
-                    <button disabled className="inline-flex items-center gap-1.5 rounded-xl bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground" title={`${r.access} — sign-in required`}>
-                      <AlertCircle className="h-3.5 w-3.5" /> {r.access}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {r.externalUrl && (
+                        <a
+                          href={r.externalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-marine hover:border-marine hover:bg-marine/5 transition-colors"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" /> Repositori Eksternal
+                        </a>
+                      )}
+                      <button
+                        onClick={() => void handleDownload()}
+                        disabled={downloading}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-xs font-semibold text-marine-foreground transition-colors hover:bg-navy disabled:opacity-50"
+                      >
+                        {downloading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
+                        Download
+                      </button>
+                    </div>
                   )}
                 </span>
               </div>
