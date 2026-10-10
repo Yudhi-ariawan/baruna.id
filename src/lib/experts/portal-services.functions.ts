@@ -414,15 +414,20 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
         .maybeSingle();
 
       const existingMeta = (currentSubj?.metadata as Record<string, unknown>) ?? {};
+      const wasRevised =
+        existingMeta.review_status === "revision_requested" ||
+        typeof existingMeta.last_rationale === "string";
+
       await supabaseAdmin
         .from("review_subjects")
         .update({
+          title: data.title,
           current_status: "pending",
           updated_at: new Date().toISOString(),
           metadata: {
             ...existingMeta,
-            review_status: "resubmitted",
-            resubmitted_at: new Date().toISOString(),
+            review_status: wasRevised ? "resubmitted" : "pending",
+            ...(wasRevised ? { resubmitted_at: new Date().toISOString() } : {}),
           },
         })
         .eq("id", subjectId);

@@ -126,7 +126,19 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       });
       if (created.error) throw new Error(created.error.message);
       draftId = created.data;
+    } else {
+      // Idempotency guard: if a fast double-click or network retry replays a submit
+      // request for a draft that was just submitted, return success cleanly.
+      const { data: existingDraft } = await context.supabase
+        .from("review_drafts")
+        .select("status, linked_subject_id")
+        .eq("id", draftId)
+        .maybeSingle();
+      if (data.submit && existingDraft?.status === "submitted" && existingDraft.linked_subject_id) {
+        return { draftId, status: "submitted" };
+      }
     }
+
     const { data: expertLink } = await context.supabase
       .from("experts")
       .select("id")
@@ -189,7 +201,7 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       throw new Error("Wajib menyertakan minimal salah satu: berkas dokumen atau tautan eksternal.");
     }
 
-    // Check duplicate external URL if submitting (safe against SQL wildcard '_' and self-revisions)
+    // Check duplicate external URL if submitting (safe against SQL wildcard '_', self-revisions, and concurrent pending submissions)
     if (cleanExternalUrl && data.submit) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: currentDraftRow } = await supabaseAdmin
@@ -202,6 +214,14 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
       const targetYtId = extractYouTubeVideoId(cleanExternalUrl);
       const targetVimeoId = extractVimeoVideoId(cleanExternalUrl);
 
+      const isMatchingExternalUrl = (candidateUrl: string | null | undefined): boolean => {
+        if (!candidateUrl || !candidateUrl.trim()) return false;
+        if (normalizeExternalUrlForComparison(candidateUrl) === normTarget) return true;
+        if (targetYtId && extractYouTubeVideoId(candidateUrl) === targetYtId) return true;
+        if (targetVimeoId && extractVimeoVideoId(candidateUrl) === targetVimeoId) return true;
+        return false;
+      };
+
       const { data: activeWithUrls } = await supabaseAdmin
         .from("knowledge_resources")
         .select("id, title, external_url, source_submission_id")
@@ -212,23 +232,57 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
         if (currentDraftRow?.linked_subject_id && row.source_submission_id === currentDraftRow.linked_subject_id) {
           return false;
         }
-        if (!row.external_url) return false;
-        if (normalizeExternalUrlForComparison(row.external_url) === normTarget) {
-          return true;
-        }
-        if (targetYtId && extractYouTubeVideoId(row.external_url) === targetYtId) {
-          return true;
-        }
-        if (targetVimeoId && extractVimeoVideoId(row.external_url) === targetVimeoId) {
-          return true;
-        }
-        return false;
+        return isMatchingExternalUrl(row.external_url);
       });
 
       if (conflict) {
         throw new Error(
           `Tautan eksternal / video ini sudah terdaftar pada publikasi aktif lain di Knowledge Hub ("${conflict.title}").`,
         );
+      }
+
+      // Also check other active submitted drafts in the curation queue so two identical URLs don't collide at approval time
+      const { data: submittedDrafts } = await supabaseAdmin
+        .from("review_drafts")
+        .select("id, title, payload, linked_subject_id")
+        .eq("subject_kind", "knowledge_resource")
+        .eq("status", "submitted")
+        .neq("id", draftId);
+
+      const candidatePendingDrafts = (submittedDrafts ?? []).filter((d) => {
+        if (currentDraftRow?.linked_subject_id && d.linked_subject_id === currentDraftRow.linked_subject_id) {
+          return false;
+        }
+        const p = (d.payload as Record<string, unknown>) ?? {};
+        const dUrl = typeof p.externalUrl === "string" ? p.externalUrl : null;
+        return isMatchingExternalUrl(dUrl);
+      });
+
+      if (candidatePendingDrafts.length > 0) {
+        const pendingSubjectIds = candidatePendingDrafts
+          .map((d) => d.linked_subject_id)
+          .filter((id): id is string => Boolean(id));
+        const { data: pendingSubjects } = pendingSubjectIds.length > 0
+          ? await supabaseAdmin
+              .from("review_subjects")
+              .select("id, current_status, metadata")
+              .in("id", pendingSubjectIds)
+          : { data: [] };
+        const activeQueueSubj = (pendingSubjects ?? []).find((s) => {
+          const sm = (s.metadata as Record<string, unknown>) ?? {};
+          return (
+            s.current_status !== "rejected" &&
+            s.current_status !== "withdrawn" &&
+            sm.review_status !== "rejected" &&
+            sm.review_status !== "archived"
+          );
+        });
+        if (activeQueueSubj) {
+          const matchingDraft = candidatePendingDrafts.find((d) => d.linked_subject_id === activeQueueSubj.id);
+          throw new Error(
+            `Tautan eksternal / video ini sedang dalam antrean kurasi pada pengajuan aktif lain ("${matchingDraft?.title || "Pengajuan Publikasi"}").`,
+          );
+        }
       }
     }
 
@@ -300,7 +354,19 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
     }
     if (data.submit) {
       const submitted = await context.supabase.rpc("kr_draft_submit", { _draft_id: draftId });
-      if (submitted.error) throw new Error(submitted.error.message);
+      if (submitted.error) {
+        if (submitted.error.message?.includes("draft_not_editable")) {
+          const { data: checkSubmitted } = await context.supabase
+            .from("review_drafts")
+            .select("status, linked_subject_id")
+            .eq("id", draftId)
+            .maybeSingle();
+          if (checkSubmitted?.status === "submitted" && checkSubmitted.linked_subject_id) {
+            return { draftId, status: "submitted" };
+          }
+        }
+        throw new Error(submitted.error.message);
+      }
 
       // Update linked subject to resubmitted if previously revised, and sync latest title
       const { data: dRow } = await context.supabase
@@ -538,8 +604,10 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
         .filter((k) => Boolean(k.source_submission_id))
         .map((k) => [k.source_submission_id as string, k]),
     );
-    const krByTitle = new Map(
-      (publishedKrs ?? []).map((k) => [k.title.trim().toLowerCase(), k]),
+    const krByLegacyTitle = new Map(
+      (publishedKrs ?? [])
+        .filter((k) => !k.source_submission_id)
+        .map((k) => [k.title.trim().toLowerCase(), k]),
     );
 
     const { groupForType } = await import("@/lib/resources");
@@ -547,14 +615,23 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
     const results: KnowledgeContributionItem[] = [];
     const seenTitles = new Set<string>();
     const seenKrIds = new Set<string>();
+    const seenSubjectIds = new Set<string>();
 
     for (const d of drafts ?? []) {
+      if (d.status === "withdrawn") continue;
+      if (d.linked_subject_id) {
+        if (seenSubjectIds.has(d.linked_subject_id)) continue;
+        seenSubjectIds.add(d.linked_subject_id);
+      }
+
       const payload = (d.payload as Record<string, unknown>) ?? {};
       const subject = d.linked_subject_id ? subjectMap.get(d.linked_subject_id) : undefined;
       const subMeta = (subject?.metadata as Record<string, unknown>) ?? {};
-      const matchedKr =
-        (d.linked_subject_id ? krBySubmissionId.get(d.linked_subject_id) : undefined) ??
-        krByTitle.get(d.title.trim().toLowerCase());
+      const matchedKr = d.linked_subject_id
+        ? krBySubmissionId.get(d.linked_subject_id)
+        : d.status !== "draft"
+          ? krByLegacyTitle.get(d.title.trim().toLowerCase())
+          : undefined;
       if (matchedKr) {
         seenKrIds.add(matchedKr.id);
       }
@@ -632,7 +709,8 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
     }
 
     for (const kr of publishedKrs ?? []) {
-      if (seenKrIds.has(kr.id) || seenTitles.has(kr.title.trim().toLowerCase())) continue;
+      if (seenKrIds.has(kr.id)) continue;
+      if (!kr.source_submission_id && seenTitles.has(kr.title.trim().toLowerCase())) continue;
       const krMeta = (kr.metadata as Record<string, unknown>) ?? {};
       const rawType = normalizeUiResourceType(krMeta.type ?? krMeta.videoKind ?? kr.resource_type ?? "Journal Article");
       const isKrArchived = kr.current_status === "archived";

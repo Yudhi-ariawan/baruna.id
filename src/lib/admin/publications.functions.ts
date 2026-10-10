@@ -702,6 +702,8 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
       const resolvedYear = Number(payload.year) || new Date().getFullYear();
       const resolvedPublisher = typeof payload.institution === "string" ? payload.institution : "BARUNA Contributor";
 
+      let publishedResourceId: string | null = existingKr?.id ?? null;
+
       if (existingKr) {
         const { error: updateErr } = await supabaseAdmin
           .from("knowledge_resources")
@@ -740,34 +742,38 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
           throw new Error(`Gagal memperbarui publikasi ke katalog Knowledge Hub: ${updateErr.message}`);
         }
       } else {
-        const { error: insertErr } = await supabaseAdmin.from("knowledge_resources").insert({
-          source_type: "external_submission",
-          source_submission_id: input.subjectId,
-          created_by: subj.submitted_by || context.userId,
-          original_contributor_id: subj.submitted_by || context.userId,
-          approved_by: context.userId,
-          published_by: context.userId,
-          approval_date: new Date().toISOString(),
-          publication_date: new Date().toISOString(),
-          verification_status: "governance_verified",
-          visibility: "public",
-          current_status: "published",
-          audit_ref: decisionId,
-          resource_type: mappedType,
-          title: resolvedTitle,
-          summary: resolvedSummary,
-          abstract: resolvedAbstract,
-          language: resolvedLanguage,
-          publication_year: resolvedYear,
-          publisher: resolvedPublisher,
-          external_url: validExternalUrl,
-          thumbnail_url: resolvedThumbnailUrl,
-          topics,
-          keywords,
-          geographic_focus: coverage,
-          ...(relatedExpertIds.length > 0 ? { related_expert_ids: relatedExpertIds } : {}),
-          metadata: resourceMetadata as never,
-        });
+        const { data: insertedKr, error: insertErr } = await supabaseAdmin
+          .from("knowledge_resources")
+          .insert({
+            source_type: "external_submission",
+            source_submission_id: input.subjectId,
+            created_by: subj.submitted_by || context.userId,
+            original_contributor_id: subj.submitted_by || context.userId,
+            approved_by: context.userId,
+            published_by: context.userId,
+            approval_date: new Date().toISOString(),
+            publication_date: new Date().toISOString(),
+            verification_status: "governance_verified",
+            visibility: "public",
+            current_status: "published",
+            audit_ref: decisionId,
+            resource_type: mappedType,
+            title: resolvedTitle,
+            summary: resolvedSummary,
+            abstract: resolvedAbstract,
+            language: resolvedLanguage,
+            publication_year: resolvedYear,
+            publisher: resolvedPublisher,
+            external_url: validExternalUrl,
+            thumbnail_url: resolvedThumbnailUrl,
+            topics,
+            keywords,
+            geographic_focus: coverage,
+            ...(relatedExpertIds.length > 0 ? { related_expert_ids: relatedExpertIds } : {}),
+            metadata: resourceMetadata as never,
+          })
+          .select("id")
+          .single();
 
         if (insertErr) {
           console.error("[recordAdminPublicationDecision] insert knowledge_resources error:", insertErr);
@@ -775,6 +781,48 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
             throw new Error("Gagal mempublikasikan: Tautan eksternal / repositori sudah digunakan oleh publikasi aktif lain.");
           }
           throw new Error(`Gagal mempublikasikan ke katalog Knowledge Hub: ${insertErr.message}`);
+        }
+        publishedResourceId = insertedKr?.id ?? null;
+      }
+
+      // Sync canonical author record into knowledge_resource_authors
+      if (publishedResourceId) {
+        try {
+          const authorDisplayName =
+            (typeof payload.author === "string" && payload.author.trim()) ||
+            (typeof payload.author_name === "string" && payload.author_name.trim()) ||
+            "BARUNA Contributor";
+          const authorAffiliation =
+            (typeof payload.institution === "string" && payload.institution.trim()) || null;
+          const primaryExpertId = relatedExpertIds[0] ?? null;
+
+          const { data: existingAuthorRow } = await supabaseAdmin
+            .from("knowledge_resource_authors")
+            .select("id")
+            .eq("resource_id", publishedResourceId)
+            .eq("display_order", 0)
+            .maybeSingle();
+
+          const authorValues = {
+            resource_id: publishedResourceId,
+            expert_id: primaryExpertId,
+            display_name: authorDisplayName,
+            affiliation: authorAffiliation,
+            role: ["video", "webinar_recording", "podcast"].includes(mappedType) ? "Speaker / Contributor" : "Author",
+            is_corresponding: true,
+            display_order: 0,
+          };
+
+          if (existingAuthorRow?.id) {
+            await supabaseAdmin
+              .from("knowledge_resource_authors")
+              .update(authorValues)
+              .eq("id", existingAuthorRow.id);
+          } else {
+            await supabaseAdmin.from("knowledge_resource_authors").insert(authorValues);
+          }
+        } catch (authorSyncErr) {
+          console.warn("[recordAdminPublicationDecision] non-critical author sync warning:", authorSyncErr);
         }
       }
 
