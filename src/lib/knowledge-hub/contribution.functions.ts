@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { groupForType, type AccessLevel } from "@/lib/resources";
 
 const SubmissionInput = z.object({
   draftId: z.string().uuid().optional(),
@@ -183,7 +184,7 @@ export type SavedDraftDetail = {
   keywords: string;
   topicCategory: string;
   externalUrl: string;
-  accessLevel: "Public Access" | "Registered User" | "Course Participant" | "Completion Required";
+  accessLevel: AccessLevel;
   declaration: boolean;
   fileName?: string;
   fileSize?: number;
@@ -223,7 +224,7 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
       keywords: Array.isArray(p.keywords) ? (p.keywords as string[]).join(", ") : String(p.keywords || ""),
       topicCategory: String(p.topicCategory || p.topic || "General"),
       externalUrl: String(p.externalUrl || ""),
-      accessLevel: (p.accessLevel as SavedDraftDetail["accessLevel"]) || "Public Access",
+      accessLevel: (p.accessLevel as AccessLevel) || "Open Access",
       declaration: Boolean(p.declaration),
       fileName: fileObj?.name || (typeof p.fileName === "string" ? p.fileName : undefined),
       fileSize: fileObj?.size || (typeof p.fileSize === "number" ? p.fileSize : undefined),
