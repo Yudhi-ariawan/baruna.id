@@ -590,7 +590,23 @@ function ResourceDetailPage() {
               </Panel>
             ) : null}
 
-            {r.type === "case-studies" && isDemo && (
+            {r.type === "case-studies" &&
+            r.caseStudyStructure &&
+            Object.values(r.caseStudyStructure).some((v) => typeof v === "string" && v.trim()) ? (
+              <Panel>
+                <h2 className="font-display text-base font-bold text-navy">Case Study</h2>
+                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {r.caseStudyStructure.background && <Field term="Background" desc={r.caseStudyStructure.background} />}
+                  {r.caseStudyStructure.problem && <Field term="Problem" desc={r.caseStudyStructure.problem} />}
+                  {r.caseStudyStructure.intervention && <Field term="Intervention" desc={r.caseStudyStructure.intervention} />}
+                  {r.caseStudyStructure.process && <Field term="Process" desc={r.caseStudyStructure.process} />}
+                  {r.caseStudyStructure.results && <Field term="Results" desc={r.caseStudyStructure.results} />}
+                  {r.caseStudyStructure.challenges && <Field term="Challenges" desc={r.caseStudyStructure.challenges} />}
+                  {r.caseStudyStructure.lessons && <Field term="Lessons" desc={r.caseStudyStructure.lessons} />}
+                  {r.caseStudyStructure.recommendations && <Field term="Recommendations" desc={r.caseStudyStructure.recommendations} />}
+                </dl>
+              </Panel>
+            ) : r.type === "case-studies" && isDemo ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Case Study</h2>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -604,9 +620,33 @@ function ResourceDetailPage() {
                   <Field term="Recommendations" desc={CASE_STUDY_STRUCTURE.recommendations} />
                 </dl>
               </Panel>
-            )}
+            ) : null}
 
-            {r.type === "toolkits" && isDemo && (
+            {r.type === "toolkits" &&
+            r.toolkitStructure &&
+            Object.values(r.toolkitStructure).some((v) => typeof v === "string" && v.trim()) ? (
+              <Panel>
+                <h2 className="font-display text-base font-bold text-navy">Toolkit &amp; Included Tools</h2>
+                {r.toolkitStructure.includedTools && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {String(r.toolkitStructure.includedTools)
+                      .split(/\r?\n|,|•/)
+                      .map((s: string) => s.trim())
+                      .filter(Boolean)
+                      .map((t: string, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2 rounded-lg border border-border p-2.5 text-sm">
+                          <Layers className="h-4 w-4 shrink-0 text-marine" /> {t}
+                        </div>
+                      ))}
+                  </div>
+                )}
+                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {r.toolkitStructure.targetUsers && <Field term="Target Users" desc={r.toolkitStructure.targetUsers} />}
+                  {r.toolkitStructure.prerequisites && <Field term="Prerequisites & Software" desc={r.toolkitStructure.prerequisites} />}
+                  {r.toolkitStructure.usageSteps && <Field term="Usage Guide" desc={r.toolkitStructure.usageSteps} />}
+                </dl>
+              </Panel>
+            ) : r.type === "toolkits" && isDemo ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Included Tools</h2>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -617,9 +657,25 @@ function ResourceDetailPage() {
                   ))}
                 </div>
               </Panel>
-            )}
+            ) : null}
 
-            {r.type === "policy-briefs" && isDemo && (
+            {r.type === "policy-briefs" &&
+            r.policyBriefStructure &&
+            Object.values(r.policyBriefStructure).some((v) => typeof v === "string" && v.trim()) ? (
+              <Panel>
+                <h2 className="font-display text-base font-bold text-navy">Policy Brief</h2>
+                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {r.policyBriefStructure.policyIssue && <Field term="Policy Issue" desc={r.policyBriefStructure.policyIssue} />}
+                  {r.policyBriefStructure.keyFindings && <Field term="Key Findings" desc={r.policyBriefStructure.keyFindings} />}
+                  {r.policyBriefStructure.recommendedActions && (
+                    <Field term="Recommended Actions" desc={r.policyBriefStructure.recommendedActions} />
+                  )}
+                  {r.policyBriefStructure.intendedAudience && (
+                    <Field term="Intended Audience" desc={r.policyBriefStructure.intendedAudience} />
+                  )}
+                </dl>
+              </Panel>
+            ) : r.type === "policy-briefs" && isDemo ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Policy Brief</h2>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -629,7 +685,21 @@ function ResourceDetailPage() {
                   <Field term="Intended Audience" desc="Ministry staff, donor partners, and civil-society leaders." />
                 </dl>
               </Panel>
-            )}
+            ) : null}
+
+            {r.type === "infographics" &&
+            r.infographicStructure &&
+            Object.values(r.infographicStructure).some((v) => typeof v === "string" && v.trim()) ? (
+              <Panel>
+                <h2 className="font-display text-base font-bold text-navy">Infographic &amp; Visual Summary</h2>
+                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {r.infographicStructure.keyTakeaways && <Field term="Key Takeaways" desc={r.infographicStructure.keyTakeaways} />}
+                  {r.infographicStructure.dataSource && <Field term="Data Source" desc={r.infographicStructure.dataSource} />}
+                  {r.infographicStructure.targetAudience && <Field term="Target Audience" desc={r.infographicStructure.targetAudience} />}
+                  {r.infographicStructure.visualFormat && <Field term="Visual Format" desc={r.infographicStructure.visualFormat} />}
+                </dl>
+              </Panel>
+            ) : null}
 
             {r.type === "videos" && (
               <Panel>

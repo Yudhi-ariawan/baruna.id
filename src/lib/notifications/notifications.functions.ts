@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type InAppNotification = {
   id: string;
-  type: "revision_requested" | "approved" | "rejected" | "info";
+  type: "revision_requested" | "approved" | "rejected" | "archived" | "info";
   title: string;
   body: string;
   subjectKind: "expert" | "module" | "knowledge_resource" | "other";
@@ -41,7 +41,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       .in("subject_id", subjectIds)
       .order("created_at", { ascending: false });
 
-    if (decErr || !decisions) {
+    if (decErr) {
       return [];
     }
 
@@ -60,22 +60,75 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       }
     });
 
-    const seenSubjects = new Set<string>();
-    const notifications: InAppNotification[] = decisions.map((dec) => {
-      const subject = subjectMap.get(dec.subject_id);
-      const isLatestForSubject = !seenSubjects.has(dec.subject_id);
-      seenSubjects.add(dec.subject_id);
+    type RawNotif = InAppNotification & { subjectId: string };
+    const rawNotifications: RawNotif[] = [];
 
+    // 4. Generate archive / restore notifications from review_subjects metadata
+    for (const subject of mySubjects) {
+      const kind = subject.kind ?? "other";
+      const subjectTitle = subject.title || "Pengajuan Anda";
+      const subjectMeta =
+        subject.metadata && typeof subject.metadata === "object"
+          ? (subject.metadata as Record<string, unknown>)
+          : {};
+
+      const isArchived =
+        subject.current_status === "withdrawn" ||
+        subject.current_status === "archived" ||
+        subjectMeta.review_status === "archived" ||
+        subjectMeta.last_decision === "archive";
+
+      if (isArchived) {
+        const archivedAt =
+          (typeof subjectMeta.archived_at === "string" && subjectMeta.archived_at) ||
+          subject.updated_at ||
+          subject.created_at;
+        const archiveReason =
+          (typeof subjectMeta.archived_reason === "string" && subjectMeta.archived_reason.trim()) ||
+          (typeof subjectMeta.archive_rationale === "string" && subjectMeta.archive_rationale.trim()) ||
+          (typeof subjectMeta.last_rationale === "string" && subjectMeta.last_rationale.trim()) ||
+          "Publikasi Anda telah diarsipkan oleh Administrator dan saat ini ditarik dari katalog tayang publik.";
+
+        let title = `Pengajuan Diarsipkan: "${subjectTitle}"`;
+        let targetUrl = "/knowledge-hub/my-contributions";
+        if (kind === "knowledge_resource") {
+          title = `Publikasi Diarsipkan (Ditarik dari Tayang): "${subjectTitle}"`;
+          targetUrl = "/knowledge-hub/my-contributions";
+        } else if (kind === "module") {
+          title = `Modul Pelatihan Diarsipkan (Tarik Tayang): "${subjectTitle}"`;
+          targetUrl = "/experts/portal/review-status";
+        } else if (kind === "expert") {
+          title = `Profil Pakar Diarsipkan dari Direktori Publik`;
+          targetUrl = "/experts/portal";
+        }
+
+        rawNotifications.push({
+          id: `archive-${subject.id}-${archivedAt}`,
+          subjectId: subject.id,
+          type: "archived",
+          title,
+          body: archiveReason,
+          subjectKind: (kind as InAppNotification["subjectKind"]) || "other",
+          subjectTitle,
+          targetUrl,
+          createdAt: archivedAt,
+          actorName: "Tim Administrator BARUNA",
+        });
+      }
+    }
+
+    // 5. Generate notifications from review_decisions
+    for (const dec of decisions ?? []) {
+      const subject = subjectMap.get(dec.subject_id);
       const kind = subject?.kind ?? "other";
       const subjectTitle = subject?.title || "Pengajuan Anda";
       const draftId = draftMap.get(dec.subject_id);
       const draftStatus = draftStatusMap.get(dec.subject_id);
       const subjectMeta =
         subject?.metadata && typeof subject.metadata === "object"
-          ? (subject.metadata as Record<string, any>)
+          ? (subject.metadata as Record<string, unknown>)
           : {};
       const isResubmittedAfterDecision =
-        isLatestForSubject &&
         dec.decision === "return_for_revision" &&
         (subjectMeta.review_status === "resubmitted" ||
           draftStatus === "submitted" ||
@@ -152,8 +205,9 @@ export const listMyNotifications = createServerFn({ method: "GET" })
             ? "Pengajuan Anda telah diverifikasi dan memenuhi standar tata kelola BARUNA."
             : "Pengajuan Anda belum memenuhi kriteria kualifikasi yang dipersyaratkan.");
 
-      return {
+      rawNotifications.push({
         id: dec.id,
+        subjectId: dec.subject_id,
         type,
         title,
         body,
@@ -162,6 +216,20 @@ export const listMyNotifications = createServerFn({ method: "GET" })
         targetUrl,
         createdAt: dec.decided_at || dec.created_at,
         actorName: "Tim Verifikator BARUNA",
+      });
+    }
+
+    // Sort all notifications chronologically descending
+    rawNotifications.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    const seenSubjects = new Set<string>();
+    const notifications: InAppNotification[] = rawNotifications.map(({ subjectId, ...notif }) => {
+      const isLatestForSubject = !seenSubjects.has(subjectId);
+      seenSubjects.add(subjectId);
+      return {
+        ...notif,
         isLatestForSubject,
       };
     });

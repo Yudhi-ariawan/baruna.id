@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Archive,
   FileText,
   Search,
   Filter,
@@ -85,7 +86,7 @@ function AdminPublicationsPage() {
   });
 
   const rawItems = query.data?.items ?? [];
-  const stats = query.data?.stats ?? { total: 0, pending: 0, revision: 0, approved: 0, rejected: 0 };
+  const stats = query.data?.stats ?? { total: 0, pending: 0, revision: 0, approved: 0, rejected: 0, archived: 0 };
 
   const filteredItems = useMemo(() => {
     return rawItems.filter((item) => {
@@ -93,6 +94,7 @@ function AdminPublicationsPage() {
       if (activeTab === "pending" && item.status !== "pending" && item.status !== "under_review" && item.status !== "resubmitted") return false;
       if (activeTab === "revision" && item.status !== "revision_requested") return false;
       if (activeTab === "approved" && item.status !== "approved") return false;
+      if (activeTab === "archived" && item.status !== "archived") return false;
       if (activeTab === "rejected" && item.status !== "rejected") return false;
 
       // Type filter
@@ -101,7 +103,16 @@ function AdminPublicationsPage() {
       // Search query
       if (search.trim()) {
         const needle = search.toLowerCase();
-        const hay = [item.title, item.authorName, item.authorInstitution, item.topic, ...item.keywords]
+        const hay = [
+          item.title,
+          item.authorName,
+          item.submitterName,
+          item.submitterEmail,
+          item.submitterRole,
+          item.authorInstitution,
+          item.topic,
+          ...item.keywords,
+        ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -142,7 +153,7 @@ function AdminPublicationsPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">Total Pengajuan</span>
@@ -182,13 +193,23 @@ function AdminPublicationsPage() {
           </div>
           <p className="mt-2 text-2xl font-extrabold text-emerald-900">{stats.approved}</p>
         </div>
+
+        <div className="rounded-xl border border-slate-300 bg-slate-50/70 p-4 shadow-2xs col-span-2 sm:col-span-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700">Diarsipkan</span>
+            <span className="rounded-lg bg-slate-200/80 p-2 text-slate-700">
+              <Archive className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-extrabold text-slate-800">{stats.archived ?? 0}</p>
+        </div>
       </div>
 
       {/* Tabs & Filters */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-slate-100 p-1">
+            <TabsList className="bg-slate-100 p-1 flex-wrap h-auto">
               <TabsTrigger value="all" className="text-xs font-semibold">
                 Semua ({stats.total})
               </TabsTrigger>
@@ -200,6 +221,9 @@ function AdminPublicationsPage() {
               </TabsTrigger>
               <TabsTrigger value="approved" className="text-xs font-semibold text-emerald-800">
                 Disetujui ({stats.approved})
+              </TabsTrigger>
+              <TabsTrigger value="archived" className="text-xs font-semibold text-slate-700">
+                Diarsipkan ({stats.archived ?? 0})
               </TabsTrigger>
               <TabsTrigger value="rejected" className="text-xs font-semibold text-red-800">
                 Ditolak ({stats.rejected})
@@ -225,7 +249,7 @@ function AdminPublicationsPage() {
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="h-8 rounded-lg border border-border bg-white px-2 text-xs font-medium text-navy"
               >
-                <option value="all">Semua Tipe Resourch</option>
+                <option value="all">Semua Tipe Resource</option>
                 {uniqueTypes.map((t) => (
                   <option key={t} value={t}>
                     {t}
@@ -269,18 +293,25 @@ function AdminPublicationsPage() {
                         className={`text-[10px] ${
                           item.status === "approved"
                             ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                            : item.status === "revision_requested"
-                              ? "bg-amber-100 text-amber-800 border-amber-200"
-                              : item.status === "rejected"
-                                ? "bg-red-100 text-red-800 border-red-200"
-                                : item.status === "resubmitted"
-                                  ? "bg-indigo-100 text-indigo-800 border-indigo-200 font-bold"
-                                  : "bg-blue-100 text-blue-800 border-blue-200"
+                            : item.status === "archived"
+                              ? "bg-slate-200 text-slate-800 border-slate-300 font-semibold"
+                              : item.status === "revision_requested"
+                                ? "bg-amber-100 text-amber-800 border-amber-200"
+                                : item.status === "rejected"
+                                  ? "bg-red-100 text-red-800 border-red-200"
+                                  : item.status === "resubmitted"
+                                    ? "bg-indigo-100 text-indigo-800 border-indigo-200 font-bold"
+                                    : "bg-blue-100 text-blue-800 border-blue-200"
                         }`}
                       >
                         {item.status === "resubmitted" ? (
                           <span className="flex items-center gap-1">
                             <RotateCcw className="h-3 w-3" />
+                            {item.statusLabel}
+                          </span>
+                        ) : item.status === "archived" ? (
+                          <span className="flex items-center gap-1">
+                            <Archive className="h-3 w-3" />
                             {item.statusLabel}
                           </span>
                         ) : (
@@ -298,6 +329,15 @@ function AdminPublicationsPage() {
                       {item.title}
                     </h3>
 
+                    {item.status === "archived" && item.archivedReason && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-700 bg-slate-100 border border-slate-200 rounded-md px-2.5 py-1">
+                        <Archive className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                        <span>
+                          <strong>Alasan Arsip (Tarik Tayang):</strong> {item.archivedReason}
+                        </span>
+                      </div>
+                    )}
+
                     {item.isResubmitted && (
                       <div className="flex items-center gap-1.5 text-[11px] font-medium text-indigo-800 bg-indigo-50 border border-indigo-200/80 rounded-md px-2.5 py-1">
                         <RotateCcw className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
@@ -307,10 +347,23 @@ function AdminPublicationsPage() {
                       </div>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1 font-medium text-navy">
-                        <User className="h-3 w-3 text-marine" /> {item.authorName}
+                        <User className="h-3 w-3 text-marine" /> Penulis: {item.authorName}
                       </span>
+                      {(item.submitterName || item.submitterEmail) && (
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-navy">
+                          <span>
+                            Akun Pengaju: <strong>{item.submitterName || "User"}</strong>
+                            {item.submitterEmail ? ` (${item.submitterEmail})` : ""}
+                          </span>
+                          {item.submitterRole && (
+                            <span className="rounded bg-marine/10 px-1.5 py-0.2 text-[10px] font-bold text-marine">
+                              {item.submitterRole}
+                            </span>
+                          )}
+                        </span>
+                      )}
                       {item.authorInstitution && (
                         <span className="flex items-center gap-1">
                           <Building2 className="h-3 w-3" /> {item.authorInstitution}

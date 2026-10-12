@@ -3,6 +3,8 @@ import { useRouter } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Archive,
+  ArchiveRestore,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -22,6 +24,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BestPracticeStructurePreview } from "@/components/baruna/knowledge/BestPracticeStructureFields";
+import {
+  PolicyBriefStructurePreview,
+  CaseStudyStructurePreview,
+  InfographicStructurePreview,
+  ToolkitStructurePreview,
+} from "@/components/baruna/knowledge/TypeSpecificStructureFields";
 import {
   Dialog,
   DialogContent,
@@ -78,11 +86,16 @@ export function AdminPublicationDetailModal({
 
   const [activeTab, setActiveTab] = useState<"detail" | "history">("detail");
   const [docViewerOpen, setDocViewerOpen] = useState(false);
-  const [decisionMode, setDecisionMode] = useState<"none" | "approve" | "return_for_revision" | "reject">("none");
+  const [decisionMode, setDecisionMode] = useState<
+    "none" | "approve" | "return_for_revision" | "reject" | "archive" | "restore"
+  >("none");
   const [rationale, setRationale] = useState("");
 
   const mutation = useMutation({
-    mutationFn: async (vars: { decision: "approve" | "return_for_revision" | "reject"; rationale?: string }) => {
+    mutationFn: async (vars: {
+      decision: "approve" | "return_for_revision" | "reject" | "archive" | "restore";
+      rationale?: string;
+    }) => {
       if (!item) throw new Error("Item tidak ditemukan.");
       return recordDecision({
         data: {
@@ -97,11 +110,16 @@ export function AdminPublicationDetailModal({
         toast.success("Publikasi berhasil disetujui & ditayangkan di Knowledge Hub!");
       } else if (vars.decision === "return_for_revision") {
         toast.info("Catatan revisi berhasil dikirim ke kontributor.");
+      } else if (vars.decision === "archive") {
+        toast.success("Publikasi berhasil diarsipkan (ditarik dari tayang Knowledge Hub) dan notifikasi telah dikirim ke pemilik publikasi.");
+      } else if (vars.decision === "restore") {
+        toast.success("Publikasi berhasil dipulihkan dan ditayangkan kembali ke Knowledge Hub!");
       } else {
         toast.success("Publikasi telah ditolak.");
       }
       queryClient.invalidateQueries({ queryKey: ["admin", "publications"] });
       queryClient.invalidateQueries({ queryKey: ["knowledge-hub"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       void router.invalidate();
       setDecisionMode("none");
       setRationale("");
@@ -115,14 +133,20 @@ export function AdminPublicationDetailModal({
 
   if (!item) return null;
 
-  const handleActionClick = (mode: "approve" | "return_for_revision" | "reject") => {
+  const handleActionClick = (
+    mode: "approve" | "return_for_revision" | "reject" | "archive" | "restore",
+  ) => {
     setDecisionMode(mode);
     setRationale(
       mode === "return_for_revision"
         ? "Mohon lengkapi naskah publikasi atau perbarui berkas dokumen pendukung."
         : mode === "reject"
           ? "Materi belum memenuhi standar kurasi Knowledge Hub BARUNA."
-          : "",
+          : mode === "archive"
+            ? "Publikasi diarsipkan sementara dan ditarik dari katalog publik Knowledge Hub."
+            : mode === "restore"
+              ? "Publikasi dipulihkan dan ditayangkan kembali ke katalog publik Knowledge Hub."
+              : "",
     );
   };
 
@@ -147,18 +171,25 @@ export function AdminPublicationDetailModal({
                 className={
                   item.status === "approved"
                     ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                    : item.status === "revision_requested"
-                      ? "bg-amber-100 text-amber-800 border-amber-200"
-                      : item.status === "rejected"
-                        ? "bg-red-100 text-red-800 border-red-200"
-                        : item.status === "resubmitted"
-                          ? "bg-indigo-100 text-indigo-800 border-indigo-200 font-bold"
-                          : "bg-blue-100 text-blue-800 border-blue-200"
+                    : item.status === "archived"
+                      ? "bg-slate-200 text-slate-800 border-slate-300 font-semibold"
+                      : item.status === "revision_requested"
+                        ? "bg-amber-100 text-amber-800 border-amber-200"
+                        : item.status === "rejected"
+                          ? "bg-red-100 text-red-800 border-red-200"
+                          : item.status === "resubmitted"
+                            ? "bg-indigo-100 text-indigo-800 border-indigo-200 font-bold"
+                            : "bg-blue-100 text-blue-800 border-blue-200"
                 }
               >
                 {item.status === "resubmitted" ? (
                   <span className="flex items-center gap-1">
                     <RotateCcw className="h-3 w-3" />
+                    {item.statusLabel}
+                  </span>
+                ) : item.status === "archived" ? (
+                  <span className="flex items-center gap-1">
+                    <Archive className="h-3 w-3" />
                     {item.statusLabel}
                   </span>
                 ) : (
@@ -172,7 +203,19 @@ export function AdminPublicationDetailModal({
             <DialogTitle className="mt-2 text-xl font-bold text-navy font-display leading-snug">
               {item.title}
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
+            <DialogDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+              <span className="inline-flex items-center gap-1 font-medium text-navy">
+                <User className="h-3.5 w-3.5 text-marine" />
+                Disubmit oleh:{" "}
+                <strong>{item.submitterName || item.authorName || "Kontributor"}</strong>
+                {item.submitterEmail ? ` (${item.submitterEmail})` : ""}
+              </span>
+              {item.submitterRole && (
+                <span className="inline-flex items-center rounded-md bg-marine/10 px-2 py-0.5 text-[10px] font-bold text-marine">
+                  {item.submitterRole}
+                </span>
+              )}
+              <span>·</span>
               <span>Diajukan pada: {formatDate(item.createdAt)}</span>
               <span>·</span>
               <span>Diperbarui: {formatDate(item.updatedAt)}</span>
@@ -206,6 +249,64 @@ export function AdminPublicationDetailModal({
           <div className="p-6 space-y-6">
             {activeTab === "detail" ? (
               <>
+                {/* Archived Status Banner */}
+                {item.status === "archived" && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-300 bg-slate-100/90 px-4 py-3 text-xs text-slate-800">
+                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                      <Archive className="h-4 w-4 text-slate-600 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p>
+                          <strong>Publikasi Diarsipkan (Tidak Tayang):</strong> Publikasi ini telah ditarik dari tayang publik dan tidak ditampilkan di katalog <em>Knowledge Hub</em>.
+                        </p>
+                        {item.archivedReason && (
+                          <p className="text-[11px] text-slate-700 italic">
+                            Alasan arsip: &quot;{item.archivedReason}&quot;
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleActionClick("restore")}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5"
+                    >
+                      <ArchiveRestore className="h-3.5 w-3.5" /> Pulihkan &amp; Publikasikan Ulang
+                    </Button>
+                  </div>
+                )}
+
+                {/* Approved / Published Status Banner */}
+                {(item.status === "approved" || item.isPublished) && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-900">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>
+                        <strong>Publikasi Disetujui &amp; Tayang:</strong> Dokumen pengetahuan ini aktif ditampilkan di katalog publik Knowledge Hub.
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {item.publishedResourceId && (
+                        <a
+                          href={`/knowledge-hub/resource/${item.publishedResourceId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-700 transition"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" /> Lihat di Knowledge Hub
+                        </a>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleActionClick("archive")}
+                        className="h-7 border-slate-300 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold gap-1.5"
+                      >
+                        <Archive className="h-3.5 w-3.5 text-slate-600" /> Arsipkan (Tarik Tayang)
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Resubmitted Notification Alert */}
                 {item.isResubmitted && (
                   <div className="rounded-xl border border-indigo-200 bg-indigo-50/90 p-4 text-xs text-indigo-950 shadow-2xs">
@@ -242,13 +343,38 @@ export function AdminPublicationDetailModal({
                   </div>
                 )}
                 {/* Contributor Info Card */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                  <h4 className="text-xs font-bold text-navy uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5 text-marine" /> Profil Kontributor / Penulis
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                  <h4 className="text-xs font-bold text-navy uppercase tracking-wider flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-marine" /> Profil Kontributor / Penulis &amp; Akun Pengaju
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+
+                  {/* Submitter Account Highlight Box */}
+                  <div className="rounded-lg border border-marine/20 bg-white p-3 text-xs flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] font-semibold text-muted-foreground block">
+                        Akun Pengaju (User yang Mengunggah / Submit):
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-navy text-sm">
+                          {item.submitterName || item.authorName || "Kontributor BARUNA"}
+                        </span>
+                        {(item.submitterEmail || item.authorEmail) && (
+                          <span className="text-xs font-medium text-marine bg-marine/5 px-2 py-0.5 rounded border border-marine/15">
+                            {item.submitterEmail || item.authorEmail}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {item.submitterRole && (
+                      <Badge variant="outline" className="text-[11px] font-bold text-navy border-slate-300 bg-slate-100">
+                        {item.submitterRole}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                     <div>
-                      <span className="text-muted-foreground block">Nama Penulis:</span>
+                      <span className="text-muted-foreground block">Nama Penulis (pada Naskah):</span>
                       <span className="font-semibold text-navy">{item.authorName}</span>
                     </div>
                     <div>
@@ -290,9 +416,21 @@ export function AdminPublicationDetailModal({
                   </div>
                 </div>
 
-                {/* Best Practice Structure (if applicable) */}
+                {/* Type-Specific Structured Content (if applicable) */}
                 {item.practiceStructure && (
                   <BestPracticeStructurePreview value={item.practiceStructure} />
+                )}
+                {item.policyBriefStructure && (
+                  <PolicyBriefStructurePreview value={item.policyBriefStructure} />
+                )}
+                {item.caseStudyStructure && (
+                  <CaseStudyStructurePreview value={item.caseStudyStructure} />
+                )}
+                {item.infographicStructure && (
+                  <InfographicStructurePreview value={item.infographicStructure} />
+                )}
+                {item.toolkitStructure && (
+                  <ToolkitStructurePreview value={item.toolkitStructure} />
                 )}
 
                 {/* Metadata Badges */}
@@ -480,14 +618,18 @@ export function AdminPublicationDetailModal({
                               ? "text-emerald-700 border-emerald-300"
                               : h.decision === "return_for_revision"
                                 ? "text-amber-700 border-amber-300"
-                                : "text-red-700 border-red-300"
+                                : h.decision === "archive"
+                                  ? "text-slate-700 border-slate-300 bg-slate-50"
+                                  : "text-red-700 border-red-300"
                           }
                         >
                           {h.decision === "approve"
                             ? "Disetujui"
                             : h.decision === "return_for_revision"
                               ? "Diminta Revisi"
-                              : "Ditolak"}
+                              : h.decision === "archive"
+                                ? "Diarsipkan (Tarik Tayang)"
+                                : "Ditolak"}
                         </Badge>
                         <span className="text-[11px] text-muted-foreground">{formatDate(h.createdAt)}</span>
                       </div>
@@ -506,24 +648,33 @@ export function AdminPublicationDetailModal({
             {decisionMode !== "none" && (
               <div
                 className={`rounded-xl border p-4 text-xs space-y-3 animate-in fade-in ${
-                  decisionMode === "approve"
+                  decisionMode === "approve" || decisionMode === "restore"
                     ? "border-emerald-200 bg-emerald-50/60"
                     : decisionMode === "return_for_revision"
                       ? "border-amber-200 bg-amber-50/60"
-                      : "border-red-200 bg-red-50/60"
+                      : decisionMode === "archive"
+                        ? "border-slate-300 bg-slate-100/80"
+                        : "border-red-200 bg-red-50/60"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <h5 className="font-bold text-navy flex items-center gap-1.5">
-                    {decisionMode === "approve" && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                    {(decisionMode === "approve" || decisionMode === "restore") && (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    )}
                     {decisionMode === "return_for_revision" && <AlertCircle className="h-4 w-4 text-amber-600" />}
+                    {decisionMode === "archive" && <Archive className="h-4 w-4 text-slate-700" />}
                     {decisionMode === "reject" && <XCircle className="h-4 w-4 text-red-600" />}
                     Konfirmasi Keputusan:{" "}
                     {decisionMode === "approve"
                       ? "Setujui & Publikasikan"
-                      : decisionMode === "return_for_revision"
-                        ? "Minta Revisi"
-                        : "Tolak Publikasi"}
+                      : decisionMode === "restore"
+                        ? "Pulihkan & Publikasikan Kembali"
+                        : decisionMode === "return_for_revision"
+                          ? "Minta Revisi"
+                          : decisionMode === "archive"
+                            ? "Arsipkan Publikasi (Tarik Tayang)"
+                            : "Tolak Publikasi"}
                   </h5>
                   <Button
                     size="sm"
@@ -538,16 +689,22 @@ export function AdminPublicationDetailModal({
                 <p className="text-muted-foreground">
                   {decisionMode === "approve"
                     ? "Publikasi ini akan langsung berstatus 'Published' dan tayang di katalog Knowledge Hub publik."
-                    : decisionMode === "return_for_revision"
-                      ? "Kontributor akan menerima instruksi revisi dan dapat mengedit kembali draf serta mengunggah revisi."
-                      : "Publikasi ini akan ditolak dari katalog BARUNA."}
+                    : decisionMode === "restore"
+                      ? "Publikasi ini akan dipulihkan dari arsip dan kembali ditayangkan secara publik di katalog Knowledge Hub BARUNA."
+                      : decisionMode === "return_for_revision"
+                        ? "Kontributor akan menerima instruksi revisi dan dapat mengedit kembali draf serta mengunggah revisi."
+                        : decisionMode === "archive"
+                          ? "Publikasi ini akan ditarik dari tampilan katalog Knowledge Hub publik tanpa menghapus data riwayat kurasinya. Pemilik publikasi akan menerima notifikasi beserta alasan pengarsipan."
+                          : "Publikasi ini akan ditolak dari katalog BARUNA."}
                 </p>
 
                 <div>
                   <label className="block font-semibold text-navy mb-1">
                     {decisionMode === "return_for_revision"
                       ? "Catatan / Instruksi Revisi (Wajib Diisi):"
-                      : "Catatan Evaluasi (Opsional):"}
+                      : decisionMode === "archive"
+                        ? "Alasan Pengarsipan / Tarik Tayang (Diteruskan ke Pemilik Publikasi):"
+                        : "Catatan Evaluasi (Opsional):"}
                   </label>
                   <Textarea
                     value={rationale}
@@ -555,7 +712,9 @@ export function AdminPublicationDetailModal({
                     placeholder={
                       decisionMode === "return_for_revision"
                         ? "Tuliskan poin-poin yang perlu diperbaiki kontributor..."
-                        : "Tuliskan catatan pertimbangan..."
+                        : decisionMode === "archive"
+                          ? "Contoh: Data regulasi telah diperbarui dengan versi terbaru / atas permintaan penulis..."
+                          : "Tuliskan catatan pertimbangan..."
                     }
                     className="text-xs bg-white"
                     rows={3}
@@ -571,11 +730,13 @@ export function AdminPublicationDetailModal({
                     disabled={mutation.isPending || (decisionMode === "return_for_revision" && !rationale.trim())}
                     onClick={handleConfirmDecision}
                     className={
-                      decisionMode === "approve"
+                      decisionMode === "approve" || decisionMode === "restore"
                         ? "bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
                         : decisionMode === "return_for_revision"
                           ? "bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs"
-                          : "bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+                          : decisionMode === "archive"
+                            ? "bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs"
+                            : "bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
                     }
                   >
                     {mutation.isPending ? "Memproses…" : "Simpan Keputusan"}
@@ -592,32 +753,78 @@ export function AdminPublicationDetailModal({
 
             {decisionMode === "none" && (
               <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleActionClick("return_for_revision")}
-                  className="text-xs font-semibold text-amber-700 border-amber-300 hover:bg-amber-50"
-                >
-                  <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                  Minta Revisi
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleActionClick("reject")}
-                  className="text-xs font-semibold text-red-700 border-red-300 hover:bg-red-50"
-                >
-                  <XCircle className="h-3.5 w-3.5 mr-1" />
-                  Tolak
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => handleActionClick("approve")}
-                  className="text-xs font-bold bg-marine hover:bg-navy text-white shadow-xs"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                  Setujui & Publikasikan
-                </Button>
+                {item.status === "archived" ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleActionClick("return_for_revision")}
+                      className="text-xs font-semibold text-amber-700 border-amber-300 hover:bg-amber-50"
+                    >
+                      <AlertCircle className="h-3.5 w-3.5 mr-1" />
+                      Minta Revisi
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleActionClick("reject")}
+                      className="text-xs font-semibold text-red-700 border-red-300 hover:bg-red-50"
+                    >
+                      <XCircle className="h-3.5 w-3.5 mr-1" />
+                      Tolak
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleActionClick("restore")}
+                      className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                    >
+                      <ArchiveRestore className="h-3.5 w-3.5 mr-1.5" />
+                      Pulihkan & Publikasikan Kembali
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleActionClick("return_for_revision")}
+                      className="text-xs font-semibold text-amber-700 border-amber-300 hover:bg-amber-50"
+                    >
+                      <AlertCircle className="h-3.5 w-3.5 mr-1" />
+                      Minta Revisi
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleActionClick("reject")}
+                      className="text-xs font-semibold text-red-700 border-red-300 hover:bg-red-50"
+                    >
+                      <XCircle className="h-3.5 w-3.5 mr-1" />
+                      Tolak
+                    </Button>
+                    {(item.status === "approved" || item.isPublished) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleActionClick("archive")}
+                        className="text-xs font-semibold text-slate-700 border-slate-300 hover:bg-slate-100"
+                      >
+                        <Archive className="h-3.5 w-3.5 mr-1.5" />
+                        Arsipkan Publikasi (Tarik Tayang)
+                      </Button>
+                    )}
+                    {item.status !== "approved" && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleActionClick("approve")}
+                        className="text-xs font-bold bg-marine hover:bg-navy text-white shadow-xs"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                        Setujui & Publikasikan
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </DialogFooter>

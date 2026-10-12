@@ -93,6 +93,34 @@ export type KhResource = {
     lessons?: string;
     replication?: string;
   } | null;
+  policyBriefStructure?: {
+    policyIssue?: string;
+    keyFindings?: string;
+    recommendedActions?: string;
+    intendedAudience?: string;
+  } | null;
+  caseStudyStructure?: {
+    background?: string;
+    problem?: string;
+    intervention?: string;
+    process?: string;
+    results?: string;
+    challenges?: string;
+    lessons?: string;
+    recommendations?: string;
+  } | null;
+  infographicStructure?: {
+    keyTakeaways?: string;
+    dataSource?: string;
+    visualFormat?: string;
+    targetAudience?: string;
+  } | null;
+  toolkitStructure?: {
+    includedTools?: string;
+    targetUsers?: string;
+    instructionsForUse?: string;
+    softwareRequirements?: string;
+  } | null;
   metrics: {
     views: number;
     uniqueViewers: number;

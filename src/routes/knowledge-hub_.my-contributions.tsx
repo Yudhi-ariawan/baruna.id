@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Archive,
   ArrowLeft,
   Plus,
   FileText,
@@ -44,6 +45,13 @@ function StatusBadge({ status, label }: { status: KnowledgeContributionItem["sta
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
         <CheckCircle2 className="h-3.5 w-3.5" /> {label}
+      </span>
+    );
+  }
+  if (status === "archived") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-slate-200 text-slate-800 border border-slate-300">
+        <Archive className="h-3.5 w-3.5 text-slate-600" /> {label}
       </span>
     );
   }
@@ -131,13 +139,13 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
 
       {r.status !== "draft" && <Pipeline status={r.status} />}
 
-      {(isRevision || r.status === "rejected" || r.status === "archived") && r.reviewNote && (
+      {(isRevision || r.status === "rejected" || r.status === "archived") && (r.reviewNote || r.status === "archived") && (
         <div
           className={`mt-3 rounded-xl border p-3 text-xs ${
             r.status === "rejected"
               ? "border-red-200 bg-red-50/80 text-red-900"
               : r.status === "archived"
-                ? "border-slate-200 bg-slate-50/80 text-slate-800"
+                ? "border-slate-300 bg-slate-100/90 text-slate-800"
                 : "border-amber-200 bg-amber-50/80 text-amber-900"
           }`}
         >
@@ -146,22 +154,26 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
               r.status === "rejected"
                 ? "text-red-800"
                 : r.status === "archived"
-                  ? "text-slate-700"
+                  ? "text-slate-800"
                   : "text-amber-800"
             }`}
           >
-            <AlertTriangle
-              className={`h-3.5 w-3.5 ${
-                r.status === "rejected"
-                  ? "text-red-600"
-                  : r.status === "archived"
-                    ? "text-slate-500"
-                    : "text-amber-600"
-              }`}
-            />{" "}
-            Catatan Kurator / Administrator:
+            {r.status === "archived" ? (
+              <Archive className="h-3.5 w-3.5 text-slate-600" />
+            ) : (
+              <AlertTriangle
+                className={`h-3.5 w-3.5 ${
+                  r.status === "rejected" ? "text-red-600" : "text-amber-600"
+                }`}
+              />
+            )}{" "}
+            {r.status === "archived"
+              ? "Pemberitahuan: Publikasi Diarsipkan (Ditarik dari Tayang Knowledge Hub)"
+              : "Catatan Kurator / Administrator:"}
           </strong>
-          <p className="leading-relaxed">{r.reviewNote}</p>
+          <p className="leading-relaxed">
+            {r.reviewNote || "Publikasi ini telah diarsipkan sementara oleh Administrator dan tidak tampil di katalog publik Knowledge Hub."}
+          </p>
         </div>
       )}
 
@@ -272,6 +284,8 @@ function MyContributionsPage() {
     queryKey: ["knowledge-hub", "my-contributions", viewer?.id],
     queryFn: () => fetchContributions(),
     enabled: authState === "authenticated",
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const contributions = query.data ?? [];

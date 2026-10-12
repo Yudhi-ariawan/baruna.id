@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Archive,
   Bell,
   CheckCircle2,
   GraduationCap,
@@ -50,7 +51,7 @@ function formatRelativeTime(dateStr: string, isId: boolean) {
 }
 
 function NotificationsPage() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const isId = language === "id";
 
   const getNotifs = useServerFn(listMyNotifications);
@@ -107,6 +108,7 @@ function NotificationsPage() {
               const isRevision = n.type === "revision_requested";
               const isApproved = n.type === "approved";
               const isRejected = n.type === "rejected";
+              const isArchived = n.type === "archived";
 
               return (
                 <div
@@ -116,9 +118,11 @@ function NotificationsPage() {
                       ? "border-amber-300 bg-amber-50/80"
                       : isApproved
                         ? "border-emerald-300 bg-emerald-50/80"
-                        : isRejected
-                          ? "border-rose-300 bg-rose-50/80"
-                          : "border-border bg-card"
+                        : isArchived
+                          ? "border-slate-300 bg-slate-100/80"
+                          : isRejected
+                            ? "border-rose-300 bg-rose-50/80"
+                            : "border-border bg-card"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -129,13 +133,17 @@ function NotificationsPage() {
                             ? "bg-amber-200/80 text-amber-800"
                             : isApproved
                               ? "bg-emerald-200/80 text-emerald-800"
-                              : "bg-rose-200/80 text-rose-800"
+                              : isArchived
+                                ? "bg-slate-200 text-slate-800"
+                                : "bg-rose-200/80 text-rose-800"
                         }`}
                       >
                         {isRevision ? (
                           <RotateCcw className="h-5 w-5 text-amber-700" />
                         ) : isApproved ? (
                           <CheckCircle2 className="h-5 w-5 text-emerald-700" />
+                        ) : isArchived ? (
+                          <Archive className="h-5 w-5 text-slate-700" />
                         ) : (
                           <XCircle className="h-5 w-5 text-rose-700" />
                         )}
@@ -149,14 +157,18 @@ function NotificationsPage() {
                                 ? "bg-amber-200 text-amber-900 border-amber-300"
                                 : isApproved
                                   ? "bg-emerald-200 text-emerald-900 border-emerald-300"
-                                  : "bg-rose-200 text-rose-900 border-rose-300"
+                                  : isArchived
+                                    ? "bg-slate-200 text-slate-900 border-slate-300"
+                                    : "bg-rose-200 text-rose-900 border-rose-300"
                             }`}
                           >
                             {isRevision
                               ? (isId ? "Perlu Tindakan / Revisi" : "Action / Revision Required")
                               : isApproved
                                 ? (isId ? "Disetujui" : "Approved")
-                                : (isId ? "Ditolak" : "Rejected")}
+                                : isArchived
+                                  ? (isId ? "Diarsipkan / Tarik Tayang" : "Archived / Unpublished")
+                                  : (isId ? "Ditolak" : "Rejected")}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {formatRelativeTime(n.createdAt, isId)}
@@ -173,13 +185,17 @@ function NotificationsPage() {
                               ? "bg-white/90 border border-amber-200 text-slate-800"
                               : isApproved
                                 ? "bg-white/80 border border-emerald-200 text-emerald-950"
-                                : "bg-white/80 border border-rose-200 text-rose-950"
+                                : isArchived
+                                  ? "bg-white/90 border border-slate-300 text-slate-800"
+                                  : "bg-white/80 border border-rose-200 text-rose-950"
                           }`}
                         >
                           <span className="font-bold text-[11px] uppercase tracking-wider block mb-1">
                             {isRevision
                               ? (isId ? "Catatan Verifikator / Alasan Revisi:" : "Reviewer Notes / Revision Reason:")
-                              : (isId ? "Keterangan:" : "Details:")}
+                              : isArchived
+                                ? (isId ? "Catatan Administrator / Alasan Pengarsipan:" : "Administrator Note / Archive Reason:")
+                                : (isId ? "Keterangan:" : "Details:")}
                           </span>
                           <p className="italic">&quot;{n.body}&quot;</p>
                         </div>
@@ -195,7 +211,9 @@ function NotificationsPage() {
                             ? "bg-amber-600 hover:bg-amber-700"
                             : isApproved
                               ? "bg-emerald-600 hover:bg-emerald-700"
-                              : "bg-navy hover:bg-navy/90"
+                              : isArchived
+                                ? "bg-slate-700 hover:bg-slate-800"
+                                : "bg-navy hover:bg-navy/90"
                         }`}
                       >
                         {isRevision ? (

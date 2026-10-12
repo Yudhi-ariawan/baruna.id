@@ -93,13 +93,30 @@ type ModuleReviewDraft = NonNullable<TrainerPortalBootstrap["moduleDrafts"]>[num
 function resolveReviewState(draft: ModuleReviewDraft) {
   const latestDecision = draft.reviewHistory?.[0]?.decision;
   const isArchived = draft.reviewStatus === "archived" || latestDecision === "archive";
-  const isApproved = !isArchived && (draft.reviewStatus === "approved" || latestDecision === "approve");
-  const isRevision = !isArchived && (draft.reviewStatus === "revision_requested" || latestDecision === "return_for_revision");
-  const isRejected = !isArchived && (draft.reviewStatus === "rejected" || latestDecision === "reject");
+  const isApproved =
+    !isArchived &&
+    (draft.reviewStatus === "approved" ||
+      (latestDecision === "approve" &&
+        draft.reviewStatus !== "revision_requested" &&
+        draft.reviewStatus !== "resubmitted" &&
+        draft.reviewStatus !== "pending"));
+  const isRevision =
+    !isArchived &&
+    !isApproved &&
+    draft.status !== "submitted" &&
+    draft.reviewStatus !== "resubmitted" &&
+    (draft.reviewStatus === "revision_requested" || latestDecision === "return_for_revision");
+  const isRejected =
+    !isArchived &&
+    !isApproved &&
+    !isRevision &&
+    (draft.reviewStatus === "rejected" ||
+      (latestDecision === "reject" && draft.reviewStatus !== "resubmitted"));
   // Queue state belongs to one exact submission. A saved draft without a
   // linked review subject has never entered verification.
   const isPending = Boolean(draft.subjectId) && !isArchived && !isApproved && !isRevision && !isRejected && (
     draft.status === "submitted" ||
+    draft.reviewStatus === "resubmitted" ||
     draft.reviewStatus === "pending" ||
     draft.reviewStatus === "under_review" ||
     draft.reviewStatus === "decision_pending"

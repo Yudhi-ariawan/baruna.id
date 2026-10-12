@@ -51,6 +51,7 @@ export type TrainerPortalBootstrap = {
     id: string; title: string; status: string; subjectId: string | null;
     reviewStatus: string | null; payload: Json;
     createdAt: string; updatedAt: string;
+    supersededDraftIds?: string[];
     reviewHistory: Array<{ kind: string; at: string; actor: string; decision: string; comment: string | null }>;
   }>;
   certificates?: Array<{

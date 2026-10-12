@@ -75,7 +75,9 @@ export function Navbar() {
   });
 
   const revisionCount =
-    notifications?.filter((n) => n.type === "revision_requested" && n.isLatestForSubject).length ?? 0;
+    notifications?.filter(
+      (n) => (n.type === "revision_requested" || n.type === "archived") && n.isLatestForSubject,
+    ).length ?? 0;
   const hasNotifications = (notifications?.length ?? 0) > 0;
 
   const handleSignOut = async () => {

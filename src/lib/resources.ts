@@ -125,6 +125,99 @@ export const emptyBestPracticeStructure: BestPracticeStructure = {
   replication: "",
 };
 
+export type PolicyBriefStructure = {
+  policyIssue: string;
+  keyFindings: string;
+  recommendedActions: string;
+  intendedAudience: string;
+};
+
+export const emptyPolicyBriefStructure: PolicyBriefStructure = {
+  policyIssue: "",
+  keyFindings: "",
+  recommendedActions: "",
+  intendedAudience: "",
+};
+
+export type CaseStudyStructure = {
+  background: string;
+  problem: string;
+  intervention: string;
+  process: string;
+  results: string;
+  challenges: string;
+  lessons: string;
+  recommendations: string;
+};
+
+export const emptyCaseStudyStructure: CaseStudyStructure = {
+  background: "",
+  problem: "",
+  intervention: "",
+  process: "",
+  results: "",
+  challenges: "",
+  lessons: "",
+  recommendations: "",
+};
+
+export type InfographicStructure = {
+  keyTakeaways: string;
+  dataSource: string;
+  visualFormat: string;
+  targetAudience: string;
+};
+
+export const emptyInfographicStructure: InfographicStructure = {
+  keyTakeaways: "",
+  dataSource: "",
+  visualFormat: "",
+  targetAudience: "",
+};
+
+export type ToolkitStructure = {
+  includedTools: string;
+  targetUsers: string;
+  instructionsForUse: string;
+  softwareRequirements: string;
+};
+
+export const emptyToolkitStructure: ToolkitStructure = {
+  includedTools: "",
+  targetUsers: "",
+  instructionsForUse: "",
+  softwareRequirements: "",
+};
+
+export function isPolicyBriefType(type?: string | null): boolean {
+  return type === "Policy Brief" || type === "policy_brief";
+}
+
+export function isCaseStudyType(type?: string | null): boolean {
+  return type === "Case Study" || type === "case_study";
+}
+
+export function isInfographicType(type?: string | null): boolean {
+  return (
+    type === "Infographic" ||
+    type === "Photo Documentation" ||
+    type === "infographic" ||
+    type === "poster"
+  );
+}
+
+export function isToolkitType(type?: string | null): boolean {
+  return (
+    type === "Monitoring Template" ||
+    type === "Assessment Tool" ||
+    type === "Data Collection Form" ||
+    type === "Checklist" ||
+    type === "Spreadsheet Tool" ||
+    type === "tool" ||
+    type === "toolkit"
+  );
+}
+
 export type Resource = {
   id: string;
   type: string;
@@ -146,6 +239,10 @@ export type Resource = {
   accessLevel: AccessLevel;
   declaration: boolean;
   practiceStructure?: BestPracticeStructure;
+  policyBriefStructure?: PolicyBriefStructure;
+  caseStudyStructure?: CaseStudyStructure;
+  infographicStructure?: InfographicStructure;
+  toolkitStructure?: ToolkitStructure;
   status: ResourceStatus;
   reviewNote?: string;
   createdAt: string;
@@ -174,6 +271,10 @@ export const emptyResourceDraft: ResourceDraft = {
   accessLevel: "Open Access",
   declaration: false,
   practiceStructure: { ...emptyBestPracticeStructure },
+  policyBriefStructure: { ...emptyPolicyBriefStructure },
+  caseStudyStructure: { ...emptyCaseStudyStructure },
+  infographicStructure: { ...emptyInfographicStructure },
+  toolkitStructure: { ...emptyToolkitStructure },
 };
 
 // ── Seed examples (mirrors the BARUNA spec so the tracker is never empty) ─────

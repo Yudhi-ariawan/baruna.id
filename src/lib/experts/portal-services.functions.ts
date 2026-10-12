@@ -146,13 +146,68 @@ export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
 
     // Historical withdrawn branches remain available for audit in the
     // database, but only the newest active branch belongs in the workspace.
+    // We also attach supersededDraftIds and inherit any attachments/quiz data
+    // from older branches of the same subjectId so URLs pointing to an older
+    // draftId seamlessly resolve to the active revision draft.
     if (bootstrap.moduleDrafts) {
+      const allDraftsBySubject = new Map<string, typeof bootstrap.moduleDrafts>();
+      for (const d of bootstrap.moduleDrafts) {
+        if (d.subjectId) {
+          const list = allDraftsBySubject.get(d.subjectId) ?? [];
+          list.push(d);
+          allDraftsBySubject.set(d.subjectId, list);
+        }
+      }
+
       const seenSubjects = new Set<string>();
       bootstrap.moduleDrafts = bootstrap.moduleDrafts.filter((draft) => {
         if (draft.status === "withdrawn") return false;
         if (!draft.subjectId) return true;
         if (seenSubjects.has(draft.subjectId)) return false;
         seenSubjects.add(draft.subjectId);
+
+        const siblings = allDraftsBySubject.get(draft.subjectId) ?? [];
+        draft.supersededDraftIds = siblings.filter((s) => s.id !== draft.id).map((s) => s.id);
+
+        const dp = (draft.payload as Record<string, unknown>) ?? {};
+        const dm = (dp.metadata as Record<string, unknown>) ?? {};
+        const hasAttached =
+          (Array.isArray(dm.attached_resources) && dm.attached_resources.length > 0) ||
+          (Array.isArray(dp.documents) && dp.documents.length > 0) ||
+          (Array.isArray(dp.attachments) && dp.attachments.length > 0);
+
+        if (!hasAttached) {
+          const donor = siblings.find((s) => {
+            const sp = (s.payload as Record<string, unknown>) ?? {};
+            const sm = (sp.metadata as Record<string, unknown>) ?? {};
+            return (
+              (Array.isArray(sm.attached_resources) && sm.attached_resources.length > 0) ||
+              (Array.isArray(sp.documents) && sp.documents.length > 0) ||
+              (Array.isArray(sp.attachments) && sp.attachments.length > 0)
+            );
+          });
+          if (donor) {
+            const sp = (donor.payload as Record<string, unknown>) ?? {};
+            const sm = (sp.metadata as Record<string, unknown>) ?? {};
+            const inheritedFiles =
+              (Array.isArray(sm.attached_resources) && sm.attached_resources) ||
+              (Array.isArray(sp.documents) && sp.documents) ||
+              (Array.isArray(sp.attachments) && sp.attachments) ||
+              [];
+            draft.payload = {
+              ...sp,
+              ...dp,
+              documents: inheritedFiles,
+              attachments: inheritedFiles,
+              metadata: {
+                ...sm,
+                ...dm,
+                attached_resources: inheritedFiles,
+              },
+            } as Json;
+          }
+        }
+
         return true;
       });
     }
@@ -357,7 +412,20 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
       .eq("id", draftId)
       .maybeSingle();
     if (existingDraftError) throw new Error(existingDraftError.message);
-    if (
+    if (existingDraft?.status === "withdrawn" && existingDraft.linked_subject_id) {
+      const { data: activeRevisionDraft } = await context.supabase
+        .from("review_drafts")
+        .select("id, status")
+        .eq("linked_subject_id", existingDraft.linked_subject_id)
+        .eq("submitter_id", context.userId)
+        .eq("status", "draft")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (activeRevisionDraft?.id) {
+        draftId = activeRevisionDraft.id;
+      }
+    } else if (
       data.submit &&
       existingDraft?.status === "submitted" &&
       existingDraft.linked_subject_id

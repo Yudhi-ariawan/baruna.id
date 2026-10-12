@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Archive,
   BookOpen,
   CheckCircle2,
   ChevronRight,
@@ -43,6 +44,12 @@ function resolvePublicationStatus(item: KnowledgeContributionItem) {
         label: "Disetujui",
         badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300",
         icon: CheckCircle2,
+      };
+    case "archived":
+      return {
+        label: "Diarsipkan (Tarik Tayang)",
+        badgeClass: "bg-slate-200 text-slate-800 border-slate-300",
+        icon: Archive,
       };
     case "revision_requested":
       return {
@@ -201,9 +208,16 @@ export function TrainerKnowledgePublicationsCard({
                       </>
                     )}
                   </p>
-                  {item.reviewNote && (item.status === "revision_requested" || item.status === "rejected") && (
-                    <p className="text-[11px] text-amber-800 bg-amber-50 rounded px-2 py-1 border border-amber-200 mt-1">
-                      Catatan Verifikator: {item.reviewNote}
+                  {item.reviewNote && (item.status === "revision_requested" || item.status === "rejected" || item.status === "archived") && (
+                    <p
+                      className={`text-[11px] rounded px-2 py-1 border mt-1 ${
+                        item.status === "archived"
+                          ? "text-slate-800 bg-slate-100 border-slate-300"
+                          : "text-amber-800 bg-amber-50 border-amber-200"
+                      }`}
+                    >
+                      {item.status === "archived" ? "Catatan Arsip Admin: " : "Catatan Verifikator: "}
+                      {item.reviewNote}
                     </p>
                   )}
                 </div>

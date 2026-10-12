@@ -137,8 +137,15 @@ function SubmitModulePage() {
   const modules = portal.data?.modules ?? [];
   const moduleDrafts = portal.data?.moduleDrafts ?? [];
 
-  // If draftId is provided, find the matching draft
-  const activeDraft = draftId ? moduleDrafts.find((d) => d.id === draftId) : null;
+  // If draftId is provided, find the matching draft (including if draftId is an older superseded branch or subjectId)
+  const activeDraft = draftId
+    ? moduleDrafts.find(
+        (d) =>
+          d.id === draftId ||
+          d.subjectId === draftId ||
+          (Array.isArray(d.supersededDraftIds) && d.supersededDraftIds.includes(draftId)),
+      ) ?? null
+    : null;
   const draftPayload = (activeDraft?.payload as Record<string, unknown>) ?? {};
   const draftMeta = (draftPayload.metadata as Record<string, unknown>) ?? {};
   const draftOutline = (draftPayload.content_outline as Record<string, unknown>) ?? {};
@@ -230,14 +237,16 @@ function SubmitModulePage() {
         (Array.isArray(draftPayload.quiz_questions) && draftPayload.quiz_questions) ||
         [];
       if (rawQuiz.length > 0) {
-        setQuizQuestions(rawQuiz as CustomQuizQuestion[]);
+        setQuizQuestions((prev) => (prev.length > 0 ? prev : (rawQuiz as CustomQuizQuestion[])));
       }
 
       const rawAttached = Array.isArray(draftMeta.attached_resources)
         ? (draftMeta.attached_resources as ExistingResource[])
         : Array.isArray(draftPayload.documents)
           ? (draftPayload.documents as ExistingResource[])
-          : [];
+          : Array.isArray(draftPayload.attachments)
+            ? (draftPayload.attachments as ExistingResource[])
+            : [];
 
       const map: Record<string, ExistingResource> = {};
       rawAttached.forEach((res) => {
@@ -382,7 +391,7 @@ function SubmitModulePage() {
           if (uid) {
             try {
               const safeName = f.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
-              const path = `users/${uid}/modules/${draftId || Date.now()}/${Date.now()}-${safeName}`;
+              const path = `users/${uid}/modules/${activeDraft?.id || draftId || Date.now()}/${Date.now()}-${safeName}`;
 
               // 1. Primary: Official module-attachments bucket (allows PDF, PPT, PPTX, videos)
               let { error: upErr } = await supabase.storage
@@ -487,7 +496,7 @@ function SubmitModulePage() {
 
       await saveModule({
         data: {
-          draftId: draftId || undefined,
+          draftId: activeDraft?.id || draftId || undefined,
           title: formFields.title.trim() || "Draft Module",
           moduleType: "technical",
           submit: submitIntent,
@@ -1068,10 +1077,21 @@ function SubmitModulePage() {
                       <h4 className="text-xs font-bold uppercase tracking-wider text-navy">
                         {isId ? "Daftar Berkas Dokumen" : "Document Attachments"}
                       </h4>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs font-semibold text-eco-community">
                         {totalFilesCount} {isId ? "berkas terlampir" : "files attached"}
                       </span>
                     </div>
+
+                    {Object.keys(existingFiles).length > 0 && (
+                      <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2.5 text-[11px] text-emerald-900 flex items-start gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>
+                          {isId
+                            ? `Seluruh ${Object.keys(existingFiles).length} berkas yang telah Anda unggah sebelumnya tetap tersimpan aman. Anda hanya perlu menekan "Ganti" pada berkas yang ingin diperbarui, dan biarkan berkas lainnya tetap utuh.`
+                            : `All ${Object.keys(existingFiles).length} previously uploaded files are safely preserved. You only need to click "Replace" on specific files you wish to update.`}
+                        </span>
+                      </div>
+                    )}
 
                     <ul className="grid gap-3 sm:grid-cols-2">
                       {RESOURCES.map((r, idx) => {
@@ -1112,15 +1132,57 @@ function SubmitModulePage() {
                                     <p className="text-xs font-semibold text-navy truncate">{r}</p>
                                     <p className="text-[0.7rem] text-eco-community font-medium truncate">
                                       {fileName} {fileSize > 0 ? `(${formatBytes(fileSize)})` : ""}
-                                      {newFile && (
+                                      {newFile ? (
                                         <span className="ml-1 text-[0.65rem] font-bold text-marine">
                                           {isId ? "[Baru]" : "[New]"}
+                                        </span>
+                                      ) : (
+                                        <span className="ml-1 text-[0.65rem] font-semibold text-emerald-700">
+                                          {isId ? "[Tersimpan]" : "[Saved]"}
                                         </span>
                                       )}
                                     </p>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1">
+                                  {!newFile && existing?.path && (
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (!existing.path) return;
+                                        if (existing.path.startsWith("http")) {
+                                          window.open(existing.path, "_blank", "noopener,noreferrer");
+                                          return;
+                                        }
+                                        const primaryBucket =
+                                          existing.bucket ||
+                                          (existing.path.includes("/modules/")
+                                            ? MODULE_ATTACHMENTS_BUCKET
+                                            : "expert-applications");
+                                        const { data: s1 } = await supabase.storage
+                                          .from(primaryBucket)
+                                          .createSignedUrl(existing.path, 3600);
+                                        if (s1?.signedUrl) {
+                                          window.open(s1.signedUrl, "_blank", "noopener,noreferrer");
+                                          return;
+                                        }
+                                        const { data: s2 } = await supabase.storage
+                                          .from(
+                                            primaryBucket === MODULE_ATTACHMENTS_BUCKET
+                                              ? "expert-applications"
+                                              : MODULE_ATTACHMENTS_BUCKET,
+                                          )
+                                          .createSignedUrl(existing.path, 3600);
+                                        if (s2?.signedUrl) {
+                                          window.open(s2.signedUrl, "_blank", "noopener,noreferrer");
+                                        }
+                                      }}
+                                      className="text-[0.65rem] font-semibold text-emerald-700 hover:underline cursor-pointer px-1 py-0.5"
+                                      title={isId ? "Lihat berkas yang sudah diunggah" : "View uploaded file"}
+                                    >
+                                      {isId ? "Lihat" : "View"}
+                                    </button>
+                                  )}
                                   <label
                                     htmlFor={inputId}
                                     className="text-[0.65rem] font-semibold text-marine hover:underline cursor-pointer px-1 py-0.5"

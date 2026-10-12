@@ -131,11 +131,13 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
     const { data: drafts } = await supabaseAdmin
       .from("review_drafts")
       .select("id, linked_subject_id, payload, status, updated_at")
-      .in("linked_subject_id", subjectIds);
+      .in("linked_subject_id", subjectIds)
+      .neq("status", "withdrawn")
+      .order("updated_at", { ascending: false });
 
     const draftMap = new Map<string, { id: string; payload: ExpertDraftPayload; status: string; updated_at?: string }>();
     (drafts ?? []).forEach((d) => {
-      if (d.linked_subject_id) {
+      if (d.linked_subject_id && !draftMap.has(d.linked_subject_id)) {
         draftMap.set(d.linked_subject_id, {
           id: d.id,
           payload: (d.payload as unknown as ExpertDraftPayload) ?? {},
@@ -189,30 +191,40 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
       // Pengajuan dianggap 'resubmitted' HANYA JIKA calon expert telah mengirimkan ulang draf (draft.status = 'submitted')
       // Jika draft masih berstatus 'draft' atau review_status masih 'revision_requested', berarti masih menunggu pemohon merevisi
       const isDraftRevising =
-        lastDecision === "return_for_revision" &&
-        (draft?.status === "draft" || subjMeta.review_status === "revision_requested");
+        (lastDecision === "return_for_revision" || subjMeta.review_status === "revision_requested") &&
+        (draft?.status === "draft" || subjMeta.review_status === "revision_requested") &&
+        subj.current_status !== "approved" &&
+        subj.current_status !== "withdrawn" &&
+        subj.current_status !== "archived";
 
       const isResubmitted =
-        lastDecision === "return_for_revision" &&
+        (lastDecision === "return_for_revision" || subjMeta.review_status === "resubmitted") &&
         draft?.status === "submitted" &&
-        subjMeta.review_status === "resubmitted";
+        subjMeta.review_status === "resubmitted" &&
+        subj.current_status !== "approved" &&
+        subj.current_status !== "withdrawn" &&
+        subj.current_status !== "archived";
 
       let status = subj.current_status;
       const isArchived =
         subj.current_status === "archived" ||
         subj.current_status === "withdrawn" ||
-        published?.current_status === "archived" ||
-        (typeof subjMeta.review_status === "string" && subjMeta.review_status === "archived");
+        (typeof subjMeta.review_status === "string" && subjMeta.review_status === "archived") ||
+        (published?.current_status === "archived" &&
+          subj.current_status === "approved" &&
+          subjMeta.review_status !== "revision_requested" &&
+          subjMeta.review_status !== "resubmitted" &&
+          subjMeta.review_status !== "rejected");
 
       if (isArchived) {
         status = "archived";
-      } else if (subj.current_status === "approved" || lastDecision === "approve") {
+      } else if (subj.current_status === "approved" || (lastDecision === "approve" && subj.current_status !== "pending" && subj.current_status !== "rejected")) {
         status = "approved";
-      } else if (subj.current_status === "rejected" || lastDecision === "reject") {
+      } else if (subj.current_status === "rejected" || (lastDecision === "reject" && subj.current_status !== "pending")) {
         status = "rejected";
       } else if (isResubmitted) {
         status = "resubmitted";
-      } else if (isDraftRevising || lastDecision === "return_for_revision") {
+      } else if (isDraftRevising || lastDecision === "return_for_revision" || subjMeta.review_status === "revision_requested") {
         status = "revision_requested";
       }
 
@@ -297,6 +309,9 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
       .from("review_drafts")
       .select("id, payload, status, updated_at")
       .eq("linked_subject_id", subj.id)
+      .neq("status", "withdrawn")
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     const payload = (draft?.payload as unknown as ExpertDraftPayload) ?? {};
@@ -344,26 +359,37 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
     const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
 
     const isDraftRevising =
-      latestDecision === "return_for_revision" &&
-      (draft?.status === "draft" || subjMeta.review_status === "revision_requested");
+      (latestDecision === "return_for_revision" || subjMeta.review_status === "revision_requested") &&
+      (draft?.status === "draft" || subjMeta.review_status === "revision_requested") &&
+      subjMeta.review_status !== "resubmitted" &&
+      subj.current_status !== "approved" &&
+      subj.current_status !== "rejected" &&
+      subj.current_status !== "withdrawn";
 
     const isResubmitted =
-      latestDecision === "return_for_revision" &&
+      (latestDecision === "return_for_revision" || subjMeta.review_status === "resubmitted") &&
       draft?.status === "submitted" &&
-      subjMeta.review_status === "resubmitted";
+      subjMeta.review_status === "resubmitted" &&
+      subj.current_status !== "approved" &&
+      subj.current_status !== "rejected" &&
+      subj.current_status !== "withdrawn";
 
     let status = subj.current_status;
     const isArchived =
       subj.current_status === "archived" ||
       subj.current_status === "withdrawn" ||
-      publishedExpert?.current_status === "archived" ||
-      (typeof subjMeta.review_status === "string" && subjMeta.review_status === "archived");
+      (typeof subjMeta.review_status === "string" && subjMeta.review_status === "archived") ||
+      (publishedExpert?.current_status === "archived" &&
+        subj.current_status === "approved" &&
+        subjMeta.review_status !== "revision_requested" &&
+        subjMeta.review_status !== "resubmitted" &&
+        subjMeta.review_status !== "rejected");
 
     if (isArchived) {
       status = "archived";
-    } else if (subj.current_status === "approved" || latestDecision === "approve") {
+    } else if (subj.current_status === "approved" || (latestDecision === "approve" && subj.current_status !== "pending")) {
       status = "approved";
-    } else if (subj.current_status === "rejected" || latestDecision === "reject") {
+    } else if (subj.current_status === "rejected" || (latestDecision === "reject" && subj.current_status !== "pending")) {
       status = "rejected";
     } else if (isResubmitted) {
       status = "resubmitted";
@@ -563,7 +589,8 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
           status: "draft",
           updated_at: new Date().toISOString(),
         })
-        .eq("linked_subject_id", input.subjectId);
+        .eq("linked_subject_id", input.subjectId)
+        .neq("status", "withdrawn");
 
       await deactivatePublishedExpertState();
       clearExpertStatsCache();
@@ -572,13 +599,33 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
     }
 
     if (input.decision === "approve") {
+      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
       await supabaseAdmin
         .from("review_subjects")
         .update({
           current_status: "approved",
+          metadata: {
+            ...currentMeta,
+            review_status: "approved",
+            last_decision: "approve",
+            last_rationale: rationaleText,
+            approved_at: new Date().toISOString(),
+            resubmitted_at: null,
+            archived_at: null,
+            archive_rationale: null,
+          } as never,
           updated_at: new Date().toISOString(),
         })
         .eq("id", input.subjectId);
+
+      await supabaseAdmin
+        .from("review_drafts")
+        .update({
+          status: "submitted",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("linked_subject_id", input.subjectId)
+        .neq("status", "withdrawn");
 
       try {
         await publishApprovedExpert({
@@ -600,10 +647,18 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
     }
 
     if (input.decision === "reject") {
+      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
       await supabaseAdmin
         .from("review_subjects")
         .update({
           current_status: "rejected",
+          metadata: {
+            ...currentMeta,
+            review_status: "rejected",
+            last_decision: "reject",
+            last_rationale: rationaleText,
+            rejected_at: new Date().toISOString(),
+          } as never,
           updated_at: new Date().toISOString(),
         })
         .eq("id", input.subjectId);

@@ -115,7 +115,20 @@ export const requestPublishedModuleRevision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => PublishedRevisionRequest.parse(input))
   .handler(async ({ data: input, context }) => {
-    if (!(await assertAdministrator(context))) throw new Error("forbidden");
+    if (!(await assertAdminOrReviewer(context))) throw new Error("forbidden");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const nowIso = new Date().toISOString();
+
+    // Capture the latest active (non-withdrawn) draft payload before branching
+    const { data: prevActiveDraft } = await supabaseAdmin
+      .from("review_drafts")
+      .select("id, payload")
+      .eq("linked_subject_id", input.subjectId)
+      .neq("status", "withdrawn")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     // The RPC creates a new editable branch atomically. It deliberately does
     // not change module_registry/knowledge_resources publication state.
@@ -126,8 +139,147 @@ export const requestPublishedModuleRevision = createServerFn({ method: "POST" })
         _rationale: input.rationale,
       } as never,
     );
-    if (error) throw new Error(error.message);
-    return { success: true, draftId: data as string };
+
+    let draftId = (data as string | null) ?? null;
+
+    if (error || !draftId) {
+      // Resilient fallback via supabaseAdmin (supports all reviewer roles & repeated cycles)
+      const { data: subj } = await supabaseAdmin
+        .from("review_subjects")
+        .select("*")
+        .eq("id", input.subjectId)
+        .eq("kind", "module")
+        .single();
+      if (!subj) throw new Error(error?.message || "module_subject_not_found");
+
+      const { data: pubMod } = await supabaseAdmin
+        .from("module_registry")
+        .select("*")
+        .eq("source_submission_id", input.subjectId)
+        .maybeSingle();
+      if (!pubMod) throw new Error(error?.message || "published_module_not_found");
+
+      const latestPayload = (prevActiveDraft?.payload as Record<string, unknown>) ?? {};
+      const latestMeta = (latestPayload.metadata as Record<string, unknown>) ?? {};
+      const modMeta = (pubMod.metadata as Record<string, unknown>) ?? {};
+
+      const mergedPayload = {
+        ...latestPayload,
+        title: pubMod.title,
+        summary: pubMod.summary,
+        language: pubMod.language,
+        module_type: pubMod.module_type,
+        target_participants: pubMod.target_participants,
+        estimated_learning_hours: pubMod.estimated_learning_hours,
+        learning_objectives: Array.isArray(pubMod.learning_objectives) ? pubMod.learning_objectives : [],
+        content_outline: pubMod.content_outline ?? latestPayload.content_outline ?? {},
+        assessment_approach: pubMod.assessment_approach ?? latestPayload.assessment_approach ?? {},
+        metadata: {
+          ...modMeta,
+          ...latestMeta,
+          revision_kind: "published_module_update",
+          published_module_id: pubMod.id,
+          base_version: pubMod.version,
+          revision_rationale: input.rationale,
+          revision_requested_by: context.userId,
+          revision_requested_at: nowIso,
+        },
+      };
+
+      await supabaseAdmin
+        .from("review_drafts")
+        .update({ status: "withdrawn", updated_at: nowIso })
+        .eq("linked_subject_id", input.subjectId)
+        .neq("status", "withdrawn");
+
+      const { data: insertedDraft, error: insErr } = await supabaseAdmin
+        .from("review_drafts")
+        .insert({
+          subject_kind: "module",
+          submitter_id: subj.submitted_by,
+          title: pubMod.title,
+          description: subj.description,
+          external_ref: subj.external_ref,
+          payload: mergedPayload as never,
+          status: "draft",
+          linked_subject_id: input.subjectId,
+        })
+        .select("id")
+        .single();
+
+      if (insErr || !insertedDraft) {
+        throw new Error(insErr?.message || error?.message || "failed_to_branch_module_revision");
+      }
+      draftId = insertedDraft.id;
+
+      await supabaseAdmin.from("review_decisions").insert({
+        subject_id: input.subjectId,
+        decided_by: context.userId,
+        decision: "return_for_revision",
+        rationale: input.rationale,
+      });
+    } else if (prevActiveDraft?.payload) {
+      const { data: newDraft } = await supabaseAdmin
+        .from("review_drafts")
+        .select("payload")
+        .eq("id", draftId)
+        .maybeSingle();
+      const rpcPayload = (newDraft?.payload as Record<string, unknown>) ?? {};
+      const prevPayload = (prevActiveDraft.payload as Record<string, unknown>) ?? {};
+      const prevMeta = (prevPayload.metadata as Record<string, unknown>) ?? {};
+      const rpcMeta = (rpcPayload.metadata as Record<string, unknown>) ?? {};
+      await supabaseAdmin
+        .from("review_drafts")
+        .update({
+          payload: {
+            ...prevPayload,
+            ...rpcPayload,
+            metadata: {
+              ...rpcMeta,
+              ...prevMeta,
+              revision_kind: "published_module_update",
+              revision_rationale: input.rationale,
+              revision_requested_by: context.userId,
+              revision_requested_at: nowIso,
+            },
+          } as never,
+          updated_at: nowIso,
+        })
+        .eq("id", draftId);
+    } else if (draftId) {
+      await supabaseAdmin
+        .from("review_drafts")
+        .update({ updated_at: nowIso })
+        .eq("id", draftId);
+    }
+
+    const { data: subj } = await supabaseAdmin
+      .from("review_subjects")
+      .select("metadata")
+      .eq("id", input.subjectId)
+      .maybeSingle();
+
+    if (subj) {
+      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
+      await supabaseAdmin
+        .from("review_subjects")
+        .update({
+          current_status: "pending",
+          metadata: {
+            ...currentMeta,
+            review_status: "revision_requested",
+            active_revision_draft_id: draftId,
+            last_decision: "return_for_revision",
+            last_rationale: input.rationale,
+            revised_at: nowIso,
+            resubmitted_at: null,
+          } as never,
+          updated_at: nowIso,
+        })
+        .eq("id", input.subjectId);
+    }
+
+    return { success: true, draftId };
   });
 
 export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
@@ -160,11 +312,12 @@ export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
     const subjectIds = subjects.map((s) => s.id);
     const submitterIds = Array.from(new Set(subjects.map((s) => s.submitted_by).filter(Boolean)));
 
-    // Fetch linked review_drafts
+    // Fetch linked review_drafts (excluding withdrawn drafts)
     const { data: drafts } = await supabaseAdmin
       .from("review_drafts")
       .select("id, linked_subject_id, payload, title, status, updated_at")
       .in("linked_subject_id", subjectIds)
+      .neq("status", "withdrawn")
       .order("updated_at", { ascending: false });
 
     const draftMap = new Map<string, { id: string; payload: Record<string, unknown>; status: string; updated_at?: string }>();
@@ -245,26 +398,37 @@ export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
 
       // Has this module been resubmitted after a revision request?
       const isDraftRevising =
-        lastDecision === "return_for_revision" &&
-        (draft?.status === "draft" || subjMeta.review_status === "revision_requested");
+        (lastDecision === "return_for_revision" || subjMeta.review_status === "revision_requested") &&
+        (draft?.status === "draft" || subjMeta.review_status === "revision_requested") &&
+        subjMeta.review_status !== "resubmitted" &&
+        subj.current_status !== "approved" &&
+        subj.current_status !== "rejected" &&
+        subj.current_status !== "withdrawn";
 
       const isResubmitted =
-        lastDecision === "return_for_revision" &&
+        (lastDecision === "return_for_revision" || subjMeta.review_status === "resubmitted") &&
         draft?.status === "submitted" &&
-        subjMeta.review_status === "resubmitted";
+        subjMeta.review_status === "resubmitted" &&
+        subj.current_status !== "approved" &&
+        subj.current_status !== "rejected" &&
+        subj.current_status !== "withdrawn";
 
       // Determine effective status
       let effectiveStatus = subj.current_status;
       if (
         subj.current_status === "withdrawn" ||
         subjMeta.review_status === "archived" ||
-        published?.current_status === "archived" ||
-        lastDecision === "archive"
+        lastDecision === "archive" ||
+        (published?.current_status === "archived" &&
+          subj.current_status === "approved" &&
+          subjMeta.review_status !== "revision_requested" &&
+          subjMeta.review_status !== "resubmitted" &&
+          subjMeta.review_status !== "rejected")
       ) {
         effectiveStatus = "archived";
-      } else if (subj.current_status === "approved" || lastDecision === "approve") {
+      } else if (subj.current_status === "approved" || (lastDecision === "approve" && subj.current_status !== "pending")) {
         effectiveStatus = "approved";
-      } else if (subj.current_status === "rejected" || lastDecision === "reject") {
+      } else if (subj.current_status === "rejected" || (lastDecision === "reject" && subj.current_status !== "pending")) {
         effectiveStatus = "rejected";
       } else if (isResubmitted) {
         effectiveStatus = "resubmitted";
@@ -369,11 +533,12 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
     if (subjErr) throw new Error(subjErr.message);
     if (!subj) return null;
 
-    // Fetch linked draft or revision snapshot
+    // Fetch linked draft or revision snapshot (excluding withdrawn drafts)
     const { data: draft } = await supabaseAdmin
       .from("review_drafts")
       .select("id, payload, status, updated_at")
       .eq("linked_subject_id", subj.id)
+      .neq("status", "withdrawn")
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -483,25 +648,36 @@ export const getAdminModuleDetail = createServerFn({ method: "GET" })
     const subjUpdateTime = subj.updated_at ? new Date(subj.updated_at).getTime() : 0;
 
     const isDraftRevising =
-      latestDecision === "return_for_revision" &&
-      (draft?.status === "draft" || subjMeta.review_status === "revision_requested");
+      (latestDecision === "return_for_revision" || subjMeta.review_status === "revision_requested") &&
+      (draft?.status === "draft" || subjMeta.review_status === "revision_requested") &&
+      subjMeta.review_status !== "resubmitted" &&
+      subj.current_status !== "approved" &&
+      subj.current_status !== "rejected" &&
+      subj.current_status !== "withdrawn";
 
     const isResubmitted =
-      latestDecision === "return_for_revision" &&
+      (latestDecision === "return_for_revision" || subjMeta.review_status === "resubmitted") &&
       draft?.status === "submitted" &&
-      subjMeta.review_status === "resubmitted";
+      subjMeta.review_status === "resubmitted" &&
+      subj.current_status !== "approved" &&
+      subj.current_status !== "rejected" &&
+      subj.current_status !== "withdrawn";
 
     let effectiveStatus = subj.current_status;
     if (
       subj.current_status === "withdrawn" ||
       subjMeta.review_status === "archived" ||
-      published?.current_status === "archived" ||
-      latestDecision === "archive"
+      latestDecision === "archive" ||
+      (published?.current_status === "archived" &&
+        subj.current_status === "approved" &&
+        subjMeta.review_status !== "revision_requested" &&
+        subjMeta.review_status !== "resubmitted" &&
+        subjMeta.review_status !== "rejected")
     ) {
       effectiveStatus = "archived";
-    } else if (subj.current_status === "approved" || latestDecision === "approve") {
+    } else if (subj.current_status === "approved" || (latestDecision === "approve" && subj.current_status !== "pending")) {
       effectiveStatus = "approved";
-    } else if (subj.current_status === "rejected" || latestDecision === "reject") {
+    } else if (subj.current_status === "rejected" || (latestDecision === "reject" && subj.current_status !== "pending")) {
       effectiveStatus = "rejected";
     } else if (isResubmitted) {
       effectiveStatus = "resubmitted";
@@ -756,19 +932,31 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
             last_decision: "return_for_revision",
             last_rationale: rationaleText,
             revised_at: new Date().toISOString(),
+            resubmitted_at: null,
           } as never,
           updated_at: new Date().toISOString(),
         })
         .eq("id", input.subjectId);
 
-      // Re-open linked review_drafts back to 'draft' so trainer can edit silabus & upload new files
-      await supabaseAdmin
+      // Re-open the latest non-withdrawn linked review_drafts back to 'draft' so trainer can edit silabus & upload new files
+      const { data: activeDraft } = await supabaseAdmin
         .from("review_drafts")
-        .update({
-          status: "draft",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("linked_subject_id", input.subjectId);
+        .select("id")
+        .eq("linked_subject_id", input.subjectId)
+        .neq("status", "withdrawn")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeDraft) {
+        await supabaseAdmin
+          .from("review_drafts")
+          .update({
+            status: "draft",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", activeDraft.id);
+      }
 
       // Unpublish any existing module_registry / knowledge_resources rows while under revision
       await supabaseAdmin
@@ -809,10 +997,21 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
             last_decision: "approve",
             last_rationale: rationaleText,
             approved_at: new Date().toISOString(),
+            resubmitted_at: null,
+            archived_at: null,
           } as never,
           updated_at: new Date().toISOString(),
         })
         .eq("id", input.subjectId);
+
+      await supabaseAdmin
+        .from("review_drafts")
+        .update({
+          status: "submitted",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("linked_subject_id", input.subjectId)
+        .neq("status", "withdrawn");
 
       try {
         await publishApprovedModule({

@@ -25,11 +25,13 @@ async function readApplications(context: {
   supabase: SupabaseClient<Database>;
   userId: string;
 }): Promise<ExpertApplicationStatus[]> {
-  const { data: drafts, error } = await context.supabase
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: drafts, error } = await supabaseAdmin
     .from("review_drafts")
     .select("id, title, status, linked_subject_id, payload, created_at, updated_at")
     .eq("submitter_id", context.userId)
     .eq("subject_kind", "expert")
+    .neq("status", "withdrawn")
     .order("updated_at", { ascending: false });
   if (error) throw new Error(error.message);
 
@@ -39,13 +41,13 @@ async function readApplications(context: {
 
   const [{ data: subjects }, { data: decisions }] = await Promise.all([
     subjectIds.length
-      ? context.supabase
+      ? supabaseAdmin
           .from("review_subjects")
-          .select("id, current_status")
+          .select("id, current_status, metadata")
           .in("id", subjectIds)
       : Promise.resolve({ data: [] }),
     subjectIds.length
-      ? context.supabase
+      ? supabaseAdmin
           .from("review_decisions")
           .select("id, subject_id, decision, rationale, created_at")
           .in("subject_id", subjectIds)
@@ -53,10 +55,13 @@ async function readApplications(context: {
       : Promise.resolve({ data: [] }),
   ]);
 
-  const statuses = new Map<string, string>(
-    (subjects ?? []).map((subject: { id: string; current_status: string }) => [
+  const subjectMap = new Map<string, { current_status: string; metadata: Record<string, unknown> }>(
+    (subjects ?? []).map((subject: { id: string; current_status: string; metadata: Json }) => [
       subject.id,
-      subject.current_status,
+      {
+        current_status: subject.current_status,
+        metadata: (subject.metadata as Record<string, unknown>) ?? {},
+      },
     ]),
   );
 
@@ -85,24 +90,42 @@ async function readApplications(context: {
       created_at: string;
       updated_at: string;
     }) => {
-      const subjStatus = draft.linked_subject_id
-        ? (statuses.get(draft.linked_subject_id) ?? null)
+      const subjInfo = draft.linked_subject_id
+        ? (subjectMap.get(draft.linked_subject_id) ?? null)
         : null;
+      const subjStatus = subjInfo?.current_status ?? null;
+      const subjMeta = subjInfo?.metadata ?? {};
       const latestDec = draft.linked_subject_id
         ? (decisionMap.get(draft.linked_subject_id) ?? null)
         : null;
 
       let effectiveReviewStatus = subjStatus;
-      if (latestDec?.decision === "return_for_revision") {
+      if (
+        subjStatus === "withdrawn" ||
+        subjStatus === "archived" ||
+        subjMeta.review_status === "archived"
+      ) {
+        effectiveReviewStatus = "archived";
+      } else if (
+        subjStatus === "approved" ||
+        (latestDec?.decision === "approve" && subjStatus !== "pending" && subjStatus !== "rejected")
+      ) {
+        effectiveReviewStatus = "approved";
+      } else if (
+        subjStatus === "rejected" ||
+        (latestDec?.decision === "reject" && subjStatus !== "pending")
+      ) {
+        effectiveReviewStatus = "rejected";
+      } else if (
+        latestDec?.decision === "return_for_revision" ||
+        subjMeta.review_status === "revision_requested" ||
+        subjMeta.review_status === "resubmitted"
+      ) {
         if (draft.status === "draft") {
           effectiveReviewStatus = "revision_requested";
         } else {
           effectiveReviewStatus = "pending";
         }
-      } else if (latestDec?.decision === "approve" || subjStatus === "approved") {
-        effectiveReviewStatus = "approved";
-      } else if (latestDec?.decision === "reject" || subjStatus === "rejected") {
-        effectiveReviewStatus = "rejected";
       }
 
       return {
@@ -242,6 +265,26 @@ export const saveExpertApplicationDraft = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
       draftId = createdId as string;
+    } else {
+      const { data: existingDraft } = await context.supabase
+        .from("review_drafts")
+        .select("status, linked_subject_id")
+        .eq("id", draftId)
+        .maybeSingle();
+      if (existingDraft?.status === "withdrawn" && existingDraft.linked_subject_id) {
+        const { data: activeRevisionDraft } = await context.supabase
+          .from("review_drafts")
+          .select("id")
+          .eq("linked_subject_id", existingDraft.linked_subject_id)
+          .eq("submitter_id", context.userId)
+          .eq("status", "draft")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (activeRevisionDraft?.id) {
+          draftId = activeRevisionDraft.id;
+        }
+      }
     }
     const patchPayload = {
       ...data.payload,
@@ -263,6 +306,36 @@ export const submitExpertApplication = createServerFn({ method: "POST" })
       _draft_id: data.draftId,
     });
     if (error) throw new Error(error.message);
+
+    // Sync review_subjects metadata if this was a resubmission of a revision_requested subject
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: subj } = await supabaseAdmin
+      .from("review_subjects")
+      .select("id, metadata")
+      .eq("id", subjectId as string)
+      .maybeSingle();
+
+    if (subj) {
+      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
+      const wasRevised =
+        currentMeta.review_status === "revision_requested" ||
+        currentMeta.last_decision === "return_for_revision";
+      if (wasRevised) {
+        await supabaseAdmin
+          .from("review_subjects")
+          .update({
+            current_status: "pending",
+            metadata: {
+              ...currentMeta,
+              review_status: "resubmitted",
+              resubmitted_at: new Date().toISOString(),
+            } as never,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", subj.id);
+      }
+    }
+
     return { draftId: data.draftId, subjectId: subjectId as string };
   });
 
@@ -293,6 +366,21 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
       throw new Error("Pengajuan tidak ditemukan atau Anda tidak memiliki akses.");
     }
 
+    // Resolve active non-withdrawn draftId for this subject if input.draftId was superseded
+    let targetDraftId = input.draftId;
+    const { data: latestActiveDraft } = await supabaseAdmin
+      .from("review_drafts")
+      .select("id")
+      .eq("linked_subject_id", input.subjectId)
+      .eq("submitter_id", context.userId)
+      .neq("status", "withdrawn")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestActiveDraft?.id) {
+      targetDraftId = latestActiveDraft.id;
+    }
+
     // 2. Update draft payload with revised files
     await supabaseAdmin
       .from("review_drafts")
@@ -302,7 +390,7 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
         title: input.displayName,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", input.draftId)
+      .eq("id", targetDraftId)
       .eq("submitter_id", context.userId);
 
     // 3. Reset subject status back to "pending" to reappear in Admin's verification queue

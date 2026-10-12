@@ -153,6 +153,29 @@ export async function projectPublishedModuleToKnowledge(moduleId: string): Promi
     ...(resolvedAuthorName ? { author_name: resolvedAuthorName } : {}),
     ...(resolvedInstitution ? { institution: resolvedInstitution } : {}),
   };
+  const { data: existingKr } = await supabaseAdmin
+    .from("knowledge_resources")
+    .select("id, version")
+    .eq("id", module.id)
+    .maybeSingle();
+
+  let nextKrVersion = Number(module.version || 1);
+  if (existingKr) {
+    const { data: latestKrVer } = await supabaseAdmin
+      .from("knowledge_resource_versions")
+      .select("version")
+      .eq("resource_id", module.id)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    nextKrVersion =
+      Math.max(
+        Number(existingKr.version || 1),
+        Number(latestKrVer?.version || 0),
+        Number(module.version || 1) - 1,
+      ) + 1;
+  }
+
   const { error: resourceError } = await supabaseAdmin.from("knowledge_resources").upsert({
     id: module.id,
     source_type: module.source_type,
@@ -181,6 +204,7 @@ export async function projectPublishedModuleToKnowledge(moduleId: string): Promi
     related_expert_ids: module.author_expert_id ? [module.author_expert_id] : [],
     related_module_refs: [module.id],
     metadata: projectedMetadata,
+    version: nextKrVersion,
   }, { onConflict: "id" });
   if (resourceError) throw new Error(resourceError.message);
 

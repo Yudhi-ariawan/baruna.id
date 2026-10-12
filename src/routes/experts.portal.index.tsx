@@ -70,7 +70,13 @@ function resolveDraftStatus(d: {
     };
   }
 
-  if (d.reviewStatus === "approved" || dec === "approve") {
+  if (
+    d.reviewStatus === "approved" ||
+    (dec === "approve" &&
+      d.reviewStatus !== "revision_requested" &&
+      d.reviewStatus !== "resubmitted" &&
+      d.reviewStatus !== "pending")
+  ) {
     return {
       status: "approved",
       label: "Disetujui / Tayang",
@@ -81,7 +87,11 @@ function resolveDraftStatus(d: {
     };
   }
 
-  if (d.reviewStatus === "revision_requested" || dec === "return_for_revision") {
+  if (
+    d.status !== "submitted" &&
+    d.reviewStatus !== "resubmitted" &&
+    (d.reviewStatus === "revision_requested" || dec === "return_for_revision")
+  ) {
     const payload = (d.payload as Record<string, unknown> | null) ?? {};
     const metadata = (payload.metadata as Record<string, unknown> | null) ?? {};
     const isPublishedUpdate = metadata.revision_kind === "published_module_update";
@@ -95,7 +105,7 @@ function resolveDraftStatus(d: {
     };
   }
 
-  if (d.reviewStatus === "rejected" || dec === "reject") {
+  if (d.reviewStatus === "rejected" || (dec === "reject" && d.reviewStatus !== "resubmitted")) {
     return {
       status: "rejected",
       label: "Ditolak",
@@ -106,7 +116,12 @@ function resolveDraftStatus(d: {
     };
   }
 
-  if (d.status === "submitted" || d.reviewStatus === "pending" || d.reviewStatus === "under_review") {
+  if (
+    d.status === "submitted" ||
+    d.reviewStatus === "resubmitted" ||
+    d.reviewStatus === "pending" ||
+    d.reviewStatus === "under_review"
+  ) {
     return {
       status: "pending",
       label: "Dalam Proses Review",

@@ -458,6 +458,105 @@ async function runFlow2Trainer() {
 
   logStep(FLOW, "2.3 Verifikasi & Persetujuan Admin (Pakar)", "PASS", `Pakar aktif di direktori (Slug: ${publishedExpert.slug}), Role expert diberikan`);
 
+  // 2.3b Multi-Cycle Post-Publication Revision for Expert (Approve #1 -> Return #1 -> Resubmit #1 -> Approve #2 -> Return #2 -> Resubmit #2 -> Approve #3)
+  for (let cycle = 1; cycle <= 2; cycle++) {
+    // Admin requests post-publication revision
+    const { data: prevExpDecs } = await admin
+      .from("review_decisions")
+      .select("id, decision, supersedes_decision_id")
+      .eq("subject_id", subject.id)
+      .order("created_at", { ascending: false });
+
+    const { error: revExpDecErr } = await admin.from("review_decisions").insert({
+      subject_id: subject.id,
+      decided_by: adminUser.id,
+      decision: "return_for_revision",
+      rationale: `Revisi pasca-tayang siklus #${cycle}: mohon perbarui daftar publikasi terbaru.`,
+    });
+    if (revExpDecErr) throw new Error(`Gagal minta revisi expert siklus #${cycle}: ${revExpDecErr.message}`);
+
+    await admin.from("review_subjects").update({
+      current_status: "pending",
+      metadata: {
+        draft_id: draft.id,
+        review_status: "revision_requested",
+        last_decision: "return_for_revision",
+        revised_at: new Date().toISOString(),
+        resubmitted_at: null,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", subject.id);
+
+    await admin.from("review_drafts").update({
+      status: "draft",
+      updated_at: new Date().toISOString(),
+    }).eq("id", draft.id);
+
+    await admin.from("experts").update({
+      current_status: "archived",
+      visibility: "private",
+    }).eq("id", publishedExpert.id);
+
+    // Expert edits & resubmits
+    const updatedBio = `Pakar ekologi terumbu karang (Pembaruan Siklus #${cycle}).`;
+    await admin.from("review_drafts").update({
+      status: "submitted",
+      payload: {
+        fullName: `Dr. Ir. Hendra Wijaya, M.Sc (${stamp})`,
+        biography: updatedBio,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", draft.id);
+
+    await admin.from("review_subjects").update({
+      current_status: "pending",
+      metadata: {
+        draft_id: draft.id,
+        review_status: "resubmitted",
+        resubmitted_at: new Date().toISOString(),
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", subject.id);
+
+    // Admin re-approves with proper supersedes_decision_id chaining
+    const existingNullFinalExp = prevExpDecs?.find(
+      (d) => !d.supersedes_decision_id && (d.decision === "approve" || d.decision === "reject")
+    );
+    const supersedesExpId = existingNullFinalExp ? existingNullFinalExp.id : prevExpDecs?.[0]?.id ?? null;
+
+    const { error: reAppExpErr } = await admin.from("review_decisions").insert({
+      subject_id: subject.id,
+      decided_by: adminUser.id,
+      decision: "approve",
+      rationale: `Persetujuan ulang pasca-revisi siklus #${cycle}.`,
+      supersedes_decision_id: supersedesExpId,
+    });
+    if (reAppExpErr) throw new Error(`Gagal approve ulang expert siklus #${cycle}: ${reAppExpErr.message}`);
+
+    await admin.from("review_subjects").update({
+      current_status: "approved",
+      metadata: {
+        draft_id: draft.id,
+        review_status: "approved",
+        last_decision: "approve",
+        resubmitted_at: null,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", subject.id);
+
+    const { error: expRePubErr } = await admin.from("experts").update({
+      bio: updatedBio,
+      current_status: "published",
+      visibility: "public",
+      publication_date: new Date().toISOString(),
+      version: 1 + cycle,
+      updated_at: new Date().toISOString(),
+    }).eq("id", publishedExpert.id);
+    if (expRePubErr) throw new Error(`Gagal re-publish expert siklus #${cycle}: ${expRePubErr.message}`);
+  }
+
+  logStep(FLOW, "2.3b Siklus Revisi Berulang Pasca-Tayang (Pakar)", "PASS", "2 siklus Return for Revision -> Resubmit -> Re-Approve berhasil tanpa konflik indeks unik review_decisions maupun expert_versions");
+
   // 2.4 Trainer Submit Modul Pembelajaran
   const moduleTitle = `Pedoman Restorasi Terumbu Karang Berkelanjutan (${stamp})`;
   const { data: moduleDraft, error: modDraftErr } = await admin.from("review_drafts").insert({
@@ -531,6 +630,109 @@ async function runFlow2Trainer() {
   createdModuleIds.push(regModule.id);
 
   logStep(FLOW, "2.5 Persetujuan Admin & Publikasi Modul", "PASS", `Modul ID: ${regModule.id} resmi tayang di katalog Academy`);
+
+  // 2.6 Multi-Cycle Post-Publication Revision for Module (Approve #1 -> Return #1 -> Resubmit #1 -> Approve #2 -> Return #2 -> Resubmit #2 -> Approve #3)
+  for (let cycle = 1; cycle <= 2; cycle++) {
+    const { data: prevModDecs } = await admin
+      .from("review_decisions")
+      .select("id, decision, supersedes_decision_id")
+      .eq("subject_id", moduleSubject.id)
+      .order("created_at", { ascending: false });
+
+    const { error: revModDecErr } = await admin.from("review_decisions").insert({
+      subject_id: moduleSubject.id,
+      decided_by: adminUser.id,
+      decision: "return_for_revision",
+      rationale: `Revisi modul pasca-tayang siklus #${cycle}: mohon lengkapi silabus studi kasus.`,
+    });
+    if (revModDecErr) throw new Error(`Gagal minta revisi modul siklus #${cycle}: ${revModDecErr.message}`);
+
+    await admin.from("review_subjects").update({
+      current_status: "pending",
+      metadata: {
+        draft_id: moduleDraft.id,
+        review_status: "revision_requested",
+        last_decision: "return_for_revision",
+        revised_at: new Date().toISOString(),
+        resubmitted_at: null,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", moduleSubject.id);
+
+    await admin.from("review_drafts").update({
+      status: "draft",
+      updated_at: new Date().toISOString(),
+    }).eq("id", moduleDraft.id);
+
+    await admin.from("module_registry").update({
+      current_status: "archived",
+      visibility: "private",
+    }).eq("id", regModule.id);
+
+    // Trainer edits & resubmits module
+    const revisedSummary = `Modul teknis restorasi habitat terumbu karang (Revisi Siklus #${cycle}).`;
+    await admin.from("review_drafts").update({
+      status: "submitted",
+      payload: {
+        title: moduleTitle,
+        module_type: "technical",
+        summary: revisedSummary,
+        language: "Indonesia",
+        estimated_learning_hours: 12 + cycle * 2,
+        author_expert_id: publishedExpert.id,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", moduleDraft.id);
+
+    await admin.from("review_subjects").update({
+      current_status: "pending",
+      metadata: {
+        draft_id: moduleDraft.id,
+        review_status: "resubmitted",
+        resubmitted_at: new Date().toISOString(),
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", moduleSubject.id);
+
+    // Admin re-approves module
+    const existingNullFinalMod = prevModDecs?.find(
+      (d) => !d.supersedes_decision_id && (d.decision === "approve" || d.decision === "reject")
+    );
+    const supersedesModId = existingNullFinalMod ? existingNullFinalMod.id : prevModDecs?.[0]?.id ?? null;
+
+    const { error: reAppModErr } = await admin.from("review_decisions").insert({
+      subject_id: moduleSubject.id,
+      decided_by: adminUser.id,
+      decision: "approve",
+      rationale: `Persetujuan ulang modul pasca-revisi siklus #${cycle}.`,
+      supersedes_decision_id: supersedesModId,
+    });
+    if (reAppModErr) throw new Error(`Gagal approve ulang modul siklus #${cycle}: ${reAppModErr.message}`);
+
+    await admin.from("review_subjects").update({
+      current_status: "approved",
+      metadata: {
+        draft_id: moduleDraft.id,
+        review_status: "approved",
+        last_decision: "approve",
+        resubmitted_at: null,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", moduleSubject.id);
+
+    const { error: modRePubErr } = await admin.from("module_registry").update({
+      summary: revisedSummary,
+      estimated_learning_hours: 12 + cycle * 2,
+      current_status: "published",
+      visibility: "public",
+      publication_date: new Date().toISOString(),
+      version: 1 + cycle,
+      updated_at: new Date().toISOString(),
+    }).eq("id", regModule.id);
+    if (modRePubErr) throw new Error(`Gagal re-publish modul siklus #${cycle}: ${modRePubErr.message}`);
+  }
+
+  logStep(FLOW, "2.6 Siklus Revisi Berulang Pasca-Tayang (Modul)", "PASS", "2 siklus Return for Revision -> Resubmit -> Re-Approve modul berhasil tanpa konflik module_registry_versions dan tayang kembali di katalog Academy");
 }
 
 async function scanPotentialConflicts() {

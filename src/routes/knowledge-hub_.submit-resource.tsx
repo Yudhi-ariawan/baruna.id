@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -30,6 +30,14 @@ import {
   ACCEPTED_FILE_TYPES,
   emptyResourceDraft,
   emptyBestPracticeStructure,
+  emptyPolicyBriefStructure,
+  emptyCaseStudyStructure,
+  emptyInfographicStructure,
+  emptyToolkitStructure,
+  isPolicyBriefType,
+  isCaseStudyType,
+  isInfographicType,
+  isToolkitType,
   getResource,
   formatBytes,
   groupForType,
@@ -40,6 +48,16 @@ import {
   BestPracticeStructureForm,
   BestPracticeStructurePreview,
 } from "@/components/baruna/knowledge/BestPracticeStructureFields";
+import {
+  PolicyBriefStructureForm,
+  PolicyBriefStructurePreview,
+  CaseStudyStructureForm,
+  CaseStudyStructurePreview,
+  InfographicStructureForm,
+  InfographicStructurePreview,
+  ToolkitStructureForm,
+  ToolkitStructurePreview,
+} from "@/components/baruna/knowledge/TypeSpecificStructureFields";
 import {
   formatMediaDuration,
   getVideoEmbedUrl,
@@ -82,6 +100,7 @@ const MAX_BYTES = 50 * 1024 * 1024;
 
 function SubmitResourcePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { authState, viewer } = useHomeExperience();
   const bootstrapFn = useServerFn(getKnowledgeContributorBootstrap);
   const saveFn = useServerFn(saveKnowledgeResourceDraft);
@@ -95,6 +114,8 @@ function SubmitResourcePage() {
     queryKey: ["knowledge-hub", "draft", edit],
     queryFn: () => getDraftFn({ data: { draftId: edit! } }),
     enabled: Boolean(isUuid && authState === "authenticated"),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const [step, setStep] = useState(1);
@@ -173,6 +194,18 @@ function SubmitResourcePage() {
         practiceStructure: d.practiceStructure
           ? { ...emptyBestPracticeStructure, ...d.practiceStructure }
           : curr.practiceStructure,
+        policyBriefStructure: d.policyBriefStructure
+          ? { ...emptyPolicyBriefStructure, ...d.policyBriefStructure }
+          : curr.policyBriefStructure,
+        caseStudyStructure: d.caseStudyStructure
+          ? { ...emptyCaseStudyStructure, ...d.caseStudyStructure }
+          : curr.caseStudyStructure,
+        infographicStructure: d.infographicStructure
+          ? { ...emptyInfographicStructure, ...d.infographicStructure }
+          : curr.infographicStructure,
+        toolkitStructure: d.toolkitStructure
+          ? { ...emptyToolkitStructure, ...d.toolkitStructure }
+          : curr.toolkitStructure,
         file: d.fileName
           ? {
               name: d.fileName,
@@ -277,6 +310,10 @@ function SubmitResourcePage() {
     try {
       const result = await saveFn({ data: { draftId, submit: status === "submitted", form: draft } });
       setDraftId(result.draftId);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["knowledge-hub"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
       setSubmitted(status);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save this resource.");
@@ -751,6 +788,30 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
           onChange={(next) => set("practiceStructure", next)}
         />
       )}
+      {isPolicyBriefType(form.type) && (
+        <PolicyBriefStructureForm
+          value={form.policyBriefStructure}
+          onChange={(next) => set("policyBriefStructure", next)}
+        />
+      )}
+      {isCaseStudyType(form.type) && (
+        <CaseStudyStructureForm
+          value={form.caseStudyStructure}
+          onChange={(next) => set("caseStudyStructure", next)}
+        />
+      )}
+      {isInfographicType(form.type) && (
+        <InfographicStructureForm
+          value={form.infographicStructure}
+          onChange={(next) => set("infographicStructure", next)}
+        />
+      )}
+      {isToolkitType(form.type) && (
+        <ToolkitStructureForm
+          value={form.toolkitStructure}
+          onChange={(next) => set("toolkitStructure", next)}
+        />
+      )}
     </div>
   );
 }
@@ -896,6 +957,18 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
         uploadedAt: new Date().toISOString(),
         storagePath,
       });
+
+      // For Infographic / Photo Documentation, if the uploaded main file is an image and no coverFile is set yet, automatically use it as the cover/thumbnail
+      if (isInfographicType(form.type) && isImg && !form.coverFile) {
+        set("coverFile", {
+          name: file.name,
+          size: file.size,
+          type: file.type || "image/jpeg",
+          uploadedAt: new Date().toISOString(),
+          storagePath,
+          previewUrl: URL.createObjectURL(file),
+        });
+      }
 
       // Auto-detect media duration for uploaded video/audio files when duration is not yet filled
       if (
@@ -1236,6 +1309,26 @@ function StepReview({ form }: { form: ResourceDraft }) {
       {form.type === "Best Practice" && (
         <div className="mt-4">
           <BestPracticeStructurePreview value={form.practiceStructure} />
+        </div>
+      )}
+      {isPolicyBriefType(form.type) && (
+        <div className="mt-4">
+          <PolicyBriefStructurePreview value={form.policyBriefStructure} />
+        </div>
+      )}
+      {isCaseStudyType(form.type) && (
+        <div className="mt-4">
+          <CaseStudyStructurePreview value={form.caseStudyStructure} />
+        </div>
+      )}
+      {isInfographicType(form.type) && (
+        <div className="mt-4">
+          <InfographicStructurePreview value={form.infographicStructure} />
+        </div>
+      )}
+      {isToolkitType(form.type) && (
+        <div className="mt-4">
+          <ToolkitStructurePreview value={form.toolkitStructure} />
         </div>
       )}
       {!form.declaration && (

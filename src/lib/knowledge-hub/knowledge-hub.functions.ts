@@ -308,6 +308,22 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
           metadata.practiceStructure && typeof metadata.practiceStructure === "object" && !Array.isArray(metadata.practiceStructure)
             ? (metadata.practiceStructure as KhResource["practiceStructure"])
             : null,
+        policyBriefStructure:
+          metadata.policyBriefStructure && typeof metadata.policyBriefStructure === "object" && !Array.isArray(metadata.policyBriefStructure)
+            ? (metadata.policyBriefStructure as KhResource["policyBriefStructure"])
+            : null,
+        caseStudyStructure:
+          metadata.caseStudyStructure && typeof metadata.caseStudyStructure === "object" && !Array.isArray(metadata.caseStudyStructure)
+            ? (metadata.caseStudyStructure as KhResource["caseStudyStructure"])
+            : null,
+        infographicStructure:
+          metadata.infographicStructure && typeof metadata.infographicStructure === "object" && !Array.isArray(metadata.infographicStructure)
+            ? (metadata.infographicStructure as KhResource["infographicStructure"])
+            : null,
+        toolkitStructure:
+          metadata.toolkitStructure && typeof metadata.toolkitStructure === "object" && !Array.isArray(metadata.toolkitStructure)
+            ? (metadata.toolkitStructure as KhResource["toolkitStructure"])
+            : null,
         metrics: {
           views: metricValue(metadata, ["views", "view_count", "viewCount"]),
           uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),

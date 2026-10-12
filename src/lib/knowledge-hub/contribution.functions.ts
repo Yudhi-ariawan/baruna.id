@@ -260,7 +260,20 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
         .select("status, linked_subject_id")
         .eq("id", draftId)
         .maybeSingle();
-      if (data.submit && existingDraft?.status === "submitted" && existingDraft.linked_subject_id) {
+      if (existingDraft?.status === "withdrawn" && existingDraft.linked_subject_id) {
+        const { data: activeRevisionDraft } = await context.supabase
+          .from("review_drafts")
+          .select("id")
+          .eq("linked_subject_id", existingDraft.linked_subject_id)
+          .eq("submitter_id", context.userId)
+          .eq("status", "draft")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (activeRevisionDraft?.id) {
+          draftId = activeRevisionDraft.id;
+        }
+      } else if (data.submit && existingDraft?.status === "submitted" && existingDraft.linked_subject_id) {
         return { draftId, status: "submitted" };
       }
     }
@@ -624,6 +637,34 @@ export type SavedDraftDetail = {
     lessons: string;
     replication: string;
   };
+  policyBriefStructure?: {
+    policyIssue: string;
+    keyFindings: string;
+    recommendedActions: string;
+    intendedAudience: string;
+  };
+  caseStudyStructure?: {
+    background: string;
+    problem: string;
+    intervention: string;
+    process: string;
+    results: string;
+    challenges: string;
+    lessons: string;
+    recommendations: string;
+  };
+  infographicStructure?: {
+    keyTakeaways: string;
+    dataSource: string;
+    visualFormat: string;
+    targetAudience: string;
+  };
+  toolkitStructure?: {
+    includedTools: string;
+    targetUsers: string;
+    instructionsForUse: string;
+    softwareRequirements: string;
+  };
   fileName?: string;
   fileSize?: number;
   filePath?: string;
@@ -638,7 +679,7 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ draftId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }): Promise<SavedDraftDetail | null> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: draft, error } = await supabaseAdmin
+    let { data: draft, error } = await supabaseAdmin
       .from("review_drafts")
       .select("id, title, payload, status, linked_subject_id")
       .eq("id", data.draftId)
@@ -646,12 +687,42 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
       .maybeSingle();
 
     if (error || !draft) return null;
+    if (draft.status === "withdrawn" && draft.linked_subject_id) {
+      const { data: activeDraft } = await supabaseAdmin
+        .from("review_drafts")
+        .select("id, title, payload, status, linked_subject_id")
+        .eq("linked_subject_id", draft.linked_subject_id)
+        .eq("submitter_id", context.userId)
+        .neq("status", "withdrawn")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (activeDraft) {
+        draft = activeDraft;
+      }
+    }
     const p = (draft.payload as Record<string, unknown>) ?? {};
     const fileObj = p.file as { name?: string; size?: number; storagePath?: string } | undefined;
     const coverObj = p.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
     const rawPractice =
       p.practiceStructure && typeof p.practiceStructure === "object" && !Array.isArray(p.practiceStructure)
         ? (p.practiceStructure as Record<string, unknown>)
+        : undefined;
+    const rawPolicyBrief =
+      p.policyBriefStructure && typeof p.policyBriefStructure === "object" && !Array.isArray(p.policyBriefStructure)
+        ? (p.policyBriefStructure as Record<string, unknown>)
+        : undefined;
+    const rawCaseStudy =
+      p.caseStudyStructure && typeof p.caseStudyStructure === "object" && !Array.isArray(p.caseStudyStructure)
+        ? (p.caseStudyStructure as Record<string, unknown>)
+        : undefined;
+    const rawInfographic =
+      p.infographicStructure && typeof p.infographicStructure === "object" && !Array.isArray(p.infographicStructure)
+        ? (p.infographicStructure as Record<string, unknown>)
+        : undefined;
+    const rawToolkit =
+      p.toolkitStructure && typeof p.toolkitStructure === "object" && !Array.isArray(p.toolkitStructure)
+        ? (p.toolkitStructure as Record<string, unknown>)
         : undefined;
     const { groupForType } = await import("@/lib/resources");
     const rawType = normalizeUiResourceType(p.type || p.resource_type || "Research Report");
@@ -698,6 +769,42 @@ export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
             results: String(rawPractice.results ?? ""),
             lessons: String(rawPractice.lessons ?? ""),
             replication: String(rawPractice.replication ?? ""),
+          }
+        : undefined,
+      policyBriefStructure: rawPolicyBrief
+        ? {
+            policyIssue: String(rawPolicyBrief.policyIssue ?? ""),
+            keyFindings: String(rawPolicyBrief.keyFindings ?? ""),
+            recommendedActions: String(rawPolicyBrief.recommendedActions ?? ""),
+            intendedAudience: String(rawPolicyBrief.intendedAudience ?? ""),
+          }
+        : undefined,
+      caseStudyStructure: rawCaseStudy
+        ? {
+            background: String(rawCaseStudy.background ?? ""),
+            problem: String(rawCaseStudy.problem ?? ""),
+            intervention: String(rawCaseStudy.intervention ?? ""),
+            process: String(rawCaseStudy.process ?? ""),
+            results: String(rawCaseStudy.results ?? ""),
+            challenges: String(rawCaseStudy.challenges ?? ""),
+            lessons: String(rawCaseStudy.lessons ?? ""),
+            recommendations: String(rawCaseStudy.recommendations ?? ""),
+          }
+        : undefined,
+      infographicStructure: rawInfographic
+        ? {
+            keyTakeaways: String(rawInfographic.keyTakeaways ?? ""),
+            dataSource: String(rawInfographic.dataSource ?? ""),
+            visualFormat: String(rawInfographic.visualFormat ?? ""),
+            targetAudience: String(rawInfographic.targetAudience ?? ""),
+          }
+        : undefined,
+      toolkitStructure: rawToolkit
+        ? {
+            includedTools: String(rawToolkit.includedTools ?? ""),
+            targetUsers: String(rawToolkit.targetUsers ?? ""),
+            instructionsForUse: String(rawToolkit.instructionsForUse ?? ""),
+            softwareRequirements: String(rawToolkit.softwareRequirements ?? ""),
           }
         : undefined,
       fileName: fileObj?.name || (typeof p.fileName === "string" ? p.fileName : undefined),
@@ -792,11 +899,20 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       let status: KnowledgeContributionItem["status"] = "draft";
       let statusLabel = "Draf";
 
+      const isRevisionOrRejected =
+        subject?.current_status === "rejected" ||
+        subMeta.review_status === "rejected" ||
+        subject?.current_status === "revision_requested" ||
+        subMeta.review_status === "revision_requested" ||
+        subMeta.review_status === "resubmitted";
+
       const isArchived =
-        subject?.current_status === "withdrawn" ||
-        subject?.current_status === "archived" ||
-        subMeta.review_status === "archived" ||
-        matchedKr?.current_status === "archived";
+        !isRevisionOrRejected &&
+        (subject?.current_status === "withdrawn" ||
+          subject?.current_status === "archived" ||
+          subMeta.review_status === "archived" ||
+          subMeta.last_decision === "archive" ||
+          matchedKr?.current_status === "archived");
 
       const isResubmitted =
         !isArchived &&
@@ -807,7 +923,7 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
 
       if (isArchived) {
         status = "archived";
-        statusLabel = "Diarsipkan";
+        statusLabel = "Diarsipkan (Tarik Tayang)";
       } else if (subject?.current_status === "approved" || subMeta.review_status === "approved" || matchedKr?.current_status === "published") {
         status = "approved";
         statusLabel = "Disetujui & Tayang";

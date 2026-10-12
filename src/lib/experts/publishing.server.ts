@@ -128,6 +128,9 @@ export async function publishApprovedExpert({
     .from("review_drafts")
     .select("payload, title")
     .eq("linked_subject_id", subjectId)
+    .neq("status", "withdrawn")
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   let payload = (draft?.payload as Record<string, unknown>) ?? {};
@@ -222,12 +225,25 @@ export async function publishApprovedExpert({
   // 3. Upsert into public.experts
   const { data: existingExpert } = await supabaseAdmin
     .from("experts")
-    .select("id")
+    .select("id, avatar_url, version")
     .eq("source_submission_id", subjectId)
     .maybeSingle();
 
   const now = new Date().toISOString();
   let expertId: string;
+
+  let nextExpertVersion = 1;
+  if (existingExpert) {
+    const { data: latestExpVer } = await supabaseAdmin
+      .from("expert_versions")
+      .select("version")
+      .eq("expert_id", existingExpert.id)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    nextExpertVersion =
+      Math.max(Number(existingExpert.version || 1), Number(latestExpVer?.version || 0)) + 1;
+  }
 
   const expertData = {
     source_type: "external_submission" as const,
@@ -250,8 +266,9 @@ export async function publishApprovedExpert({
     city,
     languages,
     expertise_areas: expertiseAreas,
-    avatar_url: avatarUrl,
+    avatar_url: avatarUrl || existingExpert?.avatar_url || null,
     personal_url: personalUrl,
+    ...(existingExpert ? { version: nextExpertVersion } : {}),
   };
 
   if (existingExpert) {
@@ -528,6 +545,7 @@ export async function publishApprovedModule({
     .from("review_drafts")
     .select("payload, title")
     .eq("linked_subject_id", subjectId)
+    .neq("status", "withdrawn")
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -587,6 +605,16 @@ export async function publishApprovedModule({
     .maybeSingle();
 
   if (existing) {
+    const { data: latestModVer } = await supabaseAdmin
+      .from("module_registry_versions")
+      .select("version")
+      .eq("module_id", existing.id)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const nextModVersion =
+      Math.max(Number(existing.version || 1), Number(latestModVer?.version || 0)) + 1;
+
     // Sync updated revision payload and restore public visibility
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateErr } = await (supabaseAdmin as any)
@@ -611,7 +639,7 @@ export async function publishApprovedModule({
         assessment_approach: payload.assessment_approach || {},
         author_expert_id: expert?.id || null,
         metadata: payload.metadata || {},
-        version: Number(existing.version || 1) + 1,
+        version: nextModVersion,
         updated_at: now,
       })
       .eq("id", existing.id);

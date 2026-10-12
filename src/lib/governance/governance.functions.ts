@@ -435,6 +435,19 @@ export const publishApprovedModule = createServerFn({ method: "POST" })
       ? revisionPayload.canonical_module_id
       : null;
     if (canonicalModuleId) {
+      const [{ data: existingMod }, { data: latestModVer }] = await Promise.all([
+        supabaseAdmin.from("module_registry").select("version").eq("id", canonicalModuleId).maybeSingle(),
+        supabaseAdmin
+          .from("module_registry_versions")
+          .select("version")
+          .eq("module_id", canonicalModuleId)
+          .order("version", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      const nextModVersion =
+        Math.max(Number(existingMod?.version || 1), Number(latestModVer?.version || 0)) + 1;
+
       const { error: updateError } = await supabaseAdmin.from("module_registry").update({
         title: typeof revisionPayload.title === "string" ? revisionPayload.title : undefined,
         summary: typeof revisionPayload.summary === "string" ? revisionPayload.summary : undefined,
@@ -452,6 +465,7 @@ export const publishApprovedModule = createServerFn({ method: "POST" })
         published_by: context.userId,
         approval_date: new Date().toISOString(),
         publication_date: new Date().toISOString(),
+        version: nextModVersion,
       }).eq("id", canonicalModuleId);
       if (updateError) throw new Error(updateError.message);
       const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
