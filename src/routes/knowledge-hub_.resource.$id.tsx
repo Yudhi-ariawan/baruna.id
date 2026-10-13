@@ -565,10 +565,12 @@ function ResourceDetailPage() {
                     <BookOpen className="h-3.5 w-3.5" /> Open Learning Materials
                   </button>
                   <button
-                    onClick={() => (gated ? setGateOpen(true) : undefined)}
+                    onClick={() => (gated ? setGateOpen(true) : void handleDownload())}
+                    disabled={downloading}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-marine/40 bg-card px-3 py-2 text-xs font-semibold text-marine hover:border-marine"
                   >
-                    <Download className="h-3.5 w-3.5" /> Download Module
+                    {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    Download Module
                   </button>
                   <button
                     onClick={() => (gated ? setGateOpen(true) : undefined)}
