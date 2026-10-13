@@ -2312,6 +2312,42 @@ export type Database = {
           },
         ]
       }
+      knowledge_resource_metrics: {
+        Row: {
+          download_count: number
+          resource_id: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          download_count?: number
+          resource_id: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          download_count?: number
+          resource_id?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_resource_metrics_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: true
+            referencedRelation: "knowledge_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_resource_metrics_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: true
+            referencedRelation: "knowledge_resources_public_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_audit_log: {
         Row: {
           actor_id: string | null
@@ -4358,6 +4394,14 @@ export type Database = {
         }[]
       }
       has_any_governance_role: { Args: { _user_id: string }; Returns: boolean }
+      increment_resource_downloads: {
+        Args: { _resource_id: string }
+        Returns: number
+      }
+      increment_resource_views: {
+        Args: { _resource_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

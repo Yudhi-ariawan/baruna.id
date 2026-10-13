@@ -12,6 +12,7 @@ import { Panel } from "@/components/baruna/page/primitives";
 import {
   getResourceById, relatedResources, BEST_PRACTICE_STRUCTURE, CASE_STUDY_STRUCTURE, TOOLKIT_TOOLS,
 } from "@/data/demo/knowledgeHub";
+import type { KhResource } from "@/data/demo/knowledgeHub";
 import {
   DEMO_EXPERTS, DEMO_CATEGORIES, DEMO_SHORT_COURSES, DEMO_EVENTS, DEMO_COMMUNITIES, DEMO_PARTNERS, DEMO_MODULES,
 } from "@/data/demo";
@@ -137,7 +138,8 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
   component: ResourceDetailPage,
 });
 
-// Naive view-count store per-session (client-side only).
+// Claim one view per resource per browser tab. The server remains authoritative
+// for the atomic counter; sessionStorage only suppresses refresh inflation.
 const VIEW_KEY = "baruna:kh-viewed";
 function markViewed(id: string): boolean {
   if (typeof window === "undefined") return false;
