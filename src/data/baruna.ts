@@ -278,11 +278,3 @@ export const fellowships: Fellowship[] = [
 ];
 
 export const partners = ["WORLD BANK", "GEF", "USGS", "EUROPEAN UNION", "IUCN"];
-
-export const footerStats = [
-  { value: "1,250+", label: "Learners", icon: Users },
-  { value: "240+", label: "Programs", icon: GraduationCap },
-  { value: "45+", label: "Countries", icon: Globe },
-  { value: "120+", label: "Partners", icon: Handshake },
-  { value: "300+", label: "Learning Resources", icon: BookOpen },
-];
