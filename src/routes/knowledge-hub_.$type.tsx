@@ -3,7 +3,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Search, X, LayoutGrid, List, AlignJustify, BookOpen, Upload, Filter, Compass } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Panel } from "@/components/baruna/page/primitives";
-import { KH_ALL, KH_TYPES, countByType, labelForType, resourcesByType, type KhResource, type KhResourceType, type KhAccessLevel } from "@/data/demo/knowledgeHub";
+import { KH_TYPES, labelForType, type KhResource, type KhResourceType, type KhAccessLevel } from "@/data/demo/knowledgeHub";
 import { DEMO_CATEGORIES } from "@/data/demo";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge } from "@/components/baruna/knowledge/ResourceCard";
@@ -71,26 +71,19 @@ function CataloguePage() {
   const { type, dbResources, dbCounts } = Route.useLoaderData();
   const isLibrary = type === "library";
   const isCanonicalLearning = type === "learning-modules";
-  const staticList: KhResource[] = isCanonicalLearning
-    ? []
-    : isLibrary
-      ? KH_ALL.filter((r) => r.type !== "learning-modules")
-      : resourcesByType(type);
   const base: KhResource[] = useMemo(() => {
-    const combined = [...(dbResources ?? []), ...staticList];
     const seen = new Set<string>();
-    return combined.filter((item) => {
+    return (dbResources ?? []).filter((item) => {
       if (seen.has(item.id)) return false;
       seen.add(item.id);
       return true;
     });
-  }, [dbResources, staticList]);
+  }, [dbResources]);
   const label = isLibrary ? "Resource Library" : labelForType(type);
   const sidebarCounts = useMemo(() => {
     const out: Partial<Record<KhResourceType, number>> = {};
     for (const t of KH_TYPES) {
-      const dbCount = dbCounts?.[t.slug] ?? 0;
-      out[t.slug] = t.slug === "learning-modules" ? dbCount : countByType(t.slug) + dbCount;
+      out[t.slug] = dbCounts?.[t.slug] ?? 0;
     }
     return out;
   }, [dbCounts]);
@@ -176,7 +169,6 @@ function CataloguePage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-display text-3xl font-extrabold text-navy">{label}</h1>
-              {!isCanonicalLearning && <DemoDataBadge />}
             </div>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {isLibrary
@@ -278,11 +270,11 @@ function CataloguePage() {
           <EmptyState onClear={clear} />
         ) : view === "grid" ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((r, i) => <ResourceCard key={r.id} r={r} index={i} demo={!isCanonicalLearning} />)}
+            {filtered.map((r, i) => <ResourceCard key={r.id} r={r} index={i} demo={false} />)}
           </div>
         ) : view === "list" ? (
           <div className="space-y-3">
-            {filtered.map((r) => <ListRow key={r.id} r={r} demo={!isCanonicalLearning} />)}
+            {filtered.map((r) => <ListRow key={r.id} r={r} demo={false} />)}
           </div>
         ) : (
           <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-soft">

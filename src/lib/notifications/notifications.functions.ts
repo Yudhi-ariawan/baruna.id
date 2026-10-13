@@ -13,6 +13,7 @@ export type InAppNotification = {
   createdAt: string;
   actorName: string;
   isLatestForSubject?: boolean;
+  isRead?: boolean;
 };
 
 export const listMyNotifications = createServerFn({ method: "GET" })
@@ -29,6 +30,19 @@ export const listMyNotifications = createServerFn({ method: "GET" })
 
     if (subjErr || !mySubjects || mySubjects.length === 0) {
       return [];
+    }
+
+    const readIdsSet = new Set<string>();
+    for (const s of mySubjects) {
+      const meta =
+        s.metadata && typeof s.metadata === "object"
+          ? (s.metadata as Record<string, unknown>)
+          : {};
+      if (Array.isArray(meta.read_notification_ids)) {
+        for (const rid of meta.read_notification_ids) {
+          if (typeof rid === "string") readIdsSet.add(rid);
+        }
+      }
     }
 
     const subjectIds = mySubjects.map((s) => s.id);
@@ -228,12 +242,49 @@ export const listMyNotifications = createServerFn({ method: "GET" })
     const notifications: InAppNotification[] = rawNotifications.map(({ subjectId, ...notif }) => {
       const isLatestForSubject = !seenSubjects.has(subjectId);
       seenSubjects.add(subjectId);
+      const isRead = readIdsSet.has(notif.id);
       return {
         ...notif,
         isLatestForSubject,
+        isRead,
       };
     });
 
     return notifications;
+  });
+
+export const markNotificationsAsRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input) => z.object({ notificationIds: z.array(z.string()) }).parse(input))
+  .handler(async ({ data: { notificationIds }, context }): Promise<{ success: boolean; count: number }> => {
+    if (!notificationIds.length) return { success: true, count: 0 };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: mySubjects } = await supabaseAdmin
+      .from("review_subjects")
+      .select("id, metadata")
+      .eq("submitted_by", context.userId);
+
+    if (!mySubjects || mySubjects.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const primarySubject = mySubjects[0];
+    const meta =
+      primarySubject.metadata && typeof primarySubject.metadata === "object"
+        ? { ...(primarySubject.metadata as Record<string, unknown>) }
+        : {};
+    const existingRead = Array.isArray(meta.read_notification_ids)
+      ? (meta.read_notification_ids as string[])
+      : [];
+    const mergedRead = Array.from(new Set([...existingRead, ...notificationIds]));
+    meta.read_notification_ids = mergedRead;
+
+    await supabaseAdmin
+      .from("review_subjects")
+      .update({ metadata: meta as any })
+      .eq("id", primarySubject.id);
+
+    return { success: true, count: notificationIds.length };
   });
 

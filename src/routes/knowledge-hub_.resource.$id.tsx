@@ -37,12 +37,21 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
   staleTime: 0,
   gcTime: 0,
   loader: async ({ params }) => {
-    const demoResource = getResourceById(params.id);
-    if (demoResource) return { resource: demoResource };
+    let sidebarCounts: Partial<Record<string, number>> | undefined;
+    let dbResources: any[] = [];
+    try {
+      const overview = await getKnowledgeHubOverview();
+      sidebarCounts = overview.counts;
+      dbResources = overview.resources ?? [];
+      const match = overview.resources.find((item) => item.id === params.id);
+      if (match) return { resource: match, sidebarCounts, dbResources };
+    } catch (err) {
+      console.warn("Failed to find resource in knowledge hub overview:", err);
+    }
 
     try {
       const canonicalResource = (await getPublishedLearningModules()).find((item) => item.id === params.id);
-      if (canonicalResource) return { resource: canonicalResource };
+      if (canonicalResource) return { resource: canonicalResource, sidebarCounts, dbResources };
 
       const pubMod = await getPublishedModuleDetail({ data: { moduleId: params.id } });
       if (pubMod) {
@@ -85,25 +94,20 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
                 avatarUrl: pubMod.trainer.avatarUrl,
               }
             : null,
-          metrics: { views: 42, uniqueViewers: 18, downloads: 12, saves: 4, shares: 2 },
+          metrics: { views: 1, uniqueViewers: 1, downloads: 0, saves: 0, shares: 0 },
           citation: `${pubMod.trainer.name || "BARUNA Trainer"} (${new Date(pubMod.publishedAt).getFullYear() || 2026}). ${pubMod.title}. BARUNA Knowledge Hub.`,
           createdAt: pubMod.publishedAt,
           updatedAt: pubMod.publishedAt,
         };
 
-        return { resource };
+        return { resource, sidebarCounts, dbResources };
       }
     } catch (err) {
       console.warn("Failed to load module detail from database:", err);
     }
 
-    try {
-      const overview = await getKnowledgeHubOverview();
-      const match = overview.resources.find((item) => item.id === params.id);
-      if (match) return { resource: match };
-    } catch (err) {
-      console.warn("Failed to find resource in knowledge hub overview:", err);
-    }
+    const demoResource = getResourceById(params.id);
+    if (demoResource) return { resource: demoResource, sidebarCounts, dbResources };
 
     throw notFound();
   },
@@ -168,7 +172,7 @@ function formatMetadataDate(dateStr?: string, fallbackYear?: number): string {
 }
 
 function ResourceDetailPage() {
-  const { resource: r } = Route.useLoaderData();
+  const { resource: r, sidebarCounts, dbResources } = Route.useLoaderData();
   const saved = useIsSaved(r.id);
   const isUuidResource = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id);
   const metricFn = useServerFn(recordKnowledgeResourceMetric);
@@ -276,7 +280,13 @@ function ResourceDetailPage() {
   const event = r.relatedEventId ? DEMO_EVENTS.find((e) => e.id === r.relatedEventId) : undefined;
   const community = r.relatedCommunitySlug ? DEMO_COMMUNITIES.find((c) => c.slug === r.relatedCommunitySlug) : undefined;
   const partner = r.relatedPartnerSlug ? DEMO_PARTNERS.find((p) => p.slug === r.relatedPartnerSlug) : undefined;
-  const related = useMemo(() => relatedResources(r, 4), [r]);
+  const related = useMemo(() => {
+    const others = (dbResources ?? []).filter((item: any) => item.id !== r.id);
+    if (others.length === 0) return relatedResources(r, 4);
+    const sameCatOrType = others.filter((item: any) => item.category === r.category || item.type === r.type);
+    const rest = others.filter((item: any) => item.category !== r.category && item.type !== r.type);
+    return [...sameCatOrType, ...rest].slice(0, 4);
+  }, [dbResources, r]);
 
   const isDemo = r.id.startsWith("pub-") || r.id.startsWith("lm-") || r.id.startsWith("bp-") || r.id.startsWith("vid-") || r.id.startsWith("pb-") || r.id.startsWith("info-") || r.id.startsWith("cs-") || r.id.startsWith("tk-") || r.id.startsWith("res-");
   const cover = r.coverImage || courseImages[(r.id.charCodeAt(r.id.length - 1)) % courseImages.length];
@@ -402,7 +412,7 @@ function ResourceDetailPage() {
 
   return (
     <PageShell
-      sidebar={{ ...KH_SIDEBAR_META, sections: knowledgeHubSidebarSections(r.type) }}
+      sidebar={{ ...KH_SIDEBAR_META, sections: knowledgeHubSidebarSections(r.type, sidebarCounts) }}
       cta={{
         icon: BookOpen,
         title: "Contribute to the Knowledge Hub",

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { listMyNotifications } from "@/lib/notifications/notifications.functions";
+import { useReadNotificationIds } from "@/lib/notifications/readState";
 import {
   Home,
   GraduationCap,
@@ -67,6 +68,7 @@ export function Navbar() {
     : viewer?.dashboardUrl ?? (viewer?.primaryRoleCode === "expert" ? "/experts/portal" : "/dashboard");
 
   const listNotificationsFn = useServerFn(listMyNotifications);
+  const readIds = useReadNotificationIds();
   const { data: notifications } = useQuery({
     queryKey: ["notifications", "my-navbar-badge"],
     queryFn: () => listNotificationsFn(),
@@ -74,11 +76,13 @@ export function Navbar() {
     staleTime: 15000,
   });
 
-  const revisionCount =
-    notifications?.filter(
-      (n) => (n.type === "revision_requested" || n.type === "archived") && n.isLatestForSubject,
-    ).length ?? 0;
-  const hasNotifications = (notifications?.length ?? 0) > 0;
+  const unreadNotifications =
+    notifications?.filter((n) => !n.isRead && !readIds.includes(n.id)) ?? [];
+
+  const revisionCount = unreadNotifications.filter(
+    (n) => (n.type === "revision_requested" || n.type === "archived") && n.isLatestForSubject,
+  ).length;
+  const hasNotifications = unreadNotifications.length > 0;
 
   const handleSignOut = async () => {
     await signOut();

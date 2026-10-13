@@ -1,25 +1,26 @@
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Archive,
   Bell,
+  CheckCheck,
   CheckCircle2,
-  GraduationCap,
-  Award,
-  MessagesSquare,
-  CalendarDays,
-  Users,
-  FileEdit,
   RotateCcw,
   XCircle,
-  Clock,
   ArrowRight,
-  ShieldAlert,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Badge } from "@/components/ui/badge";
-import { listMyNotifications } from "@/lib/notifications/notifications.functions";
+import {
+  listMyNotifications,
+  markNotificationsAsRead,
+} from "@/lib/notifications/notifications.functions";
+import {
+  markLocalNotificationsRead,
+  useReadNotificationIds,
+} from "@/lib/notifications/readState";
 import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/notifications")({
@@ -50,18 +51,52 @@ function formatRelativeTime(dateStr: string, isId: boolean) {
   }
 }
 
+type NotificationFilter = "all" | "unread";
+
 function NotificationsPage() {
   const { language } = useLanguage();
   const isId = language === "id";
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<NotificationFilter>("all");
 
   const getNotifs = useServerFn(listMyNotifications);
+  const markReadServerFn = useServerFn(markNotificationsAsRead);
+  const readIds = useReadNotificationIds();
+
   const query = useQuery({
     queryKey: ["notifications", "my"],
     queryFn: () => getNotifs(),
     retry: false,
   });
 
-  const realNotifs = query.data ?? [];
+  const realNotifs = useMemo(
+    () =>
+      (query.data ?? []).map((n) => ({
+        ...n,
+        effectiveRead: Boolean(n.isRead || readIds.includes(n.id)),
+      })),
+    [query.data, readIds],
+  );
+
+  const unreadNotifs = useMemo(
+    () => realNotifs.filter((n) => !n.effectiveRead),
+    [realNotifs],
+  );
+
+  const displayedNotifs = useMemo(
+    () => (filter === "unread" ? unreadNotifs : realNotifs),
+    [filter, realNotifs, unreadNotifs],
+  );
+
+  const handleMarkAsRead = (ids: string[]) => {
+    if (!ids.length) return;
+    markLocalNotificationsRead(ids);
+    void markReadServerFn({ data: { notificationIds: ids } })
+      .then(() => {
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      })
+      .catch(() => {});
+  };
 
   return (
     <PageShell
@@ -73,7 +108,23 @@ function NotificationsPage() {
           {
             label: isId ? "Saring" : "Filter",
             items: [
-              { label: isId ? "Semua Notifikasi" : "All Notifications", active: true },
+              {
+                label: isId ? "Semua Notifikasi" : "All Notifications",
+                count: realNotifs.length,
+                active: filter === "all",
+                onClick: () => setFilter("all"),
+              },
+              {
+                label: isId ? "Belum Dibaca" : "Unread",
+                count: unreadNotifs.length,
+                active: filter === "unread",
+                onClick: () => setFilter("unread"),
+              },
+            ],
+          },
+          {
+            label: isId ? "Pintasan" : "Shortcuts",
+            items: [
               { label: isId ? "Pembelajaran" : "Learning", to: "/academy/learn" },
               { label: isId ? "Acara" : "Events", to: "/events" },
               { label: isId ? "Pakar" : "Experts", to: "/experts" },
@@ -90,39 +141,89 @@ function NotificationsPage() {
       }}
     >
       <div className="space-y-6">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold text-navy">
-            {isId ? "Pemberitahuan" : "Notifications"}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isId
-              ? "Status evaluasi berkas, keputusan verifikator, dan aktivitas penting di BARUNA."
-              : "Document evaluation status, verifier decisions, and important activities in BARUNA."}
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="font-display text-3xl font-extrabold text-navy">
+                {isId ? "Pemberitahuan" : "Notifications"}
+              </h1>
+              {unreadNotifs.length > 0 ? (
+                <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                  {unreadNotifs.length} {isId ? "Baru" : "Unread"}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isId
+                ? "Status evaluasi berkas, keputusan verifikator, dan aktivitas penting di BARUNA."
+                : "Document evaluation status, verifier decisions, and important activities in BARUNA."}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-xl border border-border bg-card p-1 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setFilter("all")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  filter === "all"
+                    ? "bg-marine text-white"
+                    : "text-foreground/70 hover:text-navy"
+                }`}
+              >
+                {isId ? "Semua" : "All"} ({realNotifs.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilter("unread")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  filter === "unread"
+                    ? "bg-marine text-white"
+                    : "text-foreground/70 hover:text-navy"
+                }`}
+              >
+                {isId ? "Belum Dibaca" : "Unread"} ({unreadNotifs.length})
+              </button>
+            </div>
+
+            {unreadNotifs.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => handleMarkAsRead(unreadNotifs.map((n) => n.id))}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-marine/30 bg-marine/10 px-3.5 py-2 text-xs font-bold text-marine transition hover:bg-marine hover:text-white cursor-pointer"
+              >
+                <CheckCheck className="h-4 w-4" />
+                {isId ? "Tandai Semua Sudah Dibaca" : "Mark All as Read"}
+              </button>
+            ) : null}
+          </div>
         </div>
 
         {/* Real Dynamic Notifications from Governance & Review Decisions */}
-        {realNotifs.length > 0 ? (
+        {displayedNotifs.length > 0 ? (
           <div className="space-y-3.5">
-            {realNotifs.map((n) => {
+            {displayedNotifs.map((n) => {
               const isRevision = n.type === "revision_requested";
               const isApproved = n.type === "approved";
               const isRejected = n.type === "rejected";
               const isArchived = n.type === "archived";
+              const isRead = n.effectiveRead;
 
               return (
                 <div
                   key={n.id}
                   className={`rounded-2xl border p-5 transition-all shadow-xs ${
-                    isRevision
-                      ? "border-amber-300 bg-amber-50/80"
-                      : isApproved
-                        ? "border-emerald-300 bg-emerald-50/80"
-                        : isArchived
-                          ? "border-slate-300 bg-slate-100/80"
-                          : isRejected
-                            ? "border-rose-300 bg-rose-50/80"
-                            : "border-border bg-card"
+                    isRead
+                      ? "border-border/70 bg-card/60 opacity-85"
+                      : isRevision
+                        ? "border-amber-300 bg-amber-50/80 ring-1 ring-amber-300/60"
+                        : isApproved
+                          ? "border-emerald-300 bg-emerald-50/80 ring-1 ring-emerald-300/60"
+                          : isArchived
+                            ? "border-slate-300 bg-slate-100/80 ring-1 ring-slate-300/60"
+                            : isRejected
+                              ? "border-rose-300 bg-rose-50/80 ring-1 ring-rose-300/60"
+                              : "border-border bg-card"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -151,6 +252,17 @@ function NotificationsPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
+                          {!isRead ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-marine px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">
+                              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                              {isId ? "Baru" : "New"}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                              <CheckCheck className="h-3 w-3" />
+                              {isId ? "Sudah Dibaca" : "Read"}
+                            </span>
+                          )}
                           <Badge
                             className={`text-[10px] font-bold uppercase tracking-wider py-0 px-2 ${
                               isRevision
@@ -202,10 +314,21 @@ function NotificationsPage() {
                       </div>
                     </div>
 
-                    {/* Action Button */}
-                    <div className="shrink-0 self-start sm:self-center">
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-center">
+                      {!isRead ? (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAsRead([n.id])}
+                          className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:border-marine hover:text-marine cursor-pointer"
+                        >
+                          <CheckCheck className="h-3.5 w-3.5" />
+                          {isId ? "Tandai Dibaca" : "Mark Read"}
+                        </button>
+                      ) : null}
                       <Link
                         to={n.targetUrl}
+                        onClick={() => handleMarkAsRead([n.id])}
                         className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition ${
                           isRevision
                             ? "bg-amber-600 hover:bg-amber-700"
@@ -236,12 +359,18 @@ function NotificationsPage() {
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600/70" />
             <h3 className="mt-3 font-display text-base font-bold text-navy">
-              {isId ? "Tidak Ada Pemberitahuan Baru" : "No New Notifications"}
+              {filter === "unread"
+                ? (isId ? "Semua Notifikasi Sudah Dibaca" : "All Notifications Read")
+                : (isId ? "Tidak Ada Pemberitahuan Baru" : "No New Notifications")}
             </h3>
             <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-              {isId
-                ? "Semua pengajuan dan aktivitas akun Anda dalam kondisi terkini."
-                : "All your submissions and account activities are up to date."}
+              {filter === "unread"
+                ? (isId
+                    ? "Tidak ada notifikasi yang belum dibaca. Klik tab 'Semua' untuk melihat riwayat notifikasi Anda."
+                    : "You have no unread notifications. Switch to 'All' to view your notification history.")
+                : (isId
+                    ? "Semua pengajuan dan aktivitas akun Anda dalam kondisi terkini."
+                    : "All your submissions and account activities are up to date.")}
             </p>
           </div>
         )}
