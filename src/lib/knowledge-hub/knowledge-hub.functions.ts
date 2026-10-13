@@ -94,6 +94,8 @@ function metadataRecord(metadata: unknown): Record<string, unknown> {
 type ResourceMetricCounts = {
   views: number;
   downloads: number;
+  saves: number;
+  shares: number;
 };
 
 let metricsTableMissingUntil = 0;
@@ -108,9 +110,32 @@ async function loadKnowledgeResourceMetrics(
 
   const { data, error } = await supabaseAdmin
     .from("knowledge_resource_metrics")
-    .select("resource_id,view_count,download_count")
+    .select("resource_id,view_count,download_count,save_count,share_count")
     .in("resource_id", resourceIds);
+
   if (error) {
+    // If save_count or share_count column is not yet migrated, fall back to view_count, download_count
+    if (String(error.message ?? "").includes("save_count") || String(error.message ?? "").includes("share_count")) {
+      const { data: legacyData, error: legacyError } = await supabaseAdmin
+        .from("knowledge_resource_metrics")
+        .select("resource_id,view_count,download_count")
+        .in("resource_id", resourceIds);
+      if (!legacyError && legacyData) {
+        return new Map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          legacyData.map((row: any) => [
+            row.resource_id,
+            {
+              views: Number(row.view_count) || 0,
+              downloads: Number(row.download_count) || 0,
+              saves: 0,
+              shares: 0,
+            },
+          ]),
+        );
+      }
+    }
+
     if (
       error.code === "PGRST205" ||
       error.code === "42P01" ||
@@ -123,9 +148,15 @@ async function loadKnowledgeResourceMetrics(
   }
 
   return new Map(
-    (data ?? []).map((row: { resource_id: string; view_count: number; download_count: number }) => [
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (data ?? []).map((row: any) => [
       row.resource_id,
-      { views: Number(row.view_count) || 0, downloads: Number(row.download_count) || 0 },
+      {
+        views: Number(row.view_count) || 0,
+        downloads: Number(row.download_count) || 0,
+        saves: Number(row.save_count) || 0,
+        shares: Number(row.share_count) || 0,
+      },
     ]),
   );
 }
@@ -279,11 +310,13 @@ async function loadResolvedExpertsMap(supabaseAdmin: any, expertIds: string[]) {
   return new Map<string, any>(resolvedExperts.map((expert: any) => [expert.id, expert]));
 }
 
-export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler(
-  async (): Promise<KnowledgeHubOverview> => {
+export const getKnowledgeHubOverview = createServerFn({ method: "GET" })
+  .validator((input?: { bypassCache?: boolean }) => input ?? {})
+  .handler(async ({ data: input }): Promise<KnowledgeHubOverview> => {
+    const bypassCache = Boolean(input?.bypassCache);
     const now = Date.now();
     const store = khCache();
-    if (store.overview && store.overview.expiresAt > now) return store.overview.value;
+    if (!bypassCache && store.overview && store.overview.expiresAt > now) return store.overview.value;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await ensurePublishedModulesProjected(supabaseAdmin);
     const { data, error } = await supabaseAdmin
@@ -415,8 +448,8 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
           views: trackedMetrics?.views ?? metricValue(metadata, ["views", "view_count", "viewCount"]),
           uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),
           downloads: trackedMetrics?.downloads ?? metricValue(metadata, ["downloads", "download_count", "downloadCount"]),
-          saves: metricValue(metadata, ["saves", "save_count"]),
-          shares: metricValue(metadata, ["shares", "share_count"]),
+          saves: trackedMetrics?.saves ?? metricValue(metadata, ["saves", "save_count"]),
+          shares: trackedMetrics?.shares ?? metricValue(metadata, ["shares", "share_count"]),
         },
         citation: `${resolvedAuthor} (${year}). ${item.title}. BARUNA Knowledge Hub.`,
         createdAt: item.created_at,
@@ -602,8 +635,8 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
           views: trackedMetrics?.views ?? metricValue(metadata, ["views", "view_count"]),
           uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),
           downloads: trackedMetrics?.downloads ?? metricValue(metadata, ["downloads", "download_count"]),
-          saves: metricValue(metadata, ["saves", "save_count"]),
-          shares: metricValue(metadata, ["shares", "share_count"]),
+          saves: trackedMetrics?.saves ?? metricValue(metadata, ["saves", "save_count"]),
+          shares: trackedMetrics?.shares ?? metricValue(metadata, ["shares", "share_count"]),
         },
         citation: `${resolvedAuthor} (${year}). ${resource.title}. BARUNA Knowledge Hub.`,
         createdAt: resource.created_at,
@@ -632,7 +665,8 @@ export const incrementKnowledgeResourceView = createServerFn({ method: "POST" })
       _resource_id: resourceId,
     });
     if (!error && data != null) {
-      clearKnowledgeHubCache();
+      const store = khCache();
+      store.stats = undefined;
       return { resourceId, viewCount: Number(data) };
     }
     const { data: resource } = await supabaseAdmin
@@ -656,7 +690,8 @@ export const incrementKnowledgeResourceView = createServerFn({ method: "POST" })
         })
         .eq("id", resourceId);
     }
-    clearKnowledgeHubCache();
+    const store = khCache();
+    store.stats = undefined;
     return { resourceId, viewCount: nextViews };
   });
 
@@ -743,19 +778,21 @@ export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
       );
       if (!countError && nextCount != null) {
         downloadCount = Number(nextCount);
+      } else {
+        const nextDownloads =
+          metricValue(metadata, ["downloads", "download_count", "downloadCount"]) + 1;
+        const nextMetadata = {
+          ...metadata,
+          downloads: nextDownloads,
+          download_count: nextDownloads,
+        };
+        await supabaseAdmin
+          .from("knowledge_resources")
+          .update({ metadata: nextMetadata })
+          .eq("id", resourceId);
       }
-      const nextDownloads =
-        downloadCount ?? metricValue(metadata, ["downloads", "download_count", "downloadCount"]) + 1;
-      const nextMetadata = {
-        ...metadata,
-        downloads: nextDownloads,
-        download_count: nextDownloads,
-      };
-      await supabaseAdmin
-        .from("knowledge_resources")
-        .update({ metadata: nextMetadata })
-        .eq("id", resourceId);
-      clearKnowledgeHubCache();
+      const store = khCache();
+      store.stats = undefined;
     }
 
     return {
@@ -780,6 +817,32 @@ export const recordKnowledgeResourceMetric = createServerFn({ method: "POST" })
   )
   .handler(async ({ data: { resourceId, action, isUniqueView } }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Try atomic PostgreSQL RPC record_resource_metric
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: rpcResult, error: rpcError } = await (supabaseAdmin as any).rpc("record_resource_metric", {
+        _resource_id: resourceId,
+        _action: action,
+      });
+
+      if (!rpcError && rpcResult && typeof rpcResult === "object") {
+        const res = rpcResult as Record<string, unknown>;
+        const store = khCache();
+        store.stats = undefined;
+        return {
+          views: Number(res.views) || 0,
+          uniqueViewers: Number(res.views) || 0,
+          downloads: Number(res.downloads) || 0,
+          saves: Number(res.saves) || 0,
+          shares: Number(res.shares) || 0,
+        };
+      }
+    } catch {
+      // Fall through to resilient fallback if RPC not yet migrated in database
+    }
+
+    // 2. Fallback for environments where unified RPC has not run yet:
     const { data: resource, error } = await supabaseAdmin
       .from("knowledge_resources")
       .select("id, metadata")
@@ -836,7 +899,8 @@ export const recordKnowledgeResourceMetric = createServerFn({ method: "POST" })
       .update({ metadata: nextMetadata })
       .eq("id", resourceId);
 
-    clearKnowledgeHubCache();
+    const store = khCache();
+    store.stats = undefined;
 
     return {
       views,

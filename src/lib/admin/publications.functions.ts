@@ -279,7 +279,7 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
     const { data: profiles } = submitterIds.length > 0
       ? await supabaseAdmin
           .from("profiles")
-          .select("id, display_name, organization, job_title")
+          .select("id, display_name, organization, job_title, email")
           .in("id", submitterIds)
       : { data: [] };
 
@@ -340,21 +340,37 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
       { email?: string | null; user_metadata?: Record<string, unknown> }
     >();
     if (submitterIds.length > 0) {
-      await Promise.all(
-        submitterIds.map(async (uid) => {
-          try {
-            const { data: uRes } = await supabaseAdmin.auth.admin.getUserById(uid);
-            if (uRes?.user) {
-              authUserById.set(uid, {
-                email: uRes.user.email ?? null,
-                user_metadata: (uRes.user.user_metadata as Record<string, unknown>) ?? {},
-              });
-            }
-          } catch {
-            // Ignore individual auth user lookup failure
-          }
-        }),
-      );
+      // Only query auth.admin for submitters whose contact email or profile is not resolved
+      // to eliminate N+1 roundtrips and avoid HTTP 429 rate limits under high submission volume.
+      const unresolvedSubmitterIds = submitterIds.filter((uid) => {
+        const p = profileById.get(uid);
+        const b = biodataById.get(uid);
+        const hasEmail = Boolean(p?.email);
+        const hasName = Boolean(p?.display_name || b?.nama);
+        return !hasEmail || !hasName;
+      });
+
+      if (unresolvedSubmitterIds.length > 0) {
+        const CHUNK_SIZE = 5;
+        for (let i = 0; i < unresolvedSubmitterIds.length; i += CHUNK_SIZE) {
+          const chunk = unresolvedSubmitterIds.slice(i, i + CHUNK_SIZE);
+          await Promise.all(
+            chunk.map(async (uid) => {
+              try {
+                const { data: uRes } = await supabaseAdmin.auth.admin.getUserById(uid);
+                if (uRes?.user) {
+                  authUserById.set(uid, {
+                    email: uRes.user.email ?? null,
+                    user_metadata: (uRes.user.user_metadata as Record<string, unknown>) ?? {},
+                  });
+                }
+              } catch {
+                // Ignore individual auth user lookup failure
+              }
+            }),
+          );
+        }
+      }
     }
 
     // 6. Batch-generate signed URLs for all attached files and covers in 1 storage call (avoids N+1 sequential calls)
@@ -415,6 +431,7 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
       if (typeof userMeta.role === "string") roleSet.add(userMeta.role);
 
       const submitterEmail =
+        (typeof profile?.email === "string" && profile.email.trim() ? profile.email.trim() : null) ||
         authUser?.email ||
         (typeof subjMeta.author_email === "string" && subjMeta.author_email) ||
         (typeof payload.email === "string" && payload.email) ||
