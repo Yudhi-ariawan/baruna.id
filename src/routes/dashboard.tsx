@@ -1,4 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useMemo } from "react";
 import {
   LayoutDashboard,
   GraduationCap,
@@ -17,7 +20,12 @@ import {
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { RequireAuth } from "@/components/baruna/auth/RequireAuth";
 import { TrainerKnowledgePublicationsCard } from "@/components/baruna/experts/TrainerKnowledgePublicationsCard";
-import { DEMO_PARTICIPANTS, DEMO_SHORT_COURSES } from "@/data/demo";
+import { masterByCode } from "@/data/masterModules";
+import { useApplications, isCourseComplete } from "@/lib/application";
+import { useSavedEvents } from "@/lib/eventActions";
+import { useSavedIds } from "@/lib/khSaved";
+import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
+import { shortCourseProgress, useShortCourses } from "@/lib/shortCourses";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import { useLanguage } from "@/lib/i18n";
 
@@ -69,14 +77,88 @@ function DashboardPage() {
       viewer?.primaryRoleCode ?? "",
     );
 
-  // Use a demo participant as fallback or demonstration baseline
-  const me = DEMO_PARTICIPANTS.find((p) => p.status === "In Progress") ?? DEMO_PARTICIPANTS[0];
-  const enrolledCourse =
-    DEMO_SHORT_COURSES.find((c) => c.code === me?.courseCode) ?? DEMO_SHORT_COURSES[0];
+  // Live user-scoped learning enrollments (synced with Supabase cloud)
+  const { enrollments: shortCourses } = useShortCourses();
+  const getModulesCatalogFn = useServerFn(getPublishedModulesCatalog);
+  const { data: publishedModules } = useQuery({
+    queryKey: ["dashboard", "published-modules"],
+    queryFn: () => getModulesCatalogFn(),
+    staleTime: 30_000,
+    gcTime: 300_000,
+  });
 
-  const activeCourseTitle = enrolledCourse?.title ?? (isId ? "Pelatihan Mandiri Terpadu" : "Self-Paced Training");
-  const activeCourseProgress = me?.progressPct ?? 45;
-  const activeCourseCode = enrolledCourse?.code ?? "BARUNA-FM-001";
+  // Live user applications (excluding legacy test records)
+  const rawApps = useApplications();
+  const realApps = useMemo(
+    () =>
+      rawApps.filter(
+        (a) =>
+          !a.id.startsWith("BARUNA-AFRICA") &&
+          a.slug !== "international-training-fisheries-african-countries",
+      ),
+    [rawApps],
+  );
+
+  // Live user saved items count
+  const savedKhIds = useSavedIds();
+  const savedEventsStore = useSavedEvents();
+  const totalSavedCount =
+    savedKhIds.length + shortCourses.length + savedEventsStore.items.length;
+
+  const activeShortCourses = useMemo(
+    () =>
+      [...shortCourses]
+        .filter((c) => !c.completed)
+        .sort((a, b) => (b.enrolledAt ?? 0) - (a.enrolledAt ?? 0)),
+    [shortCourses],
+  );
+
+  const completedShortCourses = useMemo(
+    () => shortCourses.filter((c) => c.completed),
+    [shortCourses],
+  );
+
+  const completedFullApps = useMemo(
+    () => realApps.filter((a) => a.status === "Accepted" && isCourseComplete(a)),
+    [realApps],
+  );
+
+  const totalCertificates = completedShortCourses.length + completedFullApps.length;
+
+  const resolveCourseTitle = (code: string, fallbackTitle?: string) => {
+    const dbMod = (publishedModules ?? []).find((m) => m.id === code);
+    if (dbMod?.title) return dbMod.title;
+    if (fallbackTitle) return fallbackTitle;
+    const master = masterByCode[code];
+    if (master?.title) return master.title;
+    return code;
+  };
+
+  const primaryActiveCourse = activeShortCourses[0];
+  const activeLearningBody = primaryActiveCourse
+    ? `${resolveCourseTitle(primaryActiveCourse.code, primaryActiveCourse.title)} — ${shortCourseProgress(primaryActiveCourse)}% ${isId ? "selesai" : "complete"}`
+    : completedShortCourses.length > 0
+      ? isId
+        ? `${completedShortCourses.length} modul telah diselesaikan (100%). Jelajahi modul baru.`
+        : `${completedShortCourses.length} module(s) completed (100%). Explore new modules.`
+      : isId
+        ? "Belum ada modul mandiri yang sedang diikuti. Mulai belajar sekarang."
+        : "No active self-paced module yet. Start learning at your own pace.";
+
+  const activeLearningCta = primaryActiveCourse
+    ? isId
+      ? "Lanjutkan"
+      : "Continue"
+    : isId
+      ? "Jelajahi Modul"
+      : "Browse Modules";
+
+  const activeLearningTo = primaryActiveCourse
+    ? "/academy/self-paced/$code"
+    : "/academy/self-paced";
+  const activeLearningParams = primaryActiveCourse
+    ? { code: primaryActiveCourse.code }
+    : undefined;
 
   const cards: {
     icon: React.ElementType;
@@ -89,7 +171,14 @@ function DashboardPage() {
     {
       icon: GraduationCap,
       title: isId ? "Pendaftaran Program" : "Applications",
-      body: isId ? "Pantau status seleksi program pelatihan lengkap." : "Track applications to full training programs.",
+      body:
+        realApps.length > 0
+          ? isId
+            ? `${realApps.length} pendaftaran program pelatihan tercatat.`
+            : `${realApps.length} training program application(s) on record.`
+          : isId
+            ? "Belum ada pendaftaran program pelatihan penuh. Pantau atau daftar program."
+            : "No full training program applications yet. Track or apply to programs.",
       cta: isId ? "Buka" : "Open",
       to: "/academy/applications",
     },
@@ -103,36 +192,50 @@ function DashboardPage() {
     {
       icon: GraduationCap,
       title: isId ? "Pembelajaran Aktif" : "Active Learning",
-      body: `${activeCourseTitle} — ${activeCourseProgress}% ${isId ? "selesai" : "complete"}`,
-      cta: isId ? "Lanjutkan" : "Continue",
-      to: "/academy/self-paced/$code",
-      params: { code: activeCourseCode },
+      body: activeLearningBody,
+      cta: activeLearningCta,
+      to: activeLearningTo,
+      params: activeLearningParams,
     },
     {
       icon: Award,
       title: isId ? "Sertifikat Saya" : "Certificates",
-      body: isId ? "Sertifikat resmi dan pencapaian kompetensi Anda." : "Official certificates and verified competencies.",
+      body:
+        totalCertificates > 0
+          ? isId
+            ? `${totalCertificates} sertifikat resmi telah diperoleh dan siap diunduh.`
+            : `${totalCertificates} official certificate(s) earned and ready to download.`
+          : isId
+            ? "Selesaikan modul mandiri atau program pelatihan untuk meraih sertifikat resmi."
+            : "Complete a self-paced module or training program to earn official certificates.",
       cta: isId ? "Lihat" : "View",
       to: "/academy/certification",
     },
     {
       icon: Bookmark,
       title: isId ? "Disimpan" : "Saved Items",
-      body: isId ? "Pelatihan, acara, dan fellowship yang Anda simpan." : "Courses, events, and fellowships you saved.",
+      body:
+        totalSavedCount > 0
+          ? isId
+            ? `${totalSavedCount} item tersimpan (Knowledge Hub, modul, & acara).`
+            : `${totalSavedCount} saved item(s) across Knowledge Hub, modules, and events.`
+          : isId
+            ? "Belum ada materi Knowledge Hub, modul, atau acara yang disimpan."
+            : "No saved Knowledge Hub resources, courses, or events yet.",
       cta: isId ? "Buka" : "Open",
       to: "/saved",
     },
     {
       icon: Globe,
       title: isId ? "Aplikasi Fellowship" : "Fellowship Applications",
-      body: isId ? "Draf, terkirim, atau disetujui." : "Draft, submitted, or accepted.",
+      body: isId ? "Program pertukaran dan fellowship maritim internasional." : "International maritime fellowship and exchange programs.",
       cta: isId ? "Buka" : "Open",
       to: "/fellowship",
     },
     {
       icon: MessagesSquare,
       title: isId ? "Partisipasi Komunitas" : "Community Participation",
-      body: isId ? "Unggahan, balasan, dan jawaban pakar." : "Posts, replies, and expert answers.",
+      body: isId ? "Diskusi tematik, kolaborasi, dan tanya jawab pakar." : "Thematic discussions, collaboration, and expert Q&A.",
       cta: isId ? "Buka" : "Open",
       to: "/community",
     },
@@ -153,27 +256,43 @@ function DashboardPage() {
     {
       icon: GraduationCap,
       title: isId ? "Rekomendasi Pembelajaran" : "Recommended Learning",
-      body: isId ? "Berdasarkan minat dan jalur pelatihan Anda." : "Based on your interests and completions.",
+      body:
+        (publishedModules?.length ?? 0) > 0
+          ? isId
+            ? `${publishedModules?.length} modul mandiri terverifikasi tersedia di katalog.`
+            : `${publishedModules?.length} verified self-paced module(s) available in the catalog.`
+          : isId
+            ? "Jelajahi modul mandiri berdasarkan minat dan jalur kompetensi Anda."
+            : "Explore self-paced modules tailored to your interests.",
       cta: isId ? "Jelajahi" : "Browse",
       to: "/academy/self-paced",
     },
     {
       icon: Bookmark,
       title: isId ? "Transkrip Belajar" : "Learning Records",
-      body: isId ? "Rekam jejak komprehensif aktivitas belajar di BARUNA." : "Full transcript of your BARUNA activity.",
+      body: isId
+        ? `${shortCourses.length} modul diikuti · ${completedShortCourses.length} modul dituntaskan.`
+        : `${shortCourses.length} enrolled module(s) · ${completedShortCourses.length} completed.`,
       cta: isId ? "Buka" : "Open",
       to: "/academy/learn",
     },
     {
       icon: GraduationCap,
       title: isId ? "Kursus Selesai" : "Completed Courses",
-      body: isId ? "Semua materi yang telah berhasil Anda tuntaskan." : "Everything you've finished.",
+      body:
+        completedShortCourses.length > 0
+          ? isId
+            ? `${completedShortCourses.length} modul pelatihan mandiri telah berhasil Anda tuntaskan.`
+            : `${completedShortCourses.length} self-paced module(s) successfully completed.`
+          : isId
+            ? "Belum ada kursus atau modul yang diselesaikan."
+            : "No completed courses or modules yet.",
       cta: isId ? "Buka" : "Open",
       to: "/academy/learn",
     },
   ];
 
-  const displayName = viewer?.displayName || me.fullName;
+  const displayName = viewer?.displayName || (isId ? "Peserta BARUNA" : "BARUNA Member");
   const roleLabel = viewer?.primaryRoleLabel || (isId ? "Profil Peserta" : "Participant Profile");
 
   return (
