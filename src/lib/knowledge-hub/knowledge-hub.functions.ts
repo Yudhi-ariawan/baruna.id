@@ -91,6 +91,32 @@ function metadataRecord(metadata: unknown): Record<string, unknown> {
     : {};
 }
 
+type ResourceMetricCounts = {
+  views: number;
+  downloads: number;
+};
+
+async function loadKnowledgeResourceMetrics(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseAdmin: any,
+  resourceIds: string[],
+): Promise<Map<string, ResourceMetricCounts>> {
+  if (resourceIds.length === 0) return new Map();
+
+  const { data, error } = await supabaseAdmin
+    .from("knowledge_resource_metrics")
+    .select("resource_id,view_count,download_count")
+    .in("resource_id", resourceIds);
+  if (error) throw new Error(error.message);
+
+  return new Map(
+    (data ?? []).map((row: { resource_id: string; view_count: number; download_count: number }) => [
+      row.resource_id,
+      { views: Number(row.view_count) || 0, downloads: Number(row.download_count) || 0 },
+    ]),
+  );
+}
+
 function attachmentMetadata(metadata: Record<string, unknown>, resourceType?: string) {
   const attachments = Array.isArray(metadata.attached_resources)
     ? metadata.attached_resources as Array<Record<string, unknown>>
@@ -199,6 +225,11 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
+    const metricsByResource = await loadKnowledgeResourceMetrics(
+      supabaseAdmin,
+      (data ?? []).map((item) => item.id),
+    );
+
     const { resolvePublicAvatarUrl } = await import("@/lib/experts/publishing.server");
     const expertIds = [...new Set((data ?? []).flatMap((item) => item.related_expert_ids ?? []))];
     const { data: experts, error: expertError } = expertIds.length
@@ -218,6 +249,7 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
 
     const resources: KhResource[] = (data ?? []).map((item) => {
       const metadata = metadataRecord(item.metadata);
+      const trackedMetrics = metricsByResource.get(item.id);
       const expert = expertById.get(item.related_expert_ids?.[0] ?? "");
       const type = catalogueType(item.resource_type);
       const taxonomyCategory = type === "learning-modules"
@@ -309,9 +341,9 @@ export const getKnowledgeHubOverview = createServerFn({ method: "GET" }).handler
             ? (metadata.practiceStructure as KhResource["practiceStructure"])
             : null,
         metrics: {
-          views: metricValue(metadata, ["views", "view_count", "viewCount"]),
+          views: trackedMetrics?.views ?? metricValue(metadata, ["views", "view_count", "viewCount"]),
           uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),
-          downloads: metricValue(metadata, ["downloads", "download_count", "downloadCount"]),
+          downloads: trackedMetrics?.downloads ?? metricValue(metadata, ["downloads", "download_count", "downloadCount"]),
           saves: metricValue(metadata, ["saves", "save_count"]),
           shares: metricValue(metadata, ["shares", "share_count"]),
         },
@@ -347,8 +379,8 @@ function metricValue(metadata: unknown, names: string[]): number {
 
 /**
  * Public aggregate only. Individual private/draft resources never leave the server.
- * View/download counters are read from canonical resource metadata because the
- * current registry schema does not expose dedicated counter columns.
+ * Aggregate counters come from knowledge_resource_metrics. Legacy metadata is
+ * only used by the one-time database backfill migration.
  */
 export const getKnowledgeHubStats = createServerFn({ method: "GET" }).handler(
   async (): Promise<KnowledgeHubStats> => {
@@ -360,24 +392,25 @@ export const getKnowledgeHubStats = createServerFn({ method: "GET" }).handler(
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data, error } = await supabaseAdmin
         .from("knowledge_resources")
-        .select("resource_type, metadata")
+        .select("id, resource_type, metadata")
         .eq("current_status", "published")
         .eq("visibility", "public");
 
       if (error) throw error;
 
       const resources = data ?? [];
+      const metricsByResource = await loadKnowledgeResourceMetrics(
+        supabaseAdmin,
+        resources.map((resource) => resource.id),
+      );
       const value: KnowledgeHubStats = {
         totalPublished: resources.length,
         totalViews: resources.reduce(
-          (total, resource) =>
-            total + metricValue(resource.metadata, ["views", "view_count", "viewCount"]),
+          (total, resource) => total + (metricsByResource.get(resource.id)?.views ?? 0),
           0,
         ),
         totalDownloads: resources.reduce(
-          (total, resource) =>
-            total +
-            metricValue(resource.metadata, ["downloads", "download_count", "downloadCount"]),
+          (total, resource) => total + (metricsByResource.get(resource.id)?.downloads ?? 0),
           0,
         ),
         categoryCount: new Set(
@@ -413,6 +446,11 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
+    const metricsByResource = await loadKnowledgeResourceMetrics(
+      supabaseAdmin,
+      (data ?? []).map((resource) => resource.id),
+    );
+
     const { resolvePublicAvatarUrl } = await import("@/lib/experts/publishing.server");
     const expertIds = [...new Set((data ?? []).flatMap((resource) => resource.related_expert_ids ?? []))];
     const { data: experts, error: expertError } = expertIds.length
@@ -434,6 +472,7 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
       const metadata = resource.metadata && typeof resource.metadata === "object" && !Array.isArray(resource.metadata)
         ? resource.metadata as Record<string, unknown>
         : {};
+      const trackedMetrics = metricsByResource.get(resource.id);
       const expert = expertById.get(resource.related_expert_ids?.[0] ?? "");
       const year = resource.publication_year ?? new Date(resource.created_at).getFullYear();
       const rawLearningHours = metadata.estimated_learning_hours;
@@ -499,9 +538,9 @@ export const getPublishedLearningModules = createServerFn({ method: "GET" }).han
             }
           : null,
         metrics: {
-          views: metricValue(metadata, ["views", "view_count"]),
+          views: trackedMetrics?.views ?? metricValue(metadata, ["views", "view_count"]),
           uniqueViewers: metricValue(metadata, ["unique_viewers", "uniqueViewers"]),
-          downloads: metricValue(metadata, ["downloads", "download_count"]),
+          downloads: trackedMetrics?.downloads ?? metricValue(metadata, ["downloads", "download_count"]),
           saves: metricValue(metadata, ["saves", "save_count"]),
           shares: metricValue(metadata, ["shares", "share_count"]),
         },
@@ -521,10 +560,25 @@ export type KnowledgeResourceDownloadResult = {
   fileName: string;
   mimeType: string | null;
   externalUrl: string | null;
+  downloadCount: number | null;
 };
 
+export const incrementKnowledgeResourceView = createServerFn({ method: "POST" })
+  .validator((input) => z.object({ resourceId: z.string().uuid() }).parse(input))
+  .handler(async ({ data: { resourceId } }): Promise<{ resourceId: string; viewCount: number }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin.rpc("increment_resource_views", {
+      _resource_id: resourceId,
+    });
+    if (error || data == null) {
+      throw new Error(error?.message || "Gagal mencatat tampilan resource.");
+    }
+    clearKnowledgeHubCache();
+    return { resourceId, viewCount: Number(data) };
+  });
+
 export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
+  .validator((input) =>
     z.object({ resourceId: z.string().uuid(), inline: z.boolean().optional() }).parse(input),
   )
   .handler(async ({ data: { resourceId, inline } }): Promise<KnowledgeResourceDownloadResult> => {
@@ -595,11 +649,28 @@ export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
       }
     }
 
+    const externalUrl = resource.external_url ??
+      (typeof metadata.externalUrl === "string" ? metadata.externalUrl : null);
+    let downloadCount: number | null = null;
+    if (!inline && (downloadUrl || externalUrl)) {
+      const { data: nextCount, error: countError } = await supabaseAdmin.rpc(
+        "increment_resource_downloads",
+        { _resource_id: resourceId },
+      );
+      if (countError) {
+        console.warn("[getKnowledgeResourceDownload] Failed to increment download counter:", countError);
+      } else if (nextCount != null) {
+        downloadCount = Number(nextCount);
+        clearKnowledgeHubCache();
+      }
+    }
+
     return {
       resourceId,
       downloadUrl,
       fileName,
       mimeType,
-      externalUrl: resource.external_url ?? (typeof metadata.externalUrl === "string" ? metadata.externalUrl : null),
+      externalUrl,
+      downloadCount,
     };
   });

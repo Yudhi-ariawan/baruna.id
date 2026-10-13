@@ -12,6 +12,7 @@ import { Panel } from "@/components/baruna/page/primitives";
 import {
   getResourceById, relatedResources, BEST_PRACTICE_STRUCTURE, CASE_STUDY_STRUCTURE, TOOLKIT_TOOLS,
 } from "@/data/demo/knowledgeHub";
+import type { KhResource } from "@/data/demo/knowledgeHub";
 import {
   DEMO_EXPERTS, DEMO_CATEGORIES, DEMO_SHORT_COURSES, DEMO_EVENTS, DEMO_COMMUNITIES, DEMO_PARTNERS, DEMO_MODULES,
 } from "@/data/demo";
@@ -27,6 +28,7 @@ import {
   getPublishedLearningModules,
   getKnowledgeHubOverview,
   getKnowledgeResourceDownload,
+  incrementKnowledgeResourceView,
 } from "@/lib/knowledge-hub/knowledge-hub.functions";
 import { getVideoEmbedUrl, isDirectMediaUrl } from "@/lib/knowledge-hub/video-utils";
 
@@ -135,23 +137,54 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
   component: ResourceDetailPage,
 });
 
-// Naive view-count store per-session (client-side only).
+// Claim one view per resource per browser tab. The server remains authoritative
+// for the atomic counter; sessionStorage only suppresses refresh inflation.
 const VIEW_KEY = "baruna:kh-viewed";
-function markViewed(id: string) {
+function claimSessionView(id: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const set = new Set<string>(JSON.parse(sessionStorage.getItem(VIEW_KEY) ?? "[]") as string[]);
+    if (set.has(id)) return false;
+    set.add(id);
+    sessionStorage.setItem(VIEW_KEY, JSON.stringify([...set]));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function releaseSessionView(id: string): void {
   if (typeof window === "undefined") return;
   try {
     const set = new Set<string>(JSON.parse(sessionStorage.getItem(VIEW_KEY) ?? "[]") as string[]);
-    if (!set.has(id)) {
-      set.add(id);
-      sessionStorage.setItem(VIEW_KEY, JSON.stringify([...set]));
-    }
-  } catch { /* ignore */ }
+    set.delete(id);
+    sessionStorage.setItem(VIEW_KEY, JSON.stringify([...set]));
+  } catch { /* retry will be available on the next page load */ }
 }
 
 function ResourceDetailPage() {
   const { resource: r } = Route.useLoaderData();
   const saved = useIsSaved(r.id);
-  useEffect(() => { markViewed(r.id); }, [r.id]);
+  const incrementView = useServerFn(incrementKnowledgeResourceView);
+  const [metrics, setMetrics] = useState<KhResource["metrics"]>(r.metrics);
+
+  useEffect(() => {
+    setMetrics(r.metrics);
+    const isCanonicalId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id);
+    if (!isCanonicalId || !claimSessionView(r.id)) return;
+
+    let active = true;
+    void incrementView({ data: { resourceId: r.id } })
+      .then(({ viewCount }) => {
+        if (active) setMetrics((current) => ({ ...current, views: viewCount }));
+      })
+      .catch((error) => {
+        releaseSessionView(r.id);
+        console.warn("Failed to track Knowledge Hub view:", error);
+      });
+
+    return () => { active = false; };
+  }, [incrementView, r.id, r.metrics]);
 
   const demoExpert = DEMO_EXPERTS.find((e) => e.id === r.expertId);
   const expert = r.relatedExpert ?? (demoExpert
@@ -264,6 +297,10 @@ function ResourceDetailPage() {
     setDownloading(true);
     try {
       const res = await downloadFn({ data: { resourceId: r.id } });
+      if (res.downloadCount != null) {
+        const nextDownloadCount = res.downloadCount;
+        setMetrics((current) => ({ ...current, downloads: nextDownloadCount }));
+      }
       if (res.downloadUrl) {
         window.open(res.downloadUrl, "_blank", "noopener,noreferrer");
         toast.success("Membuka tautan berkas dokumen...");
@@ -731,9 +768,9 @@ function ResourceDetailPage() {
             <Panel>
               <h3 className="font-display text-sm font-bold text-navy">Resource Analytics</h3>
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <Stat label="Views" value={r.metrics.views.toLocaleString()} icon={Eye} />
+                <Stat label="Views" value={metrics.views.toLocaleString()} icon={Eye} />
                 <Stat label="Unique" value={r.metrics.uniqueViewers.toLocaleString()} icon={Users} />
-                <Stat label="Downloads" value={r.metrics.downloads.toLocaleString()} icon={Download} />
+                <Stat label="Downloads" value={metrics.downloads.toLocaleString()} icon={Download} />
                 <Stat label="Saves" value={r.metrics.saves.toLocaleString()} icon={Bookmark} />
               </div>
               <Link to="/analytics" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-marine">
