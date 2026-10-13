@@ -87,10 +87,50 @@ export async function publishExpertAvatar(
 
 export async function resolvePublicAvatarUrl(
   rawAvatarUrl: string | null | undefined,
+  expertId?: string | null,
 ): Promise<string | null> {
+  if (expertId) {
+    try {
+      const { data: expRow } = await supabaseAdmin
+        .from("experts")
+        .select("original_contributor_id, created_by")
+        .eq("id", expertId)
+        .maybeSingle();
+      const uid = expRow?.original_contributor_id || expRow?.created_by;
+      if (uid) {
+        const { data: prof } = await supabaseAdmin
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", uid)
+          .maybeSingle();
+        if (
+          prof?.avatar_url &&
+          (prof.avatar_url.startsWith("http://") || prof.avatar_url.startsWith("https://"))
+        ) {
+          return prof.avatar_url;
+        }
+      }
+    } catch {
+      // continue to rawAvatarUrl fallback
+    }
+  }
+
   if (!rawAvatarUrl || !rawAvatarUrl.trim()) return null;
   const url = rawAvatarUrl.trim();
   if (url.startsWith("http://") || url.startsWith("https://")) {
+    if (url.includes("/expert-applications/")) {
+      const match = url.match(/\/expert-applications\/(.+?)(\?|$)/);
+      if (match && match[1]) {
+        try {
+          const { data: signed } = await supabaseAdmin.storage
+            .from("expert-applications")
+            .createSignedUrl(decodeURIComponent(match[1]), 86400);
+          return signed?.signedUrl ?? null;
+        } catch {
+          return null;
+        }
+      }
+    }
     return url;
   }
   try {

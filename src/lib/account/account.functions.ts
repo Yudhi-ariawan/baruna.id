@@ -351,6 +351,12 @@ export const setAccountAvatar = createServerFn({ method: "POST" })
       .update({ avatar_url: avatarUrl })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
+    if (avatarUrl) {
+      await supabaseAdmin
+        .from("experts")
+        .update({ avatar_url: avatarUrl })
+        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`);
+    }
     const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(context.userId, {
       user_metadata: { avatar_url: avatarUrl },
     });

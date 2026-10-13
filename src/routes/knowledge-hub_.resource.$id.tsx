@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Bookmark, Share2, Download, Play, Users, GraduationCap, CalendarDays, MessagesSquare,
   Building2, FileText, ArrowRight, ArrowLeft, AlertCircle, Eye, Clock, Layers, Award,
-  BookOpen, ExternalLink, Loader2, X, Volume2,
+  BookOpen, ExternalLink, Loader2, X, Volume2, Check,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Panel } from "@/components/baruna/page/primitives";
@@ -18,6 +18,7 @@ import {
 import { masterByCode, masterByKhCode, MINUTES_PER_JP } from "@/data/masterModules";
 import { useShortCourses } from "@/lib/shortCourses";
 import { AccessNotificationModal } from "@/components/baruna/knowledge/AccessNotificationModal";
+import { ProfileAvatar } from "@/components/baruna/ProfileAvatar";
 import { KH_SIDEBAR_META, knowledgeHubSidebarSections } from "@/data/khNav";
 import { ResourceCard, DemoDataBadge, AccessBadge } from "@/components/baruna/knowledge/ResourceCard";
 import { toggleSaved, useIsSaved, shareResource } from "@/lib/khSaved";
@@ -27,6 +28,7 @@ import {
   getPublishedLearningModules,
   getKnowledgeHubOverview,
   getKnowledgeResourceDownload,
+  recordKnowledgeResourceMetric,
 } from "@/lib/knowledge-hub/knowledge-hub.functions";
 import { getVideoEmbedUrl, isDirectMediaUrl } from "@/lib/knowledge-hub/video-utils";
 
@@ -137,21 +139,116 @@ export const Route = createFileRoute("/knowledge-hub_/resource/$id")({
 
 // Naive view-count store per-session (client-side only).
 const VIEW_KEY = "baruna:kh-viewed";
-function markViewed(id: string) {
-  if (typeof window === "undefined") return;
+function markViewed(id: string): boolean {
+  if (typeof window === "undefined") return false;
   try {
     const set = new Set<string>(JSON.parse(sessionStorage.getItem(VIEW_KEY) ?? "[]") as string[]);
     if (!set.has(id)) {
       set.add(id);
       sessionStorage.setItem(VIEW_KEY, JSON.stringify([...set]));
+      return true;
     }
-  } catch { /* ignore */ }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function formatMetadataDate(dateStr?: string, fallbackYear?: number): string {
+  if (!dateStr) return fallbackYear ? String(fallbackYear) : "—";
+  const parsed = Date.parse(dateStr);
+  if (Number.isNaN(parsed)) return dateStr;
+  return new Date(parsed).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function ResourceDetailPage() {
   const { resource: r } = Route.useLoaderData();
   const saved = useIsSaved(r.id);
-  useEffect(() => { markViewed(r.id); }, [r.id]);
+  const isUuidResource = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id);
+  const metricFn = useServerFn(recordKnowledgeResourceMetric);
+
+  const [liveMetrics, setLiveMetrics] = useState(() => ({
+    views: Math.max(1, Number(r.metrics?.views ?? 0)),
+    uniqueViewers: Math.max(1, Number(r.metrics?.uniqueViewers ?? 0)),
+    downloads: Number(r.metrics?.downloads ?? 0),
+    saves: Number(r.metrics?.saves ?? 0),
+    shares: Number(r.metrics?.shares ?? 0),
+  }));
+
+  useEffect(() => {
+    setLiveMetrics({
+      views: Math.max(1, Number(r.metrics?.views ?? 0)),
+      uniqueViewers: Math.max(1, Number(r.metrics?.uniqueViewers ?? 0)),
+      downloads: Number(r.metrics?.downloads ?? 0),
+      saves: Number(r.metrics?.saves ?? 0),
+      shares: Number(r.metrics?.shares ?? 0),
+    });
+
+    const isFirstInSession = markViewed(r.id);
+    if (isUuidResource) {
+      void metricFn({
+        data: { resourceId: r.id, action: "view", isUniqueView: isFirstInSession },
+      })
+        .then((updated) => {
+          if (updated) {
+            setLiveMetrics((prev) => ({
+              ...prev,
+              views: Math.max(prev.views, updated.views),
+              uniqueViewers: Math.max(prev.uniqueViewers, updated.uniqueViewers),
+              downloads: Math.max(prev.downloads, updated.downloads),
+              saves: Math.max(prev.saves, updated.saves),
+              shares: Math.max(prev.shares, updated.shares),
+            }));
+          }
+        })
+        .catch(() => {});
+    } else if (isFirstInSession) {
+      setLiveMetrics((prev) => ({
+        ...prev,
+        views: prev.views + 1,
+        uniqueViewers: prev.uniqueViewers + 1,
+      }));
+    }
+  }, [r.id]);
+
+  const effectiveSaves = saved ? Math.max(1, liveMetrics.saves) : liveMetrics.saves;
+
+  const handleToggleSave = () => {
+    const nextSaved = toggleSaved(r.id);
+    setLiveMetrics((prev) => ({
+      ...prev,
+      saves: nextSaved ? prev.saves + 1 : Math.max(0, prev.saves - 1),
+    }));
+    toast.success(
+      nextSaved
+        ? "Materi disimpan ke halaman Saved Items (/saved)."
+        : "Materi dihapus dari halaman Saved Items.",
+    );
+    if (isUuidResource) {
+      void metricFn({
+        data: { resourceId: r.id, action: nextSaved ? "save" : "unsave" },
+      })
+        .then((updated) => {
+          if (updated) {
+            setLiveMetrics((prev) => ({ ...prev, saves: updated.saves }));
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
+  const handleShare = async () => {
+    await shareResource(r.title, `/knowledge-hub/resource/${r.id}`);
+    setLiveMetrics((prev) => ({ ...prev, shares: prev.shares + 1 }));
+    toast.success("Tautan materi berhasil disalin untuk dibagikan.");
+    if (isUuidResource) {
+      void metricFn({ data: { resourceId: r.id, action: "share" } }).catch(() => {});
+    }
+  };
 
   const demoExpert = DEMO_EXPERTS.find((e) => e.id === r.expertId);
   const expert = r.relatedExpert ?? (demoExpert
@@ -187,11 +284,17 @@ function ResourceDetailPage() {
   const [inlineMedia, setInlineMedia] = useState<{ url: string; kind: "embed" | "video" | "audio" } | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [citationCopied, setCitationCopied] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
 
   useEffect(() => {
     setIsPlaying(false);
     setInlineMedia(null);
     setShowTranscript(false);
+    setCitationCopied(false);
+    setReportOpen(false);
+    setReportReason("");
   }, [r.id]);
 
   const handlePlayMedia = async () => {
@@ -209,7 +312,7 @@ function ResourceDetailPage() {
       return;
     }
 
-    if (!r.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id)) {
+    if (!isUuidResource) {
       if (r.externalUrl) {
         window.open(r.externalUrl, "_blank", "noopener,noreferrer");
         return;
@@ -252,9 +355,10 @@ function ResourceDetailPage() {
   };
 
   const handleDownload = async () => {
-    if (!r.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id)) {
+    if (!isUuidResource) {
       if (r.downloadUrl) {
         window.open(r.downloadUrl, "_blank", "noopener,noreferrer");
+        setLiveMetrics((prev) => ({ ...prev, downloads: prev.downloads + 1 }));
         return;
       }
       toast.info("Ini adalah data percontohan (demo resource).");
@@ -264,11 +368,21 @@ function ResourceDetailPage() {
     setDownloading(true);
     try {
       const res = await downloadFn({ data: { resourceId: r.id } });
+      if (res.downloadCount != null) {
+        const nextDownloadCount = res.downloadCount;
+        setLiveMetrics((prev) => ({ ...prev, downloads: Math.max(prev.downloads + 1, nextDownloadCount) }));
+      }
       if (res.downloadUrl) {
         window.open(res.downloadUrl, "_blank", "noopener,noreferrer");
+        if (res.downloadCount == null) {
+          setLiveMetrics((prev) => ({ ...prev, downloads: prev.downloads + 1 }));
+        }
         toast.success("Membuka tautan berkas dokumen...");
       } else if (res.externalUrl) {
         window.open(res.externalUrl, "_blank", "noopener,noreferrer");
+        if (res.downloadCount == null) {
+          setLiveMetrics((prev) => ({ ...prev, downloads: prev.downloads + 1 }));
+        }
         toast.info("Membuka repositori eksternal materi.");
       } else {
         toast.error("Tidak ada berkas fisik yang dilampirkan pada materi ini.");
@@ -412,13 +526,13 @@ function ResourceDetailPage() {
                 )}
                 <span className="ml-auto flex flex-wrap gap-2">
                   <button
-                    onClick={() => toggleSaved(r.id)}
+                    onClick={handleToggleSave}
                     className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${saved ? "border-marine bg-marine text-marine-foreground" : "border-border text-marine hover:border-marine"}`}
                   >
                     <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}
                   </button>
                   <button
-                    onClick={() => void shareResource(r.title, `/knowledge-hub/resource/${r.id}`)}
+                    onClick={() => void handleShare()}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-marine hover:border-marine"
                   >
                     <Share2 className="h-3.5 w-3.5" /> Share
@@ -528,10 +642,12 @@ function ResourceDetailPage() {
                     <BookOpen className="h-3.5 w-3.5" /> Open Learning Materials
                   </button>
                   <button
-                    onClick={() => (gated ? setGateOpen(true) : undefined)}
+                    onClick={() => (gated ? setGateOpen(true) : void handleDownload())}
+                    disabled={downloading}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-marine/40 bg-card px-3 py-2 text-xs font-semibold text-marine hover:border-marine"
                   >
-                    <Download className="h-3.5 w-3.5" /> Download Module
+                    {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    Download Module
                   </button>
                   <button
                     onClick={() => (gated ? setGateOpen(true) : undefined)}
@@ -744,13 +860,7 @@ function ResourceDetailPage() {
               <Panel>
                 <h3 className="font-display text-sm font-bold text-navy">Related Expert</h3>
                 <Link to="/experts/$slug" params={{ slug: expert.slug }} className="mt-2 flex items-center gap-3 rounded-lg p-1 hover:bg-muted">
-                  <span className="grid h-10 w-10 place-items-center rounded-full bg-marine/10 font-bold text-marine">
-                    {expert.avatarUrl ? (
-                      <img src={expert.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      expert.name.split(" ").slice(-2).map((s: string) => s[0]).join("")
-                    )}
-                  </span>
+                  <ProfileAvatar name={expert.name} url={expert.avatarUrl ?? null} />
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-navy">{expert.name}</p>
                     <p className="truncate text-xs text-muted-foreground">{expert.title}</p>
@@ -795,16 +905,42 @@ function ResourceDetailPage() {
                 {r.relatedArchive && (
                   <RelLink to="/academy/archive" icon={FileText} title="Training Archive" subtitle={r.relatedArchive} />
                 )}
+                {!masterModule && !course && !module && !r.trainingProgram && !event && !community && !partner && !r.relatedArchive && (
+                  <>
+                    {category && (
+                      <RelLink
+                        to="/knowledge-hub/category/$slug"
+                        params={{ slug: category.slug }}
+                        icon={Layers}
+                        title="Thematic Category"
+                        subtitle={category.name}
+                      />
+                    )}
+                    <RelLink
+                      to="/knowledge-hub/$type"
+                      params={{ type: r.type }}
+                      icon={BookOpen}
+                      title={`${r.typeLabel}s Collection`}
+                      subtitle={`Browse all ${r.typeLabel.toLowerCase()}s`}
+                    />
+                    <RelLink
+                      to="/academy/self-paced"
+                      icon={GraduationCap}
+                      title="BARUNA Academy"
+                      subtitle="Explore Self-Paced Courses"
+                    />
+                  </>
+                )}
               </ul>
             </Panel>
 
             <Panel>
               <h3 className="font-display text-sm font-bold text-navy">Resource Analytics</h3>
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <Stat label="Views" value={r.metrics.views.toLocaleString()} icon={Eye} />
-                <Stat label="Unique" value={r.metrics.uniqueViewers.toLocaleString()} icon={Users} />
-                <Stat label="Downloads" value={r.metrics.downloads.toLocaleString()} icon={Download} />
-                <Stat label="Saves" value={r.metrics.saves.toLocaleString()} icon={Bookmark} />
+                <Stat label="Views" value={liveMetrics.views.toLocaleString()} icon={Eye} />
+                <Stat label="Unique" value={liveMetrics.uniqueViewers.toLocaleString()} icon={Users} />
+                <Stat label="Downloads" value={liveMetrics.downloads.toLocaleString()} icon={Download} />
+                <Stat label="Saves" value={effectiveSaves.toLocaleString()} icon={Bookmark} />
               </div>
               <Link to="/analytics" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-marine">
                 Open Analytics <ArrowRight className="h-3.5 w-3.5" />
@@ -820,7 +956,7 @@ function ResourceDetailPage() {
                 {r.duration && <MetaRow k="Duration" v={r.duration} />}
                 <MetaRow k="Version" v={r.version} />
                 <MetaRow k="Country" v={r.country} />
-                <MetaRow k="Updated" v={r.updatedAt} />
+                <MetaRow k="Updated" v={formatMetadataDate(r.updatedAt, r.year)} />
               </dl>
             </Panel>
 
@@ -836,17 +972,76 @@ function ResourceDetailPage() {
             <Panel>
               <h3 className="font-display text-sm font-bold text-navy">Citation</h3>
               <p className="mt-2 text-xs text-foreground/80">{r.citation}</p>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <button
-                  onClick={() => { if (typeof navigator !== "undefined") navigator.clipboard?.writeText(r.citation); }}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[0.7rem] font-semibold text-marine hover:border-marine"
+                  type="button"
+                  onClick={() => {
+                    if (typeof navigator !== "undefined") {
+                      void navigator.clipboard?.writeText(r.citation);
+                    }
+                    setCitationCopied(true);
+                    toast.success("Sitasi berhasil disalin ke clipboard.");
+                    setTimeout(() => setCitationCopied(false), 2000);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[0.7rem] font-semibold text-marine hover:border-marine"
                 >
-                  Copy citation
+                  {citationCopied ? (
+                    <>
+                      <Check className="h-3 w-3" /> Copied!
+                    </>
+                  ) : (
+                    "Copy citation"
+                  )}
                 </button>
-                <button className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[0.7rem] font-semibold text-muted-foreground hover:text-destructive">
+                <button
+                  type="button"
+                  onClick={() => setReportOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-[0.7rem] font-semibold text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                >
                   Report an issue
                 </button>
               </div>
+              {reportOpen && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!reportReason.trim()) {
+                      toast.error("Mohon tuliskan keterangan kendala pada materi ini.");
+                      return;
+                    }
+                    toast.success("Terima kasih! Laporan kendala materi telah dikirim ke tim kurasi BARUNA.");
+                    setReportReason("");
+                    setReportOpen(false);
+                  }}
+                  className="mt-3 space-y-2 rounded-xl border border-border bg-secondary/20 p-3"
+                >
+                  <label className="block text-[0.7rem] font-semibold text-navy">
+                    Describe the issue (broken file, typo, or metadata):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    placeholder="Contoh: Berkas PDF tidak dapat dibuka atau nama penulis kurang tepat..."
+                    className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:border-marine focus:outline-none"
+                  />
+                  <div className="flex justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setReportOpen(false)}
+                      className="rounded-lg px-2.5 py-1 text-[0.7rem] font-semibold text-muted-foreground hover:bg-muted"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-marine px-2.5 py-1 text-[0.7rem] font-semibold text-marine-foreground hover:bg-navy"
+                    >
+                      Submit Report
+                    </button>
+                  </div>
+                </form>
+              )}
             </Panel>
           </aside>
         </div>

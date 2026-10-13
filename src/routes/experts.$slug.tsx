@@ -1,7 +1,11 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useMemo } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   Award,
   BookOpen,
   Building2,
@@ -9,12 +13,16 @@ import {
   ChevronRight,
   Clock3,
   Globe2,
+  GraduationCap,
   Languages,
   MapPin,
+  ScrollText,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
 import defaultExpertAvatar from "@/assets/avatar-presets/marine-researcher.webp";
 import { getPublicExpertBySlug } from "@/lib/experts/directory.functions";
+import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
+import { getKnowledgeHubOverview } from "@/lib/knowledge-hub/knowledge-hub.functions";
 import {
   TRAINER_LEVEL_LABEL,
   VERIFICATION_LABEL,
@@ -74,6 +82,76 @@ function ExpertProfile() {
   const { expert } = Route.useLoaderData() as { expert: PublicExpert };
   const trainerLevel = expert.trainerLevel ? TRAINER_LEVEL_LABEL[expert.trainerLevel] : null;
   const location = [expert.city, expert.country].filter(Boolean).join(", ");
+
+  const getModulesCatalogFn = useServerFn(getPublishedModulesCatalog);
+  const getKhOverviewFn = useServerFn(getKnowledgeHubOverview);
+
+  const { data: publishedModules } = useQuery({
+    queryKey: ["expert-profile", "modules", expert.id],
+    queryFn: () => getModulesCatalogFn(),
+    staleTime: 30_000,
+  });
+
+  const { data: khOverview } = useQuery({
+    queryKey: ["expert-profile", "kh", expert.id],
+    queryFn: () => getKhOverviewFn(),
+    staleTime: 30_000,
+  });
+
+  const expertContributions = useMemo(() => {
+    const items: Array<{
+      id: string;
+      title: string;
+      kind: string;
+      summary: string;
+      href: string;
+      isModule: boolean;
+    }> = [];
+    const seenTitles = new Set<string>();
+    const normExpertName = (expert.displayName ?? "").trim().toLowerCase();
+
+    for (const mod of publishedModules ?? []) {
+      const matchesExpert =
+        mod.author_expert_id === expert.id ||
+        (mod.authorSlug && mod.authorSlug === expert.slug) ||
+        (normExpertName && mod.authorName.trim().toLowerCase() === normExpertName);
+      if (!matchesExpert) continue;
+      seenTitles.add(mod.title.trim().toLowerCase());
+      items.push({
+        id: `mod-${mod.id}`,
+        title: mod.title,
+        kind: `Self-Paced Module · ${mod.estimated_learning_hours || 2}h`,
+        summary: mod.summary || "Approved self-paced module in BARUNA Academy.",
+        href: `/academy/self-paced/${mod.id}`,
+        isModule: true,
+      });
+    }
+
+    for (const res of khOverview?.resources ?? []) {
+      const normTitle = res.title.trim().toLowerCase();
+      if (res.type === "learning-modules" && seenTitles.has(normTitle)) continue;
+      const matchesExpert =
+        res.expertId === expert.id ||
+        (res.relatedExpert?.slug && res.relatedExpert.slug === expert.slug) ||
+        (normExpertName &&
+          (res.author?.trim().toLowerCase() === normExpertName ||
+            res.contributor?.trim().toLowerCase() === normExpertName));
+      if (!matchesExpert) continue;
+      items.push({
+        id: `kh-${res.id}`,
+        title: res.title,
+        kind: `${res.typeLabel} · ${res.year}`,
+        summary: res.summary || res.abstract || "Published Knowledge Hub resource.",
+        href:
+          res.type === "learning-modules" && res.moduleCode
+            ? `/academy/self-paced/${res.moduleCode}`
+            : `/knowledge-hub/resource/${res.id}`,
+        isModule: res.type === "learning-modules",
+      });
+    }
+
+    return items;
+  }, [publishedModules, khOverview, expert.id, expert.slug, expert.displayName]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -175,19 +253,25 @@ function ExpertProfile() {
               <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
                 <BookOpen className="h-5 w-5 text-marine" /> Biography
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{expert.bio}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {expert.bio || "Verified expert and contributor in the BARUNA Marine & Fisheries Network."}
+              </p>
             </section>
             <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-lg font-bold text-navy">Areas of Expertise</h2>
               <div className="mt-3 flex flex-wrap gap-2">
-                {expert.expertiseAreas.map((area) => (
-                  <span
-                    key={area}
-                    className="inline-flex rounded-full border border-marine/20 bg-marine/5 px-3 py-1.5 text-xs font-semibold text-marine"
-                  >
-                    {area}
-                  </span>
-                ))}
+                {expert.expertiseAreas.length > 0 ? (
+                  expert.expertiseAreas.map((area) => (
+                    <span
+                      key={area}
+                      className="inline-flex rounded-full border border-marine/20 bg-marine/5 px-3 py-1.5 text-xs font-semibold text-marine"
+                    >
+                      {area}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-muted-foreground">Marine & Fisheries Capacity Building</span>
+                )}
               </div>
             </section>
             <section className="grid gap-6 sm:grid-cols-2">
@@ -229,6 +313,53 @@ function ExpertProfile() {
                 </div>
               </section>
             )}
+
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
+                  <ScrollText className="h-5 w-5 text-marine" /> Published Contributions &amp; Learning Modules
+                </h2>
+                <span className="rounded-full bg-marine/10 px-2.5 py-0.5 text-xs font-bold text-marine">
+                  {expertContributions.length} {expertContributions.length === 1 ? "item" : "items"}
+                </span>
+              </div>
+              {expertContributions.length > 0 ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {expertContributions.map((item) => (
+                    <a
+                      key={item.id}
+                      href={item.href}
+                      className="group flex flex-col justify-between rounded-xl border border-border bg-secondary/15 p-4 transition-all hover:border-marine/40 hover:bg-secondary/30"
+                    >
+                      <div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-marine/10 px-2 py-0.5 text-[0.65rem] font-bold text-marine">
+                          {item.isModule ? (
+                            <GraduationCap className="h-3 w-3" />
+                          ) : (
+                            <BookOpen className="h-3 w-3" />
+                          )}
+                          {item.kind}
+                        </span>
+                        <h3 className="mt-2 font-display text-sm font-bold text-navy group-hover:text-marine">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {item.summary}
+                        </p>
+                      </div>
+                      <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-marine">
+                        {item.isModule ? "Open Module" : "Open Resource"}{" "}
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  No public modules or Knowledge Hub publications linked yet.
+                </p>
+              )}
+            </section>
           </div>
         </div>
       </main>

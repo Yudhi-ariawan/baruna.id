@@ -9,6 +9,7 @@ export type SidebarItem = {
   count?: number;
   active?: boolean;
   to?: string;
+  onClick?: () => void;
 };
 
 export type SidebarSection = {
@@ -212,7 +213,7 @@ export function Sidebar({ icon: Icon, title, subtitle, sections, footer, extra }
                           {inner}
                         </Link>
                       ) : (
-                        <button type="button" className={cls}>{inner}</button>
+                        <button type="button" onClick={item.onClick} className={`${cls} cursor-pointer`}>{inner}</button>
                       )}
                     </li>
                   );

@@ -229,7 +229,7 @@ export const getKnowledgeContributorBootstrap = createServerFn({ method: "GET" }
 
 export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => SubmissionInput.parse(input))
+  .validator((input) => SubmissionInput.parse(input))
   .handler(async ({ context, data }) => {
     const form = data.form as Record<string, unknown>;
     const rawTitle = String(form.title ?? "").trim();
@@ -572,7 +572,7 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
 
 export const createKnowledgeResourceUpload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => UploadInput.parse(input))
+  .validator((input) => UploadInput.parse(input))
   .handler(async ({ context, data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const safeName = data.fileName.replace(/[^a-zA-Z0-9._-]+/g, "-");
@@ -676,7 +676,7 @@ export type SavedDraftDetail = {
 
 export const getKnowledgeResourceDraft = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ draftId: z.string().uuid() }).parse(input))
+  .validator((input) => z.object({ draftId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }): Promise<SavedDraftDetail | null> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let { data: draft, error } = await supabaseAdmin

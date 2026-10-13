@@ -50,7 +50,7 @@ function mapExpert(row: DirectoryRow): PublicExpert {
     verificationStatus: row.verification_status,
     institution: row.institution,
     institutionRole: row.institution_role,
-    contactEmail: row.contact_email,
+    contactEmail: row.contact_email ?? null,
     trainerStatus: row.trainer_status,
     trainerLevel: row.trainer_level,
     uniqueGraduatedParticipants: row.unique_graduated_participants,
@@ -78,9 +78,9 @@ async function resolveAvatarUrl(
           const { data: signed } = await adminClient.storage
             .from("expert-applications")
             .createSignedUrl(decodeURIComponent(match[1]), 86400);
-          return signed?.signedUrl ?? url;
+          return signed?.signedUrl ?? null;
         } catch {
-          return url;
+          return null;
         }
       }
     }
@@ -98,9 +98,6 @@ async function resolveAvatarUrl(
   }
 }
 
-const publicColumns =
-  "id, slug, display_name, headline, bio, country, city, avatar_url, expertise_areas, languages, verification_status, institution, institution_role, contact_email, trainer_status, trainer_level, unique_graduated_participants, recognition_min_participants, availability_status, available_modes, next_available_from";
-
 export const listPublicExperts = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicExpert[]> => {
     let dbExperts: PublicExpert[] = [];
@@ -109,20 +106,53 @@ export const listPublicExperts = createServerFn({ method: "GET" }).handler(
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data, error } = await supabaseAdmin
         .from("experts_directory_v")
-        .select(publicColumns)
+        .select("*")
         .in("verification_status", ["institutionally_verified", "governance_verified"])
         .order("display_name");
 
       if (!error && data) {
         const rows = data as DirectoryRow[];
+        const expertIds = rows.map((r) => r.id);
+        const { data: rawExperts } = expertIds.length
+          ? await supabaseAdmin
+              .from("experts")
+              .select("id,original_contributor_id,created_by")
+              .in("id", expertIds)
+          : { data: [] };
+        const userIds = [
+          ...new Set(
+            (rawExperts ?? [])
+              .map((r) => r.original_contributor_id || r.created_by)
+              .filter((uid): uid is string => Boolean(uid)),
+          ),
+        ];
+        const { data: profiles } = userIds.length
+          ? await supabaseAdmin.from("profiles").select("id,avatar_url").in("id", userIds)
+          : { data: [] };
+
+        const profileAvatarByUserId = new Map<string, string | null>(
+          (profiles ?? []).map((p) => [p.id, p.avatar_url]),
+        );
+        const userIdByExpertId = new Map<string, string | null>(
+          (rawExperts ?? []).map((r) => [r.id, r.original_contributor_id || r.created_by || null]),
+        );
+
         const pathsToSign: { index: number; path: string }[] = [];
         const mappedList: PublicExpert[] = rows.map((r, index) => {
           const mapped = mapExpert(r);
+          const uid = userIdByExpertId.get(r.id);
+          const profileAvatar = uid ? profileAvatarByUserId.get(uid) : null;
+          if (profileAvatar && (profileAvatar.startsWith("http://") || profileAvatar.startsWith("https://"))) {
+            mapped.avatarUrl = profileAvatar;
+            return mapped;
+          }
           if (r.avatar_url && !r.avatar_url.startsWith("http://") && !r.avatar_url.startsWith("https://")) {
+            mapped.avatarUrl = null;
             pathsToSign.push({ index, path: r.avatar_url.trim() });
           } else if (r.avatar_url?.includes("/expert-applications/")) {
             const match = r.avatar_url.match(/\/expert-applications\/(.+?)(\?|$)/);
             if (match && match[1]) {
+              mapped.avatarUrl = null;
               pathsToSign.push({ index, path: decodeURIComponent(match[1]) });
             }
           }
@@ -205,28 +235,48 @@ export const getPublicExpertBySlug = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<PublicExpert | null> => {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.slug);
 
       // If expert is archived in database, do not show and do not fallback to mock
-      const { data: archivedExpert } = await supabaseAdmin
+      const rawQuery = supabaseAdmin
         .from("experts")
-        .select("id")
-        .eq("slug", data.slug)
-        .eq("current_status", "archived")
-        .maybeSingle();
+        .select("id, slug, original_contributor_id, created_by, current_status");
+      const { data: rawExpertRow } = await (isUuid
+        ? rawQuery.eq("id", data.slug)
+        : rawQuery.eq("slug", data.slug)
+      ).maybeSingle();
 
-      if (archivedExpert) {
+      if (rawExpertRow?.current_status === "archived") {
         return null;
       }
 
-      const { data: expert, error } = await supabaseAdmin
+      const dirQuery = supabaseAdmin
         .from("experts_directory_v")
-        .select(publicColumns)
-        .eq("slug", data.slug)
-        .maybeSingle();
+        .select("*");
+      const { data: expert, error } = await (isUuid
+        ? dirQuery.eq("id", data.slug)
+        : dirQuery.eq("slug", data.slug)
+      ).maybeSingle();
 
       if (!error && expert) {
         const mapped = mapExpert(expert as DirectoryRow);
-        mapped.avatarUrl = await resolveAvatarUrl(expert.avatar_url, supabaseAdmin);
+        let profileAvatar: string | null = null;
+        const ownerUserId = rawExpertRow?.original_contributor_id || rawExpertRow?.created_by;
+        if (ownerUserId) {
+          const { data: prof } = await supabaseAdmin
+            .from("profiles")
+            .select("avatar_url")
+            .eq("id", ownerUserId)
+            .maybeSingle();
+          if (
+            prof?.avatar_url &&
+            (prof.avatar_url.startsWith("http://") || prof.avatar_url.startsWith("https://"))
+          ) {
+            profileAvatar = prof.avatar_url;
+          }
+        }
+        mapped.avatarUrl =
+          profileAvatar || (await resolveAvatarUrl(expert.avatar_url, supabaseAdmin));
         return mapped;
       }
     } catch (err) {

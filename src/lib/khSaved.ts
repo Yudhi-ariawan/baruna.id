@@ -1,20 +1,38 @@
-// Client-side Saved Items for Knowledge Hub resources.
+// Client-side Saved Items for Knowledge Hub resources (scoped per user account).
 import { useEffect, useState } from "react";
+import { getUserScopedKey, subscribeToAuthChange } from "@/lib/authSession";
 
-const KEY = "baruna:kh-saved";
+const KEY_PREFIX = "baruna:kh-saved";
 const EVT = "baruna:kh-saved";
 
 function read(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "[]") as string[];
+    const scopedKey = getUserScopedKey(KEY_PREFIX);
+    const rawScoped = localStorage.getItem(scopedKey);
+    if (rawScoped !== null) {
+      const parsed = JSON.parse(rawScoped);
+      return Array.isArray(parsed) ? (parsed as string[]) : [];
+    }
+    // Fallback migration from legacy global key if present
+    const rawLegacy = localStorage.getItem(KEY_PREFIX);
+    if (rawLegacy) {
+      const parsed = JSON.parse(rawLegacy);
+      if (Array.isArray(parsed)) {
+        localStorage.setItem(scopedKey, JSON.stringify(parsed));
+        return parsed as string[];
+      }
+    }
+    return [];
   } catch {
     return [];
   }
 }
+
 function write(list: string[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(KEY, JSON.stringify(list));
+  const scopedKey = getUserScopedKey(KEY_PREFIX);
+  localStorage.setItem(scopedKey, JSON.stringify(list));
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
@@ -25,6 +43,10 @@ export function toggleSaved(id: string) {
   return next.includes(id);
 }
 
+export function clearAllSaved() {
+  write([]);
+}
+
 export function isSavedSync(id: string) {
   return read().includes(id);
 }
@@ -33,11 +55,12 @@ export function useSavedIds(): string[] {
   const [ids, setIds] = useState<string[]>(() => read());
   useEffect(() => {
     const refresh = () => setIds(read());
+    refresh();
     window.addEventListener(EVT, refresh);
-    window.addEventListener("storage", refresh);
+    const unsubAuth = subscribeToAuthChange(refresh);
     return () => {
       window.removeEventListener(EVT, refresh);
-      window.removeEventListener("storage", refresh);
+      unsubAuth();
     };
   }, []);
   return ids;

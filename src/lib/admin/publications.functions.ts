@@ -632,7 +632,7 @@ const DecisionInput = z.object({
 
 export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => DecisionInput.parse(input))
+  .validator((input) => DecisionInput.parse(input))
   .handler(async ({ data: input, context }) => {
     if (!(await assertAdminOrReviewer(context))) {
       throw new Error("forbidden: Akses tidak mencukupi untuk mengambil keputusan kurasi.");

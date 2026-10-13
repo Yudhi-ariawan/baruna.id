@@ -574,7 +574,7 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
               name: exp.display_name || "BARUNA Trainer",
               headline: exp.headline || null,
               institution: exp.institution || null,
-              avatarUrl: await resolvePublicAvatarUrl(exp.avatar_url),
+              avatarUrl: await resolvePublicAvatarUrl(exp.avatar_url, exp.id),
               slug: exp.slug || null,
             };
           }
@@ -665,7 +665,7 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
           name: exp.display_name || "BARUNA Trainer",
           headline: exp.headline || null,
           institution: exp.institution || null,
-          avatarUrl: await resolvePublicAvatarUrl(exp.avatar_url),
+          avatarUrl: await resolvePublicAvatarUrl(exp.avatar_url, exp.id),
           slug: exp.slug || null,
         };
       } else {
@@ -679,7 +679,7 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
             name: rawExp.display_name || "BARUNA Trainer",
             headline: rawExp.headline || null,
             institution: null,
-            avatarUrl: await resolvePublicAvatarUrl(rawExp.avatar_url),
+            avatarUrl: await resolvePublicAvatarUrl(rawExp.avatar_url, rawExp.id),
             slug: rawExp.slug || null,
           };
         }
@@ -817,7 +817,7 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
               e.id,
               {
                 name: e.display_name || "BARUNA Trainer",
-                avatarUrl: await resolvePublicAvatarUrl(e.avatar_url),
+                avatarUrl: await resolvePublicAvatarUrl(e.avatar_url, e.id),
                 slug: e.slug,
               },
             ] as const),
