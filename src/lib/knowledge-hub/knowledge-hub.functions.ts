@@ -96,19 +96,29 @@ type ResourceMetricCounts = {
   downloads: number;
 };
 
+let metricsTableMissingUntil = 0;
+
 async function loadKnowledgeResourceMetrics(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabaseAdmin: any,
   resourceIds: string[],
 ): Promise<Map<string, ResourceMetricCounts>> {
   if (resourceIds.length === 0) return new Map();
+  if (Date.now() < metricsTableMissingUntil) return new Map();
 
   const { data, error } = await supabaseAdmin
     .from("knowledge_resource_metrics")
     .select("resource_id,view_count,download_count")
     .in("resource_id", resourceIds);
   if (error) {
-    console.warn("[loadKnowledgeResourceMetrics] fallback to metadata:", error.message);
+    if (
+      error.code === "PGRST205" ||
+      error.code === "42P01" ||
+      String(error.message ?? "").includes("knowledge_resource_metrics")
+    ) {
+      metricsTableMissingUntil = Date.now() + 5 * 60 * 1000;
+      return new Map();
+    }
     return new Map();
   }
 
@@ -621,11 +631,33 @@ export const incrementKnowledgeResourceView = createServerFn({ method: "POST" })
     const { data, error } = await supabaseAdmin.rpc("increment_resource_views", {
       _resource_id: resourceId,
     });
-    if (error || data == null) {
-      throw new Error(error?.message || "Gagal mencatat tampilan resource.");
+    if (!error && data != null) {
+      clearKnowledgeHubCache();
+      return { resourceId, viewCount: Number(data) };
+    }
+    const { data: resource } = await supabaseAdmin
+      .from("knowledge_resources")
+      .select("id, metadata")
+      .eq("id", resourceId)
+      .maybeSingle();
+    const metadata = metadataRecord(resource?.metadata);
+    const nextViews = metricValue(metadata, ["views", "view_count", "viewCount"]) + 1;
+    if (resource) {
+      const existingMetrics = metadataRecord(metadata.metrics);
+      await supabaseAdmin
+        .from("knowledge_resources")
+        .update({
+          metadata: {
+            ...metadata,
+            views: nextViews,
+            view_count: nextViews,
+            metrics: { ...existingMetrics, views: nextViews },
+          },
+        })
+        .eq("id", resourceId);
     }
     clearKnowledgeHubCache();
-    return { resourceId, viewCount: Number(data) };
+    return { resourceId, viewCount: nextViews };
   });
 
 export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
