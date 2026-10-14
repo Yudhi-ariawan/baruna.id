@@ -1554,6 +1554,141 @@ export type Database = {
           },
         ]
       }
+      expert_service_requests: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          completed_at: string | null
+          created_at: string
+          facilitation_history_id: string | null
+          id: string
+          payload: Json
+          request_number: string
+          request_type: string
+          requester_id: string
+          responded_at: string | null
+          status: string
+          submitted_at: string | null
+          target_expert_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          facilitation_history_id?: string | null
+          id?: string
+          payload?: Json
+          request_number?: string
+          request_type: string
+          requester_id: string
+          responded_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          target_expert_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          facilitation_history_id?: string | null
+          id?: string
+          payload?: Json
+          request_number?: string
+          request_type?: string
+          requester_id?: string
+          responded_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          target_expert_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      expert_service_request_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string
+          created_at: string
+          from_status: string | null
+          id: string
+          message: string | null
+          request_id: string
+          to_status: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          message?: string | null
+          request_id: string
+          to_status?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          message?: string | null
+          request_id?: string
+          to_status?: string | null
+        }
+        Relationships: []
+      }
+      expert_trainer_applications: {
+        Row: {
+          applicant_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          expert_id: string
+          granted_level: string | null
+          id: string
+          payload: Json
+          previous_trainer_status: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applicant_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          expert_id: string
+          granted_level?: string | null
+          id?: string
+          payload?: Json
+          previous_trainer_status?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applicant_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          expert_id?: string
+          granted_level?: string | null
+          id?: string
+          payload?: Json
+          previous_trainer_status?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expert_training_facilitation_history: {
         Row: {
           activity_title: string
@@ -1567,6 +1702,7 @@ export type Database = {
           organizer: string | null
           participant_count: number | null
           role: string | null
+          service_request_id: string | null
           start_date: string | null
           updated_at: string
           visibility: Database["public"]["Enums"]["registry_visibility_v1"]
@@ -1583,6 +1719,7 @@ export type Database = {
           organizer?: string | null
           participant_count?: number | null
           role?: string | null
+          service_request_id?: string | null
           start_date?: string | null
           updated_at?: string
           visibility?: Database["public"]["Enums"]["registry_visibility_v1"]
@@ -1599,6 +1736,7 @@ export type Database = {
           organizer?: string | null
           participant_count?: number | null
           role?: string | null
+          service_request_id?: string | null
           start_date?: string | null
           updated_at?: string
           visibility?: Database["public"]["Enums"]["registry_visibility_v1"]
@@ -4319,10 +4457,62 @@ export type Database = {
       expert_service_requests_my: { Args: never; Returns: Json }
       trainer_portal_bootstrap: { Args: never; Returns: Json }
       trainer_service_request_respond: {
-        Args: { _action: string; _request_id: string }
+        Args: { _action: string; _message?: string | null; _request_id: string }
         Returns: Json
       }
       trainer_service_requests: { Args: never; Returns: Json }
+      expert_service_request_reply: {
+        Args: { _message: string; _request_id: string }
+        Returns: Json
+      }
+      expert_service_request_cancel: {
+        Args: { _reason?: string | null; _request_id: string }
+        Returns: Json
+      }
+      admin_service_requests_list: {
+        Args: {
+          _limit?: number
+          _offset?: number
+          _search?: string | null
+          _status?: string | null
+        }
+        Returns: Json
+      }
+      admin_service_request_assignable_experts: {
+        Args: { _search?: string | null }
+        Returns: Json
+      }
+      admin_service_request_transition: {
+        Args: {
+          _action: string
+          _completion?: Json | null
+          _expected_updated_at: string | null
+          _expert_id?: string | null
+          _message?: string | null
+          _request_id: string
+        }
+        Returns: Json
+      }
+      _is_service_admin: { Args: { _user_id: string }; Returns: boolean }
+      trainer_application_my: { Args: never; Returns: Json }
+      trainer_application_submit: { Args: { _payload: Json }; Returns: Json }
+      trainer_application_withdraw: {
+        Args: { _application_id: string }
+        Returns: Json
+      }
+      admin_trainer_applications_list: {
+        Args: { _status?: string | null }
+        Returns: Json
+      }
+      admin_trainer_application_decide: {
+        Args: {
+          _application_id: string
+          _decision: string
+          _level?: string
+          _note?: string | null
+        }
+        Returns: Json
+      }
       expert_draft_submit: { Args: { _draft_id: string }; Returns: string }
       expert_draft_update: {
         Args: { _draft_id: string; _patch: Json }

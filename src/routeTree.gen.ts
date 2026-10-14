@@ -52,6 +52,8 @@ import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
 import { Route as AdminModulesRouteImport } from './routes/admin.modules'
 import { Route as AdminPublicationsRouteImport } from './routes/admin.publications'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
+import { Route as AdminServiceRequestsRouteImport } from './routes/admin.service-requests'
+import { Route as AdminTrainerApplicationsRouteImport } from './routes/admin.trainer-applications'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard_.admin'
 import { Route as DashboardUserRouteImport } from './routes/dashboard_.user'
@@ -81,6 +83,7 @@ import { Route as ExpertsProfileRouteImport } from './routes/experts.profile'
 import { Route as ExpertsRecognitionRouteImport } from './routes/experts.recognition'
 import { Route as ExpertsRequestRouteImport } from './routes/experts.request'
 import { Route as ExpertsServicesRouteImport } from './routes/experts.services'
+import { Route as ExpertsTrainerApplicationRouteImport } from './routes/experts.trainer-application'
 import { Route as GovernanceIndexRouteImport } from './routes/governance.index'
 import { Route as GovernanceDecisionsRouteImport } from './routes/governance.decisions'
 import { Route as GovernancePublicationsRouteImport } from './routes/governance.publications'
@@ -348,6 +351,17 @@ const AdminReviewsRoute = AdminReviewsRouteImport.update({
   path: '/reviews',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminServiceRequestsRoute = AdminServiceRequestsRouteImport.update({
+  id: '/service-requests',
+  path: '/service-requests',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTrainerApplicationsRoute =
+  AdminTrainerApplicationsRouteImport.update({
+    id: '/trainer-applications',
+    path: '/trainer-applications',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -493,6 +507,12 @@ const ExpertsServicesRoute = ExpertsServicesRouteImport.update({
   path: '/services',
   getParentRoute: () => ExpertsRoute,
 } as any)
+const ExpertsTrainerApplicationRoute =
+  ExpertsTrainerApplicationRouteImport.update({
+    id: '/trainer-application',
+    path: '/trainer-application',
+    getParentRoute: () => ExpertsRoute,
+  } as any)
 const GovernanceIndexRoute = GovernanceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -810,6 +830,8 @@ export interface FileRoutesByFullPath {
   '/admin/modules': typeof AdminModulesRoute
   '/admin/publications': typeof AdminPublicationsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/service-requests': typeof AdminServiceRequestsRoute
+  '/admin/trainer-applications': typeof AdminTrainerApplicationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
@@ -837,6 +859,7 @@ export interface FileRoutesByFullPath {
   '/experts/recognition': typeof ExpertsRecognitionRoute
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
+  '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
   '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
@@ -927,6 +950,8 @@ export interface FileRoutesByTo {
   '/admin/modules': typeof AdminModulesRoute
   '/admin/publications': typeof AdminPublicationsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/service-requests': typeof AdminServiceRequestsRoute
+  '/admin/trainer-applications': typeof AdminTrainerApplicationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
@@ -953,6 +978,7 @@ export interface FileRoutesByTo {
   '/experts/recognition': typeof ExpertsRecognitionRoute
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
+  '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
   '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
@@ -1052,6 +1078,8 @@ export interface FileRoutesById {
   '/admin/modules': typeof AdminModulesRoute
   '/admin/publications': typeof AdminPublicationsRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/service-requests': typeof AdminServiceRequestsRoute
+  '/admin/trainer-applications': typeof AdminTrainerApplicationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/dashboard_/admin': typeof DashboardAdminRoute
   '/dashboard_/user': typeof DashboardUserRoute
@@ -1079,6 +1107,7 @@ export interface FileRoutesById {
   '/experts/recognition': typeof ExpertsRecognitionRoute
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
+  '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
   '/governance/decisions': typeof GovernanceDecisionsRoute
   '/governance/publications': typeof GovernancePublicationsRoute
   '/governance/queue': typeof GovernanceQueueRoute
@@ -1179,6 +1208,8 @@ export interface FileRouteTypes {
     | '/admin/modules'
     | '/admin/publications'
     | '/admin/reviews'
+    | '/admin/service-requests'
+    | '/admin/trainer-applications'
     | '/admin/users'
     | '/dashboard/admin'
     | '/dashboard/user'
@@ -1206,6 +1237,7 @@ export interface FileRouteTypes {
     | '/experts/recognition'
     | '/experts/request'
     | '/experts/services'
+    | '/experts/trainer-application'
     | '/governance/decisions'
     | '/governance/publications'
     | '/governance/queue'
@@ -1296,6 +1328,8 @@ export interface FileRouteTypes {
     | '/admin/modules'
     | '/admin/publications'
     | '/admin/reviews'
+    | '/admin/service-requests'
+    | '/admin/trainer-applications'
     | '/admin/users'
     | '/dashboard/admin'
     | '/dashboard/user'
@@ -1322,6 +1356,7 @@ export interface FileRouteTypes {
     | '/experts/recognition'
     | '/experts/request'
     | '/experts/services'
+    | '/experts/trainer-application'
     | '/governance/decisions'
     | '/governance/publications'
     | '/governance/queue'
@@ -1420,6 +1455,8 @@ export interface FileRouteTypes {
     | '/admin/modules'
     | '/admin/publications'
     | '/admin/reviews'
+    | '/admin/service-requests'
+    | '/admin/trainer-applications'
     | '/admin/users'
     | '/dashboard_/admin'
     | '/dashboard_/user'
@@ -1447,6 +1484,7 @@ export interface FileRouteTypes {
     | '/experts/recognition'
     | '/experts/request'
     | '/experts/services'
+    | '/experts/trainer-application'
     | '/governance/decisions'
     | '/governance/publications'
     | '/governance/queue'
@@ -1839,6 +1877,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReviewsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/service-requests': {
+      id: '/admin/service-requests'
+      path: '/service-requests'
+      fullPath: '/admin/service-requests'
+      preLoaderRoute: typeof AdminServiceRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/trainer-applications': {
+      id: '/admin/trainer-applications'
+      path: '/trainer-applications'
+      fullPath: '/admin/trainer-applications'
+      preLoaderRoute: typeof AdminTrainerApplicationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -2040,6 +2092,13 @@ declare module '@tanstack/react-router' {
       path: '/services'
       fullPath: '/experts/services'
       preLoaderRoute: typeof ExpertsServicesRouteImport
+      parentRoute: typeof ExpertsRoute
+    }
+    '/experts/trainer-application': {
+      id: '/experts/trainer-application'
+      path: '/trainer-application'
+      fullPath: '/experts/trainer-application'
+      preLoaderRoute: typeof ExpertsTrainerApplicationRouteImport
       parentRoute: typeof ExpertsRoute
     }
     '/governance/': {
@@ -2519,6 +2578,8 @@ interface AdminRouteChildren {
   AdminModulesRoute: typeof AdminModulesRoute
   AdminPublicationsRoute: typeof AdminPublicationsRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
+  AdminServiceRequestsRoute: typeof AdminServiceRequestsRoute
+  AdminTrainerApplicationsRoute: typeof AdminTrainerApplicationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -2530,6 +2591,8 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminModulesRoute: AdminModulesRoute,
   AdminPublicationsRoute: AdminPublicationsRoute,
   AdminReviewsRoute: AdminReviewsRoute,
+  AdminServiceRequestsRoute: AdminServiceRequestsRoute,
+  AdminTrainerApplicationsRoute: AdminTrainerApplicationsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -2615,6 +2678,7 @@ interface ExpertsRouteChildren {
   ExpertsRecognitionRoute: typeof ExpertsRecognitionRoute
   ExpertsRequestRoute: typeof ExpertsRequestRoute
   ExpertsServicesRoute: typeof ExpertsServicesRoute
+  ExpertsTrainerApplicationRoute: typeof ExpertsTrainerApplicationRoute
   ExpertsIndexRoute: typeof ExpertsIndexRoute
 }
 
@@ -2632,6 +2696,7 @@ const ExpertsRouteChildren: ExpertsRouteChildren = {
   ExpertsRecognitionRoute: ExpertsRecognitionRoute,
   ExpertsRequestRoute: ExpertsRequestRoute,
   ExpertsServicesRoute: ExpertsServicesRoute,
+  ExpertsTrainerApplicationRoute: ExpertsTrainerApplicationRoute,
   ExpertsIndexRoute: ExpertsIndexRoute,
 }
 

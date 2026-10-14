@@ -44,7 +44,7 @@ function BecomeTrainerPage() {
         title: "Ready to apply?",
         description: "Complete the trainer application. Only Verified BARUNA Experts are eligible.",
         button: "Start Trainer Application",
-        href: "/experts/join",
+        href: "/experts/trainer-application",
       }}
     >
       <div className="space-y-6">
@@ -116,6 +116,9 @@ function BecomeTrainerPage() {
         </section>
 
         <div className="flex flex-wrap gap-3">
+          <Link to="/experts/trainer-application" className="inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-marine">
+            I am a Verified Expert — Apply Now <ArrowRight className="h-4 w-4" />
+          </Link>
           <Link to="/experts/join" className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground hover:bg-navy">
             Register as an Expert First <ArrowRight className="h-4 w-4" />
           </Link>

@@ -5,6 +5,7 @@ import type { Json } from "@/integrations/supabase/types";
 import type { ServiceRequest, TrainerPortalBootstrap } from "./portal-services.types";
 import { assertModuleAttachments, getModuleLevelLimitBlocker } from "./module-submission-validation";
 import { ServiceRequestPayloadSchema, assertServiceRequestFiles } from "./service-request-files";
+import { toFriendlyServiceError } from "./service-request-errors";
 
 const RequestType = z.enum(["speaker", "trainer", "reviewer", "mentor", "technical"]);
 const CreateRequest = z.object({
@@ -14,7 +15,13 @@ const CreateRequest = z.object({
   payload: ServiceRequestPayloadSchema,
 });
 const RequestId = z.object({ requestId: z.string().uuid() });
-const Respond = RequestId.extend({ action: z.enum(["accept", "request_info", "decline"]) });
+const Respond = RequestId.extend({
+  action: z.enum(["accept", "request_info", "decline"]),
+  message: z.string().trim().max(2000).optional(),
+}).refine((v) => v.action !== "request_info" || (v.message?.length ?? 0) >= 5, {
+  message: "Tuliskan informasi yang Anda butuhkan dari pemohon (minimal 5 karakter).",
+  path: ["message"],
+});
 const ModuleSubmission = z.object({
   draftId: z.string().uuid().optional(),
   title: z.string().trim().min(3).max(240),
@@ -374,9 +381,9 @@ export const respondToTrainerServiceRequest = createServerFn({ method: "POST" })
   .validator((input) => Respond.parse(input))
   .handler(async ({ context, data }) => {
     const { data: result, error } = await context.supabase.rpc("trainer_service_request_respond", {
-      _request_id: data.requestId, _action: data.action,
+      _request_id: data.requestId, _action: data.action, _message: data.message || null,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(toFriendlyServiceError(error.message));
     return result;
   });
 

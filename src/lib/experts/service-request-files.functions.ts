@@ -15,14 +15,11 @@ export const getServiceRequestFileUrl = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // expert_service_requests is not in the generated types yet (types.ts is stale).
-    type RequestRow = { id: string; requester_id: string; target_expert_id: string | null; payload: unknown };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: request, error } = (await (supabaseAdmin as any)
+    const { data: request, error } = await supabaseAdmin
       .from("expert_service_requests")
       .select("id, requester_id, target_expert_id, payload")
       .eq("id", data.requestId)
-      .maybeSingle()) as { data: RequestRow | null; error: { message: string } | null };
+      .maybeSingle();
     if (error) throw new Error(error.message);
     if (!request) throw new Error("Permintaan tidak ditemukan.");
 

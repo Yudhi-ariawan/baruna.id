@@ -25,7 +25,7 @@ function TrainerPortalGuard() {
       </div>
     );
   }
-  if (data.access === "expert_non_trainer") return <StateScreen icon={GraduationCap} title="Trainer qualification required" description={`Your expert profile${data.expertName ? ` (${data.expertName})` : ""} is recognized, but its trainer qualification is not active. Complete the trainer verification process to unlock this workspace.`} action="Become a BARUNA Trainer" href="/experts/become-trainer" />;
+  if (data.access === "expert_non_trainer") return <StateScreen icon={GraduationCap} title="Trainer qualification required" description={`Your expert profile${data.expertName ? ` (${data.expertName})` : ""} is recognized, but its trainer qualification is not active. Submit a trainer qualification application to unlock this workspace.`} action="Apply for Trainer Qualification" href="/experts/trainer-application" />;
   return <Outlet />;
 }
 

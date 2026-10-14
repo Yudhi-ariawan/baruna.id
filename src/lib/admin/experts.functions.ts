@@ -892,13 +892,13 @@ export const archiveAdminExpert = createServerFn({ method: "POST" })
         .eq("id", expertRecord.id);
       if (expertErr) throw new Error(`Gagal menyembunyikan profil expert: ${expertErr.message}`);
 
-      const { error: trainerErr } = await supabaseAdmin
-        .from("expert_trainer_status")
-        .update({
-          trainer_status: "inactive",
-        })
-        .eq("expert_id", expertRecord.id);
-      if (trainerErr) console.error("[archiveAdminExpert] trainer deactivate failed:", trainerErr.message);
+      // expert_trainer_status is versioned history: append, never overwrite.
+      const { deactivateTrainerForArchive } = await import("@/lib/experts/trainer-status.server");
+      try {
+        await deactivateTrainerForArchive(expertRecord.id, context.userId);
+      } catch (trainerErr) {
+        console.error("[archiveAdminExpert] trainer deactivate failed:", trainerErr);
+      }
     }
 
     if (subj.submitted_by) {
@@ -994,13 +994,12 @@ export const unarchiveAdminExpert = createServerFn({ method: "POST" })
         .eq("id", expertRecord.id);
       if (expertErr) throw new Error(`Gagal memulihkan profil expert: ${expertErr.message}`);
 
-      const { error: trainerErr } = await supabaseAdmin
-        .from("expert_trainer_status")
-        .update({
-          trainer_status: "active",
-        })
-        .eq("expert_id", expertRecord.id);
-      if (trainerErr) console.error("[unarchiveAdminExpert] trainer restore failed:", trainerErr.message);
+      const { restoreTrainerAfterArchive } = await import("@/lib/experts/trainer-status.server");
+      try {
+        await restoreTrainerAfterArchive(expertRecord.id, context.userId);
+      } catch (trainerErr) {
+        console.error("[unarchiveAdminExpert] trainer restore failed:", trainerErr);
+      }
 
       if (subj.submitted_by) {
         await setExpertRoleStatus(subj.submitted_by, "active");

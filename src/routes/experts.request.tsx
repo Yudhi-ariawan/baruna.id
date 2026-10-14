@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
@@ -84,6 +85,7 @@ function RequestExpertPage() {
   const { type: initialType, expert } = useSearch({ from: Route.id });
   const navigate = useNavigate();
   const createRequest = useServerFn(createExpertServiceRequest);
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(initialType ? 2 : 1);
   const [type, setType] = useState<RequestType | null>(initialType ?? null);
   const [draft, setDraft] = useState<RequestDraft>(() =>
@@ -151,6 +153,7 @@ function RequestExpertPage() {
     setError(null);
     try {
       await createRequest({ data: { type, status, targetExpertSlug: expert ?? null, payload: { values: draft.values, files: draft.files } } });
+      void queryClient.invalidateQueries({ queryKey: ["experts", "my-service-requests"] });
       setSubmitted(status);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save this request.");

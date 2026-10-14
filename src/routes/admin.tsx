@@ -8,6 +8,7 @@ import {
   ExternalLink,
   FileText,
   GraduationCap,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -202,6 +203,18 @@ function AdminShell() {
           to: "/admin/experts" as const,
           icon: UserCheck,
           description: "Pengajuan pakar baru",
+        },
+        {
+          label: "Kualifikasi Trainer",
+          to: "/admin/trainer-applications" as const,
+          icon: GraduationCap,
+          description: "Pengajuan status trainer",
+        },
+        {
+          label: "Penugasan Expert",
+          to: "/admin/service-requests" as const,
+          icon: Inbox,
+          description: "Permintaan layanan expert",
         },
         {
           label: "Verifikasi Modul",
