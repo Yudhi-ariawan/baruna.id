@@ -89,5 +89,18 @@ Pastikan ketiga pilar utama BARUNA saling terhubung secara konsisten:
 * **Modul Academy & Knowledge Hub $\rightarrow$ Experts:** Menghasilkan rekam jejak, jam belajar (*learning hours*), dan data reputasi pakar secara otomatis.
 
 ---
+
+## 7. Siklus Hidup Pengajuan Expert (PB-EXP-01 / PB-EXP-02)
+
+Status pengajuan expert tersebar di `review_subjects.current_status`, `review_subjects.metadata.review_status`, keputusan terakhir di `review_decisions`, dan `review_drafts.status`. Agar tidak terjadi konflik antar-fitur:
+
+1. **Satu sumber kebenaran status:** gunakan `deriveExpertEffectiveStatus()` di `src/lib/experts/application-status.ts`. Dilarang menulis ulang logika penentuan status di halaman/fungsi lain.
+2. **Guard transisi keputusan:** setiap keputusan admin wajib lolos `getExpertDecisionBlocker()` (server) — arsip harus dipulihkan dulu, keputusan yang sama tidak boleh diulang, dan approve pada expert yang sudah disetujui hanya melakukan sinkronisasi ulang tanpa baris keputusan baru.
+3. **Pemisahan wewenang:** reviewer/verifier hanya membaca antrean; keputusan, arsip, dan pemulihan hanya untuk `approver`, `admin`, `super_admin`. Pemohon tidak boleh memutuskan pengajuannya sendiri.
+4. **Optimistic lock:** penulisan status `review_subjects` dari server function wajib memakai `.eq("updated_at", <nilai yang dibaca>)` agar klik ganda / dua verifikator bersamaan tidak saling menimpa.
+5. **Duplicate check:** satu akun hanya boleh memiliki satu pengajuan aktif dan satu profil `experts` kanonik; publikasi ulang menautkan ke profil yang sudah ada (slug dipertahankan, statistik trainer tidak di-reset).
+6. **Validasi payload server:** payload pengajuan divalidasi `ExpertPayloadSchema` dan path dokumen wajib berada di `users/<userId>/` (`src/lib/experts/application-validation.ts`). Batas unggahan memakai `src/lib/storage/upload-limits.ts`.
+
+---
 *Dokumen ini diperbarui secara berkala sesuai dengan evolusi sistem dan tata kelola BARUNA.*
 

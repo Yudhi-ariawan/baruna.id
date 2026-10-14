@@ -8,17 +8,58 @@ import type {
   ExpertApplicationStatus,
   ExpertDraftPayload,
 } from "./application.types";
+import { deriveExpertEffectiveStatus, toApplicantReviewStatus } from "./application-status";
+import {
+  ExpertPayloadSchema,
+  assertOwnedDocumentPaths,
+  getExpertPayloadIncompleteFields,
+  toFriendlyExpertError,
+} from "./application-validation";
 
-const DraftPayload = z.record(z.unknown());
 const DraftId = z.object({ draftId: z.string().uuid() });
 const SaveInput = z.object({
   draftId: z.string().uuid().optional(),
   displayName: z.string().trim().min(2).max(160),
-  payload: DraftPayload,
+  payload: ExpertPayloadSchema,
 });
+
+const IN_QUEUE_SUBJECT_STATUSES = ["pending", "under_review", "decision_pending"];
 
 function asPayload(value: unknown): ExpertDraftPayload {
   return value as ExpertDraftPayload;
+}
+
+/**
+ * PB-EXP-02 duplicate check: a user may hold at most one live expert
+ * application and may not apply again once they are an active expert.
+ * Returns a blocking message, or null when a new application may start.
+ */
+async function getNewApplicationBlocker(userId: string): Promise<string | null> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const [{ data: activeExpert }, { data: queuedSubjects }] = await Promise.all([
+    supabaseAdmin
+      .from("experts")
+      .select("id")
+      .or(`original_contributor_id.eq.${userId},created_by.eq.${userId}`)
+      .in("current_status", ["approved", "published"])
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("review_subjects")
+      .select("id, metadata")
+      .eq("kind", "expert")
+      .eq("submitted_by", userId)
+      .in("current_status", IN_QUEUE_SUBJECT_STATUSES),
+  ]);
+  if (activeExpert) return "Akun Anda sudah terdaftar sebagai expert aktif.";
+  const queued = queuedSubjects ?? [];
+  if (queued.length === 0) return null;
+  const awaitingRevision = queued.some(
+    (subject) => ((subject.metadata as Record<string, unknown>) ?? {}).review_status === "revision_requested",
+  );
+  return awaitingRevision
+    ? "Anda memiliki pengajuan yang menunggu revisi. Silakan lanjutkan revisi tersebut, bukan membuat pengajuan baru."
+    : toFriendlyExpertError("expert_application_already_pending");
 }
 
 async function readApplications(context: {
@@ -93,40 +134,22 @@ async function readApplications(context: {
       const subjInfo = draft.linked_subject_id
         ? (subjectMap.get(draft.linked_subject_id) ?? null)
         : null;
-      const subjStatus = subjInfo?.current_status ?? null;
-      const subjMeta = subjInfo?.metadata ?? {};
       const latestDec = draft.linked_subject_id
         ? (decisionMap.get(draft.linked_subject_id) ?? null)
         : null;
 
-      let effectiveReviewStatus = subjStatus;
-      if (
-        subjStatus === "withdrawn" ||
-        subjStatus === "archived" ||
-        subjMeta.review_status === "archived"
-      ) {
-        effectiveReviewStatus = "archived";
-      } else if (
-        subjStatus === "approved" ||
-        (latestDec?.decision === "approve" && subjStatus !== "pending" && subjStatus !== "rejected")
-      ) {
-        effectiveReviewStatus = "approved";
-      } else if (
-        subjStatus === "rejected" ||
-        (latestDec?.decision === "reject" && subjStatus !== "pending")
-      ) {
-        effectiveReviewStatus = "rejected";
-      } else if (
-        latestDec?.decision === "return_for_revision" ||
-        subjMeta.review_status === "revision_requested" ||
-        subjMeta.review_status === "resubmitted"
-      ) {
-        if (draft.status === "draft") {
-          effectiveReviewStatus = "revision_requested";
-        } else {
-          effectiveReviewStatus = "pending";
-        }
-      }
+      // A fresh draft that never entered the queue has no review status yet.
+      const effectiveReviewStatus = subjInfo
+        ? toApplicantReviewStatus(
+            deriveExpertEffectiveStatus({
+              subjectStatus: subjInfo.current_status,
+              subjectMeta: subjInfo.metadata,
+              latestDecision: latestDec?.decision,
+              draftStatus: draft.status,
+            }),
+            draft.status,
+          )
+        : null;
 
       return {
         draftId: draft.id,
@@ -257,14 +280,34 @@ export const saveExpertApplicationDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((value) => SaveInput.parse(value))
   .handler(async ({ data, context }) => {
+    assertOwnedDocumentPaths(data.payload, context.userId);
+
     let draftId = data.draftId;
     if (!draftId) {
-      const { data: createdId, error } = await context.supabase.rpc("expert_draft_create", {
-        _display_name: data.displayName,
-        _source_type: "external_submission",
-      });
-      if (error) throw new Error(error.message);
-      draftId = createdId as string;
+      // Idempotent create: reuse the caller's editable expert draft instead of
+      // spawning duplicates on double-click / multiple tabs.
+      const { data: reusable } = await context.supabase
+        .from("review_drafts")
+        .select("id")
+        .eq("submitter_id", context.userId)
+        .eq("subject_kind", "expert")
+        .eq("status", "draft")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (reusable?.id) {
+        draftId = reusable.id;
+      } else {
+        const blocker = await getNewApplicationBlocker(context.userId);
+        if (blocker) throw new Error(blocker);
+        const { data: createdId, error } = await context.supabase.rpc("expert_draft_create", {
+          _display_name: data.displayName,
+          _source_type: "external_submission",
+        });
+        if (error) throw new Error(toFriendlyExpertError(error.message));
+        draftId = createdId as string;
+      }
     } else {
       const { data: existingDraft } = await context.supabase
         .from("review_drafts")
@@ -294,7 +337,7 @@ export const saveExpertApplicationDraft = createServerFn({ method: "POST" })
       _draft_id: draftId,
       _patch: patchPayload as never,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(toFriendlyExpertError(error.message));
     return { draftId };
   });
 
@@ -302,10 +345,31 @@ export const submitExpertApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((value) => DraftId.parse(value))
   .handler(async ({ data, context }) => {
+    // PB-EXP-02 "Cek Kelengkapan": never queue an incomplete application,
+    // regardless of what the browser validated.
+    const { data: draft, error: draftError } = await context.supabase
+      .from("review_drafts")
+      .select("id, status, payload, linked_subject_id, subject_kind")
+      .eq("id", data.draftId)
+      .eq("submitter_id", context.userId)
+      .maybeSingle();
+    if (draftError) throw new Error(draftError.message);
+    if (!draft || draft.subject_kind !== "expert") throw new Error(toFriendlyExpertError("draft_not_found"));
+    if (draft.status !== "draft") throw new Error(toFriendlyExpertError("draft_already_submitted"));
+
+    const missing = getExpertPayloadIncompleteFields((draft.payload as Record<string, unknown>) ?? {});
+    if (missing.length > 0) {
+      throw new Error(`Pengajuan belum lengkap. Lengkapi: ${missing.join(", ")}.`);
+    }
+    if (!draft.linked_subject_id) {
+      const blocker = await getNewApplicationBlocker(context.userId);
+      if (blocker) throw new Error(blocker);
+    }
+
     const { data: subjectId, error } = await context.supabase.rpc("expert_draft_submit", {
       _draft_id: data.draftId,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(toFriendlyExpertError(error.message));
 
     // Sync review_subjects metadata if this was a resubmission of a revision_requested subject
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -321,7 +385,7 @@ export const submitExpertApplication = createServerFn({ method: "POST" })
         currentMeta.review_status === "revision_requested" ||
         currentMeta.last_decision === "return_for_revision";
       if (wasRevised) {
-        await supabaseAdmin
+        const { error: syncError } = await supabaseAdmin
           .from("review_subjects")
           .update({
             current_status: "pending",
@@ -333,6 +397,10 @@ export const submitExpertApplication = createServerFn({ method: "POST" })
             updated_at: new Date().toISOString(),
           })
           .eq("id", subj.id);
+        if (syncError) {
+          // The submission itself is committed; surface the drift in logs rather than failing the user.
+          console.error("[submitExpertApplication] metadata sync failed:", syncError.message);
+        }
       }
     }
 
@@ -346,23 +414,29 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
       .object({
         draftId: z.string().uuid(),
         subjectId: z.string().uuid(),
-        displayName: z.string().min(1).max(160),
-        payload: DraftPayload,
+        displayName: z.string().trim().min(1).max(160),
+        payload: ExpertPayloadSchema,
         notes: z.string().max(2000).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data: input, context }) => {
+    assertOwnedDocumentPaths(input.payload, context.userId);
+    const missing = getExpertPayloadIncompleteFields(input.payload);
+    if (missing.length > 0) {
+      throw new Error(`Pengajuan belum lengkap. Lengkapi: ${missing.join(", ")}.`);
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1. Verify subject ownership
     const { data: subj, error: subjErr } = await supabaseAdmin
       .from("review_subjects")
-      .select("id, submitted_by, current_status, metadata")
+      .select("id, kind, submitted_by, current_status, metadata, updated_at")
       .eq("id", input.subjectId)
       .single();
 
-    if (subjErr || !subj || subj.submitted_by !== context.userId) {
+    if (subjErr || !subj || subj.submitted_by !== context.userId || subj.kind !== "expert") {
       throw new Error("Pengajuan tidak ditemukan atau Anda tidak memiliki akses.");
     }
 
@@ -370,7 +444,7 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
     let targetDraftId = input.draftId;
     const { data: latestActiveDraft } = await supabaseAdmin
       .from("review_drafts")
-      .select("id")
+      .select("id, status")
       .eq("linked_subject_id", input.subjectId)
       .eq("submitter_id", context.userId)
       .neq("status", "withdrawn")
@@ -381,21 +455,31 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
       targetDraftId = latestActiveDraft.id;
     }
 
-    // 2. Update draft payload with revised files
-    await supabaseAdmin
-      .from("review_drafts")
-      .update({
-        payload: input.payload as never,
-        status: "submitted",
-        title: input.displayName,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", targetDraftId)
-      .eq("submitter_id", context.userId);
+    // 2. State guard: only a subject that is actually waiting for this applicant's
+    //    revision may be resubmitted. Without this an approved/rejected/archived
+    //    subject could be silently pushed back into the queue.
+    const { data: latestDecision } = await supabaseAdmin
+      .from("review_decisions")
+      .select("decision")
+      .eq("subject_id", input.subjectId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const effective = deriveExpertEffectiveStatus({
+      subjectStatus: subj.current_status,
+      subjectMeta: (subj.metadata as Record<string, unknown>) ?? {},
+      latestDecision: latestDecision?.decision,
+      draftStatus: latestActiveDraft?.status,
+    });
+    if (effective !== "revision_requested" || latestActiveDraft?.status !== "draft") {
+      throw new Error("Pengajuan ini tidak sedang menunggu revisi. Muat ulang halaman untuk melihat status terbaru.");
+    }
 
-    // 3. Reset subject status back to "pending" to reappear in Admin's verification queue
+    // 3. Claim the subject with an optimistic lock on updated_at so a double
+    //    submit (or a concurrent admin decision) cannot both win.
+    const now = new Date().toISOString();
     const currentSubjMeta = (subj.metadata as Record<string, unknown>) ?? {};
-    await supabaseAdmin
+    const { data: claimed, error: claimErr } = await supabaseAdmin
       .from("review_subjects")
       .update({
         current_status: "pending",
@@ -403,14 +487,48 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
         metadata: {
           ...currentSubjMeta,
           review_status: "resubmitted",
-          resubmitted_at: new Date().toISOString(),
+          resubmitted_at: now,
           resubmission_notes: input.notes || "Dokumen revisi dikirimkan ulang oleh calon expert.",
         } as never,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
-      .eq("id", input.subjectId);
+      .eq("id", input.subjectId)
+      .eq("updated_at", subj.updated_at)
+      .select("id");
+    if (claimErr) throw new Error(claimErr.message);
+    if (!claimed || claimed.length === 0) {
+      throw new Error("Pengajuan sedang diproses atau telah berubah. Muat ulang halaman lalu coba lagi.");
+    }
 
-    // 4. Record a revision snapshot in review_subject_revisions using max(revision) + 1
+    const restoreSubject = async () => {
+      await supabaseAdmin
+        .from("review_subjects")
+        .update({
+          current_status: subj.current_status,
+          metadata: currentSubjMeta as never,
+        })
+        .eq("id", input.subjectId);
+    };
+
+    // 4. Move the draft to submitted through the caller's own RLS context.
+    const { data: movedDraft, error: draftErr } = await context.supabase
+      .from("review_drafts")
+      .update({
+        payload: input.payload as never,
+        status: "submitted",
+        title: input.displayName,
+        updated_at: now,
+      })
+      .eq("id", targetDraftId)
+      .eq("submitter_id", context.userId)
+      .eq("status", "draft")
+      .select("id");
+    if (draftErr || !movedDraft || movedDraft.length === 0) {
+      await restoreSubject();
+      throw new Error(draftErr?.message || "Draf revisi tidak dapat dikirim. Muat ulang halaman lalu coba lagi.");
+    }
+
+    // 5. Record a revision snapshot (version record, PB-EXP-01) using max(revision) + 1
     const { data: latestRev } = await supabaseAdmin
       .from("review_subject_revisions")
       .select("revision")
@@ -420,17 +538,21 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
       .maybeSingle();
 
     const revNum = Number(latestRev?.revision ?? 0) + 1;
-    await supabaseAdmin.from("review_subject_revisions").insert({
+    const { error: revErr } = await supabaseAdmin.from("review_subject_revisions").insert({
       subject_id: input.subjectId,
-      draft_id: input.draftId,
+      draft_id: targetDraftId,
       revision: revNum,
       snapshot: {
         payload: input.payload,
-        resubmitted_at: new Date().toISOString(),
+        resubmitted_at: now,
         notes: input.notes || "Dokumen revisi dikirimkan ulang oleh calon expert.",
       } as unknown as Json,
       content_hash: `rev-exp-${revNum}-${Date.now()}`,
     });
+    if (revErr) {
+      // Submission state is already consistent; the snapshot is audit-only.
+      console.error("[resubmitExpertApplicationRevision] revision snapshot failed:", revErr.message);
+    }
 
     return { success: true, subjectId: input.subjectId, revision: revNum };
   });

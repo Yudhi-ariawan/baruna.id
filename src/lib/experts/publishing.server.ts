@@ -194,16 +194,39 @@ export async function publishApprovedExpert({
     "Marine Expert";
   const displayName = rawDisplayName.trim();
 
-  // Determine unique slug
-  let slug = slugifyExpertName(displayName);
-  const { data: existingWithSlug } = await supabaseAdmin
+  // PB-EXP-02 duplicate / match check: one canonical expert profile per person.
+  // Prefer the row created from this submission; otherwise link to the profile the
+  // same applicant already owns (e.g. re-application after archive) instead of
+  // inserting a second experts row for the same user.
+  const expertColumns = "id, slug, avatar_url, version" as const;
+  let { data: existingExpert } = await supabaseAdmin
     .from("experts")
-    .select("id, source_submission_id")
-    .eq("slug", slug)
+    .select(expertColumns)
+    .eq("source_submission_id", subjectId)
     .maybeSingle();
+  if (!existingExpert && subject.submitted_by) {
+    const { data: ownedExpert } = await supabaseAdmin
+      .from("experts")
+      .select(expertColumns)
+      .eq("original_contributor_id", subject.submitted_by)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    existingExpert = ownedExpert;
+  }
 
-  if (existingWithSlug && existingWithSlug.source_submission_id !== subjectId) {
-    slug = `${slug}-${subjectId.slice(0, 8)}`;
+  // Determine unique slug. An existing profile keeps its slug so public URLs,
+  // QR codes and links shared elsewhere never break on re-approval.
+  let slug = existingExpert?.slug || slugifyExpertName(displayName);
+  if (!existingExpert) {
+    const { data: existingWithSlug } = await supabaseAdmin
+      .from("experts")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (existingWithSlug) {
+      slug = `${slug}-${subjectId.slice(0, 8)}`;
+    }
   }
 
   // Resolve photo/avatar from uploaded documents if valid image
@@ -263,12 +286,6 @@ export async function publishApprovedExpert({
     typeof payload.website === "string" ? payload.website.trim() : null;
 
   // 3. Upsert into public.experts
-  const { data: existingExpert } = await supabaseAdmin
-    .from("experts")
-    .select("id, avatar_url, version")
-    .eq("source_submission_id", subjectId)
-    .maybeSingle();
-
   const now = new Date().toISOString();
   let expertId: string;
 
@@ -362,24 +379,26 @@ export async function publishApprovedExpert({
     .eq("expert_id", expertId)
     .maybeSingle();
 
-  const trainerData = {
-    expert_id: expertId,
-    trainer_status: "active" as const,
-    trainer_level: "certified" as const,
-    unique_graduated_participants: 0,
-    granted_by: decidedBy || null,
-    granted_at: now,
-    effective_from: now,
-    version: 1,
-  };
-
   if (existingTrainer) {
-    await supabaseAdmin
+    // Re-approval only re-activates access. Level, graduated-participant counters
+    // and version are reputation history (Slide 41) and must never be reset here.
+    const { error: trainerErr } = await supabaseAdmin
       .from("expert_trainer_status")
-      .update(trainerData)
+      .update({ trainer_status: "active", granted_by: decidedBy || null, granted_at: now })
       .eq("id", existingTrainer.id);
+    if (trainerErr) console.error("[publishApprovedExpert] trainer reactivate failed:", trainerErr.message);
   } else {
-    await supabaseAdmin.from("expert_trainer_status").insert(trainerData);
+    const { error: trainerErr } = await supabaseAdmin.from("expert_trainer_status").insert({
+      expert_id: expertId,
+      trainer_status: "active",
+      trainer_level: "certified",
+      unique_graduated_participants: 0,
+      granted_by: decidedBy || null,
+      granted_at: now,
+      effective_from: now,
+      version: 1,
+    });
+    if (trainerErr) console.error("[publishApprovedExpert] trainer grant failed:", trainerErr.message);
   }
 
   // 6. Sync relational child tables: expert_languages, expert_projects, expert_publications
@@ -518,24 +537,28 @@ export async function publishApprovedExpert({
         .eq("role_id", expertRole.id)
         .maybeSingle();
 
-      if (!existingRole) {
-        await supabaseAdmin.from("rbac_user_roles").insert({
-          user_id: subject.submitted_by,
-          role_id: expertRole.id,
-          status: "active",
-          is_primary: false,
-          valid_from: now,
-          granted_by: decidedBy || null,
-          approved_by: decidedBy || null,
-          approved_at: now,
-          reason: "expert_application_approved",
-        });
-      } else {
-        await supabaseAdmin
-          .from("rbac_user_roles")
-          .update({ status: "active", valid_until: null })
-          .eq("id", existingRole.id);
-      }
+      // Without the role the approved expert is locked out of /experts/portal,
+      // so a failure here must surface to the admin instead of being swallowed.
+      const { error: roleErr } = existingRole
+        ? await supabaseAdmin
+            .from("rbac_user_roles")
+            .update({ status: "active", valid_until: null })
+            .eq("id", existingRole.id)
+        : await supabaseAdmin.from("rbac_user_roles").upsert(
+            {
+              user_id: subject.submitted_by,
+              role_id: expertRole.id,
+              status: "active",
+              is_primary: false,
+              valid_from: now,
+              granted_by: decidedBy || null,
+              approved_by: decidedBy || null,
+              approved_at: now,
+              reason: "expert_application_approved",
+            },
+            { onConflict: "user_id,role_id" },
+          );
+      if (roleErr) throw new Error(`Gagal memberikan role expert: ${roleErr.message}`);
     }
 
     // Also update profiles organization, job_title, and phone

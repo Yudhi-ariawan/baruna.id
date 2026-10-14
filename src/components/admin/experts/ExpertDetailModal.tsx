@@ -32,6 +32,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { DocumentViewerModal } from "@/components/baruna/DocumentViewerModal";
 import { triggerFileDownload } from "@/lib/storage/mime";
 import type { AdminExpertDetail } from "@/lib/admin/experts.functions";
+import {
+  getExpertDecisionBlocker,
+  type ExpertDecision,
+  type ExpertEffectiveStatus,
+} from "@/lib/experts/application-status";
 import { formatDate, formatBytes, getStatusBadge } from "./expertAdminUtils";
 
 export interface ExpertDetailModalProps {
@@ -68,7 +73,13 @@ export function ExpertDetailModal({
     category?: string;
   } | null>(null);
 
-  const handleDecision = async (decision: "approve" | "return_for_revision" | "reject") => {
+  const actionsLocked = submitting || !detail?.viewerCanDecide;
+  // Same transition rules the server enforces, so blocked actions are disabled up front.
+  const decisionBlocker = (decision: ExpertDecision) =>
+    detail ? getExpertDecisionBlocker(detail.status as ExpertEffectiveStatus, decision) : null;
+
+  const handleDecision = async (decision: ExpertDecision) => {
+    if (submitting) return;
     setRationaleError(null);
     if ((decision === "return_for_revision" || decision === "reject") && !rationale.trim()) {
       const errMsg = "Wajib mengisi catatan evaluasi/alasan revisi agar calon expert mengetahui bagian yang perlu diperbaiki.";
@@ -144,10 +155,14 @@ export function ExpertDetailModal({
 
     try {
       setSubmitting(true);
-      await unarchiveFn({
+      const result = await unarchiveFn({
         data: { subjectId },
       });
-      toast.success("Profil expert berhasil dipulihkan dan kembali tayang di direktori publik.");
+      toast.success(
+        result?.status === "published"
+          ? "Profil expert berhasil dipulihkan dan kembali tayang di direktori publik."
+          : "Pengajuan dipulihkan dari arsip ke status sebelumnya (belum tayang di direktori).",
+      );
       onSuccess();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal memulihkan expert.";
@@ -205,7 +220,7 @@ export function ExpertDetailModal({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={submitting}
+                  disabled={actionsLocked}
                   onClick={handleUnarchive}
                   className="bg-navy hover:bg-navy/90 text-white text-xs font-semibold flex items-center gap-1.5"
                 >
@@ -227,7 +242,7 @@ export function ExpertDetailModal({
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={submitting}
+                    disabled={actionsLocked}
                     onClick={handleArchive}
                     className="border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1"
                   >
@@ -590,6 +605,13 @@ export function ExpertDetailModal({
                   )}
                 </div>
 
+                {detail && !detail.viewerCanDecide && (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    Mode baca saja: keputusan, arsip, dan pemulihan hanya dapat dilakukan oleh Approver atau
+                    Administrator, dan tidak untuk pengajuan milik Anda sendiri.
+                  </p>
+                )}
+
                 <div className="pt-3 border-t border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                   <Button
                     type="button"
@@ -605,7 +627,7 @@ export function ExpertDetailModal({
                     {detail?.status === "archived" ? (
                       <Button
                         type="button"
-                        disabled={submitting}
+                        disabled={actionsLocked}
                         onClick={handleUnarchive}
                         className="w-full sm:w-auto text-xs bg-navy hover:bg-navy/90 text-white font-semibold flex items-center justify-center gap-1.5 py-2.5 sm:py-2 shadow-xs"
                       >
@@ -617,7 +639,8 @@ export function ExpertDetailModal({
                         <Button
                           type="button"
                           variant="outline"
-                          disabled={submitting}
+                          disabled={actionsLocked || Boolean(decisionBlocker("reject"))}
+                          title={decisionBlocker("reject") ?? undefined}
                           onClick={() => handleDecision("reject")}
                           className="w-full sm:w-auto text-xs border-rose-300 text-rose-700 hover:bg-rose-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                         >
@@ -627,7 +650,8 @@ export function ExpertDetailModal({
                         <Button
                           type="button"
                           variant="outline"
-                          disabled={submitting}
+                          disabled={actionsLocked || Boolean(decisionBlocker("return_for_revision"))}
+                          title={decisionBlocker("return_for_revision") ?? undefined}
                           onClick={() => handleDecision("return_for_revision")}
                           className="w-full sm:w-auto text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                         >
@@ -639,7 +663,7 @@ export function ExpertDetailModal({
                           <Button
                             type="button"
                             variant="outline"
-                            disabled={submitting}
+                            disabled={actionsLocked}
                             onClick={handleArchive}
                             className="w-full sm:w-auto text-xs border-slate-300 text-slate-700 hover:bg-slate-100 flex items-center justify-center gap-1.5 py-2.5 sm:py-2"
                           >
@@ -649,7 +673,7 @@ export function ExpertDetailModal({
 
                         <Button
                           type="button"
-                          disabled={submitting}
+                          disabled={actionsLocked}
                           onClick={() => handleDecision("approve")}
                           className="w-full sm:w-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-1.5 py-2.5 sm:py-2 shadow-xs"
                         >
