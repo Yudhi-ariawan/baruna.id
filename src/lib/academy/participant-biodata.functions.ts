@@ -272,10 +272,9 @@ export const saveParticipantBiodata = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const now = new Date().toISOString();
 
-    let savedToTable = false;
-
-    // 1. Coba simpan ke tabel `participant_biodata` (jika tabel sudah aktif di PostgREST)
-    try {
+    // 1. Tabel `participant_biodata` adalah syarat resmi pendaftaran pelatihan, jadi
+    //    kegagalan menyimpan ke tabel menghentikan proses (tidak ada sukses palsu).
+    {
       const { error: upsertErr } = await (supabaseAdmin as any)
         .from("participant_biodata")
         .upsert(
@@ -302,13 +301,13 @@ export const saveParticipantBiodata = createServerFn({ method: "POST" })
           { onConflict: "user_id" },
         );
 
-      if (!upsertErr) {
-        savedToTable = true;
-      } else {
-        console.warn("[saveParticipantBiodata] Table upsert warning (fallback used):", upsertErr.message);
+      if (upsertErr) {
+        throw new Error(
+          /participant_biodata|schema cache/.test(upsertErr.message)
+            ? "Penyimpanan biodata belum aktif di database (migrasi belum dijalankan). Hubungi pengelola sistem."
+            : `Gagal menyimpan biodata: ${upsertErr.message}`,
+        );
       }
-    } catch (e: any) {
-      console.warn("[saveParticipantBiodata] Table not ready yet, using metadata persistence:", e?.message);
     }
 
     // 2. SELALU Simpan ke `auth.users.user_metadata` (100% Persisten, aman tanpa schema error)
@@ -363,43 +362,48 @@ export const saveParticipantBiodata = createServerFn({ method: "POST" })
       console.warn("[saveParticipantBiodata] profile sync warning:", profileErr);
     }
 
-    // 4. Ubah role menjadi "participant" di `public.rbac_user_roles` LANGSUNG AKTIF tanpa acc admin
-    try {
-      const { data: participantRole } = await (supabaseAdmin as any)
+    // 4. Ubah role menjadi "participant" di `public.rbac_user_roles` LANGSUNG AKTIF tanpa acc admin.
+    //    Database mewajibkan tepat satu role primer aktif per pengguna, jadi role primer
+    //    lain dicek tanpa menghitung baris participant milik pengguna itu sendiri.
+    {
+      const { data: participantRole, error: roleLookupErr } = await (supabaseAdmin as any)
         .from("rbac_roles")
         .select("id")
         .eq("code", "participant")
         .maybeSingle();
+      if (roleLookupErr || !participantRole?.id) {
+        throw new Error("Biodata tersimpan, tetapi peran 'participant' belum terdaftar di sistem. Hubungi pengelola sistem.");
+      }
 
-      if (participantRole?.id) {
-        // Periksa apakah user sudah memiliki role primer aktif
-        const { data: existingPrimary } = await (supabaseAdmin as any)
-          .from("rbac_user_roles")
-          .select("id")
-          .eq("user_id", context.userId)
-          .eq("status", "active")
-          .eq("is_primary", true)
-          .maybeSingle();
+      const { data: otherPrimary, error: primaryErr } = await (supabaseAdmin as any)
+        .from("rbac_user_roles")
+        .select("id")
+        .eq("user_id", context.userId)
+        .eq("status", "active")
+        .eq("is_primary", true)
+        .neq("role_id", participantRole.id)
+        .limit(1);
+      if (primaryErr) throw new Error(`Biodata tersimpan, tetapi gagal memeriksa peran: ${primaryErr.message}`);
 
-        const isPrimary = !existingPrimary;
-
-        // Berikan role participant aktif langsung (approved_at langsung diisi)
-        await (supabaseAdmin as any).from("rbac_user_roles").upsert(
-          {
-            user_id: context.userId,
-            role_id: participantRole.id,
-            status: "active",
-            is_primary: isPrimary,
-            scope: {},
-            valid_from: now,
-            approved_at: now, // Otomatis disetujui sistem (self-service)
-            reason: "registered_as_participant_self_service",
-          },
-          { onConflict: "user_id,role_id" },
+      const { error: grantErr } = await (supabaseAdmin as any).from("rbac_user_roles").upsert(
+        {
+          user_id: context.userId,
+          role_id: participantRole.id,
+          status: "active",
+          is_primary: !(otherPrimary && otherPrimary.length > 0),
+          scope: {},
+          valid_from: now,
+          valid_until: null,
+          approved_at: now, // Otomatis disetujui sistem (self-service)
+          reason: "registered_as_participant_self_service",
+        },
+        { onConflict: "user_id,role_id" },
+      );
+      if (grantErr) {
+        throw new Error(
+          `Biodata tersimpan, tetapi peran Participant gagal diaktifkan: ${grantErr.message}. Silakan kirim ulang formulir.`,
         );
       }
-    } catch (roleErr) {
-      console.warn("[saveParticipantBiodata] role assignment warning:", roleErr);
     }
 
     // 5. Catat audit trail lengkap ke `public.admin_audit_log`
@@ -413,7 +417,7 @@ export const saveParticipantBiodata = createServerFn({ method: "POST" })
         before_data: null,
         after_data: {
           ...data,
-          saved_to_table: savedToTable,
+          saved_to_table: true,
           role_assigned: "participant",
         },
         metadata: {

@@ -97,14 +97,9 @@ export const getAccountProfile = createServerFn({ method: "GET" })
       }
     }
 
+    // Roles come from RBAC only; user_metadata is user-editable and not evidence of a
+    // role. It is still read below for display fields (name, avatar, links).
     const meta = (identity.user.user_metadata as Record<string, unknown>) ?? {};
-    if (
-      (meta.role === "participant" ||
-        (Array.isArray(meta.roles) && meta.roles.includes("participant"))) &&
-      !activeRoles.includes("participant")
-    ) {
-      activeRoles.push("participant");
-    }
 
     // Coba baca dari tabel participant_biodata atau fallback ke user_metadata
     let biodata: Record<string, any> | null = null;

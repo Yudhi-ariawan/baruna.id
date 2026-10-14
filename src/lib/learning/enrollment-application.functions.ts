@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { toFriendlyEnrollmentError } from "@/lib/learning/enrollment-errors";
 
 export type CourseEnrollmentStatus = "none" | "pending" | "approved" | "rejected";
 
@@ -15,60 +16,37 @@ export type MyCourseEnrollmentDetail = {
   courseTitle?: string | null;
 };
 
+const LEARNER_ROLES = ["participant", "trainer", "expert", "super_admin", "admin"];
+
+/**
+ * Whether the user may apply for courses: holds a learner-capable RBAC role or has
+ * submitted participant biodata. Never reads auth user_metadata — users can edit
+ * their own metadata from the browser, so it is not evidence of anything.
+ */
 export async function checkUserHasParticipantRole(
   supabaseAdmin: any,
   userId: string,
 ): Promise<boolean> {
-  // 1. Check rbac_user_roles table
-  try {
-    const now = new Date().toISOString();
-    const { data: assignments } = await (supabaseAdmin as any)
-      .from("rbac_user_roles")
-      .select("rbac_roles!inner(code)")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .lte("valid_from", now)
-      .or(`valid_until.is.null,valid_until.gt.${now}`)
-      .in("rbac_roles.code", ["participant", "trainer", "expert", "super_admin", "admin"])
-      .limit(1);
-    if (assignments && assignments.length > 0) {
-      return true;
-    }
-  } catch {}
+  const now = new Date().toISOString();
+  const { data: assignments, error: roleErr } = await supabaseAdmin
+    .from("rbac_user_roles")
+    .select("rbac_roles!inner(code)")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .lte("valid_from", now)
+    .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .in("rbac_roles.code", LEARNER_ROLES)
+    .limit(1);
+  if (roleErr) throw new Error(`Gagal memeriksa peran pengguna: ${roleErr.message}`);
+  if (assignments && assignments.length > 0) return true;
 
-  // 2. Check participant_biodata table (if user submitted biodata form)
-  try {
-    const { data: bio } = await (supabaseAdmin as any)
-      .from("participant_biodata")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (bio?.id) {
-      return true;
-    }
-  } catch {}
-
-  // 3. Fallback: Check auth.users user_metadata
-  try {
-    const { data: userIdent } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const meta = (userIdent?.user?.user_metadata as Record<string, any>) || {};
-    if (
-      meta.role === "participant" ||
-      meta.role === "trainer" ||
-      meta.role === "expert" ||
-      meta.role === "admin" ||
-      meta.role === "super_admin" ||
-      (Array.isArray(meta.roles) &&
-        meta.roles.some((r: string) =>
-          ["participant", "trainer", "expert", "admin", "super_admin"].includes(r),
-        )) ||
-      Boolean(meta.participant_biodata?.nip)
-    ) {
-      return true;
-    }
-  } catch {}
-
-  return false;
+  const { data: bio, error: bioErr } = await supabaseAdmin
+    .from("participant_biodata")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (bioErr) throw new Error(toFriendlyEnrollmentError(bioErr.message));
+  return Boolean(bio?.id);
 }
 
 export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
@@ -83,89 +61,29 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<MyCourseEnrollmentDetail> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const hasParticipantRole = await checkUserHasParticipantRole(supabaseAdmin, context.userId);
-
-    // 1. Try querying primary table: course_enrollment_applications
-    try {
-      const { data: record, error } = await (supabaseAdmin as any)
+    const [hasParticipantRole, { data: record, error }] = await Promise.all([
+      checkUserHasParticipantRole(supabaseAdmin, context.userId),
+      (supabaseAdmin as any)
         .from("course_enrollment_applications")
         .select("status, notes, decision_notes, decision_at, created_at, course_title")
         .eq("user_id", context.userId)
         .eq("course_id", data.courseId)
-        .maybeSingle();
+        .maybeSingle(),
+    ]);
+    if (error) throw new Error(toFriendlyEnrollmentError(error.message));
 
-      if (!error && record) {
-        const status = (record.status as CourseEnrollmentStatus) || "pending";
-        return {
-          isEnrolled: status === "approved",
-          hasParticipantRole,
-          status,
-          appliedAt: record.created_at,
-          decisionAt: record.decision_at,
-          decisionNotes: record.decision_notes,
-          notes: record.notes,
-          courseTitle: record.course_title,
-        };
-      }
-    } catch {
-      // Table may not yet be in schema cache; continue to resilient fallback
-    }
+    if (!record) return { isEnrolled: false, hasParticipantRole, status: "none" };
 
-    // 2. Resilient check in admin_audit_log for audit-backed state
-    try {
-      const { data: auditLogs } = await (supabaseAdmin as any)
-        .from("admin_audit_log")
-        .select("event_type, after_data, created_at")
-        .eq("target_user_id", context.userId)
-        .eq("entity_type", "course_enrollment")
-        .eq("entity_id", data.courseId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (auditLogs && auditLogs.length > 0) {
-        const lastLog = auditLogs[0];
-        const payload = (lastLog.after_data as Record<string, any>) || {};
-        const status = (payload.status as CourseEnrollmentStatus) || "pending";
-        return {
-          isEnrolled: status === "approved",
-          hasParticipantRole,
-          status,
-          appliedAt: lastLog.created_at,
-          decisionAt: payload.decision_at || null,
-          decisionNotes: payload.decision_notes || null,
-          notes: payload.notes || null,
-          courseTitle: payload.course_title || null,
-        };
-      }
-    } catch {
-      // Ignore fallback audit read error
-    }
-
-    // 3. Resilient check in user_metadata & enrolments table
-    try {
-      const { data: userIdent } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userIdent?.user?.user_metadata as Record<string, any>) || {};
-      const enrollmentInfo = meta.course_enrollments?.[data.courseId];
-      const isApprovedInList = Array.isArray(meta.approved_courses) && meta.approved_courses.includes(data.courseId);
-
-      if (enrollmentInfo || isApprovedInList) {
-        const status = (enrollmentInfo?.status as CourseEnrollmentStatus) || (isApprovedInList ? "approved" : "pending");
-        return {
-          isEnrolled: status === "approved",
-          hasParticipantRole,
-          status,
-          appliedAt: enrollmentInfo?.applied_at || null,
-          decisionAt: enrollmentInfo?.approved_at || enrollmentInfo?.rejected_at || null,
-          decisionNotes: enrollmentInfo?.notes || null,
-          courseTitle: enrollmentInfo?.course_title || null,
-        };
-      }
-    } catch {}
-
+    const status = record.status as CourseEnrollmentStatus;
     return {
-      isEnrolled: false,
+      isEnrolled: status === "approved",
       hasParticipantRole,
-      status: "none",
+      status,
+      appliedAt: record.created_at,
+      decisionAt: record.decision_at,
+      decisionNotes: record.decision_notes,
+      notes: record.notes,
+      courseTitle: record.course_title,
     };
   });
 
@@ -181,100 +99,22 @@ export const submitCourseEnrollmentApplication = createServerFn({ method: "POST"
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Runs as the caller (RLS + auth.uid()); the RPC is idempotent and never
+    // resets an approved application. Any failure surfaces to the user.
+    const { data: result, error } = await (context.supabase as any).rpc("course_enrollment_apply", {
+      _course_id: data.courseId,
+      _course_title: data.courseTitle,
+      _notes: data.notes?.trim() || null,
+    });
+    if (error) throw new Error(toFriendlyEnrollmentError(error.message));
 
-    // 0. Enforce participant prerequisite: user must have completed participant biodata
-    const hasParticipantRole = await checkUserHasParticipantRole(supabaseAdmin, context.userId);
-    if (!hasParticipantRole) {
-      throw new Error(
-        "Anda wajib melengkapi Formulir Biodata Peserta terlebih dahulu sebelum mendaftar pelatihan ini. Silakan buka menu Daftar Peserta.",
-      );
-    }
-
-    // Fetch user profile and identity details
-    const [{ data: userIdent }, { data: profile }] = await Promise.all([
-      supabaseAdmin.auth.admin.getUserById(context.userId),
-      supabaseAdmin
-        .from("profiles")
-        .select("display_name, organization")
-        .eq("id", context.userId)
-        .maybeSingle(),
-    ]);
-
-    const userEmail = userIdent?.user?.email || "";
-    const applicantName =
-      profile?.display_name ||
-      (userIdent?.user?.user_metadata?.display_name as string) ||
-      (userIdent?.user?.user_metadata?.full_name as string) ||
-      userEmail.split("@")[0] ||
-      "Peserta Baru";
-    const applicantOrg =
-      profile?.organization ||
-      (userIdent?.user?.user_metadata?.organization as string) ||
-      null;
-
-    const now = new Date().toISOString();
-    let savedToTable = false;
-
-    // 1. Primary write to course_enrollment_applications
-    try {
-      const { error: upsertErr } = await (supabaseAdmin as any)
-        .from("course_enrollment_applications")
-        .upsert(
-          {
-            user_id: context.userId,
-            course_id: data.courseId,
-            course_title: data.courseTitle,
-            applicant_name: applicantName,
-            applicant_email: userEmail,
-            applicant_organization: applicantOrg,
-            status: "pending",
-            notes: data.notes?.trim() || null,
-            decision_by: null,
-            decision_at: null,
-            decision_notes: null,
-            updated_at: now,
-          },
-          { onConflict: "user_id,course_id" },
-        );
-
-      if (!upsertErr) {
-        savedToTable = true;
-      }
-    } catch {
-      savedToTable = false;
-    }
-
-    // 2. Comprehensive Admin Audit Log (guarantees persistence & event history)
-    try {
-      await (supabaseAdmin as any).from("admin_audit_log").insert({
-        event_type: "course_enrollment_requested",
-        actor_id: context.userId,
-        target_user_id: context.userId,
-        entity_type: "course_enrollment",
-        entity_id: data.courseId,
-        before_data: null,
-        after_data: {
-          status: "pending",
-          course_id: data.courseId,
-          course_title: data.courseTitle,
-          applicant_name: applicantName,
-          applicant_email: userEmail,
-          applicant_organization: applicantOrg,
-          notes: data.notes?.trim() || null,
-          saved_to_table: savedToTable,
-        },
-        metadata: {
-          requested_at: now,
-        },
-      });
-    } catch (auditErr) {
-      console.warn("[submitCourseEnrollment] audit log warning:", auditErr);
-    }
-
-    return {
-      success: true,
-      status: "pending" as const,
-      message: "Pendaftaran pelatihan berhasil diajukan dan sedang menunggu persetujuan tim Administrator.",
-    };
+    const status = (result as { status: CourseEnrollmentStatus; changed: boolean }).status;
+    const changed = (result as { changed: boolean }).changed;
+    const message =
+      status === "approved"
+        ? "Anda sudah terdaftar dan disetujui di pelatihan ini."
+        : changed
+          ? "Pendaftaran pelatihan berhasil diajukan dan sedang menunggu persetujuan tim Administrator."
+          : "Pendaftaran Anda sudah tercatat dan masih menunggu persetujuan tim Administrator.";
+    return { success: true, status, message };
   });

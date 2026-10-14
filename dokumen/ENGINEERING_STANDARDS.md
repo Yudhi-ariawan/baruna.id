@@ -105,6 +105,14 @@ Status pengajuan expert tersebar di `review_subjects.current_status`, `review_su
 9. **Penugasan Expert (PB-EXP-03):** status `expert_service_requests` hanya diubah lewat RPC (`admin_service_request_transition`, `trainer_service_request_respond`, `expert_service_request_reply`, `expert_service_request_cancel`). Setiap perubahan dicatat di `expert_service_request_events` (juga menjadi utas pesan "Request info" ↔ balasan). Admin wajib mengirim `updatedAt` mentah dari JSON daftar (jangan diubah lewat `Date`, presisi mikrodetik hilang). Penyelesaian menulis tepat satu baris `expert_training_facilitation_history` (`service_request_id` unik). Expert hanya dapat ditugaskan bila memiliki portal trainer aktif.
 10. **Kualifikasi Trainer (Slide 39):** expert non-trainer mengajukan lewat `/experts/trainer-application`; admin memutuskan di `/admin/trainer-applications`. Persetujuan **menambah versi baru** `expert_trainer_status`, tidak pernah meng-`UPDATE` riwayat. Arsip/pulihkan expert juga menambah versi (`appendTrainerStatusVersion`), dan pemulihan hanya membatalkan perubahan yang dibuat oleh pengarsipan.
 
+## 8. Pendaftaran Peserta (PB-ACA-03)
+
+1. **Satu sumber kebenaran:** status pendaftaran hanya dibaca dari `course_enrollment_applications`. Dilarang menurunkan role atau status persetujuan dari `auth.users.user_metadata` — pengguna dapat mengubah metadata miliknya sendiri lewat SDK browser. Metadata hanya boleh dipakai untuk data tampilan (nama, foto).
+2. **Hanya lewat RPC:** pendaftar memakai `course_enrollment_apply` (idempoten: status `approved`/`pending` tidak pernah di-reset), admin memakai `admin_course_enrollment_decide`. Role `authenticated` tidak memiliki hak INSERT/UPDATE langsung ke tabel.
+3. **Keputusan atomik:** baris keputusan, pemberian role `participant`, dan baris `enrolments` ditulis dalam satu transaksi. Kegagalan salah satunya membatalkan semuanya dan ditampilkan ke admin — dilarang `console.warn` lalu mengembalikan "sukses".
+4. **Role primer:** database mewajibkan tepat satu role primer aktif per pengguna. Saat memberi role tambahan, cek role primer lain **tanpa** menghitung baris role yang sedang diberikan; role `expert` tetap primer.
+5. **Keputusan final:** keputusan yang sama boleh diulang (idempoten), tetapi `approved` tidak dapat dibalik menjadi `rejected` atau sebaliknya. Admin tidak boleh memutuskan pendaftarannya sendiri.
+
 ---
 *Dokumen ini diperbarui secara berkala sesuai dengan evolusi sistem dan tata kelola BARUNA.*
 
