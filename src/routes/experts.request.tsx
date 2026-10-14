@@ -23,8 +23,6 @@ import {
   REQUEST_TYPE_CONFIG,
   REQUEST_TYPE_ORDER,
   REQUEST_PIPELINE,
-  ACCEPTED_FILE_TYPES,
-  MAX_BYTES,
   emptyRequestDraft,
   formatBytes,
   type RequestType,
@@ -34,6 +32,12 @@ import {
 } from "@/lib/experts";
 import { supabase } from "@/integrations/supabase/client";
 import { createExpertServiceRequest } from "@/lib/experts/portal-services.functions";
+import {
+  SERVICE_REQUEST_FILE_ACCEPT,
+  SERVICE_REQUEST_FILE_BUCKET,
+} from "@/lib/experts/service-request-files";
+import { resolveFileContentType } from "@/lib/storage/mime";
+import { getUploadSizeError } from "@/lib/storage/upload-limits";
 
 export const Route = createFileRoute("/experts/request")({
   head: () => ({
@@ -88,6 +92,7 @@ function RequestExpertPage() {
   const [submitted, setSubmitted] = useState<null | "draft" | "submitted">(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => {
@@ -139,7 +144,9 @@ function RequestExpertPage() {
   };
 
   const persist = async (status: "draft" | "submitted") => {
-    if (!type) return;
+    // Ref guard: a second click before re-render would create a duplicate request.
+    if (!type || inFlightRef.current) return;
+    inFlightRef.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -147,7 +154,10 @@ function RequestExpertPage() {
       setSubmitted(status);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save this request.");
-    } finally { setSaving(false); }
+    } finally {
+      inFlightRef.current = false;
+      setSaving(false);
+    }
   };
 
   if (submitted) {
@@ -459,15 +469,42 @@ function Field({
 function FileField({ file, onFile }: { file: FileMeta | null; onFile: (f: FileMeta | null) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handle = (f: File | null) => {
-    if (!f) return;
-    if (f.size > MAX_BYTES) {
-      setErr("File is too large (max 50 MB).");
+  // The file is uploaded to private storage immediately, so the target expert can
+  // actually open it. Previously only the name/size was stored ("phantom" file).
+  const handle = async (f: File | null) => {
+    if (!f || uploading) return;
+    const sizeError = getUploadSizeError(f);
+    if (sizeError) {
+      setErr(sizeError);
       return;
     }
     setErr(null);
-    onFile({ name: f.name, size: f.size, type: f.type || "file", uploadedAt: new Date().toISOString() });
+    setUploading(true);
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("Sesi login berakhir. Silakan masuk kembali.");
+      const contentType = resolveFileContentType(f.name, f.type);
+      const safeName = f.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+      const path = `users/${data.user.id}/service-requests/${crypto.randomUUID()}-${safeName}`;
+      const { error } = await supabase.storage
+        .from(SERVICE_REQUEST_FILE_BUCKET)
+        .upload(path, f, { contentType, upsert: false });
+      if (error) throw new Error(`Gagal mengunggah berkas: ${error.message}`);
+      onFile({
+        name: f.name,
+        size: f.size,
+        type: contentType,
+        uploadedAt: new Date().toISOString(),
+        path,
+        bucket: SERVICE_REQUEST_FILE_BUCKET,
+      });
+    } catch (cause) {
+      setErr(cause instanceof Error ? cause.message : "Gagal mengunggah berkas.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (file) {
@@ -497,18 +534,23 @@ function FileField({ file, onFile }: { file: FileMeta | null; onFile: (f: FileMe
       <Upload className="mx-auto h-7 w-7 text-marine" />
       <button
         type="button"
+        disabled={uploading}
         onClick={() => inputRef.current?.click()}
-        className="mt-2 rounded-lg border border-marine px-4 py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+        className="mt-2 rounded-lg border border-marine px-4 py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground disabled:opacity-60"
       >
-        Choose File
+        {uploading ? "Uploading…" : "Choose File"}
       </button>
-      <p className="mt-2 text-xs text-muted-foreground">PDF, DOC, XLS, MP4, images · max 50 MB</p>
+      <p className="mt-2 text-xs text-muted-foreground">PDF, DOC/DOCX · max 10 MB · JPG/PNG/WebP · max 2 MB</p>
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPTED_FILE_TYPES}
+        accept={SERVICE_REQUEST_FILE_ACCEPT}
         className="hidden"
-        onChange={(e) => handle(e.target.files?.[0] ?? null)}
+        onChange={(e) => {
+          const picked = e.target.files?.[0] ?? null;
+          e.target.value = "";
+          void handle(picked);
+        }}
       />
       {err && <p className="mt-2 text-sm font-medium text-destructive">{err}</p>}
     </div>

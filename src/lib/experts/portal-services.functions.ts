@@ -3,13 +3,15 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import type { ServiceRequest, TrainerPortalBootstrap } from "./portal-services.types";
+import { assertModuleAttachments, getModuleLevelLimitBlocker } from "./module-submission-validation";
+import { ServiceRequestPayloadSchema, assertServiceRequestFiles } from "./service-request-files";
 
 const RequestType = z.enum(["speaker", "trainer", "reviewer", "mentor", "technical"]);
 const CreateRequest = z.object({
   type: RequestType,
   status: z.enum(["draft", "submitted"]),
   targetExpertSlug: z.string().trim().min(1).max(180).nullable().optional(),
-  payload: z.record(z.unknown()),
+  payload: ServiceRequestPayloadSchema,
 });
 const RequestId = z.object({ requestId: z.string().uuid() });
 const Respond = RequestId.extend({ action: z.enum(["accept", "request_info", "decline"]) });
@@ -21,10 +23,21 @@ const ModuleSubmission = z.object({
   submit: z.boolean(),
 });
 
+/**
+ * Backfill for experts whose access was granted outside the Join-as-Expert flow
+ * (e.g. an administrator assigned the `expert` role in User Management).
+ *
+ * Guardrails (PB-EXP-01: verification & approval before activation):
+ * - a profile is only auto-created when the expert role was granted by another
+ *   account, and that grantor is recorded as approver — never self-approval;
+ * - a missing trainer status is backfilled once, but an existing (possibly
+ *   admin-deactivated) trainer status is NEVER re-activated here.
+ */
 async function ensureExpertTrainerProvisioned(userId: string): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { slugifyExpertName } = await import("./publishing.server");
+    const { getLatestTrainerStatus } = await import("./trainer-status.server");
 
     const [{ data: existingExpert }, { data: activeExpertRole }] = await Promise.all([
       supabaseAdmin
@@ -36,7 +49,7 @@ async function ensureExpertTrainerProvisioned(userId: string): Promise<void> {
         .maybeSingle(),
       supabaseAdmin
         .from("rbac_user_roles")
-        .select("id, status, rbac_roles!inner(code)")
+        .select("id, status, granted_by, approved_by, rbac_roles!inner(code)")
         .eq("user_id", userId)
         .eq("status", "active")
         .eq("rbac_roles.code", "expert")
@@ -57,8 +70,9 @@ async function ensureExpertTrainerProvisioned(userId: string): Promise<void> {
 
     const now = new Date().toISOString();
     let expertId = existingExpert?.id ?? null;
+    const grantor = activeExpertRole?.approved_by || activeExpertRole?.granted_by || null;
 
-    if (!expertId && hasActiveRole) {
+    if (!expertId && hasActiveRole && grantor && grantor !== userId) {
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("display_name, organization, job_title")
@@ -75,8 +89,8 @@ async function ensureExpertTrainerProvisioned(userId: string): Promise<void> {
           source_type: "admin_created",
           original_contributor_id: userId,
           created_by: userId,
-          approved_by: userId,
-          published_by: userId,
+          approved_by: grantor,
+          published_by: grantor,
           approval_date: now,
           publication_date: now,
           verification_status: "governance_verified",
@@ -108,27 +122,19 @@ async function ensureExpertTrainerProvisioned(userId: string): Promise<void> {
     }
 
     if (expertId) {
-      const { data: trainerRow } = await supabaseAdmin
-        .from("expert_trainer_status")
-        .select("id, trainer_status")
-        .eq("expert_id", expertId)
-        .maybeSingle();
-
+      const trainerRow = await getLatestTrainerStatus(expertId);
       if (!trainerRow) {
-        await supabaseAdmin.from("expert_trainer_status").insert({
+        const { error: trainerErr } = await supabaseAdmin.from("expert_trainer_status").insert({
           expert_id: expertId,
           trainer_status: "active",
           trainer_level: "certified",
           unique_graduated_participants: 0,
+          granted_by: grantor,
           granted_at: now,
           effective_from: now,
           version: 1,
         });
-      } else if (trainerRow.trainer_status !== "active" && isPublishedExpert) {
-        await supabaseAdmin
-          .from("expert_trainer_status")
-          .update({ trainer_status: "active" })
-          .eq("id", trainerRow.id);
+        if (trainerErr) console.warn("[ensureExpertTrainerProvisioned] trainer backfill failed:", trainerErr.message);
       }
     }
   } catch (err) {
@@ -316,6 +322,18 @@ export const createExpertServiceRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => CreateRequest.parse(input))
   .handler(async ({ context, data }) => {
+    assertServiceRequestFiles(data.payload, context.userId, data.status === "submitted");
+    if (data.targetExpertSlug) {
+      // PB-EXP-03 conflict check: an expert cannot assign a request to themselves.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: ownTarget } = await supabaseAdmin
+        .from("experts")
+        .select("id")
+        .eq("slug", data.targetExpertSlug)
+        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+        .maybeSingle();
+      if (ownTarget) throw new Error("Anda tidak dapat mengajukan permintaan ke profil expert milik sendiri.");
+    }
     const { data: result, error } = await context.supabase.rpc("expert_service_request_create", {
       _request_type: data.type,
       _status: data.status,
@@ -368,32 +386,19 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await ensureExpertTrainerProvisioned(context.userId);
     const access = await context.supabase.rpc("trainer_portal_bootstrap");
-    if (access.error || (access.data as { access?: string } | null)?.access !== "active_trainer") {
+    const bootstrap = access.data as unknown as TrainerPortalBootstrap | null;
+    if (access.error || bootstrap?.access !== "active_trainer") {
       throw new Error("active_trainer_required");
     }
 
-    // Validate attachment quotas server-side (Max 100MB per file)
-    const rawAttachments = Array.isArray(data.payload.attachments)
-      ? data.payload.attachments
-      : Array.isArray(data.payload.documents)
-        ? data.payload.documents
-        : [];
-
-    for (const item of rawAttachments) {
-      if (item && typeof item === "object") {
-        const size = Number(
-          (item as Record<string, unknown>).fileSize ||
-            (item as Record<string, unknown>).size ||
-            0,
-        );
-        if (size > 100 * 1024 * 1024) {
-          throw new Error("Ukuran berkas lampiran modul tidak boleh melebihi batas 100MB.");
-        }
-      }
-    }
+    assertModuleAttachments(data.payload, context.userId, data.submit);
 
     let draftId = data.draftId;
     if (!draftId) {
+      // New modules count against the trainer level quota; revisions of an
+      // existing draft do not (same rule as the submit page, but unbypassable).
+      const limitBlocker = getModuleLevelLimitBlocker(bootstrap);
+      if (limitBlocker) throw new Error(limitBlocker);
       const created = await context.supabase.rpc("module_draft_create", {
         _title: data.title,
         _module_type: data.moduleType,
@@ -472,7 +477,9 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
     }
     if (!subjectId) throw new Error("module_submission_subject_missing");
 
-    // Update review_subjects metadata to track resubmitted status and timestamp
+    // Update review_subjects metadata to track resubmitted status and timestamp.
+    // The submission itself is already committed by module_draft_submit, so a
+    // failure here is logged (not thrown) — but never silently discarded.
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: currentSubj } = await supabaseAdmin
@@ -486,7 +493,7 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
         existingMeta.review_status === "revision_requested" ||
         typeof existingMeta.last_rationale === "string";
 
-      await supabaseAdmin
+      const { error: metaErr } = await supabaseAdmin
         .from("review_subjects")
         .update({
           title: data.title,
@@ -499,8 +506,9 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
           },
         })
         .eq("id", subjectId);
-    } catch {
-      // Non-critical metadata update failure
+      if (metaErr) console.error("[saveTrainerModuleSubmission] metadata sync failed:", metaErr.message);
+    } catch (metaErr) {
+      console.error("[saveTrainerModuleSubmission] metadata sync failed:", metaErr);
     }
 
     return { draftId, subjectId, status: "submitted", alreadySubmitted: false };

@@ -323,16 +323,17 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
         .limit(1)
         .maybeSingle();
       if (expert) {
-        const { data: trainer } = await admin
+        // Versioned history: only the newest effective version decides (same as trainer_portal_bootstrap).
+        const { data: latest } = await admin
           .from("expert_trainer_status")
-          .select("id")
+          .select("trainer_status")
           .eq("expert_id", expert.id)
-          .eq("trainer_status", "active")
           .lte("effective_from", now)
           .or(`expires_at.is.null,expires_at.gt.${now}`)
-          .limit(1)
-          .maybeSingle();
-        if (trainer) roleLabel = "BARUNA Trainer";
+          .order("version", { ascending: false })
+          .order("granted_at", { ascending: false })
+          .limit(1);
+        if (latest?.[0]?.trainer_status === "active") roleLabel = "BARUNA Trainer";
       }
     }
     const variant = ["super_admin", "admin"].includes(roleCode)

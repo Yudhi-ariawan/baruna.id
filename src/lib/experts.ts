@@ -27,7 +27,15 @@ export const ACCEPTED_FILE_TYPES =
   ".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.jpg,.jpeg,.png,.webp";
 export const MAX_BYTES = 50 * 1024 * 1024;
 
-export type FileMeta = { name: string; size: number; type: string; uploadedAt: string };
+export type FileMeta = {
+  name: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+  /** Private storage object path; absent only on legacy metadata-only entries. */
+  path?: string;
+  bucket?: string;
+};
 
 // ============================================================================
 // REQUEST AN EXPERT

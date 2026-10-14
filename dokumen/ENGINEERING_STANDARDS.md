@@ -100,6 +100,8 @@ Status pengajuan expert tersebar di `review_subjects.current_status`, `review_su
 4. **Optimistic lock:** penulisan status `review_subjects` dari server function wajib memakai `.eq("updated_at", <nilai yang dibaca>)` agar klik ganda / dua verifikator bersamaan tidak saling menimpa.
 5. **Duplicate check:** satu akun hanya boleh memiliki satu pengajuan aktif dan satu profil `experts` kanonik; publikasi ulang menautkan ke profil yang sudah ada (slug dipertahankan, statistik trainer tidak di-reset).
 6. **Validasi payload server:** payload pengajuan divalidasi `ExpertPayloadSchema` dan path dokumen wajib berada di `users/<userId>/` (`src/lib/experts/application-validation.ts`). Batas unggahan memakai `src/lib/storage/upload-limits.ts`.
+7. **Status trainer = tabel riwayat ber-versi:** `expert_trainer_status` menyimpan satu baris per perubahan. Baca selalu versi terbaru (`getLatestTrainerStatus()` / `ORDER BY version DESC, granted_at DESC LIMIT 1`), jangan pernah `.maybeSingle()`. Kode yang dipanggil saat membuka halaman (GET) tidak boleh mengaktifkan ulang trainer yang dinonaktifkan admin.
+8. **Tanpa "rekayasa" unggahan:** unggahan yang gagal wajib menghentikan proses dengan pesan jelas. Dilarang menyimpan metadata berkas tanpa `path` (lampiran "hantu") atau diam-diam pindah ke bucket lain. Server menolak pengiriman final yang berisi lampiran tanpa `path`.
 
 ---
 *Dokumen ini diperbarui secara berkala sesuai dengan evolusi sistem dan tata kelola BARUNA.*

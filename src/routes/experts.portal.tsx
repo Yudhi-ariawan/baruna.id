@@ -1,32 +1,15 @@
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { GraduationCap, Loader2, ShieldAlert } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
-import { supabase } from "@/integrations/supabase/client";
-import { getTrainerPortalBootstrap } from "@/lib/experts/portal-services.functions";
+import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
 import { CandidatePortalHub } from "@/components/baruna/experts/CandidatePortalHub";
-
-import { getActiveUserId } from "@/lib/authSession";
 
 export const Route = createFileRoute("/experts/portal")({ component: TrainerPortalGuard });
 
 function TrainerPortalGuard() {
   const navigate = useNavigate();
-  const bootstrap = useServerFn(getTrainerPortalBootstrap);
-  const userId = getActiveUserId();
-  const query = useQuery({
-    queryKey: ["experts", "trainer-portal-access", userId ?? "guest"],
-    queryFn: async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) return null;
-      return bootstrap();
-    },
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: "always",
-  });
+  const query = useTrainerPortal();
   useEffect(() => {
     if (!query.isLoading && !query.data && !query.isError) void navigate({ to: "/auth", search: { mode: "signin", redirect: "/experts/portal" }, replace: true });
   }, [navigate, query.data, query.isError, query.isLoading]);

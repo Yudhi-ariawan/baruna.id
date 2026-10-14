@@ -30,6 +30,7 @@ import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
 import { saveTrainerModuleSubmission } from "@/lib/experts/portal-services.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveFileContentType } from "@/lib/storage/mime";
+import { getUploadSizeError } from "@/lib/storage/upload-limits";
 import { useLanguage } from "@/lib/i18n";
 import { MODULE_ATTACHMENTS_BUCKET } from "@/lib/experts/module-attachments";
 import { ModuleQuizBuilder } from "@/components/baruna/experts/ModuleQuizBuilder";
@@ -60,6 +61,10 @@ const RESOURCES = [
   "Course cover image",
   "Practical exercise (if applicable)",
 ];
+
+// Mirrors the module-attachments bucket allowed_mime_types.
+const MODULE_ATTACHMENT_EXTENSIONS = ["pdf", "doc", "docx", "ppt", "pptx", "jpg", "jpeg", "png", "webp", "mp4", "webm", "mov"];
+const MODULE_ATTACHMENT_ACCEPT = MODULE_ATTACHMENT_EXTENSIONS.map((ext) => `.${ext}`).join(",");
 
 const DECLARATIONS = [
   "This is my own original work.",
@@ -382,40 +387,34 @@ function SubmitModulePage() {
         );
       }
 
+      if (newEntries.length > 0 && !uid) {
+        throw new Error(
+          isId
+            ? "Sesi login berakhir. Silakan masuk kembali sebelum mengunggah berkas."
+            : "Your session has expired. Please sign in again before uploading files.",
+        );
+      }
+
       let completedCount = 0;
       const newUploaded = await Promise.all(
         newEntries.map(async ([type, f]) => {
-          let storagePath: string | undefined = undefined;
-          let storageBucket: string = MODULE_ATTACHMENTS_BUCKET;
           const contentType = resolveFileContentType(f.name, f.type);
-          if (uid) {
-            try {
-              const safeName = f.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
-              const path = `users/${uid}/modules/${activeDraft?.id || draftId || Date.now()}/${Date.now()}-${safeName}`;
+          const safeName = f.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+          const storagePath = `users/${uid}/modules/${activeDraft?.id || draftId || Date.now()}/${Date.now()}-${safeName}`;
 
-              // 1. Primary: Official module-attachments bucket (allows PDF, PPT, PPTX, videos)
-              let { error: upErr } = await supabase.storage
-                .from(MODULE_ATTACHMENTS_BUCKET)
-                .upload(path, f, { contentType, upsert: true });
-
-              if (upErr) {
-                // 2. Resilient fallback: expert-applications for legacy/test environment flexibility
-                const fbRes = await supabase.storage
-                  .from("expert-applications")
-                  .upload(path, f, { contentType, upsert: true });
-                if (!fbRes.error) {
-                  storageBucket = "expert-applications";
-                  upErr = null;
-                }
-              }
-
-              if (!upErr) {
-                storagePath = path;
-              }
-            } catch {
-              // Continue even if storage upload fails, preserve metadata
-            }
+          // Single official bucket. A failed upload aborts the save: storing only
+          // the file name would publish a "phantom" attachment nobody can open.
+          const { error: upErr } = await supabase.storage
+            .from(MODULE_ATTACHMENTS_BUCKET)
+            .upload(storagePath, f, { contentType, upsert: true });
+          if (upErr) {
+            throw new Error(
+              isId
+                ? `Gagal mengunggah "${f.name}": ${upErr.message}. Tidak ada data yang dikirim; silakan coba lagi.`
+                : `Failed to upload "${f.name}": ${upErr.message}. Nothing was submitted; please try again.`,
+            );
           }
+          const storageBucket = MODULE_ATTACHMENTS_BUCKET;
 
           completedCount++;
           setUploadProgress(
@@ -431,7 +430,7 @@ function SubmitModulePage() {
             fileSize: f.size,
             fileType: contentType,
             path: storagePath,
-            bucket: storagePath ? storageBucket : undefined,
+            bucket: storageBucket,
             uploadedAt: new Date().toISOString(),
           };
         }),
@@ -1116,12 +1115,27 @@ function SubmitModulePage() {
                               type="file"
                               id={inputId}
                               className="hidden"
+                              accept={MODULE_ATTACHMENT_ACCEPT}
                               onChange={(e) => {
                                 const picked = e.target.files?.[0];
-                                if (picked) {
-                                  setAttachedFiles((prev) => ({ ...prev, [r]: picked }));
-                                }
                                 e.target.value = "";
+                                if (!picked) return;
+                                const ext = (picked.name.split(".").pop() || "").toLowerCase();
+                                if (!MODULE_ATTACHMENT_EXTENSIONS.includes(ext)) {
+                                  setError(
+                                    isId
+                                      ? `Format "${picked.name}" tidak didukung. Gunakan PDF, DOC/DOCX, PPT/PPTX, JPG/PNG/WebP, atau MP4/WebM/MOV.`
+                                      : `"${picked.name}" is not a supported format. Use PDF, DOC/DOCX, PPT/PPTX, JPG/PNG/WebP, or MP4/WebM/MOV.`,
+                                  );
+                                  return;
+                                }
+                                const sizeError = getUploadSizeError(picked);
+                                if (sizeError) {
+                                  setError(`${picked.name}: ${sizeError}`);
+                                  return;
+                                }
+                                setError(null);
+                                setAttachedFiles((prev) => ({ ...prev, [r]: picked }));
                               }}
                             />
                             {hasFile ? (

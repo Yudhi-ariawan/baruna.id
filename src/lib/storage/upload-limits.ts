@@ -12,17 +12,22 @@ export const UPLOAD_LIMITS = {
   image: 2 * MB,
   document: 10 * MB,
   presentation: 25 * MB,
+  // Not covered by the standard's three classes; mirrors the module-attachments
+  // bucket hard limit (100 MB). Online video links are preferred for larger files.
+  video: 100 * MB,
 } as const;
 
 export type UploadLimitKind = keyof typeof UPLOAD_LIMITS;
 
 const PRESENTATION_EXTENSIONS = ["ppt", "pptx"];
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
+const VIDEO_EXTENSIONS = ["mp4", "webm", "mov"];
 
 export function classifyUpload(fileName: string, mimeType?: string | null): UploadLimitKind {
   const mime = resolveFileContentType(fileName, mimeType).toLowerCase();
   const ext = (fileName.split(".").pop() || "").toLowerCase();
   if (mime.startsWith("image/") || IMAGE_EXTENSIONS.includes(ext)) return "image";
+  if (mime.startsWith("video/") || VIDEO_EXTENSIONS.includes(ext)) return "video";
   if (mime.includes("presentation") || mime.includes("powerpoint") || PRESENTATION_EXTENSIONS.includes(ext)) {
     return "presentation";
   }
@@ -37,6 +42,7 @@ const KIND_LABEL_ID: Record<UploadLimitKind, string> = {
   image: "Gambar",
   document: "Dokumen",
   presentation: "Presentasi",
+  video: "Video",
 };
 
 /** Returns a user-facing (Indonesian) error message, or null when the file is within quota. */

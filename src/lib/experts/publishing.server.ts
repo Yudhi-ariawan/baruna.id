@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getLatestTrainerStatus } from "./trainer-status.server";
 
 export function slugifyExpertName(name: string): string {
   const base = (name || "expert")
@@ -373,11 +374,7 @@ export async function publishApprovedExpert({
   }
 
   // 5. Upsert public.expert_trainer_status (grant active trainer access for all approved experts so /experts/portal works seamlessly)
-  const { data: existingTrainer } = await supabaseAdmin
-    .from("expert_trainer_status")
-    .select("id")
-    .eq("expert_id", expertId)
-    .maybeSingle();
+  const existingTrainer = await getLatestTrainerStatus(expertId);
 
   if (existingTrainer) {
     // Re-approval only re-activates access. Level, graduated-participant counters
