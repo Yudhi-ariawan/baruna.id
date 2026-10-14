@@ -227,10 +227,11 @@ BEGIN
   _offset := GREATEST(COALESCE(_offset, 0), 0);
 
   WITH base AS (
-    SELECT r.*, p.display_name AS requester_name, p.email AS requester_email,
+    SELECT r.*, p.display_name AS requester_name, u.email AS requester_email,
            e.display_name AS expert_name, e.slug AS expert_slug
     FROM public.expert_service_requests r
     LEFT JOIN public.profiles p ON p.id = r.requester_id
+    LEFT JOIN auth.users u ON u.id = r.requester_id
     LEFT JOIN public.experts e ON e.id = r.target_expert_id
     WHERE r.status <> 'draft'
       AND (_status IS NULL OR _status = 'all' OR r.status = _status
@@ -239,7 +240,7 @@ BEGIN
       AND (v_q IS NULL
            OR strpos(lower(r.request_number), v_q) > 0
            OR strpos(lower(COALESCE(p.display_name, '')), v_q) > 0
-           OR strpos(lower(COALESCE(p.email, '')), v_q) > 0
+           OR strpos(lower(COALESCE(u.email, '')), v_q) > 0
            OR strpos(lower(COALESCE(e.display_name, '')), v_q) > 0
            OR strpos(lower(r.payload::text), v_q) > 0)
   )

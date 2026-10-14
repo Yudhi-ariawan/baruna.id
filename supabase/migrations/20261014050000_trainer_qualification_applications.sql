@@ -150,13 +150,14 @@ BEGIN
       'id', a.id, 'status', a.status, 'payload', a.payload, 'createdAt', a.created_at,
       'updatedAt', a.updated_at, 'decidedAt', a.decided_at, 'decisionNote', a.decision_note,
       'grantedLevel', a.granted_level, 'previousTrainerStatus', a.previous_trainer_status,
-      'applicantId', a.applicant_id, 'applicantName', p.display_name, 'applicantEmail', p.email,
+      'applicantId', a.applicant_id, 'applicantName', p.display_name, 'applicantEmail', u.email,
       'expertId', e.id, 'expertName', e.display_name, 'expertSlug', e.slug, 'expertHeadline', e.headline,
       'currentTrainerStatus', (public._latest_trainer_status(e.id)).trainer_status::text
     ) AS obj
     FROM public.expert_trainer_applications a
     JOIN public.experts e ON e.id = a.expert_id
     LEFT JOIN public.profiles p ON p.id = a.applicant_id
+    LEFT JOIN auth.users u ON u.id = a.applicant_id
     WHERE _status IS NULL OR _status = 'all' OR a.status = _status
     ORDER BY a.created_at DESC LIMIT 200
   ) x;
