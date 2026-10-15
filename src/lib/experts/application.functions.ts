@@ -426,133 +426,31 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
     if (missing.length > 0) {
       throw new Error(`Pengajuan belum lengkap. Lengkapi: ${missing.join(", ")}.`);
     }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // 1. Verify subject ownership
-    const { data: subj, error: subjErr } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, kind, submitted_by, current_status, metadata, updated_at")
-      .eq("id", input.subjectId)
-      .single();
-
-    if (subjErr || !subj || subj.submitted_by !== context.userId || subj.kind !== "expert") {
-      throw new Error("Pengajuan tidak ditemukan atau Anda tidak memiliki akses.");
-    }
-
-    // Resolve active non-withdrawn draftId for this subject if input.draftId was superseded
-    let targetDraftId = input.draftId;
-    const { data: latestActiveDraft } = await supabaseAdmin
-      .from("review_drafts")
-      .select("id, status")
-      .eq("linked_subject_id", input.subjectId)
-      .eq("submitter_id", context.userId)
-      .neq("status", "withdrawn")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (latestActiveDraft?.id) {
-      targetDraftId = latestActiveDraft.id;
-    }
-
-    // 2. State guard: only a subject that is actually waiting for this applicant's
-    //    revision may be resubmitted. Without this an approved/rejected/archived
-    //    subject could be silently pushed back into the queue.
-    const { data: latestDecision } = await supabaseAdmin
-      .from("review_decisions")
-      .select("decision")
-      .eq("subject_id", input.subjectId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const effective = deriveExpertEffectiveStatus({
-      subjectStatus: subj.current_status,
-      subjectMeta: (subj.metadata as Record<string, unknown>) ?? {},
-      latestDecision: latestDecision?.decision,
-      draftStatus: latestActiveDraft?.status,
+    // Subject status, draft and revision snapshot change in ONE transaction
+    // (public.expert_revision_resubmit, migration 20261015060000). The RPC repeats
+    // the ownership, state and completeness checks, so a direct SDK call cannot skip them.
+    const { data, error } = await context.supabase.rpc("expert_revision_resubmit", {
+      _subject_id: input.subjectId,
+      _draft_id: input.draftId,
+      _display_name: input.displayName,
+      _payload: input.payload as unknown as Json,
+      _notes: input.notes ?? null,
     });
-    if (effective !== "revision_requested" || latestActiveDraft?.status !== "draft") {
-      throw new Error("Pengajuan ini tidak sedang menunggu revisi. Muat ulang halaman untuk melihat status terbaru.");
+    if (error) {
+      if (error.message.includes("not_awaiting_revision")) {
+        throw new Error("Pengajuan ini tidak sedang menunggu revisi. Muat ulang halaman untuk melihat status terbaru.");
+      }
+      if (error.message.includes("payload_incomplete")) {
+        throw new Error(`Pengajuan belum lengkap: ${error.message.split("payload_incomplete:")[1]?.trim() ?? ""}.`);
+      }
+      if (error.message.includes("document_not_owned")) {
+        throw new Error("Dokumen pengajuan tidak valid: berkas harus diunggah dari akun Anda sendiri.");
+      }
+      if (error.message.includes("Could not find the function")) {
+        throw new Error("Kirim ulang revisi membutuhkan migrasi database 20261015060000.");
+      }
+      throw new Error(toFriendlyExpertError(error.message));
     }
-
-    // 3. Claim the subject with an optimistic lock on updated_at so a double
-    //    submit (or a concurrent admin decision) cannot both win.
-    const now = new Date().toISOString();
-    const currentSubjMeta = (subj.metadata as Record<string, unknown>) ?? {};
-    const { data: claimed, error: claimErr } = await supabaseAdmin
-      .from("review_subjects")
-      .update({
-        current_status: "pending",
-        title: input.displayName,
-        metadata: {
-          ...currentSubjMeta,
-          review_status: "resubmitted",
-          resubmitted_at: now,
-          resubmission_notes: input.notes || "Dokumen revisi dikirimkan ulang oleh calon expert.",
-        } as never,
-        updated_at: now,
-      })
-      .eq("id", input.subjectId)
-      .eq("updated_at", subj.updated_at)
-      .select("id");
-    if (claimErr) throw new Error(claimErr.message);
-    if (!claimed || claimed.length === 0) {
-      throw new Error("Pengajuan sedang diproses atau telah berubah. Muat ulang halaman lalu coba lagi.");
-    }
-
-    const restoreSubject = async () => {
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          current_status: subj.current_status,
-          metadata: currentSubjMeta as never,
-        })
-        .eq("id", input.subjectId);
-    };
-
-    // 4. Move the draft to submitted through the caller's own RLS context.
-    const { data: movedDraft, error: draftErr } = await context.supabase
-      .from("review_drafts")
-      .update({
-        payload: input.payload as never,
-        status: "submitted",
-        title: input.displayName,
-        updated_at: now,
-      })
-      .eq("id", targetDraftId)
-      .eq("submitter_id", context.userId)
-      .eq("status", "draft")
-      .select("id");
-    if (draftErr || !movedDraft || movedDraft.length === 0) {
-      await restoreSubject();
-      throw new Error(draftErr?.message || "Draf revisi tidak dapat dikirim. Muat ulang halaman lalu coba lagi.");
-    }
-
-    // 5. Record a revision snapshot (version record, PB-EXP-01) using max(revision) + 1
-    const { data: latestRev } = await supabaseAdmin
-      .from("review_subject_revisions")
-      .select("revision")
-      .eq("subject_id", input.subjectId)
-      .order("revision", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const revNum = Number(latestRev?.revision ?? 0) + 1;
-    const { error: revErr } = await supabaseAdmin.from("review_subject_revisions").insert({
-      subject_id: input.subjectId,
-      draft_id: targetDraftId,
-      revision: revNum,
-      snapshot: {
-        payload: input.payload,
-        resubmitted_at: now,
-        notes: input.notes || "Dokumen revisi dikirimkan ulang oleh calon expert.",
-      } as unknown as Json,
-      content_hash: `rev-exp-${revNum}-${Date.now()}`,
-    });
-    if (revErr) {
-      // Submission state is already consistent; the snapshot is audit-only.
-      console.error("[resubmitExpertApplicationRevision] revision snapshot failed:", revErr.message);
-    }
-
-    return { success: true, subjectId: input.subjectId, revision: revNum };
+    const result = (data ?? {}) as { subjectId?: string; revision?: number };
+    return { success: true, subjectId: input.subjectId, revision: Number(result.revision ?? 0) };
   });

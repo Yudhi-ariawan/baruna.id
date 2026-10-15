@@ -9,7 +9,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requirePermission } from "@/lib/auth/permissions.server";
-import { publishApprovedExpert, publishApprovedModule as publishApprovedModuleRecord } from "@/lib/experts/publishing.server";
 import type { Json } from "@/integrations/supabase/types";
 
 const AppRole = z.enum(["admin", "management", "qa_reviewer"]);

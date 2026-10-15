@@ -4533,6 +4533,34 @@ export type Database = {
         Returns: Json
       }
       _is_service_admin: { Args: { _user_id: string }; Returns: boolean }
+      admin_expert_decide: {
+        Args: {
+          _subject_id: string
+          _decision: string
+          _rationale?: string | null
+          _expected_updated_at?: string | null
+        }
+        Returns: Json
+      }
+      admin_expert_archive: {
+        Args: { _subject_id: string; _rationale?: string | null; _expected_updated_at?: string | null }
+        Returns: Json
+      }
+      admin_expert_restore: {
+        Args: { _subject_id: string; _expected_updated_at?: string | null }
+        Returns: Json
+      }
+      expert_revision_resubmit: {
+        Args: {
+          _subject_id: string
+          _draft_id: string
+          _display_name: string
+          _payload: Json
+          _notes?: string | null
+          _expected_updated_at?: string | null
+        }
+        Returns: Json
+      }
       expert_duplicate_candidates: {
         Args: { _name: string; _email: string; _exclude_user?: string | null }
         Returns: {

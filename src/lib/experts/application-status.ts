@@ -103,6 +103,10 @@ export function getExpertDecisionBlocker(
   if (current === "archived") {
     return "Pakar berstatus arsip. Pulihkan terlebih dahulu sebelum mencatat keputusan baru.";
   }
+  // Approving now would publish the applicant's half-edited draft.
+  if (decision === "approve" && current === "revision_requested") {
+    return "Pemohon sedang merevisi pengajuannya. Tunggu sampai revisi dikirim ulang sebelum menyetujui.";
+  }
   if (decision === "reject" && current === "rejected") {
     return "Pengajuan ini sudah berstatus ditolak.";
   }

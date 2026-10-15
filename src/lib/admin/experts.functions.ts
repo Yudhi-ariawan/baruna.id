@@ -1,12 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { publishApprovedExpert } from "@/lib/experts/publishing.server";
 import type { ExpertApplicationDocument, ExpertDraftPayload } from "@/lib/experts/application.types";
-import {
-  deriveExpertEffectiveStatus,
-  getExpertDecisionBlocker,
-} from "@/lib/experts/application-status";
+import { deriveExpertEffectiveStatus } from "@/lib/experts/application-status";
 
 const DecisionType = z.enum(["approve", "return_for_revision", "reject"]);
 
@@ -127,70 +123,6 @@ async function assertExpertDecider(
       "forbidden: hanya Approver atau Administrator yang dapat memutuskan, mengarsipkan, atau memulihkan expert.",
     );
   }
-}
-
-async function setExpertRoleStatus(userId: string, status: "active" | "revoked") {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: expertRole } = await supabaseAdmin
-    .from("rbac_roles")
-    .select("id")
-    .eq("code", "expert")
-    .maybeSingle();
-  if (!expertRole) return;
-  const { error } = await supabaseAdmin
-    .from("rbac_user_roles")
-    .update(
-      status === "revoked"
-        ? { status: "revoked", valid_until: new Date().toISOString() }
-        : { status: "active", valid_until: null },
-    )
-    .eq("user_id", userId)
-    .eq("role_id", expertRole.id);
-  if (error) throw new Error(`Gagal memperbarui role expert: ${error.message}`);
-}
-
-const revokeExpertRole = (userId: string) => setExpertRoleStatus(userId, "revoked");
-
-type ExpertSubjectSnapshot = {
-  id: string;
-  submitted_by: string | null;
-  current_status: string;
-  metadata: unknown;
-  updated_at: string;
-};
-
-/** Effective status of one expert subject, read fresh from the database. */
-async function loadExpertEffectiveStatus(subj: ExpertSubjectSnapshot) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [{ data: latestDecision }, { data: draft }, { data: published }] = await Promise.all([
-    supabaseAdmin
-      .from("review_decisions")
-      .select("id, decision, supersedes_decision_id")
-      .eq("subject_id", subj.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabaseAdmin
-      .from("review_drafts")
-      .select("status")
-      .eq("linked_subject_id", subj.id)
-      .neq("status", "withdrawn")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabaseAdmin
-      .from("experts")
-      .select("current_status")
-      .eq("source_submission_id", subj.id)
-      .maybeSingle(),
-  ]);
-  return deriveExpertEffectiveStatus({
-    subjectStatus: subj.current_status,
-    subjectMeta: (subj.metadata as Record<string, unknown>) ?? {},
-    latestDecision: latestDecision?.decision,
-    draftStatus: draft?.status,
-    publishedExpertStatus: published?.current_status,
-  });
 }
 
 export const listAdminExpertApplications = createServerFn({ method: "GET" })
@@ -517,6 +449,84 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
       };
     });
 
+const EXPERT_DECISION_ERRORS: Record<string, string> = {
+  stale_subject:
+    "Pengajuan ini baru saja diperbarui (oleh verifikator lain atau pemohon). Muat ulang data lalu coba lagi.",
+  self_decision_forbidden: "Anda tidak dapat memutuskan, mengarsipkan, atau memulihkan pengajuan expert milik sendiri.",
+  expert_archived: "Pakar berstatus arsip. Pulihkan terlebih dahulu sebelum mencatat keputusan baru.",
+  awaiting_applicant_revision:
+    "Pemohon sedang merevisi pengajuannya. Tunggu sampai revisi dikirim ulang sebelum menyetujui.",
+  already_rejected: "Pengajuan ini sudah berstatus ditolak.",
+  already_awaiting_revision: "Pengajuan ini sudah menunggu revisi dari pemohon.",
+  rejected_is_final: "Pengajuan yang sudah ditolak tidak dapat dikembalikan untuk revisi.",
+  expert_not_approved: "Hanya expert yang sudah disetujui yang dapat disinkronkan ke direktori.",
+  already_archived: "Pakar ini sudah berstatus arsip.",
+  not_archived: "Pakar ini tidak sedang berstatus arsip.",
+  expert_subject_not_found: "Data pengajuan tidak ditemukan.",
+  rationale_too_long: "Alasan terlalu panjang.",
+  forbidden: "forbidden: hanya Approver atau Administrator yang dapat memutuskan, mengarsipkan, atau memulihkan expert.",
+  exactly_one_primary_role_required: "Role pengguna tidak konsisten (role primer). Hubungi super admin.",
+};
+
+function toFriendlyExpertDecisionError(message: string | undefined | null): string {
+  if (!message) return "Gagal memproses keputusan expert.";
+  if (message.includes("Could not find the function") || message.includes("schema cache")) {
+    return "Fitur keputusan expert membutuhkan migrasi database 20261015060000. Jalankan supabase/check_migrations.sql.";
+  }
+  for (const [code, friendly] of Object.entries(EXPERT_DECISION_ERRORS)) {
+    if (message.includes(code)) return friendly;
+  }
+  return message;
+}
+
+type ExpertRpcResult = {
+  subjectId: string;
+  status: string;
+  decisionId?: string | null;
+  changed?: boolean;
+  resynced?: boolean;
+  expertId?: string;
+  slug?: string;
+  photo?: { path?: unknown; name?: unknown; type?: unknown } | null;
+};
+
+/**
+ * The avatar copy is a storage operation, so it cannot join the database
+ * transaction. It runs only after the decision has committed and is idempotent;
+ * if it fails the profile simply keeps its previous avatar and the admin can
+ * re-sync later.
+ */
+async function publishAvatarAfterCommit(subjectId: string, result: ExpertRpcResult) {
+  const photo = result.photo;
+  if (!result.expertId || !photo || typeof photo.path !== "string") return;
+  const name = typeof photo.name === "string" ? photo.name : "";
+  const type = typeof photo.type === "string" ? photo.type : "";
+  if (!type.startsWith("image/") && !/\.(jpg|jpeg|png|webp|gif)$/i.test(name)) return;
+  try {
+    const { publishExpertAvatar } = await import("@/lib/experts/publishing.server");
+    const url = await publishExpertAvatar(subjectId, photo.path, name || undefined);
+    if (!url) return;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("experts").update({ avatar_url: url }).eq("id", result.expertId);
+    if (error) console.error("[expert avatar] update failed:", error.message);
+  } catch (err) {
+    console.error("[expert avatar] publish failed:", err);
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function callExpertRpc(context: { supabase: any }, fn: string, args: Record<string, unknown>) {
+  const { data, error } = await context.supabase.rpc(fn, args);
+  if (error) throw new Error(toFriendlyExpertDecisionError(error.message));
+  return data as ExpertRpcResult;
+}
+
+/**
+ * Decision, publication, trainer status and role change run in ONE database
+ * transaction (public.admin_expert_decide, migration 20261015060000): a failure
+ * anywhere rolls everything back, and `expectedUpdatedAt` (the version the admin
+ * was looking at) stops two admins or a double click from both winning.
+ */
 export const recordAdminExpertDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) =>
@@ -525,286 +535,27 @@ export const recordAdminExpertDecision = createServerFn({ method: "POST" })
         subjectId: z.string().uuid(),
         decision: DecisionType,
         rationale: z.string().max(5000).optional(),
+        expectedUpdatedAt: z.string().max(64).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data: input, context }) => {
     await assertExpertDecider(context);
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const result = await callExpertRpc(context, "admin_expert_decide", {
+      _subject_id: input.subjectId,
+      _decision: input.decision,
+      _rationale: input.rationale?.trim() || null,
+      _expected_updated_at: input.expectedUpdatedAt ?? null,
+    });
+    if (result.expertId) await publishAvatarAfterCommit(input.subjectId, result);
     const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
-
-    // 1. Fetch subject
-    const { data: subj, error: subjErr } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, kind, submitted_by, current_status, metadata, updated_at")
-      .eq("id", input.subjectId)
-      .single();
-
-    if (subjErr || !subj || subj.kind !== "expert") {
-      throw new Error("Pengajuan tidak ditemukan.");
-    }
-    // Segregation of duties (same rule as public.finalize_decision).
-    if (subj.submitted_by === context.userId) {
-      throw new Error("self_approval_forbidden: Anda tidak dapat memutuskan pengajuan expert milik sendiri.");
-    }
-
-    // 2. Transition guard against the single source of truth for status.
-    const currentStatus = await loadExpertEffectiveStatus(subj);
-    const blocker = getExpertDecisionBlocker(currentStatus, input.decision);
-    if (blocker) throw new Error(blocker);
-
-    // Approving an already-approved expert is an idempotent directory re-sync:
-    // no new decision row, so repeated clicks never pile up final decisions.
-    if (input.decision === "approve" && currentStatus === "approved") {
-      await publishApprovedExpert({ subjectId: input.subjectId, decidedBy: context.userId });
-      clearExpertStatsCache();
-      return { success: true, decisionId: null, decision: input.decision, resynced: true };
-    }
-
-    const rationaleText =
-      input.rationale?.trim() ||
-      (input.decision === "return_for_revision"
-        ? "Perlu revisi kelengkapan dokumen."
-        : input.decision === "approve"
-          ? "Pengajuan telah diverifikasi dan disetujui."
-          : "Pengajuan ditolak.");
-
-    // 3. Claim the subject with an optimistic lock on updated_at (bumped by the
-    //    touch trigger on every write). A concurrent decision or applicant
-    //    resubmission makes this update match zero rows, so only one writer wins.
-    const now = new Date().toISOString();
-    const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-    const nextSubjectState =
-      input.decision === "approve"
-        ? {
-            current_status: "approved",
-            metadata: {
-              ...currentMeta,
-              review_status: "approved",
-              last_decision: "approve",
-              last_rationale: rationaleText,
-              approved_at: now,
-              resubmitted_at: null,
-              archived_at: null,
-              archive_rationale: null,
-            },
-          }
-        : input.decision === "return_for_revision"
-          ? {
-              current_status: "pending",
-              metadata: {
-                ...currentMeta,
-                review_status: "revision_requested",
-                last_decision: "return_for_revision",
-                last_rationale: rationaleText,
-                revised_at: now,
-                resubmitted_at: null,
-              },
-            }
-          : {
-              current_status: "rejected",
-              metadata: {
-                ...currentMeta,
-                review_status: "rejected",
-                last_decision: "reject",
-                last_rationale: rationaleText,
-                rejected_at: now,
-              },
-            };
-
-    const { data: claimed, error: claimErr } = await supabaseAdmin
-      .from("review_subjects")
-      .update({
-        current_status: nextSubjectState.current_status,
-        metadata: nextSubjectState.metadata as never,
-        updated_at: now,
-      })
-      .eq("id", input.subjectId)
-      .eq("updated_at", subj.updated_at)
-      .select("id");
-    if (claimErr) throw new Error(claimErr.message);
-    if (!claimed || claimed.length === 0) {
-      throw new Error(
-        "Pengajuan ini baru saja diperbarui (oleh verifikator lain atau pemohon). Muat ulang data lalu coba lagi.",
-      );
-    }
-
-    const restoreSubject = async () => {
-      const { error } = await supabaseAdmin
-        .from("review_subjects")
-        .update({ current_status: subj.current_status, metadata: currentMeta as never })
-        .eq("id", input.subjectId);
-      if (error) console.error("[recordAdminExpertDecision] subject restore failed:", error.message);
-    };
-
-    // 4. Insert decision record. Link the supersedes chain so the unique index
-    //    review_decisions_one_current_final never collides on repeated cycles.
-    const { data: prevDecisions } = await supabaseAdmin
-      .from("review_decisions")
-      .select("id, decision, supersedes_decision_id, created_at")
-      .eq("subject_id", input.subjectId)
-      .order("created_at", { ascending: false });
-
-    let supersedesDecisionId: string | null = null;
-    if (input.decision === "approve" || input.decision === "reject") {
-      const existingNullFinal = prevDecisions?.find(
-        (d) => !d.supersedes_decision_id && (d.decision === "approve" || d.decision === "reject"),
-      );
-      if (existingNullFinal) {
-        supersedesDecisionId = existingNullFinal.id;
-      } else if (prevDecisions && prevDecisions.length > 0) {
-        supersedesDecisionId = prevDecisions[0].id;
-      }
-    }
-
-    const { data: decRecord, error: decErr } = await supabaseAdmin
-      .from("review_decisions")
-      .insert({
-        subject_id: input.subjectId,
-        decided_by: context.userId,
-        decision: input.decision,
-        rationale: rationaleText,
-        supersedes_decision_id: supersedesDecisionId,
-      })
-      .select("id")
-      .single();
-
-    if (decErr || !decRecord) {
-      await restoreSubject();
-      throw new Error(decErr?.message || "Gagal mencatat keputusan verifikasi.");
-    }
-
-    const decisionId = decRecord.id;
-
-    const rollbackDecision = async () => {
-      await supabaseAdmin.from("review_decisions").delete().eq("id", decisionId);
-      await restoreSubject();
-    };
-
-    const deactivatePublishedExpertState = async () => {
-      const { data: expertRecord } = await supabaseAdmin
-        .from("experts")
-        .select("id")
-        .eq("source_submission_id", input.subjectId)
-        .maybeSingle();
-
-      if (expertRecord) {
-        const { error: expertErr } = await supabaseAdmin
-          .from("experts")
-          .update({
-            current_status: "archived",
-            visibility: "private",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", expertRecord.id);
-        if (expertErr) console.error("[recordAdminExpertDecision] expert deactivate failed:", expertErr.message);
-
-        const { error: trainerErr } = await supabaseAdmin
-          .from("expert_trainer_status")
-          .update({ trainer_status: "inactive" })
-          .eq("expert_id", expertRecord.id);
-        if (trainerErr) console.error("[recordAdminExpertDecision] trainer deactivate failed:", trainerErr.message);
-      }
-
-      if (subj.submitted_by) {
-        await revokeExpertRole(subj.submitted_by);
-      }
-    };
-
-    if (input.decision === "return_for_revision") {
-      // Re-open exactly ONE editable draft. review_drafts_one_editable_per_subject
-      // allows a single status='draft' row per subject, so blindly re-opening every
-      // linked draft would fail the unique index and leave the applicant stuck.
-      const { data: latestDraft } = await supabaseAdmin
-        .from("review_drafts")
-        .select("id, status")
-        .eq("linked_subject_id", input.subjectId)
-        .neq("status", "withdrawn")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      let reopenError: string | null = null;
-      if (latestDraft && latestDraft.status !== "draft") {
-        const { error } = await supabaseAdmin
-          .from("review_drafts")
-          .update({ status: "draft", updated_at: now })
-          .eq("id", latestDraft.id);
-        reopenError = error?.message ?? null;
-      } else if (!latestDraft && subj.submitted_by) {
-        // Legacy subject without a live draft: seed one from the latest revision snapshot.
-        const { data: rev } = await supabaseAdmin
-          .from("review_subject_revisions")
-          .select("snapshot")
-          .eq("subject_id", input.subjectId)
-          .order("revision", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const snapshot = (rev?.snapshot as Record<string, unknown>) ?? {};
-        const { data: subjectRow } = await supabaseAdmin
-          .from("review_subjects")
-          .select("title")
-          .eq("id", input.subjectId)
-          .single();
-        const { error } = await supabaseAdmin.from("review_drafts").insert({
-          subject_kind: "expert",
-          submitter_id: subj.submitted_by,
-          title: (typeof snapshot.title === "string" && snapshot.title) || subjectRow?.title || "Pengajuan Expert",
-          payload: (snapshot.payload ?? {}) as never,
-          status: "draft",
-          linked_subject_id: input.subjectId,
-        });
-        reopenError = error?.message ?? null;
-      }
-
-      if (reopenError) {
-        await rollbackDecision();
-        throw new Error(`Gagal membuka kembali draf untuk revisi pemohon: ${reopenError}`);
-      }
-
-      await deactivatePublishedExpertState();
-      clearExpertStatsCache();
-
-      return { success: true, decisionId, decision: input.decision };
-    }
-
-    if (input.decision === "approve") {
-      const { error: draftErr } = await supabaseAdmin
-        .from("review_drafts")
-        .update({
-          status: "submitted",
-          updated_at: now,
-        })
-        .eq("linked_subject_id", input.subjectId)
-        .neq("status", "withdrawn");
-      if (draftErr) console.error("[recordAdminExpertDecision] draft lock failed:", draftErr.message);
-
-      try {
-        await publishApprovedExpert({
-          subjectId: input.subjectId,
-          decisionId,
-          decidedBy: context.userId,
-        });
-      } catch (publishErr) {
-        // The decision stays recorded (status approved); the admin can retry via
-        // "Sinkronkan / Perbarui Publikasi", which is an idempotent re-sync.
-        console.error("[recordAdminExpertDecision] post-decision error:", publishErr);
-        throw new Error(
-          publishErr instanceof Error
-            ? `Keputusan disetujui namun gagal mempublikasikan profil: ${publishErr.message}`
-            : "Gagal mempublikasikan profil expert ke direktori.",
-        );
-      }
-
-      clearExpertStatsCache();
-      return { success: true, decisionId, decision: input.decision };
-    }
-
-    // reject
-    await deactivatePublishedExpertState();
     clearExpertStatsCache();
-    return { success: true, decisionId, decision: input.decision };
+    return {
+      success: true,
+      decisionId: result.decisionId ?? null,
+      decision: input.decision,
+      resynced: Boolean(result.resynced),
+    };
   });
 
 export const syncExpertToDirectory = createServerFn({ method: "POST" })
@@ -812,24 +563,16 @@ export const syncExpertToDirectory = createServerFn({ method: "POST" })
   .validator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
   .handler(async ({ data: input, context }) => {
     await assertExpertDecider(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: subj } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, kind, submitted_by, current_status, metadata, updated_at")
-      .eq("id", input.subjectId)
-      .maybeSingle();
-    if (!subj || subj.kind !== "expert") throw new Error("Data pengajuan tidak ditemukan.");
-    // Never publish a profile that has not been approved (PB-EXP-01: approval before activation).
-    if ((await loadExpertEffectiveStatus(subj)) !== "approved") {
-      throw new Error("Hanya expert yang sudah disetujui yang dapat disinkronkan ke direktori.");
-    }
-    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
-    const result = await publishApprovedExpert({
-      subjectId: input.subjectId,
-      decidedBy: context.userId,
+    const result = await callExpertRpc(context, "admin_expert_decide", {
+      _subject_id: input.subjectId,
+      _decision: "sync",
+      _rationale: null,
+      _expected_updated_at: null,
     });
+    await publishAvatarAfterCommit(input.subjectId, result);
+    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
     clearExpertStatsCache();
-    return { success: true, ...result };
+    return { success: true, expertId: result.expertId ?? null, slug: result.slug ?? null };
   });
 
 export const archiveAdminExpert = createServerFn({ method: "POST" })
@@ -839,226 +582,35 @@ export const archiveAdminExpert = createServerFn({ method: "POST" })
       .object({
         subjectId: z.string().uuid(),
         rationale: z.string().trim().max(1000).optional(),
+        expectedUpdatedAt: z.string().max(64).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data: input, context }) => {
     await assertExpertDecider(context);
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
-    const rationaleText = input.rationale?.trim() || "Diarsipkan oleh Administrator.";
-
-    // 1. Fetch current subject
-    const { data: subj, error: subjErr } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, kind, submitted_by, current_status, metadata, updated_at")
-      .eq("id", input.subjectId)
-      .single();
-
-    if (subjErr || !subj || subj.kind !== "expert") {
-      throw new Error("Data pengajuan tidak ditemukan.");
-    }
-    // Re-archiving would overwrite metadata.previous_status with "archived" and
-    // make a later restore guess the wrong lifecycle state.
-    if ((await loadExpertEffectiveStatus(subj)) === "archived") {
-      throw new Error("Pakar ini sudah berstatus arsip.");
-    }
-
-    const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
-
-    // 2. Update review_subjects (with fallback to 'withdrawn' if 'archived' check constraint not yet applied on remote DB)
-    const updatePayload = {
-      current_status: "archived",
-      metadata: {
-        ...subjMeta,
-        previous_status: subj.current_status,
-        review_status: "archived",
-        archived_at: new Date().toISOString(),
-        archived_by: context.userId,
-        archive_rationale: rationaleText,
-      } as never,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error: updateErr } = await supabaseAdmin
-      .from("review_subjects")
-      .update(updatePayload)
-      .eq("id", input.subjectId);
-
-    if (updateErr) {
-      if (updateErr.message.includes("review_subjects_current_status_check")) {
-        const { error: fallbackErr } = await supabaseAdmin
-          .from("review_subjects")
-          .update({
-            ...updatePayload,
-            current_status: "withdrawn",
-          })
-          .eq("id", input.subjectId);
-        if (fallbackErr) throw new Error(fallbackErr.message);
-      } else {
-        throw new Error(updateErr.message);
-      }
-    }
-
-    // 3. Update public.experts, expert_trainer_status, and rbac_user_roles
-    const { data: expertRecord } = await supabaseAdmin
-      .from("experts")
-      .select("id, current_status")
-      .eq("source_submission_id", input.subjectId)
-      .maybeSingle();
-
-    if (expertRecord) {
-      const { error: expertErr } = await supabaseAdmin
-        .from("experts")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", expertRecord.id);
-      if (expertErr) throw new Error(`Gagal menyembunyikan profil expert: ${expertErr.message}`);
-
-      // expert_trainer_status is versioned history: append, never overwrite.
-      const { deactivateTrainerForArchive } = await import("@/lib/experts/trainer-status.server");
-      try {
-        await deactivateTrainerForArchive(expertRecord.id, context.userId);
-      } catch (trainerErr) {
-        console.error("[archiveAdminExpert] trainer deactivate failed:", trainerErr);
-      }
-    }
-
-    if (subj.submitted_by) {
-      await revokeExpertRole(subj.submitted_by);
-    }
-
-    clearExpertStatsCache();
-
-    // 4. Governance audit log (append-only table, avoids review_decisions unique constraint collision)
-    const { error: auditErr } = await supabaseAdmin.from("governance_audit_log").insert({
-      event_type: "expert_archived",
-      actor_id: context.userId,
-      subject_id: input.subjectId,
-      entity_type: "experts",
-      entity_id: expertRecord?.id ?? input.subjectId,
-      before: {
-        status: subj.current_status,
-      },
-      after: {
-        status: "archived",
-        rationale: rationaleText,
-      },
+    await callExpertRpc(context, "admin_expert_archive", {
+      _subject_id: input.subjectId,
+      _rationale: input.rationale?.trim() || null,
+      _expected_updated_at: input.expectedUpdatedAt ?? null,
     });
-    if (auditErr) console.warn("governance_audit_log insert skipped:", auditErr.message);
-
+    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
+    clearExpertStatsCache();
     return { success: true, subjectId: input.subjectId, status: "archived" };
   });
 
 export const unarchiveAdminExpert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input) => z.object({ subjectId: z.string().uuid() }).parse(input))
+  .validator((input) =>
+    z.object({ subjectId: z.string().uuid(), expectedUpdatedAt: z.string().max(64).optional() }).parse(input),
+  )
   .handler(async ({ data: input, context }) => {
     await assertExpertDecider(context);
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
-
-    // 1. Fetch current subject
-    const { data: subj, error: subjErr } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, kind, submitted_by, current_status, metadata, updated_at")
-      .eq("id", input.subjectId)
-      .single();
-
-    if (subjErr || !subj || subj.kind !== "expert") {
-      throw new Error("Data pengajuan tidak ditemukan.");
-    }
-    if ((await loadExpertEffectiveStatus(subj)) !== "archived") {
-      throw new Error("Pakar ini tidak sedang berstatus arsip.");
-    }
-
-    const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
-    const prevStatus =
-      typeof subjMeta.previous_status === "string" &&
-      subjMeta.previous_status !== "archived" &&
-      subjMeta.previous_status !== "withdrawn"
-        ? subjMeta.previous_status
-        : "approved";
-    const restoresPublication = prevStatus === "approved";
-
-    // 2. Update review_subjects
-    const { error: restoreErr } = await supabaseAdmin
-      .from("review_subjects")
-      .update({
-        current_status: prevStatus,
-        metadata: {
-          ...subjMeta,
-          review_status: prevStatus,
-          unarchived_at: new Date().toISOString(),
-          unarchived_by: context.userId,
-        } as never,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", input.subjectId);
-    if (restoreErr) throw new Error(restoreErr.message);
-
-    // 3. Only an approved expert goes back to the public directory. A subject that
-    //    was archived while pending/rejected must NOT regain a public profile or role.
-    const { data: expertRecord } = await supabaseAdmin
-      .from("experts")
-      .select("id")
-      .eq("source_submission_id", input.subjectId)
-      .maybeSingle();
-
-    if (restoresPublication && expertRecord) {
-      const { error: expertErr } = await supabaseAdmin
-        .from("experts")
-        .update({
-          current_status: "published",
-          visibility: "public",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", expertRecord.id);
-      if (expertErr) throw new Error(`Gagal memulihkan profil expert: ${expertErr.message}`);
-
-      const { restoreTrainerAfterArchive } = await import("@/lib/experts/trainer-status.server");
-      try {
-        await restoreTrainerAfterArchive(expertRecord.id, context.userId);
-      } catch (trainerErr) {
-        console.error("[unarchiveAdminExpert] trainer restore failed:", trainerErr);
-      }
-
-      if (subj.submitted_by) {
-        await setExpertRoleStatus(subj.submitted_by, "active");
-      }
-    } else if (restoresPublication) {
-      await publishApprovedExpert({
-        subjectId: input.subjectId,
-        decidedBy: context.userId,
-      });
-    }
-
-    clearExpertStatsCache();
-
-    // 4. Governance audit log
-    const { error: auditErr } = await supabaseAdmin.from("governance_audit_log").insert({
-      event_type: "expert_unarchived",
-      actor_id: context.userId,
-      subject_id: input.subjectId,
-      entity_type: "experts",
-      entity_id: expertRecord?.id ?? input.subjectId,
-      before: {
-        status: subj.current_status,
-      },
-      after: {
-        status: prevStatus,
-      },
+    const result = await callExpertRpc(context, "admin_expert_restore", {
+      _subject_id: input.subjectId,
+      _expected_updated_at: input.expectedUpdatedAt ?? null,
     });
-    if (auditErr) console.warn("governance_audit_log insert skipped:", auditErr.message);
-
-    return {
-      success: true,
-      subjectId: input.subjectId,
-      status: restoresPublication ? "published" : prevStatus,
-    };
+    if (result.expertId) await publishAvatarAfterCommit(input.subjectId, result);
+    const { clearExpertStatsCache } = await import("@/lib/experts/directory.functions");
+    clearExpertStatsCache();
+    return { success: true, subjectId: input.subjectId, status: result.status };
   });

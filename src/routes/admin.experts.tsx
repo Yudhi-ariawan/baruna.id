@@ -383,7 +383,7 @@ function AdminExpertsPage() {
                         onClick={async () => {
                           if (!window.confirm("Pulihkan pakar ini ke direktori publik?")) return;
                           try {
-                            await unarchiveFn({ data: { subjectId: item.subjectId } });
+                            await unarchiveFn({ data: { subjectId: item.subjectId, expectedUpdatedAt: item.updatedAt } });
                             toast.success("Pakar berhasil dipulihkan ke direktori publik.");
                             refetch();
                           } catch (err: unknown) {
@@ -402,7 +402,7 @@ function AdminExpertsPage() {
                           const reason = window.prompt("Alasan pengarsipan pakar (opsional):", "Nonaktif sementara / Uji coba");
                           if (reason === null) return;
                           try {
-                            await archiveFn({ data: { subjectId: item.subjectId, rationale: reason.trim() } });
+                            await archiveFn({ data: { subjectId: item.subjectId, rationale: reason.trim(), expectedUpdatedAt: item.updatedAt } });
                             toast.success("Pakar berhasil diarsipkan.");
                             refetch();
                           } catch (err: unknown) {
@@ -524,7 +524,7 @@ function AdminExpertsPage() {
                               onClick={async () => {
                                 if (!window.confirm("Pulihkan pakar ini ke direktori publik?")) return;
                                 try {
-                                  await unarchiveFn({ data: { subjectId: item.subjectId } });
+                                  await unarchiveFn({ data: { subjectId: item.subjectId, expectedUpdatedAt: item.updatedAt } });
                                   toast.success("Pakar berhasil dipulihkan ke direktori publik.");
                                   refetch();
                                 } catch (err: unknown) {
@@ -544,7 +544,7 @@ function AdminExpertsPage() {
                                 const reason = window.prompt("Alasan pengarsipan pakar (opsional):", "Nonaktif sementara / Uji coba");
                                 if (reason === null) return;
                                 try {
-                                  await archiveFn({ data: { subjectId: item.subjectId, rationale: reason.trim() } });
+                                  await archiveFn({ data: { subjectId: item.subjectId, rationale: reason.trim(), expectedUpdatedAt: item.updatedAt } });
                                   toast.success("Pakar berhasil diarsipkan.");
                                   refetch();
                                 } catch (err: unknown) {

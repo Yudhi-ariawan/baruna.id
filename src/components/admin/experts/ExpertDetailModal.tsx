@@ -105,6 +105,7 @@ export function ExpertDetailModal({
           subjectId,
           decision,
           rationale: rationale.trim(),
+          expectedUpdatedAt: detail?.updatedAt,
         },
       });
 
@@ -139,6 +140,7 @@ export function ExpertDetailModal({
         data: {
           subjectId,
           rationale: reason.trim(),
+          expectedUpdatedAt: detail?.updatedAt,
         },
       });
       toast.success("Profil expert berhasil diarsipkan dan disembunyikan dari direktori publik.");
@@ -157,7 +159,7 @@ export function ExpertDetailModal({
     try {
       setSubmitting(true);
       const result = await unarchiveFn({
-        data: { subjectId },
+        data: { subjectId, expectedUpdatedAt: detail?.updatedAt },
       });
       toast.success(
         result?.status === "published"
