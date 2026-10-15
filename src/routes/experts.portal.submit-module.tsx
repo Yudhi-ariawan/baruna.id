@@ -78,8 +78,12 @@ function SubmitModulePage() {
   const saveModule = useServerFn(saveTrainerModuleSubmission);
   const queryClient = useQueryClient();
   const level = trainer?.level === "not_assigned" ? "none" : trainer?.level ?? "none";
-  const activeModules = modules.filter((m) => ["approved", "published"].includes(m.status)).length;
-  const limit = LEVEL_MODULE_LIMIT[level];
+  // The database is authoritative (counts approved/published modules plus new
+  // modules still waiting for review); the local count is only a fallback.
+  const quota = portal.data?.moduleQuota;
+  const activeModules = quota?.used ?? modules.filter((m) => ["approved", "published"].includes(m.status)).length;
+  const queuedModules = quota?.queued ?? 0;
+  const limit = quota?.limit ?? LEVEL_MODULE_LIMIT[level];
 
   // If revising an existing draft, bypass the active module limit
   const gate = {
@@ -396,8 +400,8 @@ function SubmitModulePage() {
             </p>
             <p className="mt-1">
               {isId
-                ? `Tingkat level Anda (${level}) mengizinkan hingga ${limit} modul aktif. Saat ini Anda memiliki ${activeModules} modul.`
-                : `Your current level (${level}) allows up to ${limit} active module${limit === 1 ? "" : "s"}. You currently have ${activeModules}.`}
+                ? `Tingkat level Anda (${level}) mengizinkan hingga ${limit} modul aktif. Saat ini Anda memiliki ${activeModules} modul${queuedModules > 0 ? ` (termasuk ${queuedModules} yang menunggu verifikasi)` : ""}.`
+                : `Your current level (${level}) allows up to ${limit} active module${limit === 1 ? "" : "s"}. You currently have ${activeModules}${queuedModules > 0 ? ` (including ${queuedModules} awaiting review)` : ""}.`}
             </p>
           </div>
         )}

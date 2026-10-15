@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import type { ServiceRequest, TrainerPortalBootstrap } from "./portal-services.types";
-import { assertModuleAttachments, getModuleLevelLimitBlocker, toFriendlyModuleSubmissionError } from "./module-submission-validation";
+import { assertModuleAttachments, toFriendlyModuleSubmissionError } from "./module-submission-validation";
 import { ServiceRequestPayloadSchema, assertServiceRequestFiles } from "./service-request-files";
 import { toFriendlyServiceError } from "./service-request-errors";
 
@@ -30,132 +30,23 @@ const ModuleSubmission = z.object({
   submit: z.boolean(),
 });
 
-/**
- * Backfill for experts whose access was granted outside the Join-as-Expert flow
- * (e.g. an administrator assigned the `expert` role in User Management).
- *
- * Guardrails (PB-EXP-01: verification & approval before activation):
- * - a profile is only auto-created when the expert role was granted by another
- *   account, and that grantor is recorded as approver — never self-approval;
- * - a missing trainer status is backfilled once, but an existing (possibly
- *   admin-deactivated) trainer status is NEVER re-activated here.
- */
-async function ensureExpertTrainerProvisioned(userId: string): Promise<void> {
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { slugifyExpertName } = await import("./publishing.server");
-    const { getLatestTrainerStatus } = await import("./trainer-status.server");
-
-    const [{ data: existingExpert }, { data: activeExpertRole }] = await Promise.all([
-      supabaseAdmin
-        .from("experts")
-        .select("id, slug, display_name, current_status")
-        .or(`original_contributor_id.eq.${userId},created_by.eq.${userId}`)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabaseAdmin
-        .from("rbac_user_roles")
-        .select("id, status, granted_by, approved_by, rbac_roles!inner(code)")
-        .eq("user_id", userId)
-        .eq("status", "active")
-        .eq("rbac_roles.code", "expert")
-        .limit(1)
-        .maybeSingle(),
-    ]);
-
-    if (existingExpert?.current_status === "archived") {
-      return;
-    }
-
-    const isPublishedExpert = existingExpert?.current_status === "published";
-    const hasActiveRole = Boolean(activeExpertRole?.id);
-
-    if (!isPublishedExpert && !hasActiveRole) {
-      return;
-    }
-
-    const now = new Date().toISOString();
-    let expertId = existingExpert?.id ?? null;
-    const grantor = activeExpertRole?.approved_by || activeExpertRole?.granted_by || null;
-
-    if (!expertId && hasActiveRole && grantor && grantor !== userId) {
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("display_name, organization, job_title")
-        .eq("id", userId)
-        .maybeSingle();
-
-      const displayName = (profile?.display_name || "BARUNA Expert").trim();
-      const slug = `${slugifyExpertName(displayName)}-${userId.slice(0, 8)}`;
-      const headline = (profile?.job_title || "Marine & Fisheries Expert").trim();
-
-      const { data: inserted } = await supabaseAdmin
-        .from("experts")
-        .insert({
-          source_type: "admin_created",
-          original_contributor_id: userId,
-          created_by: userId,
-          approved_by: grantor,
-          published_by: grantor,
-          approval_date: now,
-          publication_date: now,
-          verification_status: "governance_verified",
-          visibility: "public",
-          current_status: "published",
-          display_name: displayName,
-          slug,
-          headline,
-          bio: "",
-          country: "Indonesia",
-          languages: ["Indonesian", "English"],
-          expertise_areas: [],
-        })
-        .select("id")
-        .single();
-
-      if (inserted?.id) {
-        expertId = inserted.id;
-        if (profile?.organization || headline) {
-          await supabaseAdmin.from("expert_employment").insert({
-            expert_id: expertId,
-            organization: profile?.organization || "BARUNA Network",
-            role: headline,
-            is_current: true,
-            visibility: "public",
-          });
-        }
-      }
-    }
-
-    if (expertId) {
-      const trainerRow = await getLatestTrainerStatus(expertId);
-      if (!trainerRow) {
-        const { error: trainerErr } = await supabaseAdmin.from("expert_trainer_status").insert({
-          expert_id: expertId,
-          trainer_status: "active",
-          trainer_level: "certified",
-          unique_graduated_participants: 0,
-          granted_by: grantor,
-          granted_at: now,
-          effective_from: now,
-          version: 1,
-        });
-        if (trainerErr) console.warn("[ensureExpertTrainerProvisioned] trainer backfill failed:", trainerErr.message);
-      }
-    }
-  } catch (err) {
-    console.warn("[ensureExpertTrainerProvisioned] warning:", err);
-  }
-}
-
 export const getTrainerPortalBootstrap = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<TrainerPortalBootstrap> => {
-    await ensureExpertTrainerProvisioned(context.userId);
-    const { data, error } = await context.supabase.rpc("trainer_portal_bootstrap");
-    if (error) throw new Error(error.message);
-    const bootstrap = data as unknown as TrainerPortalBootstrap;
+    const loadBootstrap = async () => {
+      const { data, error } = await context.supabase.rpc("trainer_portal_bootstrap");
+      if (error) throw new Error(error.message);
+      return data as unknown as TrainerPortalBootstrap;
+    };
+    let bootstrap = await loadBootstrap();
+    // Reads have no side effects. Only a published expert that has never had a
+    // trainer status row (legacy data) gets its first row, once, via a locked RPC.
+    if (bootstrap.access === "expert_non_trainer" && bootstrap.trainerStatus === "not_applied") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: created, error: backfillErr } = await (context.supabase as any).rpc("trainer_status_backfill_self");
+      if (backfillErr) throw new Error(backfillErr.message);
+      if (created) bootstrap = await loadBootstrap();
+    }
 
     // Historical withdrawn branches remain available for audit in the
     // database, but only the newest active branch belongs in the workspace.
@@ -391,132 +282,34 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => ModuleSubmission.parse(input))
   .handler(async ({ context, data }) => {
-    await ensureExpertTrainerProvisioned(context.userId);
-    const access = await context.supabase.rpc("trainer_portal_bootstrap");
-    const bootstrap = access.data as unknown as TrainerPortalBootstrap | null;
-    if (access.error || bootstrap?.access !== "active_trainer") {
-      throw new Error("active_trainer_required");
-    }
-
+    // Early, friendly check; the database repeats it (and the trainer gate, the
+    // level quota and the ownership of every file) inside trainer_module_save.
     assertModuleAttachments(data.payload, context.userId, data.submit);
 
-    let draftId = data.draftId;
-    if (!draftId) {
-      // New modules count against the trainer level quota; revisions of an
-      // existing draft do not (same rule as the submit page, but unbypassable).
-      const limitBlocker = getModuleLevelLimitBlocker(bootstrap);
-      if (limitBlocker) throw new Error(limitBlocker);
-      const created = await context.supabase.rpc("module_draft_create", {
-        _title: data.title,
-        _module_type: data.moduleType,
-        _source_type: "external_submission",
-      });
-      if (created.error) throw new Error(toFriendlyModuleSubmissionError(created.error.message));
-      draftId = created.data as string;
-    }
-
-    // A browser retry or fast double-click may replay the request after the
-    // first call has already submitted this exact draft. Treat that replay as
-    // success without reopening (or mutating) the immutable submitted draft.
-    const { data: existingDraft, error: existingDraftError } = await context.supabase
-      .from("review_drafts")
-      .select("status, linked_subject_id")
-      .eq("id", draftId)
-      .maybeSingle();
-    if (existingDraftError) throw new Error(existingDraftError.message);
-    if (existingDraft?.status === "withdrawn" && existingDraft.linked_subject_id) {
-      const { data: activeRevisionDraft } = await context.supabase
-        .from("review_drafts")
-        .select("id, status")
-        .eq("linked_subject_id", existingDraft.linked_subject_id)
-        .eq("submitter_id", context.userId)
-        .eq("status", "draft")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (activeRevisionDraft?.id) {
-        draftId = activeRevisionDraft.id;
-      }
-    } else if (
-      data.submit &&
-      existingDraft?.status === "submitted" &&
-      existingDraft.linked_subject_id
-    ) {
-      return {
-        draftId,
-        subjectId: existingDraft.linked_subject_id,
-        status: "submitted",
-        alreadySubmitted: true,
-      };
-    }
-
-    const patchPayload = data.submit
-      ? { ...data.payload, last_submitted_at: new Date().toISOString() }
-      : data.payload;
-
-    const updated = await context.supabase.rpc("module_draft_update", {
-      _draft_id: draftId,
-      _patch: patchPayload as Json,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: result, error } = await (context.supabase as any).rpc("trainer_module_save", {
+      _draft_id: data.draftId ?? null,
+      _title: data.title,
+      _module_type: data.moduleType,
+      _payload: data.payload as Json,
+      _submit: data.submit,
     });
-    if (updated.error) throw new Error(toFriendlyModuleSubmissionError(updated.error.message));
 
-    if (!data.submit) return { draftId, subjectId: null, status: "draft" };
-
-    const submitted = await context.supabase.rpc("module_draft_submit", { _draft_id: draftId });
-    let subjectId = submitted.data as string | null;
-    if (submitted.error) {
-      // Close the small race between the status check above and concurrent
-      // submission: resolve the canonical linked subject and return success.
-      if (submitted.error.message.includes("draft_not_editable")) {
+    if (error) {
+      // Two devices submitting the same draft at once: the loser sees the draft
+      // already submitted. Resolve it to the canonical subject instead of failing.
+      if (data.submit && data.draftId && error.message.includes("draft_not_editable")) {
         const { data: submittedDraft } = await context.supabase
           .from("review_drafts")
           .select("status, linked_subject_id")
-          .eq("id", draftId)
+          .eq("id", data.draftId)
           .maybeSingle();
         if (submittedDraft?.status === "submitted" && submittedDraft.linked_subject_id) {
-          subjectId = submittedDraft.linked_subject_id;
-        } else {
-          throw new Error(toFriendlyModuleSubmissionError(submitted.error.message));
+          return { draftId: data.draftId, subjectId: submittedDraft.linked_subject_id, status: "submitted", alreadySubmitted: true };
         }
-      } else {
-        throw new Error(toFriendlyModuleSubmissionError(submitted.error.message));
       }
-    }
-    if (!subjectId) throw new Error("module_submission_subject_missing");
-
-    // Update review_subjects metadata to track resubmitted status and timestamp.
-    // The submission itself is already committed by module_draft_submit, so a
-    // failure here is logged (not thrown) — but never silently discarded.
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: currentSubj } = await supabaseAdmin
-        .from("review_subjects")
-        .select("metadata")
-        .eq("id", subjectId)
-        .maybeSingle();
-
-      const existingMeta = (currentSubj?.metadata as Record<string, unknown>) ?? {};
-      const wasRevised =
-        existingMeta.review_status === "revision_requested" ||
-        typeof existingMeta.last_rationale === "string";
-
-      const { error: metaErr } = await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          title: data.title,
-          current_status: "pending",
-          updated_at: new Date().toISOString(),
-          metadata: {
-            ...existingMeta,
-            review_status: wasRevised ? "resubmitted" : "pending",
-            ...(wasRevised ? { resubmitted_at: new Date().toISOString() } : {}),
-          },
-        })
-        .eq("id", subjectId);
-      if (metaErr) console.error("[saveTrainerModuleSubmission] metadata sync failed:", metaErr.message);
-    } catch (metaErr) {
-      console.error("[saveTrainerModuleSubmission] metadata sync failed:", metaErr);
+      throw new Error(toFriendlyModuleSubmissionError(error.message));
     }
 
-    return { draftId, subjectId, status: "submitted", alreadySubmitted: false };
+    return result as { draftId: string; subjectId: string | null; status: "draft" | "submitted"; alreadySubmitted: boolean };
   });

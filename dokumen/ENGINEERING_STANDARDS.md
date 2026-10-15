@@ -16,6 +16,16 @@ Pengembangan dengan bantuan AI (*AI-assisted development* / *vibe coding*) membe
 4. **Modularitas Komponen:** Hindari menumpuk ribuan baris kode dalam satu file; pecah menjadi komponen yang dapat digunakan ulang (*reusable*).
 5. **Efisien Skalabilitas:** Hemat kuota kueri database, batasi ukuran unggahan berkas, dan gunakan koneksi *pooling*.
 
+### Prinsip Wajib: Banyak Pengguna, Banyak Perangkat, Bersamaan
+BARUNA dipakai banyak orang sekaligus, dari perangkat yang berbeda (HP, laptop, dua tab, dua perangkat milik satu orang). Setiap fitur yang menulis data **wajib** dirancang dengan asumsi berikut:
+1. **Klik ganda dan kirim ulang itu normal.** Penulisan harus idempoten: mengulang aksi yang sama tidak boleh membuat data ganda atau mengubah hasil.
+2. **Dua orang bisa bertindak di saat yang sama.** Gunakan kunci baris (`FOR UPDATE`), advisory lock per pengguna, dan kunci optimistik (`updated_at` mentah dari JSON) untuk data yang bisa diubah lebih dari satu orang.
+3. **Satu aksi = satu transaksi.** Perubahan yang melibatkan beberapa tabel dilakukan dalam satu RPC database agar tidak ada keadaan "setengah tersimpan". Jangan merangkai beberapa panggilan `supabaseAdmin` lalu berharap semuanya berhasil.
+4. **Gagal harus terlihat.** Dilarang `console.warn` lalu mengembalikan sukses. Pengguna dan admin harus menerima pesan yang jelas dan bisa ditindaklanjuti.
+5. **Aturan ditegakkan di database.** Apa pun yang bisa dipanggil dari SDK browser (RPC yang di-`GRANT` ke `authenticated`) harus memeriksa sendiri hak akses dan batasannya; pemeriksaan di UI/server function hanya untuk pesan yang ramah.
+6. **Bacaan tanpa efek samping.** Halaman yang dibuka (GET) tidak boleh menulis data, kecuali perbaikan sekali-jalan yang terkunci dan idempoten.
+7. **Data yang terus tumbuh harus dibatasi.** Respons yang dimuat setiap kali halaman dibuka wajib memiliki batas jumlah/ukuran.
+
 ---
 
 ## 2. Standar Basis Data & Migrasi (Supabase / PostgreSQL)
@@ -119,7 +129,11 @@ Status pengajuan expert tersebar di `review_subjects.current_status`, `review_su
 2. **Keputusan modul hanya lewat `admin_module_decide`:** satu transaksi untuk subjek, baris keputusan, draf, `module_registry`, dan `knowledge_resources`; kunci baris + `expectedUpdatedAt` mentah dari JSON. Dilarang menghapus baris `review_decisions` sebagai "rollback". Proyeksi Knowledge Hub berjalan setelah commit dan bersifat idempoten.
 3. **Keputusan baru jatuh tempo** bila ada revisi (`review_subject_revisions.submitted_at`) setelah keputusan terakhir. `restore` mengembalikan status sebelum diarsipkan dan tidak pernah menayangkan modul yang belum pernah disetujui; modul `revoked` tidak dipulihkan dari panel admin.
 4. **Peran pemutus** (`_can_decide_review`): `super_admin`, `admin`, `approver` (RBAC resmi) serta peran lama `admin`/`management`. Reviewer/verifier hanya meninjau. Pengaju tidak boleh memutuskan modulnya sendiri.
-5. **Kunci jawaban kuis tidak pernah publik:** trigger `trg_mr_extract_quiz_keys` memindahkan `correctAnswer`/`explanation` ke `module_quiz_answer_keys` (hanya service role) pada setiap penulisan `module_registry`. Browser hanya menerima soal; penilaian lewat `gradePublishedModuleQuiz`.
+6. **Simpan/kirim modul = satu transaksi** lewat `trainer_module_save` (buat, ubah, kirim, dan label antrean admin), terkunci per trainer; ukuran payload maksimal 1 MB.
+7. **Kuota level** (`_trainer_module_quota`) menghitung modul tayang **ditambah** modul baru yang masih menunggu verifikasi. UI membaca `moduleQuota` dari bootstrap, bukan menghitung sendiri.
+8. **Revisi modul tayang tidak menurunkan versi tayang:** "Minta revisi" atau "Tolak" atas revisi modul yang sedang tayang membiarkan versi yang disetujui tetap publik.
+9. **Portal trainer tanpa efek samping:** `trainer_portal_bootstrap` hanya membaca dan dibatasi (100 draf, 20 riwayat per draf). Status trainer pertama untuk expert lama dibuat sekali lewat `trainer_status_backfill_self`. `expert_trainer_status` memiliki indeks unik `(expert_id, version)`.
+10. **Kunci jawaban kuis tidak pernah publik:** trigger `trg_mr_extract_quiz_keys` memindahkan `correctAnswer`/`explanation` ke `module_quiz_answer_keys` (hanya service role) pada setiap penulisan `module_registry`. Browser hanya menerima soal; penilaian lewat `gradePublishedModuleQuiz`.
 
 ---
 *Dokumen ini diperbarui secara berkala sesuai dengan evolusi sistem dan tata kelola BARUNA.*

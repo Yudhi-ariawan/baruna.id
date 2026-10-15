@@ -1,6 +1,4 @@
-import { LEVEL_MODULE_LIMIT, type TrainerLevel } from "@/lib/trainerModules";
 import { UPLOAD_LIMITS } from "@/lib/storage/upload-limits";
-import type { TrainerPortalBootstrap } from "./portal-services.types";
 
 /**
  * Server-side guards for Trainer Portal module submissions (PB-ACA-01 via
@@ -54,15 +52,6 @@ export function assertModuleAttachments(payload: Record<string, unknown>, userId
   }
 }
 
-/** Same rule the submit page shows, enforced where it cannot be bypassed. */
-export function getModuleLevelLimitBlocker(bootstrap: TrainerPortalBootstrap): string | null {
-  const rawLevel = bootstrap.trainer?.level ?? "not_assigned";
-  const level: TrainerLevel = rawLevel === "not_assigned" ? "none" : rawLevel;
-  const limit = LEVEL_MODULE_LIMIT[level];
-  const active = (bootstrap.modules ?? []).filter((m) => ["approved", "published"].includes(m.status)).length;
-  return active >= limit ? `Batas level modul tercapai (${limit} modul aktif).` : null;
-}
-
 // module_draft_* RPCs enforce the same gates in the database (migration
 // 20261015020000); map their exceptions to messages a trainer can act on.
 const SUBMISSION_ERRORS: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
@@ -73,6 +62,10 @@ const SUBMISSION_ERRORS: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
   [/attachment_too_large: (.+)/, (m) => `Berkas "${m[1]}" melebihi batas maksimum 100 MB.`],
   [/invalid_module_type/, () => "Jenis modul tidak valid."],
   [/source_type_immutable|invalid_source_type/, () => "Data asal modul tidak boleh diubah."],
+  [/payload_too_large/, () => "Isi modul terlalu besar untuk disimpan (maksimal 1 MB teks). Pindahkan materi panjang ke berkas lampiran."],
+  [/title_required/, () => "Judul modul wajib diisi (3–240 karakter)."],
+  [/draft_not_found/, () => "Draf modul tidak ditemukan. Muat ulang halaman."],
+  [/draft_not_editable/, () => "Draf ini sudah dikirim dan tidak dapat diubah lagi. Muat ulang halaman untuk melihat statusnya."],
   [/revision_unchanged/, () => "Tidak ada perubahan sejak pengiriman terakhir. Ubah isi modul sebelum mengirim ulang."],
 ];
 

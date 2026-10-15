@@ -625,13 +625,16 @@ export async function publishApprovedModule({
   }
 
   // 3. Find expert record for author (check both original_contributor_id and created_by)
-  const { data: expert } = await supabaseAdmin
+  // Prefer the published profile. Ordering by current_status (an enum) would rank
+  // 'archived' highest and attach the module to a stale profile.
+  const { data: authorProfiles } = await supabaseAdmin
     .from("experts")
-    .select("id")
+    .select("id, current_status")
     .or(`original_contributor_id.eq.${subject.submitted_by},created_by.eq.${subject.submitted_by}`)
-    .order("current_status", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("updated_at", { ascending: false })
+    .limit(20);
+  const expert =
+    (authorProfiles ?? []).find((profile) => profile.current_status === "published") ?? authorProfiles?.[0] ?? null;
 
   const now = new Date().toISOString();
   const decisionRef = decisionId || dec?.id || null;

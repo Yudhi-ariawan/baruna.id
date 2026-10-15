@@ -31,6 +31,8 @@ export type TrainerPortalBootstrap = {
   access: PortalAccess;
   expertName?: string;
   trainerStatus?: string;
+  /** Level quota computed in the database: approved/published + new modules waiting for review. */
+  moduleQuota?: { limit: number; used: number; live: number; queued: number; level: string };
   trainer?: {
     expertId: string;
     fullName: string;
