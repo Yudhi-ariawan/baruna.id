@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DuplicateCandidatesAlert } from "./DuplicateCandidatesAlert";
 import { toast } from "sonner";
 import {
   GraduationCap,
@@ -289,6 +290,8 @@ export function ExpertDetailModal({
                 )}
               </div>
             )}
+
+            <DuplicateCandidatesAlert candidates={detail.possibleDuplicates ?? []} />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
               <TabsList className="flex w-full overflow-x-auto justify-start md:grid md:grid-cols-4 bg-slate-100 p-1 rounded-xl scrollbar-none whitespace-nowrap -mx-1 px-1 sm:mx-0 sm:px-1">

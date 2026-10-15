@@ -1644,6 +1644,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_reads: {
+        Row: {
+          notification_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          notification_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          notification_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trainer_level_module_limits: {
+        Row: {
+          level: string
+          module_limit: number
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          level: string
+          module_limit: number
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          level?: string
+          module_limit?: number
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expert_trainer_applications: {
         Row: {
           applicant_id: string
@@ -4494,6 +4533,17 @@ export type Database = {
         Returns: Json
       }
       _is_service_admin: { Args: { _user_id: string }; Returns: boolean }
+      expert_duplicate_candidates: {
+        Args: { _name: string; _email: string; _exclude_user?: string | null }
+        Returns: {
+          expert_id: string
+          display_name: string
+          slug: string | null
+          current_status: string
+          owner_id: string
+          match_reason: string
+        }[]
+      }
       trainer_application_my: { Args: never; Returns: Json }
       trainer_application_submit: { Args: { _payload: Json }; Returns: Json }
       trainer_application_withdraw: {

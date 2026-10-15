@@ -73,7 +73,11 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_trainer_module_quota')),
   (24, '20261015040000_published_module_revision_roles',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'request_published_module_revision'
-                AND prosrc LIKE '%_can_decide_review%'))
+                AND prosrc LIKE '%_can_decide_review%')),
+  (25, '20261015050000_expert_config_notifications_duplicates',
+      to_regclass('public.trainer_level_module_limits') IS NOT NULL
+      AND to_regclass('public.notification_reads') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_duplicate_candidates'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

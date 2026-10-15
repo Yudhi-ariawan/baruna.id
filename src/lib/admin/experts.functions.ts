@@ -49,6 +49,14 @@ export type AdminExpertDetail = AdminExpertItem & {
   publications: string | null;
   keyProjects: string | null;
   documents: AdminExpertDocument[];
+  /** Other directory profiles with the same name or email (Slide 37 Duplicate/Match). Advisory only. */
+  possibleDuplicates: Array<{
+    expertId: string;
+    displayName: string;
+    slug: string | null;
+    status: string;
+    matchReason: string;
+  }>;
   decisionsHistory: Array<{
     id: string;
     decision: string;
@@ -432,6 +440,18 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
     const latestDec = (decisions ?? [])[0];
     const subjMeta = (subj.metadata as Record<string, unknown>) ?? {};
 
+    // Duplicate/Match: profiles owned by other accounts with the same name or email.
+    // A failed check must not block the review, so errors yield an empty list.
+    const candidateName =
+      (typeof rawPayload.fullName === "string" && rawPayload.fullName) ||
+      (typeof rawPayload.display_name === "string" && rawPayload.display_name) ||
+      "";
+    const { data: duplicateRows } = await supabaseAdmin.rpc("expert_duplicate_candidates", {
+      _name: candidateName,
+      _email: typeof rawPayload.email === "string" ? rawPayload.email : "",
+      _exclude_user: subj.submitted_by,
+    });
+
     const status = deriveExpertEffectiveStatus({
       subjectStatus: subj.current_status,
       subjectMeta: subjMeta,
@@ -475,6 +495,13 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
       updatedAt: subj.updated_at,
       documentsCount: documentsWithUrls.length,
       documents: documentsWithUrls,
+      possibleDuplicates: (duplicateRows ?? []).map((d) => ({
+        expertId: d.expert_id,
+        displayName: d.display_name,
+        slug: d.slug,
+        status: d.current_status,
+        matchReason: d.match_reason,
+      })),
       publishedSlug: publishedExpert?.slug ?? null,
       isPublished: publishedExpert?.current_status === "published",
       isArchived,

@@ -132,6 +132,10 @@ export const LEVEL_THRESHOLD: Record<TrainerLevel, number> = {
   master: 10001, // "more than 10,000"
 };
 
+// Default values only. The authoritative limits live in the database table
+// trainer_level_module_limits (admin-editable) and reach the UI as
+// moduleQuota.limit from trainer_portal_bootstrap; this map is the fallback
+// for databases that have not run migration 20261015050000 yet.
 export const LEVEL_MODULE_LIMIT: Record<TrainerLevel, number> = {
   none: 0,
   certified: 2,

@@ -10,6 +10,7 @@ import {
   RotateCcw,
   XCircle,
   ArrowRight,
+  Info,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { Badge } from "@/components/ui/badge";
@@ -207,6 +208,7 @@ function NotificationsPage() {
               const isApproved = n.type === "approved";
               const isRejected = n.type === "rejected";
               const isArchived = n.type === "archived";
+              const isInfo = n.type === "info";
               const isRead = n.effectiveRead;
 
               return (
@@ -223,7 +225,9 @@ function NotificationsPage() {
                             ? "border-slate-300 bg-slate-100/80 ring-1 ring-slate-300/60"
                             : isRejected
                               ? "border-rose-300 bg-rose-50/80 ring-1 ring-rose-300/60"
-                              : "border-border bg-card"
+                              : isInfo
+                                ? "border-sky-300 bg-sky-50/80 ring-1 ring-sky-300/60"
+                                : "border-border bg-card"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -236,7 +240,9 @@ function NotificationsPage() {
                               ? "bg-emerald-200/80 text-emerald-800"
                               : isArchived
                                 ? "bg-slate-200 text-slate-800"
-                                : "bg-rose-200/80 text-rose-800"
+                                : isInfo
+                                  ? "bg-sky-200/80 text-sky-800"
+                                  : "bg-rose-200/80 text-rose-800"
                         }`}
                       >
                         {isRevision ? (
@@ -245,6 +251,8 @@ function NotificationsPage() {
                           <CheckCircle2 className="h-5 w-5 text-emerald-700" />
                         ) : isArchived ? (
                           <Archive className="h-5 w-5 text-slate-700" />
+                        ) : isInfo ? (
+                          <Info className="h-5 w-5 text-sky-700" />
                         ) : (
                           <XCircle className="h-5 w-5 text-rose-700" />
                         )}
