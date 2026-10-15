@@ -114,172 +114,34 @@ export const requestPublishedModuleRevision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => PublishedRevisionRequest.parse(input))
   .handler(async ({ data: input, context }) => {
-    if (!(await assertAdminOrReviewer(context))) throw new Error("forbidden");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const nowIso = new Date().toISOString();
-
-    // Capture the latest active (non-withdrawn) draft payload before branching
-    const { data: prevActiveDraft } = await supabaseAdmin
-      .from("review_drafts")
-      .select("id, payload")
-      .eq("linked_subject_id", input.subjectId)
-      .neq("status", "withdrawn")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // The RPC creates a new editable branch atomically. It deliberately does
-    // not change module_registry/knowledge_resources publication state.
-    const { data, error } = await context.supabase.rpc(
-      "request_published_module_revision" as never,
-      {
-        _subject_id: input.subjectId,
-        _rationale: input.rationale,
-      } as never,
-    );
-
-    let draftId = (data as string | null) ?? null;
-
-    if (error || !draftId) {
-      // Resilient fallback via supabaseAdmin (supports all reviewer roles & repeated cycles)
-      const { data: subj } = await supabaseAdmin
-        .from("review_subjects")
-        .select("*")
-        .eq("id", input.subjectId)
-        .eq("kind", "module")
-        .single();
-      if (!subj) throw new Error(error?.message || "module_subject_not_found");
-
-      const { data: pubMod } = await supabaseAdmin
-        .from("module_registry")
-        .select("*")
-        .eq("source_submission_id", input.subjectId)
-        .maybeSingle();
-      if (!pubMod) throw new Error(error?.message || "published_module_not_found");
-
-      const latestPayload = (prevActiveDraft?.payload as Record<string, unknown>) ?? {};
-      const latestMeta = (latestPayload.metadata as Record<string, unknown>) ?? {};
-      const modMeta = (pubMod.metadata as Record<string, unknown>) ?? {};
-
-      const mergedPayload = {
-        ...latestPayload,
-        title: pubMod.title,
-        summary: pubMod.summary,
-        language: pubMod.language,
-        module_type: pubMod.module_type,
-        target_participants: pubMod.target_participants,
-        estimated_learning_hours: pubMod.estimated_learning_hours,
-        learning_objectives: Array.isArray(pubMod.learning_objectives) ? pubMod.learning_objectives : [],
-        content_outline: pubMod.content_outline ?? latestPayload.content_outline ?? {},
-        assessment_approach: pubMod.assessment_approach ?? latestPayload.assessment_approach ?? {},
-        metadata: {
-          ...modMeta,
-          ...latestMeta,
-          revision_kind: "published_module_update",
-          published_module_id: pubMod.id,
-          base_version: pubMod.version,
-          revision_rationale: input.rationale,
-          revision_requested_by: context.userId,
-          revision_requested_at: nowIso,
-        },
-      };
-
-      await supabaseAdmin
-        .from("review_drafts")
-        .update({ status: "withdrawn", updated_at: nowIso })
-        .eq("linked_subject_id", input.subjectId)
-        .neq("status", "withdrawn");
-
-      const { data: insertedDraft, error: insErr } = await supabaseAdmin
-        .from("review_drafts")
-        .insert({
-          subject_kind: "module",
-          submitter_id: subj.submitted_by,
-          title: pubMod.title,
-          description: subj.description,
-          external_ref: subj.external_ref,
-          payload: mergedPayload as never,
-          status: "draft",
-          linked_subject_id: input.subjectId,
-        })
-        .select("id")
-        .single();
-
-      if (insErr || !insertedDraft) {
-        throw new Error(insErr?.message || error?.message || "failed_to_branch_module_revision");
-      }
-      draftId = insertedDraft.id;
-
-      await supabaseAdmin.from("review_decisions").insert({
-        subject_id: input.subjectId,
-        decided_by: context.userId,
-        decision: "return_for_revision",
-        rationale: input.rationale,
-      });
-    } else if (prevActiveDraft?.payload) {
-      const { data: newDraft } = await supabaseAdmin
-        .from("review_drafts")
-        .select("payload")
-        .eq("id", draftId)
-        .maybeSingle();
-      const rpcPayload = (newDraft?.payload as Record<string, unknown>) ?? {};
-      const prevPayload = (prevActiveDraft.payload as Record<string, unknown>) ?? {};
-      const prevMeta = (prevPayload.metadata as Record<string, unknown>) ?? {};
-      const rpcMeta = (rpcPayload.metadata as Record<string, unknown>) ?? {};
-      await supabaseAdmin
-        .from("review_drafts")
-        .update({
-          payload: {
-            ...prevPayload,
-            ...rpcPayload,
-            metadata: {
-              ...rpcMeta,
-              ...prevMeta,
-              revision_kind: "published_module_update",
-              revision_rationale: input.rationale,
-              revision_requested_by: context.userId,
-              revision_requested_at: nowIso,
-            },
-          } as never,
-          updated_at: nowIso,
-        })
-        .eq("id", draftId);
-    } else if (draftId) {
-      await supabaseAdmin
-        .from("review_drafts")
-        .update({ updated_at: nowIso })
-        .eq("id", draftId);
-    }
-
-    const { data: subj } = await supabaseAdmin
-      .from("review_subjects")
-      .select("metadata")
-      .eq("id", input.subjectId)
-      .maybeSingle();
-
-    if (subj) {
-      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          current_status: "pending",
-          metadata: {
-            ...currentMeta,
-            review_status: "revision_requested",
-            active_revision_draft_id: draftId,
-            last_decision: "return_for_revision",
-            last_rationale: input.rationale,
-            revised_at: nowIso,
-            resubmitted_at: null,
-          } as never,
-          updated_at: nowIso,
-        })
-        .eq("id", input.subjectId);
-    }
-
-    return { success: true, draftId };
+    // One atomic RPC: locks the subject, opens exactly one revision branch for the
+    // trainer, keeps the live module published, and enforces the decision roles
+    // (approver, admin, super_admin) plus the no-self-decision rule.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (context.supabase as any).rpc("request_published_module_revision", {
+      _subject_id: input.subjectId,
+      _rationale: input.rationale,
+    });
+    if (error) throw new Error(toFriendlyPublishedRevisionError(error.message));
+    if (!data) throw new Error("Cabang revisi tidak terbentuk. Muat ulang halaman lalu coba lagi.");
+    return { success: true, draftId: data as string };
   });
+
+const PUBLISHED_REVISION_ERRORS: Array<[RegExp, string]> = [
+  [/forbidden|42501|decider_role_required/, "Akses ditolak: revisi modul tayang hanya dapat dibuka oleh Approver, Admin, atau Super Admin."],
+  [/self_decision_forbidden/, "Anda tidak dapat membuka revisi untuk modul yang Anda ajukan sendiri."],
+  [/published_revision_already_open/, "Revisi untuk modul ini sudah dibuka dan sedang dikerjakan trainer. Tunggu trainer mengirim ulang."],
+  [/published_module_not_found/, "Modul ini tidak sedang tayang, jadi tidak ada versi publik yang bisa direvisi."],
+  [/module_subject_not_found/, "Modul pelatihan tidak ditemukan."],
+  [/revision_rationale_required/, "Catatan pembaruan modul untuk Trainer wajib diisi (minimal 5 karakter)."],
+  [/rationale_too_long/, "Catatan terlalu panjang (maksimal 5000 karakter)."],
+  [/authentication_required/, "Sesi login berakhir. Silakan masuk kembali."],
+];
+
+function toFriendlyPublishedRevisionError(message: string): string {
+  for (const [pattern, text] of PUBLISHED_REVISION_ERRORS) if (pattern.test(message)) return text;
+  return message;
+}
 
 export const listAdminModuleSubmissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
