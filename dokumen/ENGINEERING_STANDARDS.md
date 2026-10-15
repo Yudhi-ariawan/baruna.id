@@ -139,3 +139,12 @@ Status pengajuan expert tersebar di `review_subjects.current_status`, `review_su
 ---
 *Dokumen ini diperbarui secara berkala sesuai dengan evolusi sistem dan tata kelola BARUNA.*
 
+## Aturan migrasi baru (wajib)
+
+Database `main` dan `intern-update` adalah dua database Supabase berbeda dan migrasi ditempel manual tanpa catatan. Karena itu, **setiap kali menambah file di `supabase/migrations/`**, di commit yang sama wajib:
+
+1. Menambah satu baris bernomor di `supabase/check_migrations.sql` (cek tabel/fungsi/indeks yang dibuat migrasi itu) dan memperbarui jumlah barisnya di komentar.
+2. Memperbarui daftar "Migrasi yang harus dijalankan" di `dokumen/CATATAN_PERBAIKAN.md`.
+3. Menguji migrasi dua kali berturut-turut (harus bisa dijalankan ulang) di Postgres lokal.
+
+Tujuannya: saat mentor merge, pengecek langsung menunjukkan migrasi mana yang belum dijalankan.

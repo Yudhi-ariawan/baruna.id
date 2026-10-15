@@ -31,6 +31,7 @@ All AI agents and developers working on BARUNA must strictly adhere to the follo
 2. **Database & Schema Integrity:**
    - Never alter database tables or columns on the fly without a corresponding timestamped SQL migration in `supabase/migrations/`.
    - Never hardcode arbitrary fallback IDs for production data entities.
+   - Every new migration MUST also get a new numbered row in `supabase/check_migrations.sql` (same commit), and the "Migrasi yang harus dijalankan" list in `dokumen/CATATAN_PERBAIKAN.md` must be updated. `main` and `intern-update` are separate Supabase databases without a migration ledger, so this checker is how the mentor sees which migrations are still missing after a merge.
 
 3. **Security & Row Level Security (RLS):**
    - All user-facing tables must have RLS enabled with explicit policies.
