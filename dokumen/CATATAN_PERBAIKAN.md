@@ -100,12 +100,31 @@ Pengujian: tes Postgres lokal 74 pengecekan lulus, termasuk kegagalan di tengah 
 
 ---
 
+## 2e. Tutup jalur tulis langsung dari browser (SDK Supabase)
+
+Akun biasa bisa memanggil tabel dan RPC langsung dari browser. Celah yang ditutup:
+
+| # | Celah | Perbaikan |
+|---|---|---|
+| 1 | Draf bisa ditautkan ke pengajuan **orang lain**, diubah statusnya menjadi "submitted", atau diganti jenisnya; draf expert/modul bisa dibuat tanpa RPC bergerbang. | RLS baru dan pemicu `review_drafts_guard_client_update`: draf langsung hanya untuk jenis Knowledge Hub/kebutuhan pelatihan, tanpa tautan; kolom tautan/jenis/status terkunci. |
+| 2 | `submit_draft_for_review` bisa dipanggil langsung untuk melewati cek kelengkapan, duplikat, dan dokumen (expert) serta gerbang trainer dan lampiran (modul). | Aturan per jenis dipasang di fungsi inti itu sendiri, jadi berlaku untuk semua jalur. Revisi expert yang dikirim ulang juga mengubah status antrean di transaksi yang sama. |
+| 3 | `expert_draft_update` menerima path dokumen milik akun lain (admin lalu membuat tautan CV orang lain). | Ditolak (`document_not_owned`). |
+| 4 | Expert bisa mengubah langsung bahasa, proyek, publikasi, pekerjaan, dan data lain pada profil yang **sudah tayang** tanpa review; kontak privat juga bisa diubah. | Hanya tata kelola yang boleh menulis langsung; pemilik hanya membaca. |
+| 5 | Admin lama bisa INSERT `review_decisions` langsung tanpa mengubah status pengajuan. | Keputusan hanya lewat RPC. |
+| 6 | Halaman `/my-submissions` bisa membuat pengajuan expert dan modul melewati alurnya. | Pilihan expert/modul dihapus; diarahkan ke `/experts/join` dan portal trainer. |
+
+Data lama: draf yang tertaut ke pengajuan akun lain dilepas otomatis (di database intern-update: 0 baris).
+
+Pengujian: 34 pengecekan lulus dengan RLS dijalankan sebagai role `authenticated` sungguhan, ditambah 103 tes trainer lama yang tetap lulus dengan migrasi ini.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (26 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (27 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -120,6 +139,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261015040000_published_module_revision_roles.sql` (revisi modul tayang atomik)
 - `20261015050000_expert_config_notifications_duplicates.sql` (kuota level di tabel, penanda baca notifikasi, cek duplikat expert)
 - `20261015060000_expert_decision_atomic.sql` (keputusan/arsip/revisi expert atomik)
+- `20261015070000_expert_direct_write_lockdown.sql` (tutup tulis langsung dari browser)
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

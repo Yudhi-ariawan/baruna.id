@@ -88,11 +88,21 @@ const RPC_ERROR_MESSAGES: Record<string, string> = {
   forbidden: "Anda tidak memiliki akses ke pengajuan ini.",
   display_name_required: "Nama lengkap wajib diisi.",
   expert_application_already_pending: "Anda masih memiliki pengajuan expert yang sedang diverifikasi.",
+  expert_profile_exists: "Akun Anda sudah terdaftar sebagai expert aktif.",
+  expert_revision_pending:
+    "Anda memiliki pengajuan yang menunggu revisi. Silakan lanjutkan revisi tersebut, bukan membuat pengajuan baru.",
+  not_awaiting_revision: "Pengajuan ini tidak sedang menunggu revisi. Muat ulang halaman untuk melihat status terbaru.",
+  document_not_owned: "Dokumen pengajuan tidak valid: berkas harus diunggah dari akun Anda sendiri.",
+  too_many_documents: "Terlalu banyak dokumen dilampirkan (maksimal 8).",
+  payload_too_large: "Data pengajuan terlalu besar.",
+  payload_invalid: "Data pengajuan tidak valid.",
 };
 
 /** Maps raw PostgreSQL RPC exception codes to user-facing messages. */
 export function toFriendlyExpertError(message: string | undefined | null): string {
   if (!message) return "Terjadi kesalahan saat memproses pengajuan expert.";
+  const incomplete = message.match(/payload_incomplete:\s*(.+)$/);
+  if (incomplete) return `Pengajuan belum lengkap. Lengkapi: ${incomplete[1].trim()}.`;
   for (const [code, friendly] of Object.entries(RPC_ERROR_MESSAGES)) {
     if (message.includes(code)) return friendly;
   }

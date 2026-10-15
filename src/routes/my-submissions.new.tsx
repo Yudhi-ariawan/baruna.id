@@ -8,7 +8,7 @@ export const Route = createFileRoute("/my-submissions/new")({
   component: NewSubmission,
 });
 
-type Kind = "expert" | "module" | "knowledge_resource" | "training_need";
+type Kind = "knowledge_resource" | "training_need";
 
 function NewSubmission() {
   const navigate = useNavigate();
@@ -61,8 +61,6 @@ function NewSubmission() {
           className="mt-1 w-full rounded border border-border bg-background p-2 text-sm"
         >
           <option value="knowledge_resource">Knowledge resource</option>
-          <option value="module">Module</option>
-          <option value="expert">Expert profile</option>
           <option value="training_need">Training need</option>
         </select>
       </label>

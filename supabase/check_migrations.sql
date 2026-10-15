@@ -81,7 +81,11 @@ WITH checks(no, migration, ok) AS (
   (26, '20261015060000_expert_decision_atomic',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_expert_decide')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_expert_archive')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_revision_resubmit'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_revision_resubmit')),
+  (27, '20261015070000_expert_direct_write_lockdown',
+      EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'review_drafts_guard_client_update')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review'
+                    AND prosrc LIKE '%_expert_payload_problem%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

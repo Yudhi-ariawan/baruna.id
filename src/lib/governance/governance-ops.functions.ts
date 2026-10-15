@@ -13,6 +13,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 type SupabaseCtx = any;
 
 const SubjectKind = z.enum(["expert", "module", "knowledge_resource", "training_need"]);
+// Expert applications and training modules have their own gated flows
+// (/experts/join, trainer portal); generic drafts are only for the other kinds.
+// The database enforces the same rule (review_drafts RLS, migration 20261015070000).
+const GenericDraftKind = z.enum(["knowledge_resource", "training_need"], {
+  errorMap: () => ({
+    message:
+      "Pengajuan expert dibuat lewat /experts/join dan modul lewat portal trainer, bukan dari halaman ini.",
+  }),
+});
 
 // ─── Submitter drafts ──────────────────────────────────────────────────────
 export const listMyDrafts = createServerFn({ method: "GET" })
@@ -83,7 +92,7 @@ export const saveMyDraft = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid().optional(),
-        subjectKind: SubjectKind,
+        subjectKind: GenericDraftKind,
         title: z.string().min(1).max(200),
         description: z.string().max(5000).optional(),
         externalRef: z.string().max(200).optional(),
@@ -129,7 +138,6 @@ export const saveMyDraft = createServerFn({ method: "POST" })
         description: data.description ?? null,
         external_ref: data.externalRef ?? null,
         payload: data.payload as never,
-        linked_subject_id: data.linkedSubjectId ?? null,
         status: "draft",
       })
       .select("id, status")

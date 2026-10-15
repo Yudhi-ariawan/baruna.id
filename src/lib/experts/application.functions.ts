@@ -366,44 +366,15 @@ export const submitExpertApplication = createServerFn({ method: "POST" })
       if (blocker) throw new Error(blocker);
     }
 
+    // The database repeats these checks (completeness, document ownership, one live
+    // application per account), so a direct SDK call cannot skip them.
     const { data: subjectId, error } = await context.supabase.rpc("expert_draft_submit", {
       _draft_id: data.draftId,
     });
     if (error) throw new Error(toFriendlyExpertError(error.message));
 
-    // Sync review_subjects metadata if this was a resubmission of a revision_requested subject
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: subj } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, metadata")
-      .eq("id", subjectId as string)
-      .maybeSingle();
-
-    if (subj) {
-      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-      const wasRevised =
-        currentMeta.review_status === "revision_requested" ||
-        currentMeta.last_decision === "return_for_revision";
-      if (wasRevised) {
-        const { error: syncError } = await supabaseAdmin
-          .from("review_subjects")
-          .update({
-            current_status: "pending",
-            metadata: {
-              ...currentMeta,
-              review_status: "resubmitted",
-              resubmitted_at: new Date().toISOString(),
-            } as never,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", subj.id);
-        if (syncError) {
-          // The submission itself is committed; surface the drift in logs rather than failing the user.
-          console.error("[submitExpertApplication] metadata sync failed:", syncError.message);
-        }
-      }
-    }
-
+    // A resubmitted revision updates the review queue status inside the same
+    // transaction (public.submit_draft_for_review, migration 20261015070000).
     return { draftId: data.draftId, subjectId: subjectId as string };
   });
 
@@ -437,15 +408,6 @@ export const resubmitExpertApplicationRevision = createServerFn({ method: "POST"
       _notes: input.notes ?? null,
     });
     if (error) {
-      if (error.message.includes("not_awaiting_revision")) {
-        throw new Error("Pengajuan ini tidak sedang menunggu revisi. Muat ulang halaman untuk melihat status terbaru.");
-      }
-      if (error.message.includes("payload_incomplete")) {
-        throw new Error(`Pengajuan belum lengkap: ${error.message.split("payload_incomplete:")[1]?.trim() ?? ""}.`);
-      }
-      if (error.message.includes("document_not_owned")) {
-        throw new Error("Dokumen pengajuan tidak valid: berkas harus diunggah dari akun Anda sendiri.");
-      }
       if (error.message.includes("Could not find the function")) {
         throw new Error("Kirim ulang revisi membutuhkan migrasi database 20261015060000.");
       }
