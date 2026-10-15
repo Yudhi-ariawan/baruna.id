@@ -113,6 +113,14 @@ Status pengajuan expert tersebar di `review_subjects.current_status`, `review_su
 4. **Role primer:** database mewajibkan tepat satu role primer aktif per pengguna. Saat memberi role tambahan, cek role primer lain **tanpa** menghitung baris role yang sedang diberikan; role `expert` tetap primer.
 5. **Keputusan final:** keputusan yang sama boleh diulang (idempoten), tetapi `approved` tidak dapat dibalik menjadi `rejected` atau sebaliknya. Admin tidak boleh memutuskan pendaftarannya sendiri.
 
+## 9. Modul Trainer (Slide 41 Experts → Academy)
+
+1. **Gerbang di database, bukan hanya di server function:** RPC `module_draft_create/update/submit` dapat dipanggil langsung dari SDK browser, sehingga RPC itu sendiri wajib memeriksa trainer aktif (`_module_trainer_gate`), kuota level (`_module_level_limit`, sama dengan `LEVEL_MODULE_LIMIT`), dan kepemilikan lampiran (`_assert_module_attachments`). Jika aturan di TypeScript berubah, ubah juga fungsi SQL-nya.
+2. **Keputusan modul hanya lewat `admin_module_decide`:** satu transaksi untuk subjek, baris keputusan, draf, `module_registry`, dan `knowledge_resources`; kunci baris + `expectedUpdatedAt` mentah dari JSON. Dilarang menghapus baris `review_decisions` sebagai "rollback". Proyeksi Knowledge Hub berjalan setelah commit dan bersifat idempoten.
+3. **Keputusan baru jatuh tempo** bila ada revisi (`review_subject_revisions.submitted_at`) setelah keputusan terakhir. `restore` mengembalikan status sebelum diarsipkan dan tidak pernah menayangkan modul yang belum pernah disetujui; modul `revoked` tidak dipulihkan dari panel admin.
+4. **Peran pemutus** (`_can_decide_review`): `super_admin`, `admin`, `approver` (RBAC resmi) serta peran lama `admin`/`management`. Reviewer/verifier hanya meninjau. Pengaju tidak boleh memutuskan modulnya sendiri.
+5. **Kunci jawaban kuis tidak pernah publik:** trigger `trg_mr_extract_quiz_keys` memindahkan `correctAnswer`/`explanation` ke `module_quiz_answer_keys` (hanya service role) pada setiap penulisan `module_registry`. Browser hanya menerima soal; penilaian lewat `gradePublishedModuleQuiz`.
+
 ---
 *Dokumen ini diperbarui secara berkala sesuai dengan evolusi sistem dan tata kelola BARUNA.*
 

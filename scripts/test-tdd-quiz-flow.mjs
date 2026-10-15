@@ -329,8 +329,22 @@ async function runTddQuizFlow() {
       return valid.length > 0 ? valid : undefined;
     }
 
+    // Since migration 20261015020000 the public module row carries questions only;
+    // the answer keys are moved to module_quiz_answer_keys (service role only).
+    const publicQuiz = publishedModule.metadata?.quiz_questions || publishedModule.assessment_approach?.quiz_questions || [];
+    assert(
+      publicQuiz.length === 3 && publicQuiz.every((q) => q.correctAnswer === undefined && q.correctIndex === undefined),
+      "Public module_registry row contains no quiz answer keys.",
+    );
+    const { data: keyRow, error: keyErr } = await admin
+      .from("module_quiz_answer_keys")
+      .select("questions")
+      .eq("module_id", publishedModuleId)
+      .single();
+    if (keyErr) throw keyErr;
+    const keyAt = new Map(keyRow.questions.map((k) => [k.index, k]));
     const fetchedQuizQuestions = parseQuizQuestions(
-      publishedModule.metadata?.quiz_questions || publishedModule.assessment_approach?.quiz_questions
+      publicQuiz.map((q, i) => ({ ...q, correctAnswer: keyAt.get(i)?.correctAnswer, explanation: keyAt.get(i)?.explanation })),
     );
 
     assert(Array.isArray(fetchedQuizQuestions), "LMS engine successfully parsed custom quiz questions.");

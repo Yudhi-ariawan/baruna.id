@@ -49,7 +49,8 @@ import {
   completeShortCourse,
   updateShortCourseSteps,
 } from "@/lib/shortCourses";
-import type { PublishedModuleDetail } from "@/lib/learning/learning.functions";
+import { gradePublishedModuleQuiz, type PublishedModuleDetail, type QuizGradeResult } from "@/lib/learning/learning.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 function getDynamicModuleSlides(module: PublishedModuleDetail) {
   const slides = [];
@@ -122,24 +123,22 @@ function getDynamicModuleSlides(module: PublishedModuleDetail) {
   return slides;
 }
 
-function getDynamicModuleQuiz(module: PublishedModuleDetail) {
+type DynamicQuizQuestion = {
+  id: number | string;
+  question: string;
+  options: string[];
+  /** Known locally only for the generated fallback quiz; custom quizzes are graded on the server. */
+  correctAnswer?: number;
+  explanation?: string;
+};
+
+function getDynamicModuleQuiz(module: PublishedModuleDetail): DynamicQuizQuestion[] {
   if (module.quizQuestions && module.quizQuestions.length > 0) {
-    return module.quizQuestions.map((q, idx) => {
-      const opts = Array.isArray(q.options) && q.options.length >= 2 ? q.options : ["Pilihan A", "Pilihan B"];
-      const safeCorrect =
-        typeof q.correctAnswer === "number" && q.correctAnswer >= 0 && q.correctAnswer < opts.length
-          ? q.correctAnswer
-          : 0;
-      return {
-        id: q.id ?? idx + 1,
-        question: q.question,
-        options: opts,
-        correctAnswer: safeCorrect,
-        explanation:
-          q.explanation ||
-          `Pilihan ${String.fromCharCode(65 + safeCorrect)} adalah jawaban yang tepat untuk pertanyaan ini.`,
-      };
-    });
+    return module.quizQuestions.map((q, idx) => ({
+      id: q.id ?? idx + 1,
+      question: q.question,
+      options: Array.isArray(q.options) && q.options.length >= 2 ? q.options : ["Pilihan A", "Pilihan B"],
+    }));
   }
 
   const objectives =
@@ -363,6 +362,12 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(done);
   const [quizScore, setQuizScore] = useState<number | null>(enrollment?.score ?? (done ? 100 : null));
+  // Trainer-authored quizzes are graded server-side; the answer keys arrive only with the result.
+  const serverGradedQuiz = Boolean(module.quizQuestions && module.quizQuestions.length > 0);
+  const gradeQuizFn = useServerFn(gradePublishedModuleQuiz);
+  const [quizGrades, setQuizGrades] = useState<QuizGradeResult["results"] | null>(null);
+  const [quizGrading, setQuizGrading] = useState(false);
+  const correctAnswerAt = (idx: number) => quizGrades?.[idx]?.correctAnswer ?? dynamicQuizQuestions[idx]?.correctAnswer;
 
   // Keep state synced with enrollment changes
   useEffect(() => {
@@ -383,15 +388,33 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
     barunaToast(nextState ? `Activity ${step.toUpperCase()} marked as completed!` : `${step.toUpperCase()} status updated.`);
   };
 
-  const handleSubmitQuiz = () => {
-    let correct = 0;
-    dynamicQuizQuestions.forEach((q, idx) => {
-      if (quizAnswers[idx] === q.correctAnswer) {
-        correct++;
+  const handleSubmitQuiz = async () => {
+    if (quizGrading) return;
+    let score: number;
+    if (serverGradedQuiz) {
+      setQuizGrading(true);
+      try {
+        const graded = await gradeQuizFn({
+          data: { moduleId: module.id, answers: dynamicQuizQuestions.map((_, idx) => quizAnswers[idx]) },
+        });
+        setQuizGrades(graded.results);
+        score = graded.score;
+      } catch (err) {
+        barunaToast(err instanceof Error ? err.message : "Gagal menilai kuis. Silakan coba lagi.");
+        return;
+      } finally {
+        setQuizGrading(false);
       }
-    });
+    } else {
+      let correct = 0;
+      dynamicQuizQuestions.forEach((q, idx) => {
+        if (quizAnswers[idx] === q.correctAnswer) {
+          correct++;
+        }
+      });
+      score = Math.round((correct / dynamicQuizQuestions.length) * 100);
+    }
 
-    const score = Math.round((correct / dynamicQuizQuestions.length) * 100);
     setQuizScore(score);
     setQuizSubmitted(true);
     barunaToast(`Quiz score: ${score}%`);
@@ -407,6 +430,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
   };
 
   const handleRetakeQuiz = () => {
+    setQuizGrades(null);
     setQuizAnswers({});
     setQuizSubmitted(false);
     setQuizScore(null);
@@ -1447,7 +1471,8 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
               <div className="space-y-6">
                 {dynamicQuizQuestions.map((q, qIndex) => {
                   const selectedAnswer = quizAnswers[qIndex];
-                  const isCorrect = selectedAnswer === q.correctAnswer;
+                  const correctAnswer = correctAnswerAt(qIndex);
+                  const isCorrect = correctAnswer !== undefined && selectedAnswer === correctAnswer;
 
                   return (
                     <div
@@ -1466,7 +1491,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                               let optClasses = "border-border hover:bg-muted/40 text-foreground/80";
 
                               if (quizSubmitted) {
-                                if (optIndex === q.correctAnswer) {
+                                if (optIndex === correctAnswer) {
                                   optClasses = "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold";
                                 } else if (isSelected && !isCorrect) {
                                   optClasses = "border-destructive bg-destructive/10 text-destructive";
@@ -1491,9 +1516,12 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                             })}
                           </div>
 
-                          {quizSubmitted && (
+                          {quizSubmitted && correctAnswer !== undefined && (
                             <div className="mt-3 rounded-lg bg-muted/40 p-2.5 text-[11px] text-muted-foreground">
-                              <strong>Penjelasan:</strong> {q.explanation}
+                              <strong>Penjelasan:</strong>{" "}
+                              {quizGrades?.[qIndex]?.explanation ||
+                                q.explanation ||
+                                `Pilihan ${String.fromCharCode(65 + correctAnswer)} adalah jawaban yang tepat untuk pertanyaan ini.`}
                             </div>
                           )}
                         </div>
@@ -1513,11 +1541,11 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
 
                 {!quizSubmitted ? (
                   <button
-                    disabled={Object.keys(quizAnswers).length < dynamicQuizQuestions.length}
+                    disabled={quizGrading || Object.keys(quizAnswers).length < dynamicQuizQuestions.length}
                     onClick={handleSubmitQuiz}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-6 py-2.5 text-xs font-bold text-white hover:bg-marine/90 disabled:opacity-50 disabled:pointer-events-none transition shadow-xs"
                   >
-                    Submit Quiz Answers <CheckCircle2 className="h-4 w-4" />
+                    {quizGrading ? "Menilai jawaban…" : "Submit Quiz Answers"} <CheckCircle2 className="h-4 w-4" />
                   </button>
                 ) : quizScore !== null && quizScore >= passingScore ? (
                   <button

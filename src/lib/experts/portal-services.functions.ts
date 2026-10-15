@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import type { ServiceRequest, TrainerPortalBootstrap } from "./portal-services.types";
-import { assertModuleAttachments, getModuleLevelLimitBlocker } from "./module-submission-validation";
+import { assertModuleAttachments, getModuleLevelLimitBlocker, toFriendlyModuleSubmissionError } from "./module-submission-validation";
 import { ServiceRequestPayloadSchema, assertServiceRequestFiles } from "./service-request-files";
 import { toFriendlyServiceError } from "./service-request-errors";
 
@@ -411,7 +411,7 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
         _module_type: data.moduleType,
         _source_type: "external_submission",
       });
-      if (created.error) throw new Error(created.error.message);
+      if (created.error) throw new Error(toFriendlyModuleSubmissionError(created.error.message));
       draftId = created.data as string;
     }
 
@@ -458,7 +458,7 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
       _draft_id: draftId,
       _patch: patchPayload as Json,
     });
-    if (updated.error) throw new Error(updated.error.message);
+    if (updated.error) throw new Error(toFriendlyModuleSubmissionError(updated.error.message));
 
     if (!data.submit) return { draftId, subjectId: null, status: "draft" };
 
@@ -476,10 +476,10 @@ export const saveTrainerModuleSubmission = createServerFn({ method: "POST" })
         if (submittedDraft?.status === "submitted" && submittedDraft.linked_subject_id) {
           subjectId = submittedDraft.linked_subject_id;
         } else {
-          throw new Error(submitted.error.message);
+          throw new Error(toFriendlyModuleSubmissionError(submitted.error.message));
         }
       } else {
-        throw new Error(submitted.error.message);
+        throw new Error(toFriendlyModuleSubmissionError(submitted.error.message));
       }
     }
     if (!subjectId) throw new Error("module_submission_subject_missing");

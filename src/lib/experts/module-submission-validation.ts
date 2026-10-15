@@ -62,3 +62,24 @@ export function getModuleLevelLimitBlocker(bootstrap: TrainerPortalBootstrap): s
   const active = (bootstrap.modules ?? []).filter((m) => ["approved", "published"].includes(m.status)).length;
   return active >= limit ? `Batas level modul tercapai (${limit} modul aktif).` : null;
 }
+
+// module_draft_* RPCs enforce the same gates in the database (migration
+// 20261015020000); map their exceptions to messages a trainer can act on.
+const SUBMISSION_ERRORS: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
+  [/active_trainer_required/, () => "Akun Anda belum berstatus Trainer aktif. Ajukan kualifikasi trainer terlebih dahulu."],
+  [/module_level_limit: (\d+)/, (m) => `Batas level modul tercapai (${m[1]} modul aktif).`],
+  [/attachment_not_uploaded: (.+)/, (m) => `Berkas "${m[1]}" belum berhasil terunggah. Unggah ulang berkas tersebut sebelum mengirim modul.`],
+  [/attachment_not_owned: (.+)/, (m) => `Lampiran "${m[1]}" tidak valid: berkas harus diunggah dari akun Anda sendiri.`],
+  [/attachment_too_large: (.+)/, (m) => `Berkas "${m[1]}" melebihi batas maksimum 100 MB.`],
+  [/invalid_module_type/, () => "Jenis modul tidak valid."],
+  [/source_type_immutable|invalid_source_type/, () => "Data asal modul tidak boleh diubah."],
+  [/revision_unchanged/, () => "Tidak ada perubahan sejak pengiriman terakhir. Ubah isi modul sebelum mengirim ulang."],
+];
+
+export function toFriendlyModuleSubmissionError(message: string): string {
+  for (const [pattern, text] of SUBMISSION_ERRORS) {
+    const match = message.match(pattern);
+    if (match) return text(match);
+  }
+  return message;
+}

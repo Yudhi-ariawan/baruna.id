@@ -485,12 +485,18 @@ export type PublishedModuleDetail = {
   trainer: PublishedModuleTrainer;
   documents: PublishedModuleDocument[];
   publishedAt: string;
-  quizQuestions?: CustomQuizQuestion[];
+  /** Questions only — answer keys never leave the server (see gradePublishedModuleQuiz). */
+  quizQuestions?: PublicQuizQuestion[];
 };
 
-function parseQuizQuestions(raw: unknown): CustomQuizQuestion[] | undefined {
+export type PublicQuizQuestion = Omit<CustomQuizQuestion, "correctAnswer" | "explanation">;
+
+type ParsedQuizQuestion = PublicQuizQuestion & { rawIndex: number };
+
+/** Valid questions plus their position in the stored array (answer keys are stored by that position). */
+function parseQuizQuestions(raw: unknown): ParsedQuizQuestion[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
-  const valid: CustomQuizQuestion[] = [];
+  const valid: ParsedQuizQuestion[] = [];
   for (let i = 0; i < raw.length; i++) {
     const item = raw[i];
     if (item && typeof item === "object") {
@@ -498,21 +504,16 @@ function parseQuizQuestions(raw: unknown): CustomQuizQuestion[] | undefined {
       const question = typeof q.question === "string" ? q.question.trim() : "";
       const rawOptions = Array.isArray(q.options) ? q.options : [];
       const options = rawOptions.map((o) => String(o ?? "").trim()).filter(Boolean);
-      const correctAnswer = typeof q.correctAnswer === "number" ? q.correctAnswer : Number(q.correctIndex ?? 0);
-      const explanation = typeof q.explanation === "string" ? q.explanation.trim() : undefined;
       if (question && options.length >= 2) {
-        valid.push({
-          id: (q.id as number | string) ?? (i + 1),
-          question,
-          options,
-          correctAnswer: Math.max(0, Math.min(options.length - 1, isNaN(correctAnswer) ? 0 : correctAnswer)),
-          explanation,
-        });
+        valid.push({ id: (q.id as number | string) ?? (i + 1), question, options, rawIndex: i });
       }
     }
   }
   return valid.length > 0 ? valid : undefined;
 }
+
+const toPublicQuiz = (parsed: ParsedQuizQuestion[] | undefined): PublicQuizQuestion[] | undefined =>
+  parsed?.map(({ rawIndex: _rawIndex, ...q }) => q);
 
 export const getPublishedModuleDetail = createServerFn({ method: "GET" })
   .validator((d) => z.object({ moduleId: z.string() }).parse(d))
@@ -635,12 +636,12 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
           trainer: subTrainer,
           documents: subDocs,
           publishedAt: String(sub.created_at),
-          quizQuestions: parseQuizQuestions(
+          quizQuestions: toPublicQuiz(parseQuizQuestions(
             subMeta.quiz_questions ||
             subAssessment.quiz_questions ||
             subPayload.quiz_questions ||
             (subMeta.assessment_approach as Record<string, unknown> | undefined)?.quiz_questions
-          ),
+          )),
         };
       }
 
@@ -760,17 +761,91 @@ export const getPublishedModuleDetail = createServerFn({ method: "GET" })
       trainer: trainerInfo,
       documents: documentsWithUrls,
       publishedAt: String(mod.publication_date || mod.created_at),
-      quizQuestions: parseQuizQuestions(
-        meta.quiz_questions ||
-        assessmentApproach.quiz_questions ||
-        (mod as unknown as Record<string, unknown>).quiz_questions
-      ),
+      quizQuestions: toPublicQuiz(parseQuizQuestions(publishedQuizSource(mod))),
     };
   } catch (err) {
     console.error("Error in getPublishedModuleDetail:", err);
     return null;
   }
 });
+
+/** Same source order getPublishedModuleDetail uses, so indexes line up with the stored keys. */
+function publishedQuizSource(mod: Record<string, unknown>): unknown {
+  const meta = (mod.metadata as Record<string, unknown>) ?? {};
+  const assessment = (mod.assessment_approach as Record<string, unknown>) ?? {};
+  return meta.quiz_questions || assessment.quiz_questions || mod.quiz_questions;
+}
+
+export type QuizGradeResult = {
+  score: number;
+  passed: boolean;
+  passingScore: number;
+  results: Array<{ correct: boolean; correctAnswer: number; explanation: string | null }>;
+};
+
+/**
+ * Grades a published module quiz on the server. Answer keys live in
+ * module_quiz_answer_keys (service role only), so they are revealed per question
+ * only after the participant has submitted a full set of answers.
+ */
+export const gradePublishedModuleQuiz = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) =>
+    z
+      .object({
+        moduleId: z.string().uuid(),
+        answers: z.array(z.number().int().min(0).max(100)).min(1).max(500),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }): Promise<QuizGradeResult> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: mod, error: modErr } = await supabaseAdmin
+      .from("module_registry")
+      .select("id, current_status, visibility, metadata, assessment_approach")
+      .eq("id", data.moduleId)
+      .maybeSingle();
+    if (modErr) throw new Error(`Gagal memuat modul: ${modErr.message}`);
+    if (!mod || mod.current_status !== "published" || mod.visibility !== "public") {
+      throw new Error("Modul tidak ditemukan atau tidak sedang tayang.");
+    }
+
+    const questions = parseQuizQuestions(publishedQuizSource(mod as unknown as Record<string, unknown>));
+    if (!questions?.length) throw new Error("Modul ini tidak memiliki kuis.");
+    if (data.answers.length !== questions.length) {
+      throw new Error("Jawab semua pertanyaan kuis sebelum mengirim.");
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: keyRow, error: keyErr } = await (supabaseAdmin as any)
+      .from("module_quiz_answer_keys")
+      .select("questions")
+      .eq("module_id", data.moduleId)
+      .maybeSingle();
+    if (keyErr) throw new Error(`Gagal memuat kunci jawaban: ${keyErr.message}`);
+    const keys = Array.isArray(keyRow?.questions) ? (keyRow.questions as Array<Record<string, unknown>>) : [];
+    const keyAt = new Map(keys.map((k) => [Number(k.index), k]));
+
+    const results = questions.map((q, i) => {
+      const key = keyAt.get(q.rawIndex);
+      const rawCorrect = Number(key?.correctAnswer);
+      // A missing key must not silently grade every question against option A.
+      if (!key || !Number.isInteger(rawCorrect)) {
+        throw new Error("Kunci jawaban kuis modul ini belum tersedia. Hubungi admin BARUNA.");
+      }
+      const correctAnswer = Math.max(0, Math.min(q.options.length - 1, rawCorrect));
+      return {
+        correct: data.answers[i] === correctAnswer,
+        correctAnswer,
+        explanation: typeof key.explanation === "string" && key.explanation.trim() ? key.explanation.trim() : null,
+      };
+    });
+
+    const assessment = (mod.assessment_approach as Record<string, unknown>) ?? {};
+    const passingScore = Number(assessment.passing_score ?? 70);
+    const score = Math.round((results.filter((r) => r.correct).length / results.length) * 100);
+    return { score, passed: score >= passingScore, passingScore, results };
+  });
 
 export type PublishedCatalogModule = {
   id: string;

@@ -582,15 +582,19 @@ function ModuleDetailModal({
 
     try {
       setSubmitting(true);
-      await decisionFn({
+      const result = await decisionFn({
         data: {
           subjectId,
           decision,
           rationale: rationale.trim() || undefined,
+          // Raw string from the detail response: the server rejects the decision
+          // if another reviewer changed this module after it was opened.
+          expectedUpdatedAt: detail?.updatedAt || undefined,
         },
       });
 
       toast.success(
+        result?.message ||
         decision === "approve"
           ? "Modul berhasil disetujui dan dipublikasikan ke Registry & Self-Paced Courses!"
           : decision === "return_for_revision"

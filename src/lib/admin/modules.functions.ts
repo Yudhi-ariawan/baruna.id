@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { publishApprovedModule } from "@/lib/experts/publishing.server";
 
 const DecisionType = z.enum(["approve", "return_for_revision", "reject", "archive", "restore"]);
 
@@ -743,353 +742,98 @@ export const recordAdminModuleDecision = createServerFn({ method: "POST" })
         subjectId: z.string().uuid(),
         decision: DecisionType,
         rationale: z.string().max(5000).optional(),
+        // Raw review_subjects.updated_at the reviewer was looking at (optimistic lock).
+        expectedUpdatedAt: z.string().min(10).max(64).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data: input, context }) => {
-    if (!(await assertAdminOrReviewer(context))) {
-      throw new Error("forbidden");
-    }
+    // The whole decision (state guard, decision row, drafts, module_registry and
+    // knowledge_resources) commits or rolls back as one transaction in the RPC,
+    // which also enforces the decision roles and blocks self-decisions.
+    const { data: result, error } = await (context.supabase as any).rpc("admin_module_decide", {
+      _subject_id: input.subjectId,
+      _decision: input.decision,
+      _rationale: input.rationale?.trim() || null,
+      _expected_updated_at: input.expectedUpdatedAt ?? null,
+    });
+    if (error) throw new Error(toFriendlyModuleDecisionError(error.message));
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const outcome = result as {
+      decisionId?: string;
+      status: string;
+      changed: boolean;
+      moduleId?: string | null;
+      project?: boolean;
+    };
 
-    // 1. Fetch subject
-    const { data: subj, error: subjErr } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, kind, title, description, external_ref, submitted_by, current_status, metadata")
-      .eq("id", input.subjectId)
-      .single();
-
-    if (subjErr || !subj) {
-      throw new Error("Modul pelatihan tidak ditemukan.");
-    }
-
-    // 2. Handle Archive decision separately (without violating review_decisions check constraint)
-    if (input.decision === "archive") {
-      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-      const rationaleText = input.rationale?.trim() || "Modul diarsipkan dan ditarik dari tayang publik.";
-
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          current_status: "withdrawn",
-          metadata: {
-            ...currentMeta,
-            review_status: "archived",
-            last_decision: "archive",
-            last_rationale: rationaleText,
-            archived_at: new Date().toISOString(),
-          } as never,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.subjectId);
-
-      // Update module_registry
-      await supabaseAdmin
-        .from("module_registry")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("source_submission_id", input.subjectId);
-
-      await supabaseAdmin
-        .from("knowledge_resources")
-        .update({ current_status: "archived", visibility: "private", updated_at: new Date().toISOString() })
-        .eq("source_submission_id", input.subjectId)
-        .eq("resource_type", "module");
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
+    const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+    // Projection is derived data: it runs after the commit and is idempotent, so a
+    // failure is reported and fixed by repeating the (idempotent) decision.
+    if (outcome.project && outcome.moduleId) {
       try {
-        await supabaseAdmin.from("governance_audit_log").insert({
-          event_type: "module_archived",
-          actor_id: context.userId,
-          subject_id: input.subjectId,
-          entity_type: "module_registry",
-          entity_id: input.subjectId,
-          after: {
-            status: "archived",
-            rationale: rationaleText,
-          },
-        });
-      } catch (logErr) {
-        console.warn("governance_audit_log insert skipped:", logErr);
-      }
-
-      return { success: true, decisionId: `archive-${input.subjectId}`, decision: input.decision };
-    }
-
-    // 3. Handle Restore decision
-    if (input.decision === "restore") {
-      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-      const rationaleText = input.rationale?.trim() || "Modul dipulihkan dan ditayangkan kembali ke publik.";
-
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          current_status: "approved",
-          metadata: {
-            ...currentMeta,
-            review_status: "approved",
-            last_decision: "approve",
-            last_rationale: rationaleText,
-            restored_at: new Date().toISOString(),
-          } as never,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.subjectId);
-
-      // Check existing module in registry
-      const { data: existingMod } = await supabaseAdmin
-        .from("module_registry")
-        .select("id")
-        .eq("source_submission_id", input.subjectId)
-        .maybeSingle();
-
-      if (existingMod) {
-        await supabaseAdmin
-          .from("module_registry")
-          .update({
-            current_status: "published",
-            visibility: "public",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingMod.id);
-
         const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
-        await projectPublishedModuleToKnowledge(existingMod.id);
-      } else {
-        await publishApprovedModule({
-          subjectId: input.subjectId,
-          decidedBy: context.userId,
-        });
-      }
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
-      return { success: true, decisionId: `restore-${input.subjectId}`, decision: input.decision };
-    }
-
-    // 4. Standard review gate decisions: approve, return_for_revision, reject
-    const rationaleText =
-      input.rationale?.trim() ||
-      (input.decision === "return_for_revision"
-        ? "Perlu revisi silabus atau dokumen modul."
-        : input.decision === "approve"
-          ? "Modul disetujui & dipublikasikan."
-          : "Modul ditolak.");
-
-    // Query existing decisions to link supersedes chain and satisfy unique index review_decisions_one_current_final
-    const { data: prevDecisions } = await supabaseAdmin
-      .from("review_decisions")
-      .select("id, decision, supersedes_decision_id, created_at")
-      .eq("subject_id", input.subjectId)
-      .order("created_at", { ascending: false });
-
-    let supersedesDecisionId: string | null = null;
-    if (input.decision === "approve" || input.decision === "reject") {
-      const existingNullFinal = prevDecisions?.find(
-        (d) => !d.supersedes_decision_id && (d.decision === "approve" || d.decision === "reject"),
-      );
-      if (existingNullFinal) {
-        supersedesDecisionId = existingNullFinal.id;
-      } else if (prevDecisions && prevDecisions.length > 0) {
-        supersedesDecisionId = prevDecisions[0].id;
-      }
-    }
-
-    const { data: decRecord, error: decErr } = await supabaseAdmin
-      .from("review_decisions")
-      .insert({
-        subject_id: input.subjectId,
-        decided_by: context.userId,
-        decision: input.decision,
-        rationale: rationaleText,
-        supersedes_decision_id: supersedesDecisionId,
-      })
-      .select("id")
-      .single();
-
-    if (decErr || !decRecord) {
-      throw new Error(decErr?.message || "Gagal mencatat keputusan evaluasi modul.");
-    }
-
-    const decisionId = decRecord.id;
-
-    if (input.decision === "return_for_revision") {
-      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          current_status: "pending",
-          metadata: {
-            ...currentMeta,
-            review_status: "revision_requested",
-            last_decision: "return_for_revision",
-            last_rationale: rationaleText,
-            revised_at: new Date().toISOString(),
-            resubmitted_at: null,
-          } as never,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.subjectId);
-
-      // Re-open the latest non-withdrawn linked review_drafts back to 'draft' so trainer can edit silabus & upload new files
-      const { data: activeDraft } = await supabaseAdmin
-        .from("review_drafts")
-        .select("id")
-        .eq("linked_subject_id", input.subjectId)
-        .neq("status", "withdrawn")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (activeDraft) {
-        await supabaseAdmin
-          .from("review_drafts")
-          .update({
-            status: "draft",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", activeDraft.id);
-      }
-
-      // Unpublish any existing module_registry / knowledge_resources rows while under revision
-      await supabaseAdmin
-        .from("module_registry")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("source_submission_id", input.subjectId);
-
-      await supabaseAdmin
-        .from("knowledge_resources")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("source_submission_id", input.subjectId)
-        .eq("resource_type", "module");
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
-      return { success: true, decisionId, decision: input.decision };
-    }
-
-    if (input.decision === "approve") {
-      const prevStatus = subj.current_status;
-      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          current_status: "approved",
-          metadata: {
-            ...currentMeta,
-            review_status: "approved",
-            last_decision: "approve",
-            last_rationale: rationaleText,
-            approved_at: new Date().toISOString(),
-            resubmitted_at: null,
-            archived_at: null,
-          } as never,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.subjectId);
-
-      await supabaseAdmin
-        .from("review_drafts")
-        .update({
-          status: "submitted",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("linked_subject_id", input.subjectId)
-        .neq("status", "withdrawn");
-
-      try {
-        await publishApprovedModule({
-          subjectId: input.subjectId,
-          decisionId,
-          decidedBy: context.userId,
-        });
-      } catch (publishErr) {
-        console.error("[recordAdminModuleDecision] publishApprovedModule error:", publishErr);
-        // Automatic Rollback: Kembalikan status review_subjects dan hapus record keputusan gantung
-        try {
-          await supabaseAdmin
-            .from("review_subjects")
-            .update({
-              current_status: prevStatus,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", input.subjectId);
-
-          await supabaseAdmin
-            .from("review_decisions")
-            .delete()
-            .eq("id", decisionId);
-        } catch (rollbackErr) {
-          console.error("[recordAdminModuleDecision] Rollback error:", rollbackErr);
-        }
-
+        await projectPublishedModuleToKnowledge(outcome.moduleId);
+      } catch (projectionErr) {
+        clearKnowledgeHubCache();
         throw new Error(
-          publishErr instanceof Error
-            ? `Persetujuan dibatalkan karena gagal mempublikasikan modul ke registry: ${publishErr.message}`
-            : "Gagal mempublikasikan modul ke registry.",
+          `Keputusan tersimpan dan modul sudah tayang di registry, tetapi sinkronisasi ke Knowledge Hub gagal: ${
+            projectionErr instanceof Error ? projectionErr.message : String(projectionErr)
+          }. Klik tombol yang sama sekali lagi untuk mengulang sinkronisasi.`,
         );
       }
-
-      return { success: true, decisionId, decision: input.decision };
     }
+    clearKnowledgeHubCache();
 
-    if (input.decision === "reject") {
-      const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          current_status: "rejected",
-          metadata: {
-            ...currentMeta,
-            review_status: "rejected",
-            last_decision: "reject",
-            last_rationale: rationaleText,
-            rejected_at: new Date().toISOString(),
-          } as never,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.subjectId);
-
-      await supabaseAdmin
-        .from("module_registry")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("source_submission_id", input.subjectId);
-
-      await supabaseAdmin
-        .from("knowledge_resources")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("source_submission_id", input.subjectId)
-        .eq("resource_type", "module");
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
-      return { success: true, decisionId, decision: input.decision };
-    }
-
-    return { success: true, decisionId, decision: input.decision };
+    return {
+      success: true,
+      decisionId: outcome.decisionId ?? null,
+      decision: input.decision,
+      status: outcome.status,
+      changed: outcome.changed,
+      message: moduleDecisionMessage(input.decision, outcome.status, outcome.changed),
+    };
   });
+
+function moduleDecisionMessage(decision: z.infer<typeof DecisionType>, status: string, changed: boolean): string {
+  if (!changed) {
+    return decision === "approve"
+      ? "Modul ini sudah disetujui sebelumnya; publikasi di registry dipastikan aktif."
+      : "Keputusan ini sudah tercatat sebelumnya. Tidak ada perubahan.";
+  }
+  switch (decision) {
+    case "approve":
+      return "Modul berhasil disetujui dan dipublikasikan ke Registry & Self-Paced Courses!";
+    case "return_for_revision":
+      return "Permintaan revisi telah dikirimkan ke Trainer dengan catatan perbaikan.";
+    case "reject":
+      return "Pengajuan modul telah ditolak.";
+    case "archive":
+      return "Modul berhasil diarsipkan dan ditarik dari tayang publik.";
+    case "restore":
+      return status === "approved"
+        ? "Modul berhasil dipulihkan dan ditayangkan kembali ke publik."
+        : status === "rejected"
+          ? "Modul dipulihkan dari arsip dengan status Ditolak seperti sebelum diarsipkan."
+          : "Modul dipulihkan ke antrean verifikasi karena belum pernah disetujui; modul tidak ditayangkan.";
+  }
+}
+
+const MODULE_DECISION_ERRORS: Array<[RegExp, string]> = [
+  [/forbidden|42501|decider_role_required/, "Akses ditolak: keputusan modul hanya dapat diambil oleh Approver, Admin, atau Super Admin."],
+  [/self_decision_forbidden/, "Anda tidak dapat memutuskan modul yang Anda ajukan sendiri."],
+  [/stale_subject/, "Data modul sudah berubah oleh pengguna lain sejak halaman dibuka. Muat ulang lalu periksa kembali sebelum memutuskan."],
+  [/module_archived/, "Modul sedang diarsipkan. Pulihkan dari arsip terlebih dahulu."],
+  [/module_not_archived/, "Modul ini tidak sedang diarsipkan."],
+  [/module_revoked/, "Modul ini telah dicabut (revoked) oleh tata kelola dan tidak dapat dipulihkan dari panel ini."],
+  [/rationale_required/, "Wajib menyertakan catatan evaluasi / alasan."],
+  [/rationale_too_long/, "Catatan terlalu panjang (maksimal 5000 karakter)."],
+  [/module_subject_not_found/, "Modul pelatihan tidak ditemukan."],
+];
+
+function toFriendlyModuleDecisionError(message: string): string {
+  const transition = message.match(/invalid_transition: (.+)$/);
+  if (transition) return `Keputusan tidak dapat diterapkan: ${transition[1]}.`;
+  for (const [pattern, text] of MODULE_DECISION_ERRORS) if (pattern.test(message)) return text;
+  return message;
+}
