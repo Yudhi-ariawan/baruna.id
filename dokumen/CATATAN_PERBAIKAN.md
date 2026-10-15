@@ -50,26 +50,46 @@ Tambahan:
 
 ---
 
+## 2b. Role Trainer: pipeline modul (kunci jawaban, keputusan, simpan modul)
+
+| # | Masalah | Perbaikan |
+|---|---|---|
+| 1 | Gerbang "harus trainer aktif", kuota, dan kepemilikan lampiran hanya ada di server function. RPC `module_draft_*` dapat dipanggil langsung dari SDK browser oleh akun mana pun. | Pemeriksaan dipindah ke dalam RPC database. |
+| 2 | Keputusan admin atas modul tanpa guard status dan tanpa kunci; reviewer/verifier bisa memutuskan final; `restore` bisa menayangkan modul yang belum pernah disetujui. | RPC `admin_module_decide`: satu transaksi, kunci baris, `expectedUpdatedAt`, hanya approver/admin/super admin, pengaju tidak boleh memutuskan modulnya sendiri. |
+| 3 | Penulisan banyak tabel tanpa transaksi, error diabaikan, "rollback" menghapus baris keputusan (jejak audit). | Semua dalam satu transaksi; baris keputusan tidak pernah dihapus. |
+| 4 | Kunci jawaban kuis tersalin ke `module_registry` yang dapat dibaca publik. | Dipindah ke tabel privat `module_quiz_answer_keys`; penilaian di server (`gradePublishedModuleQuiz`). |
+| 5 | Revisi modul yang sedang tayang menariknya dari publik. | Versi yang disetujui tetap tayang selama revisi dikerjakan. |
+| 6 | Simpan/kirim modul 4 langkah terpisah; kuota tidak menghitung antrean; portal menulis data setiap dibuka; data portal tidak dibatasi. | `trainer_module_save` (satu transaksi, terkunci per trainer); kuota menghitung antrean; portal hanya membaca dan dibatasi; indeks unik versi status trainer. |
+| 7 | Tombol "buka revisi modul tayang" punya jalur cadangan 4 langkah dan mengizinkan reviewer. | Hanya lewat RPC atomik `request_published_module_revision`, peran pemutus resmi. |
+
+Pengujian: tes Postgres lokal (PGlite) 89 pengecekan lulus, termasuk simulasi kegagalan di tengah transaksi.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
-Jalankan **berurutan** di Supabase SQL Editor pada database yang belum memilikinya:
+**Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
-1. `20261005160000_course_enrollment_applications.sql` *(tabel pendaftaran; belum ada di database sebelumnya)*
-2. `20261007100000_participant_biodata.sql` *(tabel biodata; belum ada di database sebelumnya)*
-3. `20261013020000_atomic_knowledge_resource_metrics.sql`
-4. `20261014010000_expert_lifecycle_hardening.sql`
-5. `20261014020000_trainer_status_latest_semantics.sql`
-6. `20261014030000_expert_service_request_guards.sql`
-7. `20261014040000_expert_service_assignment.sql`
-8. `20261014050000_trainer_qualification_applications.sql`
-9. `20261014060000_fix_admin_lists_email_source.sql`
-10. `20261015010000_participant_enrollment_integrity.sql`
+1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
+2. Hasilnya satu baris per migrasi (24 baris): `OK` atau `BELUM DIJALANKAN`.
+3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
+4. Jalankan pengecek lagi sampai semuanya OK.
 
-Tanpa nomor 1, 2, dan 10, pendaftaran peserta, keputusan admin, dan simpan biodata akan menampilkan pesan "migrasi belum dijalankan".
+Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesuai hasil pengecek):
+
+- `20261005160000_course_enrollment_applications.sql` dan `20261007100000_participant_biodata.sql` (tabel peserta)
+- `20261013020000_atomic_knowledge_resource_metrics.sql`
+- `20261014010000` sampai `20261014060000` (Expert, penugasan, kualifikasi trainer, perbaikan email)
+- `20261015010000_participant_enrollment_integrity.sql` (pendaftaran peserta aman; butuh dua tabel peserta di atas lebih dulu)
+- `20261015020000_trainer_module_integrity.sql` (gerbang modul, keputusan atomik, kunci jawaban privat)
+- `20261015030000_trainer_pipeline_hardening.sql` (simpan modul satu transaksi, kuota, portal dibatasi)
+- `20261015040000_published_module_revision_roles.sql` (revisi modul tayang atomik)
+
+Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
 Peringatan: ada dua file dengan awalan `20261013010000`. Aman lewat SQL Editor, tetapi akan bentrok jika memakai `supabase db push`.
 
-Setelah merge: jalankan `npm run build`, lalu uji alur pendaftaran peserta dengan **dua akun berbeda** (admin tidak bisa menyetujui pendaftarannya sendiri).
+Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (admin tidak bisa memutuskan pengajuannya sendiri).
 
 ---
 
@@ -77,8 +97,8 @@ Setelah merge: jalankan `npm run build`, lalu uji alur pendaftaran peserta denga
 
 - `npx tsc --noEmit` dan `npm run build`: lulus.
 - `npm run test:lifecycle` (Peserta 7/7, Trainer 7/7) dan `npm run test:kh-roles` (20/20): lulus, data uji dibersihkan otomatis.
-- Alur Expert dan Peserta diuji pada Postgres lokal (PGlite) dengan migrasi asli: 59 dan 33 pengecekan lulus.
-- Belum diuji manual di browser dengan akun nyata: alur penugasan Expert dan alur pendaftaran Peserta.
+- Alur Expert, Peserta, dan Trainer diuji pada Postgres lokal (PGlite) dengan migrasi asli: 59, 33, dan 89 pengecekan lulus.
+- Belum diuji manual di browser dengan akun nyata: alur penugasan Expert (fitur disembunyikan sementara), pendaftaran Peserta, dan pipeline modul Trainer.
 
 ---
 
@@ -93,4 +113,8 @@ Setelah merge: jalankan `npm run build`, lalu uji alur pendaftaran peserta denga
 - Antrean Verifikasi Expert belum memakai paginasi.
 - `academy.learn.$id.tsx` masih sekitar 1.629 baris; perlu dipecah.
 - `src/integrations/supabase/types.ts` disinkronkan manual; sebaiknya dibuat ulang lewat Supabase CLI.
-- Sekitar 28 akun sisa tes lama (`tdd…@example.test`) masih ada di database.
+- Sekitar 46 akun sisa tes lama (`@example.test`) masih ada di database intern-update.
+- Batas kuota level modul (2/5/10/999) masih ditulis langsung di kode (SQL dan TypeScript); idealnya disimpan di tabel konfigurasi (Slide 15/39: data tidak hard-coded).
+- Kelulusan kuis dan sertifikat peserta masih dicatat di `localStorage` browser (Slide 15: tidak boleh penyimpanan lokal di frontend). Penilaian kuisnya sudah di server.
+- Pertanyaan untuk mentor: apakah "publisher" harus terpisah dari "approver"? Saat ini approve langsung menayangkan modul.
+- Belum diuji manual di browser: pengiriman modul trainer, keputusan modul oleh approver, dan kuis peserta setelah kunci jawaban dipindah.
