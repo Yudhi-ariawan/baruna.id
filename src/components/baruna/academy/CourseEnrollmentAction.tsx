@@ -97,8 +97,10 @@ export function CourseEnrollmentAction({
     },
   });
 
-  const status = serverStatus?.status || (localEnrollment ? "approved" : "none");
-  const isApproved = status === "approved" || Boolean(localEnrollment) || done;
+  // Approval comes from the server only; the local short-course record is just a
+  // progress store and never stands in for an administrator's decision.
+  const status = serverStatus?.status || "none";
+  const isApproved = status === "approved" || done;
   const isPending = status === "pending";
   const isRejected = status === "rejected";
 

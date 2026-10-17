@@ -31,6 +31,10 @@ import {
   emptyProfessional,
   createApplication,
 } from "@/lib/application";
+import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
+import { submitCourseEnrollmentApplication } from "@/lib/learning/enrollment-application.functions";
+import { fullTrainingCourseId } from "@/lib/learning/full-training-enrollment";
 
 export const Route = createFileRoute("/academy/apply/$slug")({
   loader: ({ params }) => {
@@ -138,8 +142,34 @@ function ApplyPage() {
     }));
   };
 
-  const submit = () => {
-    if (!confirmed) return;
+  const [submitting, setSubmitting] = useState(false);
+  const submitEnrollmentFn = useServerFn(submitCourseEnrollmentApplication);
+
+  const submit = async () => {
+    if (!confirmed || submitting) return;
+    // The administrator's decision lives on the server (PB-ACA-03); the browser
+    // copy below only keeps the form data and learning progress.
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      barunaToast("Please sign in before submitting your application");
+      void navigate({ to: "/auth", search: { redirect: window.location.pathname } });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await submitEnrollmentFn({
+        data: {
+          courseId: fullTrainingCourseId(p.slug),
+          courseTitle: p.title,
+          notes: motivation.trim().slice(0, 1000) || undefined,
+        },
+      });
+    } catch (err) {
+      barunaToast(err instanceof Error ? err.message : "Could not submit the application");
+      setSubmitting(false);
+      return;
+    }
+    setSubmitting(false);
     const app = createApplication({
       slug: p.slug,
       title: p.title,
@@ -479,8 +509,8 @@ function ApplyPage() {
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
               <button
-                onClick={submit}
-                disabled={!confirmed}
+                onClick={() => void submit()}
+                disabled={!confirmed || submitting}
                 className="inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-all hover:-translate-y-0.5 hover:bg-marine/90 hover:shadow-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 Submit Application <CheckCircle2 className="h-4 w-4" />
