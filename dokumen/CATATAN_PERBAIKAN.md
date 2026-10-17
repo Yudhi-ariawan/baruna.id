@@ -143,6 +143,45 @@ Uji `npm run test:expert-rpc` (menulis data uji lalu membersihkannya sendiri) me
 
 ---
 
+## 2h. Ruang belajar: akses hanya lewat persetujuan di server
+
+Pemeriksaan akses ruang belajar sebelumnya hanya berjalan di browser, padahal isinya sudah terkirim lebih dulu.
+
+| # | Celah | Perbaikan |
+|---|---|---|
+| 1 | Ruang belajar terbuka bila ada catatan pendaftaran di `localStorage`, data aplikasi lokal "Accepted", atau Demo Mode menyala (tombol yang bisa dinyalakan siapa saja). | Modul Master dan modul dinamis hanya terbuka bila server mencatat pendaftaran `approved` dan peran peserta. Demo Mode tidak lagi membuka ruang belajar mana pun. |
+| 2 | `getPublishedModuleDetail` (tanpa login) mengirim semua link dokumen bertanda tangan 24 jam dan soal kuis, sehingga isi modul bisa diambil tanpa mendaftar. | Fungsi publik kini hanya mengirim metadata dan gambar sampul. Isi lengkap lewat `getEnrolledModuleContent`, yang memeriksa ulang persetujuan di server. |
+| 3 | Fungsi yang sama mengirim **modul trainer yang belum tayang** (dari `expert_module_submissions`) kepada siapa pun yang tahu ID-nya. | Jalur itu dihapus; hanya modul `published` + `public` yang dikembalikan. |
+| 4 | `gradePublishedModuleQuiz` membuka kunci jawaban ke akun login mana pun. | Penilaian kuis memakai aturan akses yang sama. |
+| 5 | Katalog modul publik mengirim `metadata` mentah (daftar lampiran dan soal kuis). | Lampiran dan soal kuis dibuang dari metadata katalog. |
+| 6 | Tombol pendaftaran menampilkan "Terdaftar Resmi" dari `localStorage`. | Status hanya dibaca dari server. |
+
+Modularisasi: `academy.learn.$id.tsx` dipecah dari 1.629 menjadi 228 baris. Dashboard Full Training pindah ke `src/components/baruna/academy/full-training/` tanpa perubahan perilaku. Logika server ada di `src/lib/learning/published-module.server.ts` dan `src/lib/learning/course-access.server.ts`.
+
+Tidak ada migrasi baru.
+
+Pengujian: uji langsung ke database intern-update. Pratinjau publik hanya membawa 1 dokumen (sampul), sedangkan isi lengkap 7-8 dokumen. Modul belum tayang dan ID acak menghasilkan `null`. Akses: `approved` diizinkan; `pending`, kursus lain, dan akun lain ditolak.
+
+Skrip tes `test:kh-roles` ternyata meninggalkan akun tes di setiap run, karena `cleanup()` mengabaikan error lalu tetap mencetak "bersih 100%". Penyebabnya baris `review_subject_revisions`, `platform_events`, dan `governance_audit_log` yang tidak ikut dihapus. Sekarang semuanya dihapus, dan setiap kegagalan pembersihan membuat tes gagal. Sisa akun lama dapat dibersihkan dengan `node --env-file=.env scripts/purge-test-accounts.mjs` (dry run), lalu `--apply`.
+
+---
+
+## 2i. Full Training lewat persetujuan admin, PDF kurikulum, masa berlaku link
+
+| # | Celah | Perbaikan |
+|---|---|---|
+| 1 | Full Training (mis. African Countries) sepenuhnya di browser: tombol "Simulate next status (demo)" membuat pemohon menyetujui dirinya sendiri sampai "Accepted", lalu ruang belajar terbuka. ID `demo` / `africa-fisheries-2026` juga selalu terbuka. | Form apply mengirim pendaftaran ke server (`course_enrollment_apply`, `course_id` = slug program; wajib login + biodata) sebelum menyimpan salinan di browser. Admin memutuskan di `/admin/enrollments` seperti kursus lain. Ruang belajar, halaman status, dan daftar aplikasi membaca keputusan server; status browser tidak pernah lagi menjadi "Accepted". Tombol simulasi dihapus; aplikasi lama yang belum tercatat di server punya tombol "Send to selection committee". Demo Mode tidak lagi membuka tahapan di dalam dashboard. Tanpa migrasi. |
+| 2 | `getCurriculumPdfMap` (tanpa login) menandatangani PDF **semua** modul tayang di database dan memasangnya ke slot kurikulum 1-13 berdasarkan urutan unggah, sehingga materi modul trainer bisa diambil siapa saja dan modul yang tidak berhubungan bisa tampil sebagai "Modul 1". | Fungsi publik itu kini hanya mengembalikan judul 13 modul, tanpa link. Halaman program publik tidak lagi menampilkan link unduh PDF. |
+| 3 | Link materi bertanda tangan berlaku 24 jam dan bisa dibagikan. | Link materi untuk peserta berlaku 1 jam dan selalu dibuat baru setiap ruang belajar dibuka; tidak diganti saat ruang belajar terbuka (agar video/PDF yang sedang dibaca tidak dimuat ulang). Gambar sampul publik tetap 24 jam. |
+
+Belum tuntas: **PDF 13 modul Master** adalah aset publik Lovable (`src/assets/modules/*.pdf.asset.json`, alamat `/__l5e/assets-v1/...`) yang tertanam di kode, sehingga tetap bisa dibuka tanpa login oleh siapa pun yang tahu alamatnya. Menutupnya perlu memindahkan file ke bucket privat Supabase dan memberikan link lewat server setelah pemeriksaan persetujuan; menunggu file PDF aslinya.
+
+Temuan terpisah (belum diubah): halaman My Learning (`academy.learn.index.tsx`) menghapus otomatis semua aplikasi program African Countries dari browser setiap kali dibuka, termasuk progres belajarnya.
+
+Pengujian: 25 kombinasi status lokal × status server (status "Accepted" hanya muncul bila server menyetujui); audit penuh lulus. Pembersihan `test:kh-roles` kini mencoba ulang gangguan jaringan sesaat saat menghapus akun.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
@@ -187,16 +226,16 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
 
 ## 5. Sisa pekerjaan dan keputusan untuk mentor
 
-- **Ruang belajar masih bisa dibuka lewat `localStorage`.** Halaman `academy.learn.$id` juga menganggap kursus disetujui bila ada catatan di penyimpanan browser. Perlu ditutup dan perlu pemeriksaan RLS data materi.
+- **PDF 13 modul Master masih aset publik Lovable** (bagian 2i). Perlu file PDF aslinya untuk dipindah ke penyimpanan privat.
+- **My Learning menghapus aplikasi African Countries dari browser** setiap kali dibuka (bagian 2i). Perlu keputusan: apakah program ini memang sudah tidak dipakai?
 - **Role participant tanpa persetujuan admin.** Menyimpan biodata langsung memberi role participant, sedangkan flowchart PB-ACA-03 menyebut role diberikan saat admin menyetujui. Perlu keputusan.
 - **Expert yang disetujui otomatis menjadi trainer aktif.** Slide 39 menyiratkan persetujuan trainer terpisah. Perlu keputusan.
 - **Expert tidak bisa mundur setelah Accept** pada permintaan layanan; hanya admin yang bisa membatalkan.
 - Notifikasi dalam aplikasi sudah mencakup permintaan layanan dan kualifikasi trainer; notifikasi email/chat belum ada.
 - Kuota peserta yang disebut di flowchart belum dicek di kode.
 - Antrean Verifikasi Expert sudah aman untuk data besar (dibaca bertahap), tetapi tampilannya masih memuat semua baris sekaligus; paginasi tampilan bisa ditambahkan bila jumlah pengajuan sudah ribuan.
-- `academy.learn.$id.tsx` masih sekitar 1.629 baris; perlu dipecah.
-- `src/integrations/supabase/types.ts` disinkronkan manual; sebaiknya dibuat ulang lewat Supabase CLI.
-- Sekitar 46 akun sisa tes lama (`@example.test`) masih ada di database intern-update.
+- `src/integrations/supabase/types.ts` disinkronkan manual; sebaiknya dibuat ulang lewat Supabase CLI (`npx supabase login`, lalu `npx supabase gen types typescript --project-id <id> > src/integrations/supabase/types.ts`).
+- 58 akun sisa tes lama (`@example.test`) sudah dihapus dari database intern-update (17 Oktober 2026) bersama 350 baris log aktivitasnya; tersisa 24 akun pengguna asli.
 - Kelulusan kuis dan sertifikat peserta masih dicatat di `localStorage` browser (Slide 15: tidak boleh penyimpanan lokal di frontend). Penilaian kuisnya sudah di server.
 - Pertanyaan untuk mentor: apakah "publisher" harus terpisah dari "approver"? Saat ini approve langsung menayangkan modul.
 - Belum diuji manual di browser: pengiriman modul trainer, keputusan modul oleh approver, dan kuis peserta setelah kunci jawaban dipindah.
