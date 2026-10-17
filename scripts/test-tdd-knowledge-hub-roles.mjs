@@ -1462,30 +1462,58 @@ async function runTests() {
 
 async function cleanup() {
   console.log("\n🧹 Membersihkan seluruh data pengujian TDD...");
+  // Every step is checked: a silent failure here leaves test accounts behind on
+  // every run, so the run fails loudly instead of claiming a clean database.
+  const failures = [];
+  const step = async (label, run) => {
+    const { error } = await run();
+    if (error) failures.push(`${label}: ${error.message}`);
+  };
   if (createdResourceIds.length) {
-    await admin.from("knowledge_resources").delete().in("id", createdResourceIds);
+    await step("knowledge_resources", () => admin.from("knowledge_resources").delete().in("id", createdResourceIds));
   }
   if (createdExpertIds.length) {
-    await admin.from("experts").delete().in("id", createdExpertIds);
+    await step("experts", () => admin.from("experts").delete().in("id", createdExpertIds));
   }
   if (createdSubjectIds.length) {
-    await admin.from("review_decisions").delete().in("subject_id", createdSubjectIds);
-    await admin.from("review_drafts").delete().in("linked_subject_id", createdSubjectIds);
-    await admin.from("review_subjects").delete().in("id", createdSubjectIds);
+    await step("review_decisions", () => admin.from("review_decisions").delete().in("subject_id", createdSubjectIds));
+    // Revision snapshots reference the drafts; without this the drafts (and so the
+    // test accounts that own them) can never be deleted.
+    await step("review_subject_revisions", () => admin.from("review_subject_revisions").delete().in("subject_id", createdSubjectIds));
+    await step("review_drafts (linked)", () => admin.from("review_drafts").delete().in("linked_subject_id", createdSubjectIds));
+    await step("review_subjects", () => admin.from("review_subjects").delete().in("id", createdSubjectIds));
   }
   if (createdDraftIds.length) {
-    await admin.from("review_drafts").delete().in("id", createdDraftIds);
+    await step("review_drafts", () => admin.from("review_drafts").delete().in("id", createdDraftIds));
   }
   if (createdUserIds.length) {
-    await admin.from("admin_audit_log").delete().in("actor_id", createdUserIds);
-    await admin.from("admin_audit_log").delete().in("target_user_id", createdUserIds);
-    await admin.from("participant_biodata").delete().in("user_id", createdUserIds);
-    await admin.from("rbac_user_roles").delete().in("user_id", createdUserIds);
-    await admin.from("user_roles").delete().in("user_id", createdUserIds);
-    await admin.from("profiles").delete().in("id", createdUserIds);
+    await step("admin_audit_log (actor)", () => admin.from("admin_audit_log").delete().in("actor_id", createdUserIds));
+    await step("admin_audit_log (target)", () => admin.from("admin_audit_log").delete().in("target_user_id", createdUserIds));
+    // Governance RPCs log the test accounts as actors; these rows block deleting the accounts.
+    await step("platform_events", () => admin.from("platform_events").delete().in("actor_id", createdUserIds));
+    await step("governance_audit_log", () => admin.from("governance_audit_log").delete().in("actor_id", createdUserIds));
+    await step("participant_biodata", () => admin.from("participant_biodata").delete().in("user_id", createdUserIds));
+    await step("rbac_user_roles", () => admin.from("rbac_user_roles").delete().in("user_id", createdUserIds));
+    await step("user_roles", () => admin.from("user_roles").delete().in("user_id", createdUserIds));
+    await step("profiles", () => admin.from("profiles").delete().in("id", createdUserIds));
     for (const uid of createdUserIds) {
-      await admin.auth.admin.deleteUser(uid);
+      // The auth API is a separate HTTP call; retry transient network failures.
+      await step(`auth user ${uid}`, async () => {
+        let result;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          result = await admin.auth.admin.deleteUser(uid);
+          if (!result.error || !/fetch failed|network|timeout/i.test(result.error.message)) break;
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+        }
+        return result;
+      });
     }
+  }
+  if (failures.length) {
+    console.error(`❌ Pembersihan tidak tuntas (${failures.length} langkah gagal); data uji tersisa di database:`);
+    for (const f of failures) console.error(`   - ${f}`);
+    process.exitCode = 1;
+    return;
   }
   console.log("✨ Pembersihan selesai. Database bersih 100% tanpa data sampah.");
 }
