@@ -119,12 +119,24 @@ Pengujian: 34 pengecekan lulus dengan RLS dijalankan sebagai role `authenticated
 
 ---
 
+## 2f. Expert: siap data besar dan pengaman duplikat
+
+| # | Masalah | Perbaikan |
+|---|---|---|
+| 1 | Direktori publik dan antrean Verifikasi Expert mengambil data dengan satu `select`. Supabase memotong hasil di 1.000 baris tanpa error, dan daftar ID dikirim dalam satu URL yang gagal pada ratusan data. Error direktori ditelan menjadi daftar kosong. | Helper `src/lib/supabase/batch.server.ts`: baca per halaman dan per potongan 100 ID, error selalu dilempar. Direktori di-cache 60 detik dengan satu muatan untuk banyak permintaan bersamaan, dan saat database bermasalah menampilkan data terakhir, bukan daftar kosong. Cache dibersihkan setiap ada keputusan expert. |
+| 2 | Indeks "satu profil aktif per akun" dan "satu draf baru per akun" dilewati diam-diam oleh migrasi lama bila ada data ganda. | Migrasi `20261015080000` mencoba lagi dan menyebut akun yang perlu dirapikan. Baris 28 pengecek tetap BELUM sampai indeksnya aktif. |
+| 3 | Cek duplikat email (A2) tidak mengenali expert lama karena kontak privatnya kosong. | Kontak privat expert lama diisi dari pengajuannya (yang sudah ada tidak diubah). |
+
+Catatan: ORCID tidak dipakai untuk cek duplikat karena aplikasi belum pernah menyimpan ORCID ke profil.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (27 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (28 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -140,6 +152,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261015050000_expert_config_notifications_duplicates.sql` (kuota level di tabel, penanda baca notifikasi, cek duplikat expert)
 - `20261015060000_expert_decision_atomic.sql` (keputusan/arsip/revisi expert atomik)
 - `20261015070000_expert_direct_write_lockdown.sql` (tutup tulis langsung dari browser)
+- `20261015080000_expert_uniqueness_guards.sql` (indeks unik expert, isi kontak privat lama)
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -166,7 +179,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
 - **Expert tidak bisa mundur setelah Accept** pada permintaan layanan; hanya admin yang bisa membatalkan.
 - Notifikasi dalam aplikasi sudah mencakup permintaan layanan dan kualifikasi trainer; notifikasi email/chat belum ada.
 - Kuota peserta yang disebut di flowchart belum dicek di kode.
-- Antrean Verifikasi Expert belum memakai paginasi.
+- Antrean Verifikasi Expert sudah aman untuk data besar (dibaca bertahap), tetapi tampilannya masih memuat semua baris sekaligus; paginasi tampilan bisa ditambahkan bila jumlah pengajuan sudah ribuan.
 - `academy.learn.$id.tsx` masih sekitar 1.629 baris; perlu dipecah.
 - `src/integrations/supabase/types.ts` disinkronkan manual; sebaiknya dibuat ulang lewat Supabase CLI.
 - Sekitar 46 akun sisa tes lama (`@example.test`) masih ada di database intern-update.

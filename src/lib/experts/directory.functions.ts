@@ -25,8 +25,10 @@ let expertStatsCache:
   | { expiresAt: number; value: PublicExpertStats }
   | undefined;
 
+/** Called after every expert decision/archive/restore so the next read is fresh. */
 export function clearExpertStatsCache(): void {
   expertStatsCache = undefined;
+  expertListCache = undefined;
 }
 
 function normalizedUnique(values: Array<string | null | undefined>): number {
@@ -98,95 +100,116 @@ async function resolveAvatarUrl(
   }
 }
 
+const EXPERT_LIST_CACHE_TTL_MS = 60_000;
+let expertListCache: { expiresAt: number; value: PublicExpert[] } | undefined;
+let expertListInFlight: Promise<PublicExpert[]> | undefined;
+
+async function loadPublicExperts(): Promise<PublicExpert[]> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { fetchAllPages, fetchByIdChunks } = await import("@/lib/supabase/batch.server");
+
+  // Paged: a single select stops at 1000 rows without any error.
+  const rows = await fetchAllPages<DirectoryRow>((from, to) =>
+    supabaseAdmin
+      .from("experts_directory_v")
+      .select("*")
+      .in("verification_status", ["institutionally_verified", "governance_verified"])
+      .order("display_name")
+      .order("id")
+      .range(from, to),
+  );
+  if (rows.length === 0) return [];
+
+  // Chunked: hundreds of ids in one .in() overflow the URL.
+  const rawExperts = await fetchByIdChunks(
+    rows.map((r) => r.id).filter((id): id is string => Boolean(id)),
+    (ids, from, to) =>
+      supabaseAdmin
+        .from("experts")
+        .select("id,original_contributor_id,created_by")
+        .in("id", ids)
+        .order("id")
+        .range(from, to),
+  );
+  const userIds = rawExperts
+    .map((r) => r.original_contributor_id || r.created_by)
+    .filter((uid): uid is string => Boolean(uid));
+  const profiles = await fetchByIdChunks(userIds, (ids, from, to) =>
+    supabaseAdmin.from("profiles").select("id,avatar_url").in("id", ids).order("id").range(from, to),
+  );
+
+  const profileAvatarByUserId = new Map<string, string | null>(profiles.map((p) => [p.id, p.avatar_url]));
+  const userIdByExpertId = new Map<string, string | null>(
+    rawExperts.map((r) => [r.id, r.original_contributor_id || r.created_by || null]),
+  );
+
+  const pathsToSign: { index: number; path: string }[] = [];
+  const mappedList: PublicExpert[] = rows.map((r, index) => {
+    const mapped = mapExpert(r);
+    const uid = userIdByExpertId.get(r.id);
+    const profileAvatar = uid ? profileAvatarByUserId.get(uid) : null;
+    if (profileAvatar && (profileAvatar.startsWith("http://") || profileAvatar.startsWith("https://"))) {
+      mapped.avatarUrl = profileAvatar;
+      return mapped;
+    }
+    if (r.avatar_url && !r.avatar_url.startsWith("http://") && !r.avatar_url.startsWith("https://")) {
+      mapped.avatarUrl = null;
+      pathsToSign.push({ index, path: r.avatar_url.trim() });
+    } else if (r.avatar_url?.includes("/expert-applications/")) {
+      const match = r.avatar_url.match(/\/expert-applications\/(.+?)(\?|$)/);
+      if (match && match[1]) {
+        mapped.avatarUrl = null;
+        pathsToSign.push({ index, path: decodeURIComponent(match[1]) });
+      }
+    }
+    return mapped;
+  });
+
+  // Avatars are cosmetic: a signing failure leaves the placeholder, never fails the list.
+  for (let i = 0; i < pathsToSign.length; i += 100) {
+    const part = pathsToSign.slice(i, i + 100);
+    try {
+      const { data: signedList } = await supabaseAdmin.storage
+        .from("expert-applications")
+        .createSignedUrls(part.map((p) => p.path), 86400);
+      signedList?.forEach((signed, idx) => {
+        const original = part[idx];
+        if (original && signed?.signedUrl) mappedList[original.index].avatarUrl = signed.signedUrl;
+      });
+    } catch (e) {
+      console.warn("Batch sign avatars failed:", e);
+    }
+  }
+  return mappedList;
+}
+
+/**
+ * Public directory list. Cached for 60 s per server instance and de-duplicated
+ * while a load is running, so a traffic spike becomes one database read. On a
+ * database error the last good list is served; with no cached list the error is
+ * thrown instead of pretending the directory is empty.
+ */
 export const listPublicExperts = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicExpert[]> => {
-    let dbExperts: PublicExpert[] = [];
-
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data, error } = await supabaseAdmin
-        .from("experts_directory_v")
-        .select("*")
-        .in("verification_status", ["institutionally_verified", "governance_verified"])
-        .order("display_name");
-
-      if (!error && data) {
-        const rows = data as DirectoryRow[];
-        const expertIds = rows.map((r) => r.id);
-        const { data: rawExperts } = expertIds.length
-          ? await supabaseAdmin
-              .from("experts")
-              .select("id,original_contributor_id,created_by")
-              .in("id", expertIds)
-          : { data: [] };
-        const userIds = [
-          ...new Set(
-            (rawExperts ?? [])
-              .map((r) => r.original_contributor_id || r.created_by)
-              .filter((uid): uid is string => Boolean(uid)),
-          ),
-        ];
-        const { data: profiles } = userIds.length
-          ? await supabaseAdmin.from("profiles").select("id,avatar_url").in("id", userIds)
-          : { data: [] };
-
-        const profileAvatarByUserId = new Map<string, string | null>(
-          (profiles ?? []).map((p) => [p.id, p.avatar_url]),
-        );
-        const userIdByExpertId = new Map<string, string | null>(
-          (rawExperts ?? []).map((r) => [r.id, r.original_contributor_id || r.created_by || null]),
-        );
-
-        const pathsToSign: { index: number; path: string }[] = [];
-        const mappedList: PublicExpert[] = rows.map((r, index) => {
-          const mapped = mapExpert(r);
-          const uid = userIdByExpertId.get(r.id);
-          const profileAvatar = uid ? profileAvatarByUserId.get(uid) : null;
-          if (profileAvatar && (profileAvatar.startsWith("http://") || profileAvatar.startsWith("https://"))) {
-            mapped.avatarUrl = profileAvatar;
-            return mapped;
-          }
-          if (r.avatar_url && !r.avatar_url.startsWith("http://") && !r.avatar_url.startsWith("https://")) {
-            mapped.avatarUrl = null;
-            pathsToSign.push({ index, path: r.avatar_url.trim() });
-          } else if (r.avatar_url?.includes("/expert-applications/")) {
-            const match = r.avatar_url.match(/\/expert-applications\/(.+?)(\?|$)/);
-            if (match && match[1]) {
-              mapped.avatarUrl = null;
-              pathsToSign.push({ index, path: decodeURIComponent(match[1]) });
-            }
-          }
-          return mapped;
+    const now = Date.now();
+    if (expertListCache && expertListCache.expiresAt > now) return expertListCache.value;
+    if (!expertListInFlight) {
+      expertListInFlight = loadPublicExperts()
+        .then((value) => {
+          expertListCache = { value, expiresAt: Date.now() + EXPERT_LIST_CACHE_TTL_MS };
+          return value;
+        })
+        .finally(() => {
+          expertListInFlight = undefined;
         });
-
-        if (pathsToSign.length > 0) {
-          try {
-            const { data: signedList } = await supabaseAdmin.storage
-              .from("expert-applications")
-              .createSignedUrls(
-                pathsToSign.map((p) => p.path),
-                86400,
-              );
-            if (signedList) {
-              signedList.forEach((s, idx) => {
-                const original = pathsToSign[idx];
-                if (original && s?.signedUrl) {
-                  mappedList[original.index].avatarUrl = s.signedUrl;
-                }
-              });
-            }
-          } catch (e) {
-            console.warn("Batch sign avatars failed:", e);
-          }
-        }
-
-        dbExperts = mappedList;
-      }
-    } catch (err) {
-      console.warn("Failed to load experts from db:", err);
     }
-
-    return dbExperts;
+    try {
+      return await expertListInFlight;
+    } catch (err) {
+      console.error("Failed to load experts from db:", err);
+      if (expertListCache) return expertListCache.value;
+      throw new Error("Direktori expert sedang tidak dapat dimuat. Coba lagi beberapa saat lagi.");
+    }
   },
 );
 

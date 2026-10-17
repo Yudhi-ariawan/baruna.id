@@ -148,3 +148,11 @@ Database `main` dan `intern-update` adalah dua database Supabase berbeda dan mig
 3. Menguji migrasi dua kali berturut-turut (harus bisa dijalankan ulang) di Postgres lokal.
 
 Tujuannya: saat mentor merge, pengecek langsung menunjukkan migrasi mana yang belum dijalankan.
+
+## Expert: aturan yang wajib dijaga (sejak 20261015060000-080000)
+
+1. Keputusan, publikasi, arsip, pulihkan, dan kirim ulang revisi expert hanya lewat RPC atomik (`admin_expert_decide`, `admin_expert_archive`, `admin_expert_restore`, `expert_revision_resubmit`). Jangan menulis tabel `review_*`/`experts`/turunannya dengan beberapa query terpisah dari server function.
+2. Status efektif expert ada di dua tempat yang harus sama: `deriveExpertEffectiveStatus` (TypeScript) dan `public._expert_effective_status` (SQL). Mengubah salah satu wajib mengubah yang lain.
+3. Browser tidak boleh menulis langsung draf expert/modul, profil expert, tabel turunannya, kontak privat, atau keputusan. Aturan per jenis pengajuan ada di `submit_draft_for_review`, sehingga berlaku untuk semua jalur.
+4. Daftar yang bisa membesar dibaca dengan `fetchAllPages` / `fetchByIdChunks` (`src/lib/supabase/batch.server.ts`), bukan satu `select` atau satu `.in()` berisi semua ID.
+

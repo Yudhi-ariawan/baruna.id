@@ -85,7 +85,11 @@ WITH checks(no, migration, ok) AS (
   (27, '20261015070000_expert_direct_write_lockdown',
       EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'review_drafts_guard_client_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review'
-                    AND prosrc LIKE '%_expert_payload_problem%'))
+                    AND prosrc LIKE '%_expert_payload_problem%')),
+  -- Tetap BELUM setelah dijalankan = masih ada data ganda; lihat NOTICE migrasi itu.
+  (28, '20261015080000_expert_uniqueness_guards',
+      to_regclass('public.experts_one_active_profile_per_contributor') IS NOT NULL
+      AND to_regclass('public.review_drafts_one_fresh_expert_draft_per_user') IS NOT NULL)
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

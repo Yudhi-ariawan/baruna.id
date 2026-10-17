@@ -142,27 +142,55 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Fetch subjects of kind 'expert'
-    const { data: subjects, error: subjErr } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, title, current_status, submitted_by, created_at, updated_at, metadata")
-      .eq("kind", "expert")
-      .order("created_at", { ascending: false });
-
-    if (subjErr) throw new Error(subjErr.message);
-    if (!subjects || subjects.length === 0) return [];
+    // Paged and chunked reads: a plain select stops at 1000 rows and a long
+    // .in() list overflows the URL, both silently breaking the queue at scale.
+    const { fetchAllPages, fetchByIdChunks } = await import("@/lib/supabase/batch.server");
+    const subjects = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("review_subjects")
+        .select("id, title, current_status, submitted_by, created_at, updated_at, metadata")
+        .eq("kind", "expert")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
+    if (subjects.length === 0) return [];
 
     const subjectIds = subjects.map((s) => s.id);
+    const submitterBySubject = new Map(subjects.map((s) => [s.id, s.submitted_by]));
 
-    // Fetch latest decisions to resolve 'revision_requested' status
-    const { data: decisions } = await supabaseAdmin
-      .from("review_decisions")
-      .select("subject_id, decision, rationale, created_at")
-      .in("subject_id", subjectIds)
-      .order("created_at", { ascending: false });
+    const [decisions, drafts, publishedExperts] = await Promise.all([
+      fetchByIdChunks(subjectIds, (ids, from, to) =>
+        supabaseAdmin
+          .from("review_decisions")
+          .select("id, subject_id, decision, rationale, created_at")
+          .in("subject_id", ids)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      fetchByIdChunks(subjectIds, (ids, from, to) =>
+        supabaseAdmin
+          .from("review_drafts")
+          .select("id, linked_subject_id, submitter_id, payload, status, updated_at")
+          .in("linked_subject_id", ids)
+          .neq("status", "withdrawn")
+          .order("updated_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      fetchByIdChunks(subjectIds, (ids, from, to) =>
+        supabaseAdmin
+          .from("experts")
+          .select("id, slug, source_submission_id, current_status")
+          .in("source_submission_id", ids)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+    ]);
 
     const latestDecisionMap = new Map<string, { decision: string; rationale: string | null; createdAt: string }>();
-    (decisions ?? []).forEach((d) => {
+    decisions.forEach((d) => {
       if (!latestDecisionMap.has(d.subject_id)) {
         latestDecisionMap.set(d.subject_id, {
           decision: d.decision,
@@ -172,17 +200,14 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
       }
     });
 
-    // Fetch linked review_drafts
-    const { data: drafts } = await supabaseAdmin
-      .from("review_drafts")
-      .select("id, linked_subject_id, payload, status, updated_at")
-      .in("linked_subject_id", subjectIds)
-      .neq("status", "withdrawn")
-      .order("updated_at", { ascending: false });
-
+    // Only the applicant's own draft counts (same rule as public._expert_effective_status).
     const draftMap = new Map<string, { id: string; payload: ExpertDraftPayload; status: string; updated_at?: string }>();
-    (drafts ?? []).forEach((d) => {
-      if (d.linked_subject_id && !draftMap.has(d.linked_subject_id)) {
+    drafts.forEach((d) => {
+      if (
+        d.linked_subject_id &&
+        d.submitter_id === submitterBySubject.get(d.linked_subject_id) &&
+        !draftMap.has(d.linked_subject_id)
+      ) {
         draftMap.set(d.linked_subject_id, {
           id: d.id,
           payload: (d.payload as unknown as ExpertDraftPayload) ?? {},
@@ -192,14 +217,8 @@ export const listAdminExpertApplications = createServerFn({ method: "GET" })
       }
     });
 
-    // Fetch published experts in directory
-    const { data: publishedExperts } = await supabaseAdmin
-      .from("experts")
-      .select("id, slug, source_submission_id, current_status")
-      .in("source_submission_id", subjectIds);
-
     const expertMap = new Map<string, { id: string; slug: string; current_status: string }>();
-    (publishedExperts ?? []).forEach((e) => {
+    publishedExperts.forEach((e) => {
       if (e.source_submission_id) {
         expertMap.set(e.source_submission_id, {
           id: e.id,
@@ -324,6 +343,7 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
       .from("review_drafts")
       .select("id, payload, status, updated_at")
       .eq("linked_subject_id", subj.id)
+      .eq("submitter_id", subj.submitted_by)
       .neq("status", "withdrawn")
       .order("updated_at", { ascending: false })
       .limit(1)
