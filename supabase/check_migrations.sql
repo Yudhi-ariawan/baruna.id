@@ -89,7 +89,10 @@ WITH checks(no, migration, ok) AS (
   -- Tetap BELUM setelah dijalankan = masih ada data ganda; lihat NOTICE migrasi itu.
   (28, '20261015080000_expert_uniqueness_guards',
       to_regclass('public.experts_one_active_profile_per_contributor') IS NOT NULL
-      AND to_regclass('public.review_drafts_one_fresh_expert_draft_per_user') IS NOT NULL)
+      AND to_regclass('public.review_drafts_one_fresh_expert_draft_per_user') IS NOT NULL),
+  (29, '20261015090000_expert_language_taxonomy',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_language_code')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_sync_languages'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
