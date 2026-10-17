@@ -7,7 +7,7 @@
 --
 -- Catatan: sebagian migrasi tidak diperiksa terpisah karena hanya mengisi data atau
 -- digantikan migrasi berikutnya (misalnya 20261014030000 digantikan 20261014040000;
--- 20261003131500, 20261006110000, 20260924020000, 20261008020000/040000,
+-- 20261003131500, 20260924020000, 20261008020000/040000,
 -- 20261009020000 hanya mengubah data). Berkas ini perlu ditambah satu baris setiap
 -- ada migrasi baru.
 
@@ -92,7 +92,11 @@ WITH checks(no, migration, ok) AS (
       AND to_regclass('public.review_drafts_one_fresh_expert_draft_per_user') IS NOT NULL),
   (29, '20261015090000_expert_language_taxonomy',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_language_code')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_sync_languages'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_sync_languages')),
+  (30, '20261015100000_review_subjects_archived_status (juga memeriksa 20261006110000)',
+      EXISTS (SELECT 1 FROM pg_constraint
+               WHERE conname = 'review_subjects_current_status_check'
+                 AND pg_get_constraintdef(oid) LIKE '%archived%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

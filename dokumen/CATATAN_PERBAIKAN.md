@@ -138,6 +138,7 @@ Uji `npm run test:expert-rpc` (menulis data uji lalu membersihkannya sendiri) me
 - `expert_languages.language_code` punya foreign key ke tabel `languages_taxonomy` (17 bahasa dengan kode ISO: `id`, `en`, `es`, ...). **Tabel ini ada di database tetapi tidak ada di file migrasi repo** (dibuat di luar migrasi).
 - Kode lama membuat kode bahasa dari nama ("Bahasa Indonesia" menjadi "bahasaindone"), sehingga hampir semua insert ditolak dan kegagalannya diabaikan. Bahasa expert hampir tidak pernah tersimpan di `expert_languages`.
 - Perbaikan (`20261015090000`): nama bahasa dipetakan ke kode taksonomi (kode, nama, nama asli, atau alias seperti "Indonesia", "Inggris", "Mandarin"). Bahasa yang tidak ada di taksonomi tetap tampil di direktori (`experts.languages`) tetapi tidak dimasukkan ke `expert_languages`. Bila tidak ada yang bisa dipetakan, data lama tidak dihapus. Setelah migrasi, tombol "Sinkronkan" mengisi bahasa expert yang sudah tayang.
+- Uji yang sama menemukan batasan `review_subjects_current_status_check` di database belum mengizinkan `archived` (migrasi lama `20261006110000` belum berlaku di sana; kode lama menutupinya dengan status `withdrawn`). Diperbaiki oleh `20261015100000`.
 - Catatan untuk mentor: ada objek database yang tidak tercatat di repo (`languages_taxonomy`, dan tabel `languages`). Sebaiknya didokumentasikan lewat migrasi agar database baru sama dengan yang sekarang.
 
 ---
@@ -147,7 +148,7 @@ Uji `npm run test:expert-rpc` (menulis data uji lalu membersihkannya sendiri) me
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (29 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (30 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -165,6 +166,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261015070000_expert_direct_write_lockdown.sql` (tutup tulis langsung dari browser)
 - `20261015080000_expert_uniqueness_guards.sql` (indeks unik expert, isi kontak privat lama)
 - `20261015090000_expert_language_taxonomy.sql` (bahasa expert dipetakan ke taksonomi bahasa)
+- `20261015100000_review_subjects_archived_status.sql` (status `archived` pada review_subjects; mengulang 20261006110000 yang ternyata belum berlaku di database intern-update)
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
