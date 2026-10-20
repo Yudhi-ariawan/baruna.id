@@ -40,6 +40,7 @@ const STATUS_LABEL: Record<string, string> = {
   approved: "Disetujui",
   rejected: "Ditolak",
   withdrawn: "Ditarik",
+  archived: "Diarsipkan",
 };
 
 function statusFor(application: ExpertApplicationStatus) {

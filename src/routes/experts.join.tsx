@@ -102,13 +102,13 @@ const STEPS = [
 export const Route = createFileRoute("/experts/join")({
   head: () => ({
     meta: [
-      { title: "Join as an Expert â€” BARUNA Experts" },
+      { title: "Join as an Expert — BARUNA Experts" },
       {
         name: "description",
         content:
           "Register as a marine and fisheries expert and contribute to the BARUNA global expert network.",
       },
-      { property: "og:title", content: "Join as an Expert â€” BARUNA Experts" },
+      { property: "og:title", content: "Join as an Expert — BARUNA Experts" },
       {
         property: "og:description",
         content: "Become a speaker, trainer, reviewer, mentor, or technical expert with BARUNA.",
@@ -139,7 +139,7 @@ function SectionCard({
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-marine/10 text-marine">
           <Icon className="h-4 w-4" />
         </span>
-        Section {n} â€” {title}
+        Section {n} — {title}
       </h2>
       <div className="mt-5">{children}</div>
     </section>
@@ -435,7 +435,7 @@ function JoinExpertPage() {
       <div className="min-h-screen bg-background">
         <Navbar />
         <main className="mx-auto max-w-4xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-          Loading your expert applicationâ€¦
+          Loading your expert application…
         </main>
       </div>
     );
@@ -786,7 +786,7 @@ function JoinExpertPage() {
                       className={inputClass}
                       value={form.linkedin}
                       onChange={(e) => set("linkedin", e.target.value)}
-                      placeholder="https://linkedin.com/in/â€¦"
+                      placeholder="https://linkedin.com/in/…"
                     />
                   </div>
                   <div>
@@ -795,7 +795,7 @@ function JoinExpertPage() {
                       className={inputClass}
                       value={form.website}
                       onChange={(e) => set("website", e.target.value)}
-                      placeholder="https://â€¦"
+                      placeholder="https://…"
                     />
                   </div>
                 </div>
@@ -1033,8 +1033,8 @@ function JoinExpertPage() {
                 <Bookmark className="h-3.5 w-3.5" />
                 {busy
                   ? isId
-                    ? "Menyimpanâ€¦"
-                    : "Savingâ€¦"
+                    ? "Menyimpan…"
+                    : "Saving…"
                   : isId
                     ? "Simpan sebagai Draf"
                     : "Save Draft"}
@@ -1111,8 +1111,8 @@ function JoinExpertPage() {
                 >
                   {busy ? (
                     isId
-                      ? "Memprosesâ€¦"
-                      : "Processingâ€¦"
+                      ? "Memproses…"
+                      : "Processing…"
                   ) : isRevision ? (
                     <>
                       <RotateCcw className="h-4 w-4" />{" "}

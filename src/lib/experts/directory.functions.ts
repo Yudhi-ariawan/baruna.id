@@ -222,14 +222,16 @@ export const getPublicExpertStats = createServerFn({ method: "GET" }).handler(
 
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data, error } = await supabaseAdmin
-        .from("experts_directory_v")
-        .select("country, expertise_areas, institution, verification_status")
-        .in("verification_status", ["institutionally_verified", "governance_verified"]);
-
-      if (error) throw error;
-
-      const experts = data ?? [];
+      const { fetchAllPages } = await import("@/lib/supabase/batch.server");
+      // Paged: a plain select stops at 1000 rows, which would freeze the counters.
+      const experts = await fetchAllPages((from, to) =>
+        supabaseAdmin
+          .from("experts_directory_v")
+          .select("id, country, expertise_areas, institution, verification_status")
+          .in("verification_status", ["institutionally_verified", "governance_verified"])
+          .order("id")
+          .range(from, to),
+      );
       const value: PublicExpertStats = {
         verifiedExperts: experts.length,
         countries: normalizedUnique(experts.map((expert) => expert.country)),
@@ -247,8 +249,9 @@ export const getPublicExpertStats = createServerFn({ method: "GET" }).handler(
       };
       return value;
     } catch (error) {
-      console.warn("Failed to load public expert statistics:", error);
-      return EMPTY_EXPERT_STATS;
+      console.error("Failed to load public expert statistics:", error);
+      // Prefer the last known figures over showing a misleading zero.
+      return expertStatsCache?.value ?? EMPTY_EXPERT_STATS;
     }
   },
 );
