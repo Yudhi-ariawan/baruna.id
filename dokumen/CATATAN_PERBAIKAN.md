@@ -258,7 +258,23 @@ Verifikasi setelah dijalankan di intern-update (20 Okt): `has_role(admin)` = fal
 
 Status 20 Okt 2026 malam. Semua di bawah BELUM dikerjakan. Pola kerja yang terbukti: migrasi + tes Postgres lokal (PGlite) + baris `check_migrations.sql` + bagian catatan ini + `npm run build`; setelah migrasi dijalankan di intern-update, uji langsung (`npm run test:*`) dan bersihkan akun `@example.test` yang tertinggal.
 
-### Nomor 4 (sedang): metadata modul tayang terbaca pengunjung lewat API langsung
+### Nomor 4 (sedang → ternyata BERAT): metadata modul tayang terbaca pengunjung lewat API langsung
+
+**Status 21 Okt (PC): kode + migrasi `20261021010000` SELESAI; migrasi menunggu dijalankan di intern-update.**
+
+Temuan tambahan saat dikerjakan (lebih berat dari rencana semula):
+- Proyeksi modul ke Knowledge Hub (`module-projection.server.ts`) menyalin **seluruh** metadata modul ke `knowledge_resources.metadata` (publik): 4 modul tayang terbaca pengunjung lengkap dengan path lampiran dan tautan YouTube.
+- `getKnowledgeResourceDownload` (tanpa login, tanpa cek jenis) menandatangani lampiran pertama resource. Untuk resource modul itu **berkas materinya**: 3 modul tayang (PDF/PPTX di bucket `expert-applications`) bisa diunduh siapa saja. Halaman Knowledge Hub tidak memanggilnya untuk modul, tetapi fungsi bisa dipanggil langsung dengan ID resource (ID tampil publik).
+- Policy `krv_read` memberi semua pengguna login salinan versi resource tayang; salinan versi modul berisi metadata lengkap (saat dicek 0 salinan, belum bocor).
+
+Perbaikan:
+- Migrasi `20261021010000`: hak kolom `module_registry` (semua kecuali `metadata` untuk anon/authenticated; tulis langsung dicabut); pemicu `kr_module_metadata_guard` membersihkan metadata resource modul di setiap tulis + data lama dibersihkan (ringkasan nama/jenis/ukuran berkas tetap untuk label); `krv_read` tidak membuka versi resource modul. Pengaman: migrasi batal tanpa perubahan bila ada policy/view `security_invoker`/fungsi INVOKER yang membaca `module_registry.metadata`.
+- Kode: `publicModuleMetadata()` di proyeksi (salinan publik tanpa materi; `module_registry` tetap menyimpan metadata lengkap); `getKnowledgeResourceDownload` menolak `resource_type = 'module'`.
+- Diperiksa sebelum migrasi: semua pembacaan `module_registry` di kode dan skrip tes memakai service role; policy `mrv_select_scoped` hanya membaca `id/created_by/source_submission_id`; view publik tidak memuat `metadata`; kolom lain (`assessment_approach`, `learning_activities`, `content_outline`) tidak berisi tautan berkas atau soal kuis (diuji sebagai pengunjung); `knowledge_resource_files` tidak punya baris modul.
+- Diuji di PGlite (26 pengecekan): pengunjung/pengguna login ditolak membaca `metadata` (termasuk `select *`), judul dan view publik tetap terbaca, pemilik tetap membaca versi modulnya, metadata Knowledge Hub modul bersih sementara publikasi tidak tersentuh, pemicu berlaku untuk insert/update, migrasi aman dijalankan dua kali, dan pengaman membatalkan migrasi bila ada fungsi INVOKER yang membaca `metadata`.
+- Setelah migrasi dijalankan: uji ulang sebagai pengunjung (`metadata` → permission denied; resource Knowledge Hub modul tanpa path/video), katalog Academy dan halaman modul tetap tampil, `test:participant-rpc`, `test:lifecycle`, `test:kh-roles`.
+
+Catatan rencana semula:
 - Bukti (20 Okt, sebagai pengunjung tanpa login): `select metadata from module_registry` mengembalikan `attached_resources` (4 modul), `documents` (1 modul), `video_url` (2 modul). Berkas aman (bucket `module-attachments` privat), tetapi **tautan video bisa dibuka tanpa terdaftar** (gerbang P3 terlewati). Soal/kunci kuis tidak ada.
 - Penyebab: policy baca publik `module_registry` berlaku untuk semua kolom. View `module_registry_public_v` sudah aman (tanpa `metadata`).
 - Rencana: hak kolom. `REVOKE SELECT ON public.module_registry FROM anon, authenticated;` lalu `GRANT SELECT (<semua kolom kecuali metadata>) ... TO anon, authenticated;`. RLS tetap berlaku untuk baris.
@@ -280,6 +296,17 @@ Status 20 Okt 2026 malam. Semua di bawah BELUM dikerjakan. Pola kerja yang terbu
 - Rencana: tambahkan cabang `knowledge_resource` di `submit_draft_for_review` (definisi terbaru di `20261015070000`) yang meniru validasi server function, terutama kepemilikan path berkas (berkas harus di folder milik pengaju).
 
 ### Nomor 8 (baru, konsistensi): halaman governance masih membaca tabel peran lama
+
+**Status 21 Okt (PC): kode + migrasi `20261021020000` SELESAI; migrasi menunggu dijalankan di intern-update.**
+
+- 8a (kode, tanpa migrasi): halaman governance membaca peran lewat `has_role` (aturan yang sama dengan semua policy dan RPC), helper bersama `src/lib/governance/governance-roles.ts`. `getMyRoles`, `getGovernanceDashboard`, `listReviewers` tidak lagi membaca `user_roles`; `listReviewers` memakai service role (baris peran orang lain tidak terbaca lewat RLS) dan hanya mendaftar akun yang lolos `has_role(_, 'qa_reviewer')`. Label peran pengaju di daftar publikasi admin hanya dari `rbac_user_roles` (dalam masa berlaku). Uji langsung: super admin sebelumnya **tidak terlihat sebagai admin** di halaman governance, kini terlihat.
+- 8b (temuan + keputusan pemilik proyek 21 Okt): database punya dua nama peran untuk tugas yang sama. Kode lama `qa_reviewer`/`management` masih ada (hanya dipegang super admin), sedangkan peran resmi `reviewer`/`approver` tidak dikenali lapisan review governance. Migrasi: `has_role(_, 'qa_reviewer')` juga menerima `reviewer`, `has_role(_, 'management')` juga menerima `approver`. Approver kini mendapat hak management lama (data review governance, baca semua baris modul tanpa `metadata` dan versinya, lampiran modul untuk tinjauan, evaluasi penyelesaian); di intern-update yang benar-benar mendapat hak baru 1 akun. Reviewer tetap hanya membaca pengajuan yang ditugaskan kepadanya.
+- 8c (temuan): `assign_reviewer`/`reassign_reviewer` hanya memeriksa penugas. Kini menolak akun yang bukan reviewer aktif, pengaju pengajuan itu sendiri, subjek tidak ada, dan jenis expert/modul/Knowledge Hub (punya alur keputusan sendiri; penugasan dulu mengubah statusnya menjadi `under_review`). `reassign` hanya untuk penugasan aktif (dulu bisa menghasilkan dua penugasan aktif). Saat dicek: 0 penugasan, 0 rekomendasi.
+- Diuji di PGlite (37 pengecekan, termasuk peran kedaluwarsa, profil nonaktif, super admin, approver bukan admin, reviewer bukan management, penolakan tidak membatalkan penugasan lama, migrasi dua kali). `test:rbac` (820), `test:kh-roles`, `test:lifecycle`, `test:kr-rpc` lulus setelah 8a.
+- Setelah migrasi dijalankan: uji ulang peran per akun (akun reviewer resmi terlihat sebagai qa_reviewer, approver sebagai management) dan semua `npm run test:*`.
+- 8d (keputusan pemilik proyek 21 Okt): kode lama dihapus lewat migrasi `20261021030000` (pengaman: batal bila 20261021020000 belum jalan atau ada pemegang `management` yang bukan admin; qa_reviewer -> reviewer otomatis, status primer ikut, permintaan perubahan peran dipetakan, setiap penugasan dicatat di audit log). Kode aplikasi: `management` tidak lagi admin penuh (`permissions.server.ts`) dan tidak lagi berlabel Admin Level; `qa_reviewer` -> `reviewer` di antrean admin modul/publikasi; halaman `/governance/roles` hanya memberi `reviewer`/`approver`/`admin`; enum peran yang boleh diberikan tanpa kode lama. Diuji di PGlite (19 pengecekan). URUTAN: jalankan migrasi sebelum kode ini dipakai (menyimpan peran akun yang masih memegang kode lama akan ditolak validasi).
+
+Catatan rencana semula:
 - `src/lib/governance/governance.functions.ts` (`getMyRoles`) dan `src/lib/governance/governance-ops.functions.ts` (`listReviewers`, `getGovernanceDashboard`) membaca `user_roles` langsung. Sejak `20261020070000` tabel itu tidak dipakai lagi, jadi admin yang hanya ada di sistem baru (mis. `admin99@gmail.com`) tidak terlihat sebagai admin di halaman governance, dan daftar reviewer kosong.
 - Rencana: ganti ketiganya ke `rbac_user_roles` (pola seperti `getExpertGovernanceAccess` di `src/lib/admin/experts.functions.ts`). `src/lib/admin/publications.functions.ts` (~baris 311) juga masih menggabungkan `user_roles` untuk label peran pengaju (hanya tampilan).
 
@@ -345,12 +372,35 @@ Pengujian: 25 kombinasi status lokal × status server (status "Accepted" hanya m
 
 ---
 
+## 2o. Konsol Kurasi `/governance` per peran (21 Okt, PC)
+
+Rancangan: `dokumen/RANCANGAN_KONSOL_GOVERNANCE.md`. Audit awal: `dokumen/AUDIT_PERAN.md`.
+
+**Akar masalah (ditemukan saat uji per peran dengan akun sungguhan):** pengguna non-admin tidak bisa membaca katalog peran `rbac_roles` (policy `rbac_roles_read` mensyaratkan `roles.read`). Semua pemeriksaan akses yang menggabungkan `rbac_user_roles` dengan `rbac_roles!inner(code)` (getExpertGovernanceAccess, assertAdminOrReviewer modul/publikasi, assertAdminAccess peserta) mendapat hasil kosong, sehingga reviewer, verifier, approver, dan operator **ditolak server** walau peran dan izinnya benar. Inilah sebab rantai kurasi hanya jalan untuk admin. Diperbaiki migrasi `20261021040000` (katalog terbaca pengguna login; siapa memegang peran apa tetap privat; pengunjung tetap ditolak).
+
+Perubahan kode:
+- `/governance` menjadi Konsol Kurasi (tampilan seperti `/admin`, komponen bersama `src/components/baruna/console/`). Menu per peran dari `getGovernanceConsoleAccess` (`src/lib/governance/console-access.*`), yang memakai pemeriksaan server yang sudah ada, bukan aturan baru.
+- Halaman Verifikasi Expert/Modul/Publikasi dan Persetujuan Peserta dipindah ke `/governance/*`; alamat lama `/admin/*` dialihkan. `/admin` khusus administrasi sistem (Users & Access, Kualifikasi Trainer).
+- Tombol keputusan Modul dan Publikasi disembunyikan untuk reviewer/verifier (keterangan "Akses baca"). Server memeriksa hak keputusan lebih dulu sebelum mencari pengajuan (Publikasi: `_can_decide_review`; Permintaan Pelatihan: admin/management).
+- Permintaan Pelatihan (Request a Training): menu baru; keputusan akhir dihidupkan kembali khusus jenis ini (`recordFinalDecision` sebelumnya dimatikan untuk semua jenis) lewat `finalize_decision`/`return_for_revision`.
+- Navbar, halaman awal, dan dasbor memakai semua peran aktif (`canUseAdminPortal`, `canUseCurationConsole`), bukan hanya peran primer.
+- Dihapus: halaman lama All Subjects, Role Admin, Decisions; antrean publikasi lama dan `publishApprovedModule` (menulis langsung ke `module_registry`); `grantRole`/`revokeRole`; `getGovernanceDashboard`.
+
+Uji (intern-update, akun `@example.test` dibuat lalu dihapus):
+- `npm run test:console-roles` (perlu aplikasi berjalan): 63 pengecekan menu, gerbang antrean, dan portal admin untuk peserta, reviewer, verifier, approver, operator, publisher, admin. Sebelum migrasi 20261021040000: 16 gagal (persis akar masalah di atas); sesudah: lulus semua.
+- `npm run test:console-decisions`: 16 pengecekan; reviewer, verifier, operator ditolak di cek hak untuk keputusan modul, publikasi, expert, permintaan pelatihan walau memanggil fungsi langsung; approver lolos.
+- `audit:bom-waktu`, `test:rbac` 820, `test:expert-rpc` 64, `test:kr-rpc` 24, `test:participant-rpc` 27: lulus.
+
+Masih untuk mentor: catatan reviewer dan rekam verifikasi, tahap publisher terpisah, ruang kerja operator (cek kelengkapan), langkah TNA/konversi permintaan pelatihan, peran admin vs super admin.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (37 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (41 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -376,6 +426,10 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261020050000_security_hardening_views_internal_functions.sql` (tutup tulis lewat view `languages` dan fungsi internal yang terbuka untuk publik)
 - `20261020060000_knowledge_resource_decision_atomic.sql` (keputusan publikasi Knowledge Hub dalam satu transaksi)
 - `20261020070000_retire_legacy_role_system.sql` (peran hanya dari sistem baru; jalur keputusan generik menolak expert/modul/Knowledge Hub). Untuk main: pastikan admin main ada di `rbac_user_roles` dulu.
+- `20261021010000_module_material_metadata_privacy.sql` (pengunjung tidak bisa membaca `module_registry.metadata`; salinan Knowledge Hub modul tanpa materi; versi Knowledge Hub modul tidak publik). Batal sendiri tanpa perubahan bila masih ada policy/view/fungsi yang membaca kolom itu dengan hak pengguna.
+- `20261021020000_governance_role_alignment.sql` (peran resmi `reviewer`/`approver` dikenali sebagai `qa_reviewer`/`management`; pengaman penugasan reviewer). Approver mendapat hak management lama; lihat Nomor 8 di bagian 2l.
+- `20261021030000_retire_legacy_governance_role_codes.sql` (hapus kode peran lama `qa_reviewer`/`management`; pemegang qa_reviewer dipindah ke reviewer). Jalankan SETELAH `20261021020000`. Batal tanpa perubahan bila ada pemegang `management` yang bukan admin: di database main periksa dulu siapa pemegangnya.
+- `20261021040000_rbac_role_catalog_readable.sql` (katalog peran `rbac_roles` terbaca pengguna login; tanpa ini semua pemeriksaan akses non-admin di Verifikasi Expert/Modul/Publikasi/Persetujuan Peserta selalu menolak). Lihat bagian 2o.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
