@@ -212,12 +212,29 @@ Pengujian: tes Postgres lokal 43 pengecekan lulus (termasuk RLS sebagai role `au
 
 ---
 
+## 2k. Audit keamanan database (20 Okt) dan pengerasan pertama
+
+Alat baru: `supabase/audit_security.sql` (hanya membaca). Jalankan di SQL Editor tiap database; setiap baris = satu temuan. Hasil di intern-update: semua tabel sudah memakai RLS; izin tulis bawaan Supabase untuk pengunjung tidak bisa dipakai selama RLS aktif (terbukti, UPDATE pengunjung mengubah 0 baris).
+
+Celah yang terbukti dan ditutup oleh migrasi `20261020050000`:
+
+| Celah | Bukti | Perbaikan |
+|---|---|---|
+| View `languages` (di atas `languages_taxonomy`, dibuat di luar migrasi repo) berjalan sebagai pemiliknya sehingga RLS terlewati. | Pengunjung tanpa login berhasil UPDATE lewat view ini. | Izin tulis view `languages` dan `experts_directory_v` dicabut (aplikasi hanya membaca). |
+| Banyak migrasi menutup fungsi internal dengan `REVOKE ... FROM PUBLIC` saja, padahal Supabase memberi EXECUTE langsung ke `anon` dan `authenticated`. | Pengunjung tanpa login bisa menjalankan `_service_request_log` (menulis riwayat permintaan layanan dengan pelaku bebas), membaca `_latest_trainer_status` dan `_service_request_events_json`. | 10 fungsi internal yang hanya dipanggil dari fungsi `SECURITY DEFINER` ditutup untuk `anon` dan `authenticated`. Fungsi yang dipakai policy RLS sengaja tidak disentuh. Aturan ditambahkan ke `ENGINEERING_STANDARDS.md`. |
+
+Pengujian: tes Postgres lokal 16 pengecekan (termasuk: membaca `languages` tetap bisa, RPC publik yang memakai fungsi internal tetap berjalan, migrasi aman dijalankan di database yang tidak punya objek tersebut).
+
+Temuan audit yang BELUM diperbaiki: keputusan publikasi Knowledge Hub belum atomik dan tanpa guard status/peran; 12 policy tulis admin lama (`has_role`); `finalize_decision` tidak memeriksa jenis pengajuan; metadata modul tayang (`attached_resources`, `documents`, `video_url`) terbaca pengunjung lewat API langsung; 9 foreign key ke `auth.users` tanpa `ON DELETE` (akun tidak bisa dihapus; `test:kh-roles` meninggalkan 3 akun tiap kali dijalankan).
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (34 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (35 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -240,6 +257,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261020020000_module_content_access.sql` (isi belajar modul hanya untuk peserta disetujui, penulis, admin; boleh dijalankan sebelum atau sesudah 030000)
 - `20261020030000_expert_profile_ownership.sql` (satu aturan pemilik profil expert; perbaikan terbit langsung admin)
 - `20261020040000_participant_biodata_selfpaced_integrity.sql` (biodata dan progres pelatihan mandiri lewat RPC tervalidasi)
+- `20261020050000_security_hardening_views_internal_functions.sql` (tutup tulis lewat view `languages` dan fungsi internal yang terbuka untuk publik)
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
