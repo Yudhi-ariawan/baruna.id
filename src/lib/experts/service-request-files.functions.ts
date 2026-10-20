@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { EXPERT_OWNER_COLUMN } from "./ownership";
 import { SERVICE_REQUEST_FILE_BUCKET, serviceRequestFilePrefix } from "./service-request-files";
 
 /**
@@ -29,7 +30,7 @@ export const getServiceRequestFileUrl = createServerFn({ method: "POST" })
         .from("experts")
         .select("id")
         .eq("id", request.target_expert_id)
-        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+        .eq(EXPERT_OWNER_COLUMN, context.userId)
         .maybeSingle();
       allowed = Boolean(target);
     }

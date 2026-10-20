@@ -126,13 +126,15 @@ async function loadPublicExperts(): Promise<PublicExpert[]> {
     (ids, from, to) =>
       supabaseAdmin
         .from("experts")
-        .select("id,original_contributor_id,created_by")
+        .select("id,original_contributor_id")
         .in("id", ids)
         .order("id")
         .range(from, to),
   );
+  // Only the linked account's photo (see ./ownership) may stand in for the
+  // profile photo; an unlinked (admin-published) profile keeps its own avatar.
   const userIds = rawExperts
-    .map((r) => r.original_contributor_id || r.created_by)
+    .map((r) => r.original_contributor_id)
     .filter((uid): uid is string => Boolean(uid));
   const profiles = await fetchByIdChunks(userIds, (ids, from, to) =>
     supabaseAdmin.from("profiles").select("id,avatar_url").in("id", ids).order("id").range(from, to),
@@ -140,7 +142,7 @@ async function loadPublicExperts(): Promise<PublicExpert[]> {
 
   const profileAvatarByUserId = new Map<string, string | null>(profiles.map((p) => [p.id, p.avatar_url]));
   const userIdByExpertId = new Map<string, string | null>(
-    rawExperts.map((r) => [r.id, r.original_contributor_id || r.created_by || null]),
+    rawExperts.map((r) => [r.id, r.original_contributor_id ?? null]),
   );
 
   const pathsToSign: { index: number; path: string }[] = [];
@@ -266,7 +268,7 @@ export const getPublicExpertBySlug = createServerFn({ method: "GET" })
       // If expert is archived in database, do not show and do not fallback to mock
       const rawQuery = supabaseAdmin
         .from("experts")
-        .select("id, slug, original_contributor_id, created_by, current_status");
+        .select("id, slug, original_contributor_id, current_status");
       const { data: rawExpertRow } = await (isUuid
         ? rawQuery.eq("id", data.slug)
         : rawQuery.eq("slug", data.slug)
@@ -287,7 +289,7 @@ export const getPublicExpertBySlug = createServerFn({ method: "GET" })
       if (!error && expert) {
         const mapped = mapExpert(expert as DirectoryRow);
         let profileAvatar: string | null = null;
-        const ownerUserId = rawExpertRow?.original_contributor_id || rawExpertRow?.created_by;
+        const ownerUserId = rawExpertRow?.original_contributor_id;
         if (ownerUserId) {
           const { data: prof } = await supabaseAdmin
             .from("profiles")

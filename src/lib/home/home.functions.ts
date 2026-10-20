@@ -4,6 +4,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { getUpcomingEvents } from "@/data/events";
+import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
 import type { HomeKnowledgeResource, HomeMetric, HomeViewer, PublicHomeStats } from "./home.types";
 
 const RESOURCE_TYPE_LABELS: Record<string, string> = {
@@ -318,7 +319,7 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
       const { data: expert } = await admin
         .from("experts")
         .select("id")
-        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+        .eq(EXPERT_OWNER_COLUMN, context.userId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();

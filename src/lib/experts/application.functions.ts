@@ -9,6 +9,7 @@ import type {
   ExpertDraftPayload,
 } from "./application.types";
 import { deriveExpertEffectiveStatus, toApplicantReviewStatus } from "./application-status";
+import { EXPERT_OWNER_COLUMN } from "./ownership";
 import {
   ExpertPayloadSchema,
   assertOwnedDocumentPaths,
@@ -40,7 +41,7 @@ async function getNewApplicationBlocker(userId: string): Promise<string | null> 
     supabaseAdmin
       .from("experts")
       .select("id")
-      .or(`original_contributor_id.eq.${userId},created_by.eq.${userId}`)
+      .eq(EXPERT_OWNER_COLUMN, userId)
       .in("current_status", ["approved", "published"])
       .limit(1)
       .maybeSingle(),
@@ -190,7 +191,7 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
           const { data } = await supabaseAdmin
             .from("experts")
             .select("id, slug, display_name, current_status")
-            .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+            .eq(EXPERT_OWNER_COLUMN, context.userId)
             .neq("current_status", "archived")
             .order("updated_at", { ascending: false })
             .limit(1)

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AVATAR_BUCKET, AVATAR_PRESETS, type AccountProfile } from "./account.types";
+import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
 
 const ProfileInput = z.object({
   displayName: z.string().trim().min(2).max(120),
@@ -347,10 +348,13 @@ export const setAccountAvatar = createServerFn({ method: "POST" })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
     if (avatarUrl) {
-      await supabaseAdmin
+      // Only the profile linked to this account; an admin changing their own
+      // photo must never overwrite the profiles they published for others.
+      const { error: expertAvatarError } = await supabaseAdmin
         .from("experts")
         .update({ avatar_url: avatarUrl })
-        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`);
+        .eq(EXPERT_OWNER_COLUMN, context.userId);
+      if (expertAvatarError) console.error("[setAccountAvatar] expert avatar sync failed:", expertAvatarError.message);
     }
     const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(context.userId, {
       user_metadata: { avatar_url: avatarUrl },

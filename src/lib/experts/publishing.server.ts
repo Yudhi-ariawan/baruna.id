@@ -73,10 +73,11 @@ export async function resolvePublicAvatarUrl(
     try {
       const { data: expRow } = await supabaseAdmin
         .from("experts")
-        .select("original_contributor_id, created_by")
+        .select("original_contributor_id")
         .eq("id", expertId)
         .maybeSingle();
-      const uid = expRow?.original_contributor_id || expRow?.created_by;
+      // Linked account only (see ./ownership); never the admin who created the row.
+      const uid = expRow?.original_contributor_id;
       if (uid) {
         const { data: prof } = await supabaseAdmin
           .from("profiles")

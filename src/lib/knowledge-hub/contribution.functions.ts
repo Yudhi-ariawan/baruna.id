@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { groupForType, type AccessLevel } from "@/lib/resources";
+import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
 import { extractYouTubeVideoId, extractVimeoVideoId } from "@/lib/knowledge-hub/video-utils";
 
 const SubmissionInput = z.object({
@@ -87,7 +88,7 @@ export const getKnowledgeContributorBootstrap = createServerFn({ method: "GET" }
         .from("experts")
         .select("id")
         .eq("current_status", "published")
-        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+        .eq(EXPERT_OWNER_COLUMN, context.userId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -284,7 +285,7 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
         .from("experts")
         .select("id")
         .eq("current_status", "published")
-        .or(`original_contributor_id.eq.${context.userId},created_by.eq.${context.userId}`)
+        .eq(EXPERT_OWNER_COLUMN, context.userId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle(),

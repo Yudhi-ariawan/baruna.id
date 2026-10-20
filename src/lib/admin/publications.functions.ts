@@ -10,6 +10,7 @@ import {
   type ToolkitStructure,
 } from "@/lib/resources";
 import { getYouTubeThumbnailUrl } from "@/lib/knowledge-hub/video-utils";
+import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
 
 type ResourceType = Database["public"]["Enums"]["resource_type_v1"];
 const typeMap: Record<string, ResourceType> = {
@@ -1066,7 +1067,7 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
         const { data: expertMatch } = await supabaseAdmin
           .from("experts")
           .select("id")
-          .or(`created_by.eq.${subj.submitted_by},original_contributor_id.eq.${subj.submitted_by}`)
+          .eq(EXPERT_OWNER_COLUMN, subj.submitted_by)
           .eq("current_status", "published")
           .limit(1)
           .maybeSingle();

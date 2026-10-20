@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
 
 export type InAppNotification = {
   id: string;
@@ -265,7 +266,11 @@ async function buildServiceRequestNotifications(userId: string): Promise<RawNoti
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const raw: RawNotif[] = [];
 
-  const { data: expertRows } = await supabaseAdmin.from("experts").select("id").eq("created_by", userId).limit(5);
+  const { data: expertRows } = await supabaseAdmin
+    .from("experts")
+    .select("id")
+    .eq(EXPERT_OWNER_COLUMN, userId)
+    .limit(5);
   const expertIds = (expertRows ?? []).map((e) => e.id);
 
   const [asRequester, asExpert] = await Promise.all([

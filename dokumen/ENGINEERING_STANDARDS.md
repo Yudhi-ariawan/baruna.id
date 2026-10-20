@@ -155,4 +155,5 @@ Tujuannya: saat mentor merge, pengecek langsung menunjukkan migrasi mana yang be
 2. Status efektif expert ada di dua tempat yang harus sama: `deriveExpertEffectiveStatus` (TypeScript) dan `public._expert_effective_status` (SQL). Mengubah salah satu wajib mengubah yang lain.
 3. Browser tidak boleh menulis langsung draf expert/modul, profil expert, tabel turunannya, kontak privat, atau keputusan. Aturan per jenis pengajuan ada di `submit_draft_for_review`, sehingga berlaku untuk semua jalur.
 4. Daftar yang bisa membesar dibaca dengan `fetchAllPages` / `fetchByIdChunks` (`src/lib/supabase/batch.server.ts`), bukan satu `select` atau satu `.in()` berisi semua ID.
+5. Pemilik profil expert = `experts.original_contributor_id` (akun yang tertaut, Slide 37), sejak `20261020030000`. `created_by` hanya jejak audit dan tidak boleh dipakai untuk akses, kepemilikan, foto, atau penulis modul. Di TypeScript pakai `EXPERT_OWNER_COLUMN` (`src/lib/experts/ownership.ts`); di SQL pakai `public._expert_is_owner` atau `original_contributor_id = <uid>`.
 

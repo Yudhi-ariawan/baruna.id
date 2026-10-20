@@ -157,12 +157,35 @@ Pengujian: tes Postgres lokal 43 pengecekan lulus; uji langsung `npm run test:pa
 
 ---
 
+## 2i. Expert: satu aturan "pemilik profil" (Slide 37, Link/Match)
+
+Sebelumnya "akun mana pemilik profil expert" ditentukan dengan tiga aturan berbeda: RLS memakai `created_by`, portal trainer/kualifikasi/penulis modul memakai `original_contributor_id OR created_by`, dan `admin_expert_decide` memakai `AND`. `created_by` hanya mencatat siapa yang membuat baris; untuk profil terbitan langsung admin atau hasil skrip provisioning nilainya = admin.
+
+| # | Akibat | Perbaikan |
+|---|---|---|
+| 1 | Admin yang mengganti foto akunnya menimpa foto **semua** profil expert yang pernah ia buat (`setAccountAvatar`). Direktori publik juga memakai foto akun admin untuk profil-profil itu. | Hanya profil yang tertaut ke akun (`original_contributor_id`). |
+| 2 | Portal trainer admin bisa memuat profil orang lain; modul yang diajukan admin bisa tercatat atas nama expert lain. | `trainer_portal_bootstrap`, `_active_trainer_expert_id`, `_my_verified_expert_id`, `trainer_status_backfill_self`, `_publish_module_from_subject` memakai satu aturan. |
+| 3 | Expert hasil provisioning tidak bisa membaca permintaan layanan, kontak privat, dan sertifikat miliknya lewat RLS (karena `created_by` = admin), padahal halaman TS menganggapnya pemilik. | `_expert_is_owner` dan kebijakan `experts_owner_read` memakai `original_contributor_id`. Notifikasi permintaan layanan untuk expert juga (sebelumnya `created_by` saja). |
+| 4 | `expert_publish_direct` selalu gagal sejak `20260916010000` (kolom `slug` wajib tetapi tidak diisi). | Slug dibuat dengan pembuat slug yang sama dengan persetujuan expert. Profil terbitan admin tidak lagi tertaut ke akun admin (menunggu penautan/klaim). |
+
+Migrasi `20261020030000` juga merapikan data lama: profil pendaftaran mandiri yang belum tertaut ditautkan ke pembuatnya (tanpa melanggar "satu profil aktif per akun"), dan profil terbitan admin dilepas dari admin pembuatnya kecuali admin itu sendiri expert. Di database intern-update saat dicek (20 Okt): 4 expert, semuanya sudah tertaut benar, jadi tidak ada data yang berubah. Database main belum dicek.
+
+Sengaja dibiarkan lebih ketat: cek konflik kepentingan saat penugasan expert tetap memblokir pembuat baris juga.
+
+Di kode: konstanta `EXPERT_OWNER_COLUMN` (`src/lib/experts/ownership.ts`) dipakai di semua pencarian profil milik pengguna.
+
+Terkait keputusan mentor A1 (Profile Claim): profil tanpa akun tertaut adalah kandidat yang nantinya bisa diklaim.
+
+Pengujian: tes Postgres lokal 27 pengecekan lulus (termasuk RLS sebagai role `authenticated`).
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (31 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (32 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -182,6 +205,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261015090000_expert_language_taxonomy.sql` (bahasa expert dipetakan ke taksonomi bahasa)
 - `20261015100000_review_subjects_archived_status.sql` (status `archived` pada review_subjects; mengulang 20261006110000 yang ternyata belum berlaku di database intern-update)
 - `20261020010000_participant_learning_integrity.sql` (pendaftaran, progres, sertifikat peserta lewat RPC; verifikasi sertifikat)
+- `20261020030000_expert_profile_ownership.sql` (satu aturan pemilik profil expert; perbaikan terbit langsung admin)
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

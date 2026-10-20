@@ -264,18 +264,16 @@ async function loadResolvedExpertsMap(supabaseAdmin: any, expertIds: string[]) {
       .in("id", expertIds),
     supabaseAdmin
       .from("experts")
-      .select("id,original_contributor_id,created_by,avatar_url")
+      .select("id,original_contributor_id,avatar_url")
       .in("id", expertIds),
   ]);
   if (expertError) throw new Error(expertError.message);
 
+  // Linked account only (see @/lib/experts/ownership).
   const userIds = [
     ...new Set(
       (rawExperts ?? [])
-        .map(
-          (r: { original_contributor_id?: string | null; created_by?: string | null }) =>
-            r.original_contributor_id || r.created_by,
-        )
+        .map((r: { original_contributor_id?: string | null }) => r.original_contributor_id)
         .filter((uid: string | null | undefined): uid is string => Boolean(uid)),
     ),
   ];
@@ -288,9 +286,9 @@ async function loadResolvedExpertsMap(supabaseAdmin: any, expertIds: string[]) {
   );
   const userIdByExpertId = new Map<string, string | null>(
     (rawExperts ?? []).map(
-      (r: { id: string; original_contributor_id?: string | null; created_by?: string | null }) => [
+      (r: { id: string; original_contributor_id?: string | null }) => [
         r.id,
-        r.original_contributor_id || r.created_by || null,
+        r.original_contributor_id ?? null,
       ],
     ),
   );

@@ -100,7 +100,12 @@ WITH checks(no, migration, ok) AS (
   (31, '20261020010000_participant_learning_integrity',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'learning_enrol')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'issue_my_certificate')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'verify_certificate'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'verify_certificate')),
+  (32, '20261020030000_expert_profile_ownership',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_is_owner'
+                AND prosrc LIKE '%original_contributor_id%')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_portal_bootstrap'
+                    AND prosrc NOT LIKE '%created_by=v_uid%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

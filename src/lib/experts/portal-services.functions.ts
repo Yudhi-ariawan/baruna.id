@@ -223,6 +223,8 @@ export const createExpertServiceRequest = createServerFn({ method: "POST" })
     assertServiceRequestFiles(data.payload, context.userId, data.status === "submitted");
     if (data.targetExpertSlug) {
       // PB-EXP-03 conflict check: an expert cannot assign a request to themselves.
+      // Deliberately broader than the ownership rule (./ownership): blocking the
+      // row's creator too only ever errs on the safe side.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: ownTarget } = await supabaseAdmin
         .from("experts")
