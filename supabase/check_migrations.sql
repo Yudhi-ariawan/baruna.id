@@ -110,7 +110,12 @@ WITH checks(no, migration, ok) AS (
   -- tidak saling bergantung, jadi boleh dijalankan sebelum atau sesudahnya.
   (33, '20261020020000_module_content_access',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'can_access_module_content'
-                AND prosrc LIKE '%original_contributor_id%'))
+                AND prosrc LIKE '%original_contributor_id%')),
+  (34, '20261020040000_participant_biodata_selfpaced_integrity',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'participant_biodata_save')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'self_paced_sync')
+      AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'participant_biodata'
+                        AND policyname = 'participant_biodata_own_update'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

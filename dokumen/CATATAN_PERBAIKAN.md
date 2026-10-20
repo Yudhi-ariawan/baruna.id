@@ -195,12 +195,29 @@ Pengujian: tes Postgres lokal 14 pengecekan (termasuk pendaftaran untuk modul la
 
 ---
 
+## 2j. Peserta: biodata (P5) dan progres pelatihan mandiri (P6)
+
+| # | Celah | Perbaikan (migrasi `20261020040000`) |
+|---|---|---|
+| P5 | Simpan biodata (form biodata **dan** halaman Akun) menyetel `profiles.is_active = true` dan meng-upsert role participant menjadi aktif: akun yang **dinonaktifkan** admin aktif lagi, role yang **dicabut** hidup lagi. 4-5 langkah terpisah; kegagalan hanya `console.warn`. | Satu RPC `participant_biodata_save` untuk kedua jalur, satu transaksi dengan kunci per akun. Akun nonaktif ditolak. Role participant hanya dibuat bila belum pernah ada; role yang dicabut/ditangguhkan/kedaluwarsa tidak disentuh (pengguna diberi tahu untuk menghubungi admin). |
+| P5 | Tanpa batas panjang, tanggal/telepon tidak divalidasi; bila unggah foto gagal, foto **base64 (~2,7 MB)** disimpan ke `user_metadata` yang ikut di setiap token login (akun bisa gagal login). Browser juga bisa menulis tabel biodata langsung. | Validasi di database (panjang, NIP, nomor HP, tanggal nyata dan tidak di masa depan, jenis kelamin, foto hanya dari folder avatar milik sendiri). Form tidak lagi memakai base64. Biodata dan role tidak lagi ditulis ke `user_metadata`. Tulis langsung ke `participant_biodata` dicabut. |
+| P6 | Sinkron pelatihan mandiri membaca-ubah-tulis `user_metadata` tanpa kunci: dua perangkat saling menimpa. Payload tanpa batas, error ditelan, browser bisa menulis tabel langsung. | RPC `self_paced_sync` menggabungkan per kursus di database dan tidak pernah menurunkan progres (selesai tetap selesai, nilai tertinggi, langkah digabung, tanggal daftar paling awal). Maksimal 200 kursus; entri rusak dilewati; waktu masa depan dipotong. Data lama di `user_metadata` dipindah ke tabel saat sinkron lalu dihapus dari token. Tulis langsung dicabut (reset kursus tetap bisa). |
+| - | Label role di beranda bisa diubah sendiri lewat `user_metadata`; statistik Academy terpotong di 1000 baris. | Role hanya dari RBAC; statistik dibaca bertahap. |
+
+Batasan yang disengaja: status "selesai" dan nilai kursus mandiri tetap **laporan dari browser**, karena isi dan kuisnya ada di kode aplikasi. Tidak ada hak di server yang bergantung padanya (sertifikatnya berlabel CONTOH). Keputusan mentor yang tetap terbuka: role participant otomatis atau lewat persetujuan admin.
+
+Data lama (intern-update, 20 Okt): 0 baris biodata, 0 baris progres, 3 akun dengan data lama di `user_metadata` (terbaca untuk mengisi form; progres dipindah saat sinkron berikutnya).
+
+Pengujian: tes Postgres lokal 43 pengecekan lulus (termasuk RLS sebagai role `authenticated`).
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (33 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (34 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -222,6 +239,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261020010000_participant_learning_integrity.sql` (pendaftaran, progres, sertifikat peserta lewat RPC; verifikasi sertifikat)
 - `20261020020000_module_content_access.sql` (isi belajar modul hanya untuk peserta disetujui, penulis, admin; boleh dijalankan sebelum atau sesudah 030000)
 - `20261020030000_expert_profile_ownership.sql` (satu aturan pemilik profil expert; perbaikan terbit langsung admin)
+- `20261020040000_participant_biodata_selfpaced_integrity.sql` (biodata dan progres pelatihan mandiri lewat RPC tervalidasi)
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

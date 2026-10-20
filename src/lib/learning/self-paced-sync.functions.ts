@@ -22,256 +22,173 @@ export type SelfPacedEnrollmentPayload = {
   explicitlyEnrolled?: boolean;
 };
 
+// Lenient on purpose: a single odd local entry must not block every future sync.
+// The database (public.self_paced_sync) validates each course and skips bad ones.
 const SelfPacedPayloadSchema = z.object({
-  courses: z.record(
-    z.string(),
-    z.object({
-      code: z.string(),
-      enrolledAt: z.number().optional().default(() => Date.now()),
-      completed: z.boolean().optional().default(false),
-      completedAt: z.number().optional(),
-      score: z.number().optional(),
-      source: z.enum(["self-paced", "full-training-program"]).optional().default("self-paced"),
-      title: z.string().optional(),
-      hours: z.union([z.string(), z.number()]).optional(),
-      instructor: z.string().optional(),
-      category: z.string().optional(),
-      completedSteps: z
+  courses: z
+    .record(
+      z.string().max(120),
+      z
         .object({
-          video: z.boolean().optional(),
-          pdf: z.boolean().optional(),
-          ppt: z.boolean().optional(),
-          quiz: z.boolean().optional(),
+          code: z.string().max(120),
+          enrolledAt: z.number().optional(),
+          completed: z.boolean().optional().default(false),
+          completedAt: z.number().optional(),
+          score: z.number().optional(),
+          source: z.enum(["self-paced", "full-training-program"]).optional().default("self-paced"),
+          title: z.string().max(1000).optional(),
+          hours: z.union([z.string().max(100), z.number()]).optional(),
+          instructor: z.string().max(1000).optional(),
+          category: z.string().max(1000).optional(),
+          completedSteps: z
+            .object({
+              video: z.boolean().optional(),
+              pdf: z.boolean().optional(),
+              ppt: z.boolean().optional(),
+              quiz: z.boolean().optional(),
+            })
+            .optional(),
+          explicitlyEnrolled: z.boolean().optional().default(false),
         })
-        .optional(),
-      explicitlyEnrolled: z.boolean().optional().default(false),
-    }),
-  ),
+        .passthrough(),
+    )
+    .refine((courses) => Object.keys(courses).length <= 200, "Terlalu banyak kursus untuk disinkronkan."),
 });
 
+type SelfPacedRow = {
+  code: string;
+  title: string | null;
+  hours: string | null;
+  instructor: string | null;
+  category: string | null;
+  score: number | string | null;
+  source: string | null;
+  completed: boolean;
+  completed_at: string | null;
+  completed_steps: SelfPacedEnrollmentPayload["completedSteps"] | null;
+  enrolled_at: string | null;
+};
+
+function rowToPayload(row: SelfPacedRow): SelfPacedEnrollmentPayload {
+  return {
+    code: row.code,
+    enrolledAt: row.enrolled_at ? new Date(row.enrolled_at).getTime() : Date.now(),
+    completed: Boolean(row.completed),
+    completedAt: row.completed_at ? new Date(row.completed_at).getTime() : undefined,
+    score: row.score === null || row.score === undefined ? undefined : Number(row.score),
+    source: row.source === "full-training-program" ? "full-training-program" : "self-paced",
+    title: row.title ?? undefined,
+    hours: row.hours ?? undefined,
+    instructor: row.instructor ?? undefined,
+    category: row.category ?? undefined,
+    completedSteps: row.completed_steps ?? {},
+    explicitlyEnrolled: true,
+  };
+}
+
+function legacyMetadataCourses(meta: Record<string, unknown>): Record<string, SelfPacedEnrollmentPayload> {
+  const stored = meta.self_paced_courses;
+  if (!stored || typeof stored !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(stored as Record<string, SelfPacedEnrollmentPayload>).filter(
+      ([, course]) => course?.code && course.explicitlyEnrolled === true,
+    ),
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function readMyCourses(client: any): Promise<Record<string, SelfPacedEnrollmentPayload>> {
+  const { data, error } = await client
+    .from("self_paced_enrollments")
+    .select("code,title,hours,instructor,category,score,source,completed,completed_at,completed_steps,enrolled_at")
+    .order("code")
+    .limit(500);
+  if (error) throw new Error(`Gagal memuat progres pelatihan mandiri: ${error.message}`);
+  return Object.fromEntries(((data ?? []) as SelfPacedRow[]).map((row) => [row.code, rowToPayload(row)]));
+}
+
+function toFriendlySyncError(message: string): string {
+  if (message.includes("Could not find the function") || message.includes("schema cache")) {
+    return "Sinkron pelatihan mandiri membutuhkan migrasi database 20261020040000.";
+  }
+  if (message.includes("too_many_courses")) return "Terlalu banyak kursus untuk disinkronkan.";
+  return `Gagal menyinkronkan progres pelatihan mandiri: ${message}`;
+}
+
 /**
- * Fetch authenticated user's self-paced course enrollments from Supabase.
- * Multi-source fallback: checks `self_paced_enrollments` table, then `user_metadata`.
+ * The caller's self-paced enrolments. Read-only: the table is the source; courses
+ * still parked in legacy user_metadata (written before the table) are shown too
+ * and moved into the table by the next sync.
  */
 export const getMySelfPacedCourses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<Record<string, SelfPacedEnrollmentPayload>> => {
+    const fromTable = await readMyCourses(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const result: Record<string, SelfPacedEnrollmentPayload> = {};
-
-    // 1. Try reading from auth.users.user_metadata first for fast, reliable access
-    try {
-      const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
-      const metaCourses = (meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload>) || {};
-      if (metaCourses && typeof metaCourses === "object") {
-        for (const [code, item] of Object.entries(metaCourses)) {
-          if (item && item.code && item.explicitlyEnrolled === true) {
-            result[code] = item;
-          }
-        }
-      }
-    } catch (metaErr) {
-      console.warn("[getMySelfPacedCourses] user_metadata lookup warning:", metaErr);
-    }
-
-    // 2. Query primary table `self_paced_enrollments`
-    try {
-      // The generated Database type predates this additive migration.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: rows, error: tableErr } = await (supabaseAdmin as any)
-        .from("self_paced_enrollments")
-        .select("*")
-        .eq("user_id", context.userId);
-
-      if (!tableErr && Array.isArray(rows)) {
-        for (const row of rows) {
-          const enrolledAtNum = row.enrolled_at ? new Date(row.enrolled_at).getTime() : Date.now();
-          const completedAtNum = row.completed_at ? new Date(row.completed_at).getTime() : undefined;
-          
-          const existing = result[row.code];
-          // Take the one with higher completion / progress
-          if (!existing || (!existing.completed && row.completed)) {
-            result[row.code] = {
-              code: row.code,
-              enrolledAt: enrolledAtNum,
-              completed: Boolean(row.completed),
-              completedAt: completedAtNum,
-              score: row.score ? Number(row.score) : undefined,
-              source: row.source || "self-paced",
-              title: row.title || undefined,
-              hours: row.hours || undefined,
-              instructor: row.instructor || undefined,
-              category: row.category || undefined,
-              completedSteps:
-                (row.completed_steps as SelfPacedEnrollmentPayload["completedSteps"]) || {},
-              explicitlyEnrolled: true,
-            };
-          }
-        }
-      }
-    } catch (tableErr) {
-      console.warn("[getMySelfPacedCourses] table query warning:", tableErr);
-    }
-
-    return result;
+    const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    const legacy = legacyMetadataCourses((userRecord?.user?.user_metadata as Record<string, unknown>) ?? {});
+    return { ...legacy, ...fromTable };
   });
 
 /**
- * Synchronize local self-paced enrollments with Supabase server.
- * Merges local and remote data, updates both `self_paced_enrollments` table and `auth.users.user_metadata`.
+ * Saves local progress. Merging happens per row inside ONE database call
+ * (public.self_paced_sync, migration 20261020040000) and never lowers progress,
+ * so two devices syncing at the same time cannot overwrite each other.
  */
 export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => SelfPacedPayloadSchema.parse(input))
   .handler(async ({ data, context }): Promise<Record<string, SelfPacedEnrollmentPayload>> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const coursesToSync = Object.fromEntries(
-      Object.entries(data.courses).filter(([, course]) => course.explicitlyEnrolled === true),
+    const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) ?? {};
+    const legacy = legacyMetadataCourses(meta);
+
+    const courses = Object.fromEntries(
+      Object.entries({ ...legacy, ...data.courses }).filter(([, course]) => course.explicitlyEnrolled === true),
     );
-
-    // 1. Fetch current server state to merge
-    let currentRemote: Record<string, SelfPacedEnrollmentPayload> = {};
-    try {
-      const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
-      if (meta.self_paced_courses && typeof meta.self_paced_courses === "object") {
-        const stored = meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload>;
-        currentRemote = Object.fromEntries(
-          Object.entries(stored).filter(([, course]) => course.explicitlyEnrolled === true),
-        );
-      }
-    } catch (metaErr) {
-      console.warn("[syncMySelfPacedCourses] existing metadata lookup warning:", metaErr);
+    if (Object.keys(courses).length > 0) {
+      const { error } = await context.supabase.rpc("self_paced_sync" as never, { _courses: courses } as never);
+      if (error) throw new Error(toFriendlySyncError(error.message));
     }
 
-    // Merge: combine courses, keeping best score & highest completion
-    const merged: Record<string, SelfPacedEnrollmentPayload> = { ...currentRemote };
-    for (const [code, incoming] of Object.entries(coursesToSync)) {
-      const existing = merged[code];
-      if (!existing) {
-        merged[code] = incoming;
-      } else {
-        // Merge steps
-        const mergedSteps = {
-          ...(existing.completedSteps || {}),
-          ...(incoming.completedSteps || {}),
-        };
-        const completed = existing.completed || incoming.completed;
-        const score = Math.max(existing.score || 0, incoming.score || 0) || undefined;
-        merged[code] = {
-          ...existing,
-          ...incoming,
-          completed,
-          completedAt: completed ? (existing.completedAt || incoming.completedAt || Date.now()) : undefined,
-          score,
-          completedSteps: mergedSteps,
-        };
-      }
-    }
-
-    const nowIso = new Date().toISOString();
-
-    // 2. Persist to auth.users.user_metadata (Compact format to prevent JWT header bloat)
-    try {
-      const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
-
-      const compactMeta: Record<string, Partial<SelfPacedEnrollmentPayload>> = {};
-      for (const [c, item] of Object.entries(merged)) {
-        compactMeta[c] = {
-          code: item.code,
-          completed: item.completed,
-          completedAt: item.completedAt,
-          score: item.score,
-          completedSteps: item.completedSteps,
-          enrolledAt: item.enrolledAt,
-          explicitlyEnrolled: true,
-        };
-      }
-
-      await supabaseAdmin.auth.admin.updateUserById(context.userId, {
-        user_metadata: {
-          ...meta,
-          self_paced_courses: compactMeta,
-        },
+    // Legacy copy now lives in the table; drop it from the login token.
+    if (meta.self_paced_courses !== undefined) {
+      const { self_paced_courses: _legacy, ...rest } = meta;
+      void _legacy;
+      const { error: metaError } = await supabaseAdmin.auth.admin.updateUserById(context.userId, {
+        user_metadata: { ...rest, self_paced_courses: null },
       });
-    } catch (metaErr) {
-      console.warn("[syncMySelfPacedCourses] user_metadata sync warning:", metaErr);
+      if (metaError) console.error("[syncMySelfPacedCourses] legacy metadata cleanup failed:", metaError.message);
     }
 
-    // 3. Upsert to `self_paced_enrollments` table
-    try {
-      const upsertRows = Object.values(merged).map((c) => ({
-        user_id: context.userId,
-        code: c.code,
-        title: c.title || null,
-        hours: c.hours ? String(c.hours) : null,
-        instructor: c.instructor || null,
-        category: c.category || null,
-        score: c.score ?? null,
-        source: c.source || "self-paced",
-        completed: c.completed,
-        completed_at: c.completedAt ? new Date(c.completedAt).toISOString() : null,
-        completed_steps: c.completedSteps || {},
-        enrolled_at: c.enrolledAt ? new Date(c.enrolledAt).toISOString() : nowIso,
-        updated_at: nowIso,
-      }));
-
-      if (upsertRows.length > 0) {
-        // The generated Database type predates this additive migration.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabaseAdmin as any)
-          .from("self_paced_enrollments")
-          .upsert(upsertRows, { onConflict: "user_id, code" });
-      }
-    } catch (tableErr) {
-      console.warn("[syncMySelfPacedCourses] table upsert warning:", tableErr);
-    }
-
-    return merged;
+    return readMyCourses(context.supabase);
   });
 
-/**
- * Remove a specific self-paced course enrollment from cloud storage (used on reset).
- */
+/** Removes one self-paced enrolment (course reset). RLS allows deleting own rows only. */
 export const deleteMySelfPacedCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input) => z.object({ code: z.string() }).parse(input))
+  .validator((input) => z.object({ code: z.string().min(1).max(120) }).parse(input))
   .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any)
+      .from("self_paced_enrollments")
+      .delete()
+      .eq("user_id", context.userId)
+      .eq("code", data.code);
+    if (error) throw new Error(`Gagal mengatur ulang kursus: ${error.message}`);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // 1. Delete from self_paced_enrollments table
-    try {
-      // The generated Database type predates this additive migration.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabaseAdmin as any)
-        .from("self_paced_enrollments")
-        .delete()
-        .eq("user_id", context.userId)
-        .eq("code", data.code);
-    } catch (tableErr) {
-      console.warn("[deleteMySelfPacedCourse] table delete warning:", tableErr);
+    const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) ?? {};
+    const stored = meta.self_paced_courses as Record<string, unknown> | null | undefined;
+    if (stored && typeof stored === "object" && data.code in stored) {
+      const copy = { ...stored };
+      delete copy[data.code];
+      const { error: metaError } = await supabaseAdmin.auth.admin.updateUserById(context.userId, {
+        user_metadata: { ...meta, self_paced_courses: copy },
+      });
+      if (metaError) throw new Error(`Gagal mengatur ulang kursus: ${metaError.message}`);
     }
-
-    // 2. Delete from auth.users.user_metadata
-    try {
-      const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const meta = (userRecord?.user?.user_metadata as Record<string, unknown>) || {};
-      const storedCourses = meta.self_paced_courses as Record<string, SelfPacedEnrollmentPayload> | undefined;
-      if (storedCourses?.[data.code]) {
-        const copy = { ...storedCourses };
-        delete copy[data.code];
-        await supabaseAdmin.auth.admin.updateUserById(context.userId, {
-          user_metadata: {
-            ...meta,
-            self_paced_courses: copy,
-          },
-        });
-      }
-    } catch (metaErr) {
-      console.warn("[deleteMySelfPacedCourse] user_metadata delete warning:", metaErr);
-    }
-
     return { success: true };
   });

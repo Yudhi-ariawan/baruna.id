@@ -105,7 +105,11 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
     try {
       const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
       const { data: authData } = await supabase.auth.getUser();
-      const uid = authData.user?.id || "temp";
+      const uid = authData.user?.id;
+      if (!uid) {
+        toast.error("Sesi login berakhir. Silakan masuk kembali sebelum mengunggah foto.");
+        return;
+      }
       const path = `users/${uid}/participant-photo-${Date.now()}.${ext}`;
 
       const { error: uploadErr } = await supabase.storage
@@ -113,13 +117,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
         .upload(path, file, { contentType: file.type, upsert: true });
 
       if (uploadErr) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          handleChange("fotoUrl", dataUrl);
-          toast.success("Foto berhasil dimuat.");
-        };
-        reader.readAsDataURL(file);
+        // No inline base64 fallback: a 2 MB data URL stored as the photo bloats every
+        // request of this account. The upload must succeed (or be retried).
+        toast.error(`Gagal mengunggah pas foto: ${uploadErr.message}. Silakan coba lagi.`);
       } else {
         const publicUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
         handleChange("fotoUrl", publicUrl);

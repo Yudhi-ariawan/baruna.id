@@ -309,10 +309,8 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
     const roleCodes = (assignments ?? [])
       .map((assignment) => assignment.rbac_roles?.code)
       .filter((code): code is string => Boolean(code));
-    const userMeta = (identity?.user?.user_metadata as Record<string, unknown>) || {};
-    if ((userMeta.role === "participant" || (Array.isArray(userMeta.roles) && userMeta.roles.includes("participant"))) && !roleCodes.includes("participant")) {
-      roleCodes.push("participant");
-    }
+    // Roles come from RBAC only: user_metadata is editable by the user (and the
+    // participant role is granted in rbac_user_roles by participant_biodata_save).
     const roleCode = highestPriorityRole(roleCodes);
     let roleLabel = ROLE_LABELS[roleCode] ?? roleCode.replaceAll("_", " ");
     if (roleCode === "expert") {

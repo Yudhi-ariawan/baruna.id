@@ -3,24 +3,92 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { ParticipantBiodata } from "./participant-biodata.types";
 
+// Same limits as public._participant_biodata_problem (migration 20261020040000);
+// the database repeats every check, so a direct call cannot skip them.
 const BiodataInputSchema = z.object({
-  nama: z.string().trim().min(2, "Nama wajib diisi"),
-  nip: z.string().trim().min(3, "NIP/Nomor Identitas wajib diisi"),
-  tempatLahir: z.string().trim().min(2, "Tempat lahir wajib diisi"),
-  tanggalLahir: z.string().trim().min(8, "Tanggal lahir wajib diisi"),
-  jenisKelamin: z.string().trim().min(2, "Jenis kelamin wajib dipilih"),
-  agama: z.string().trim().min(2, "Agama wajib dipilih"),
-  jabatan: z.string().trim().min(2, "Jabatan wajib diisi"),
-  pangkatGolongan: z.string().trim().min(2, "Pangkat / golongan wajib dipilih"),
-  pendidikanTerakhir: z.string().trim().min(2, "Pendidikan terakhir wajib dipilih"),
-  noHp: z.string().trim().min(8, "Nomor HP wajib diisi"),
-  unitEselon1: z.string().trim().min(2, "Unit Eselon I wajib dipilih"),
-  instansiUnitKerja: z.string().trim().min(2, "Instansi / Unit Kerja wajib diisi"),
-  alamatKantor: z.string().trim().min(3, "Alamat kantor wajib diisi"),
-  provinsi: z.string().trim().min(2, "Provinsi wajib diisi"),
-  kabupatenKota: z.string().trim().min(2, "Kabupaten / Kota wajib diisi"),
-  fotoUrl: z.string().trim().optional().nullable(),
+  nama: z.string().trim().min(2, "Nama wajib diisi").max(160),
+  nip: z
+    .string()
+    .trim()
+    .min(3, "NIP/Nomor Identitas wajib diisi")
+    .max(40)
+    .regex(/^[0-9A-Za-z./ -]+$/, "NIP hanya boleh berisi angka, huruf, titik, garis miring, atau tanda hubung"),
+  tempatLahir: z.string().trim().min(2, "Tempat lahir wajib diisi").max(100),
+  tanggalLahir: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal lahir wajib diisi (format YYYY-MM-DD)"),
+  jenisKelamin: z.enum(["Laki-laki", "Perempuan"], { message: "Jenis kelamin wajib dipilih" }),
+  agama: z.string().trim().min(2, "Agama wajib dipilih").max(60),
+  jabatan: z.string().trim().min(2, "Jabatan wajib diisi").max(160),
+  pangkatGolongan: z.string().trim().min(2, "Pangkat / golongan wajib dipilih").max(60),
+  pendidikanTerakhir: z.string().trim().min(2, "Pendidikan terakhir wajib dipilih").max(80),
+  noHp: z.string().trim().regex(/^\+?[0-9 ()-]{8,20}$/, "Nomor HP tidak valid"),
+  unitEselon1: z.string().trim().min(2, "Unit Eselon I wajib dipilih").max(120),
+  instansiUnitKerja: z.string().trim().min(2, "Instansi / Unit Kerja wajib diisi").max(200),
+  alamatKantor: z.string().trim().min(3, "Alamat kantor wajib diisi").max(500),
+  provinsi: z.string().trim().min(2, "Provinsi wajib diisi").max(80),
+  kabupatenKota: z.string().trim().min(2, "Kabupaten / Kota wajib diisi").max(120),
+  // Only an uploaded avatar URL; never an inline base64 image.
+  fotoUrl: z.string().trim().max(600).regex(/^https:\/\//, "Pas foto harus diunggah ulang").optional().nullable().or(z.literal("")),
 });
+
+export type ParticipantBiodataInput = z.infer<typeof BiodataInputSchema>;
+
+const BIODATA_FIELD_LABEL: Record<string, string> = {
+  nama: "Nama", nip: "NIP/Nomor Identitas", tempatLahir: "Tempat lahir", tanggalLahir: "Tanggal lahir",
+  jenisKelamin: "Jenis kelamin", agama: "Agama", jabatan: "Jabatan", pangkatGolongan: "Pangkat/golongan",
+  pendidikanTerakhir: "Pendidikan terakhir", noHp: "Nomor HP", unitEselon1: "Unit Eselon I",
+  instansiUnitKerja: "Instansi/Unit Kerja", alamatKantor: "Alamat kantor", provinsi: "Provinsi",
+  kabupatenKota: "Kabupaten/Kota", fotoUrl: "Pas foto",
+};
+
+function toFriendlyBiodataError(message: string): string {
+  if (message.includes("Could not find the function") || message.includes("schema cache")) {
+    return "Penyimpanan biodata membutuhkan migrasi database 20261020040000. Hubungi pengelola sistem.";
+  }
+  if (message.includes("account_inactive")) {
+    return "Akun Anda sedang dinonaktifkan administrator, sehingga biodata tidak dapat disimpan.";
+  }
+  const field = /biodata_field_invalid:(\w+)/.exec(message)?.[1];
+  if (field) return `${BIODATA_FIELD_LABEL[field] ?? field} tidak valid. Periksa kembali isian tersebut.`;
+  if (message.includes("participant_role_missing")) {
+    return "Peran 'participant' belum terdaftar di sistem. Hubungi pengelola sistem.";
+  }
+  return `Gagal menyimpan biodata: ${message}`;
+}
+
+type BiodataRpcClient = {
+  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+};
+
+/**
+ * Saves biodata, profile fields and the participant role in ONE transaction
+ * (public.participant_biodata_save). Never reactivates an account or a role an
+ * administrator disabled; never writes biodata into user_metadata (login token).
+ */
+export async function saveParticipantBiodataRpc(
+  client: BiodataRpcClient,
+  biodata: ParticipantBiodataInput,
+  source: "academy_biodata_peserta" | "account_profile",
+): Promise<{ roleState: "granted" | "already_active" | "blocked_by_admin" }> {
+  const { data, error } = await client.rpc("participant_biodata_save", {
+    _biodata: { ...biodata, fotoUrl: biodata.fotoUrl || null },
+    _source: source,
+  });
+  if (error) throw new Error(toFriendlyBiodataError(error.message));
+  const roleState = ((data ?? {}) as { roleState?: string }).roleState;
+  return {
+    roleState: roleState === "granted" || roleState === "blocked_by_admin" ? roleState : "already_active",
+  };
+}
+
+export function validateParticipantBiodata(input: unknown): ParticipantBiodataInput {
+  const parsed = BiodataInputSchema.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const field = String(issue?.path?.[0] ?? "");
+    throw new Error(`${BIODATA_FIELD_LABEL[field] ?? field}: ${issue?.message ?? "tidak valid"}`);
+  }
+  return parsed.data;
+}
 
 export type GetMyParticipantBiodataResult = {
   isRegistered: boolean;
@@ -212,11 +280,10 @@ export const getMyParticipantBiodata = createServerFn({ method: "GET" })
       defaultPhoto ||
       null;
 
-    const isParticipantRole =
-      userMeta.role === "participant" ||
-      (Array.isArray(userMeta.roles) && userMeta.roles.includes("participant"));
-
-    if (nama && (nip || isParticipantRole)) {
+    // The table row is the official record; legacy biodata (saved to user_metadata
+    // before the table existed) only pre-fills the form. A role written into
+    // user_metadata is user-editable and is no evidence of registration.
+    if (bioRow || (nama && nip)) {
       const biodata: ParticipantBiodata = {
         id: mergedBio.id || bioRow?.id || `bio_${context.userId}`,
         userId: context.userId,
@@ -267,171 +334,19 @@ export const getMyParticipantBiodata = createServerFn({ method: "GET" })
 
 export const saveParticipantBiodata = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input) => BiodataInputSchema.parse(input))
+  .validator((input) => validateParticipantBiodata(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const now = new Date().toISOString();
-
-    // 1. Tabel `participant_biodata` adalah syarat resmi pendaftaran pelatihan, jadi
-    //    kegagalan menyimpan ke tabel menghentikan proses (tidak ada sukses palsu).
-    {
-      const { error: upsertErr } = await (supabaseAdmin as any)
-        .from("participant_biodata")
-        .upsert(
-          {
-            user_id: context.userId,
-            nama: data.nama,
-            nip: data.nip,
-            tempat_lahir: data.tempatLahir,
-            tanggal_lahir: data.tanggalLahir,
-            jenis_kelamin: data.jenisKelamin,
-            agama: data.agama,
-            jabatan: data.jabatan,
-            pangkat_golongan: data.pangkatGolongan,
-            pendidikan_terakhir: data.pendidikanTerakhir,
-            no_hp: data.noHp,
-            unit_eselon_1: data.unitEselon1,
-            instansi_unit_kerja: data.instansiUnitKerja,
-            alamat_kantor: data.alamatKantor,
-            provinsi: data.provinsi,
-            kabupaten_kota: data.kabupatenKota,
-            foto_url: data.fotoUrl || null,
-            updated_at: now,
-          },
-          { onConflict: "user_id" },
-        );
-
-      if (upsertErr) {
-        throw new Error(
-          /participant_biodata|schema cache/.test(upsertErr.message)
-            ? "Penyimpanan biodata belum aktif di database (migrasi belum dijalankan). Hubungi pengelola sistem."
-            : `Gagal menyimpan biodata: ${upsertErr.message}`,
-        );
-      }
-    }
-
-    // 2. SELALU Simpan ke `auth.users.user_metadata` (100% Persisten, aman tanpa schema error)
-    try {
-      const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-      const currentMeta = (userRecord?.user?.user_metadata as Record<string, any>) || {};
-      const currentRoles: string[] = Array.isArray(currentMeta.roles)
-        ? currentMeta.roles
-        : [currentMeta.role || "registered_user"];
-
-      const updatedRoles = Array.from(new Set([...currentRoles, "participant"]));
-
-      await supabaseAdmin.auth.admin.updateUserById(context.userId, {
-        user_metadata: {
-          ...currentMeta,
-          display_name: data.nama,
-          full_name: data.nama,
-          phone: data.noHp,
-          organization: data.instansiUnitKerja,
-          job_title: data.jabatan,
-          avatar_url: data.fotoUrl || currentMeta.avatar_url || null,
-          role: "participant",
-          roles: updatedRoles,
-          participant_biodata: {
-            ...data,
-            updatedAt: now,
-          },
-        },
-      });
-    } catch (metaErr) {
-      console.warn("[saveParticipantBiodata] user_metadata sync warning:", metaErr);
-    }
-
-    // 3. Sinkronkan profil ke `public.profiles`
-    try {
-      const profileUpdates: Record<string, any> = {
-        display_name: data.nama,
-        phone: data.noHp,
-        organization: data.instansiUnitKerja,
-        job_title: data.jabatan,
-        is_active: true,
-        updated_at: now,
-      };
-      if (data.fotoUrl) {
-        profileUpdates.avatar_url = data.fotoUrl;
-      }
-      await (supabaseAdmin as any)
-        .from("profiles")
-        .update(profileUpdates)
-        .eq("id", context.userId);
-    } catch (profileErr) {
-      console.warn("[saveParticipantBiodata] profile sync warning:", profileErr);
-    }
-
-    // 4. Ubah role menjadi "participant" di `public.rbac_user_roles` LANGSUNG AKTIF tanpa acc admin.
-    //    Database mewajibkan tepat satu role primer aktif per pengguna, jadi role primer
-    //    lain dicek tanpa menghitung baris participant milik pengguna itu sendiri.
-    {
-      const { data: participantRole, error: roleLookupErr } = await (supabaseAdmin as any)
-        .from("rbac_roles")
-        .select("id")
-        .eq("code", "participant")
-        .maybeSingle();
-      if (roleLookupErr || !participantRole?.id) {
-        throw new Error("Biodata tersimpan, tetapi peran 'participant' belum terdaftar di sistem. Hubungi pengelola sistem.");
-      }
-
-      const { data: otherPrimary, error: primaryErr } = await (supabaseAdmin as any)
-        .from("rbac_user_roles")
-        .select("id")
-        .eq("user_id", context.userId)
-        .eq("status", "active")
-        .eq("is_primary", true)
-        .neq("role_id", participantRole.id)
-        .limit(1);
-      if (primaryErr) throw new Error(`Biodata tersimpan, tetapi gagal memeriksa peran: ${primaryErr.message}`);
-
-      const { error: grantErr } = await (supabaseAdmin as any).from("rbac_user_roles").upsert(
-        {
-          user_id: context.userId,
-          role_id: participantRole.id,
-          status: "active",
-          is_primary: !(otherPrimary && otherPrimary.length > 0),
-          scope: {},
-          valid_from: now,
-          valid_until: null,
-          approved_at: now, // Otomatis disetujui sistem (self-service)
-          reason: "registered_as_participant_self_service",
-        },
-        { onConflict: "user_id,role_id" },
-      );
-      if (grantErr) {
-        throw new Error(
-          `Biodata tersimpan, tetapi peran Participant gagal diaktifkan: ${grantErr.message}. Silakan kirim ulang formulir.`,
-        );
-      }
-    }
-
-    // 5. Catat audit trail lengkap ke `public.admin_audit_log`
-    try {
-      await (supabaseAdmin as any).from("admin_audit_log").insert({
-        event_type: "participant_biodata_saved",
-        actor_id: context.userId,
-        target_user_id: context.userId,
-        entity_type: "participant_biodata",
-        entity_id: context.userId,
-        before_data: null,
-        after_data: {
-          ...data,
-          saved_to_table: true,
-          role_assigned: "participant",
-        },
-        metadata: {
-          saved_at: now,
-          source: "academy_biodata_peserta",
-          direct_role_activation: true,
-        },
-      });
-    } catch (auditErr) {
-      console.warn("[saveParticipantBiodata] audit log warning:", auditErr);
-    }
-
+    const { roleState } = await saveParticipantBiodataRpc(
+      context.supabase as unknown as BiodataRpcClient,
+      data,
+      "academy_biodata_peserta",
+    );
     return {
       success: true,
-      message: "Biodata peserta berhasil disimpan! Akun Anda kini resmi menjadi Peserta Pelatihan (Participant).",
+      roleState,
+      message:
+        roleState === "blocked_by_admin"
+          ? "Biodata tersimpan. Peran Peserta pada akun Anda sedang dinonaktifkan administrator; hubungi admin untuk mengaktifkannya kembali."
+          : "Biodata peserta berhasil disimpan! Akun Anda kini resmi menjadi Peserta Pelatihan (Participant).",
     };
   });

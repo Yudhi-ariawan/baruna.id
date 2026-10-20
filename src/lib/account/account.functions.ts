@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AVATAR_BUCKET, AVATAR_PRESETS, type AccountProfile } from "./account.types";
 import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
+import { saveParticipantBiodataRpc, validateParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
 
 const ProfileInput = z.object({
   displayName: z.string().trim().min(2).max(120),
@@ -175,7 +176,37 @@ export const updateAccountProfile = createServerFn({ method: "POST" })
   .validator((input: unknown) => ProfileInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const now = new Date().toISOString();
+
+    // Biodata (when the participant fields are filled) goes through the same
+    // validated, single-transaction RPC as the biodata form, BEFORE anything else
+    // changes, so an invalid biodata never leaves a half-saved profile.
+    const hasBioData = Boolean(data.nip && data.nip.trim().length > 0);
+    if (hasBioData) {
+      const biodata = validateParticipantBiodata({
+        nama: data.displayName,
+        nip: data.nip,
+        tempatLahir: data.tempatLahir ?? "",
+        tanggalLahir: data.tanggalLahir ?? "",
+        jenisKelamin: data.jenisKelamin ?? "",
+        agama: data.agama ?? "",
+        jabatan: data.jobTitle,
+        pangkatGolongan: data.pangkatGolongan ?? "",
+        pendidikanTerakhir: data.pendidikanTerakhir ?? "",
+        noHp: data.phone,
+        unitEselon1: data.unitEselon1 ?? "",
+        instansiUnitKerja: data.organization,
+        alamatKantor: data.alamatKantor ?? "",
+        provinsi: data.provinsi ?? "",
+        kabupatenKota: data.kabupatenKota ?? "",
+        fotoUrl: data.fotoUrl ?? null,
+      });
+      await saveParticipantBiodataRpc(
+        context.supabase as unknown as Parameters<typeof saveParticipantBiodataRpc>[0],
+        biodata,
+        "account_profile",
+      );
+    }
+
     const { data: before, error: beforeError } = await supabaseAdmin
       .from("profiles")
       .select("display_name, organization, job_title, phone")
@@ -191,39 +222,10 @@ export const updateAccountProfile = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("profiles").update(after).eq("id", context.userId);
     if (error) throw new Error(error.message);
 
+    // Display-only fields. Roles and biodata are never written here: user_metadata
+    // is user-editable and travels inside every login token.
     const { data: currentUserData } = await supabaseAdmin.auth.admin.getUserById(context.userId);
     const existingMeta = (currentUserData?.user?.user_metadata as Record<string, unknown>) ?? {};
-    const existingBio = (existingMeta.participant_biodata as Record<string, any>) ?? {};
-
-    const updatedBio = {
-      ...existingBio,
-      nama: data.displayName,
-      nip: data.nip !== undefined ? (data.nip ?? "") : (existingBio.nip || ""),
-      tempatLahir: data.tempatLahir !== undefined ? (data.tempatLahir ?? "") : (existingBio.tempatLahir || ""),
-      tanggalLahir: data.tanggalLahir !== undefined ? (data.tanggalLahir ?? "") : (existingBio.tanggalLahir || ""),
-      jenisKelamin: data.jenisKelamin !== undefined ? (data.jenisKelamin ?? "") : (existingBio.jenisKelamin || ""),
-      agama: data.agama !== undefined ? (data.agama ?? "") : (existingBio.agama || ""),
-      jabatan: data.jobTitle,
-      pangkatGolongan: data.pangkatGolongan !== undefined ? (data.pangkatGolongan ?? "") : (existingBio.pangkatGolongan || ""),
-      pendidikanTerakhir: data.pendidikanTerakhir !== undefined ? (data.pendidikanTerakhir ?? "") : (existingBio.pendidikanTerakhir || ""),
-      noHp: data.phone,
-      unitEselon1: data.unitEselon1 !== undefined ? (data.unitEselon1 ?? "") : (existingBio.unitEselon1 || ""),
-      instansiUnitKerja: data.organization,
-      alamatKantor: data.alamatKantor !== undefined ? (data.alamatKantor ?? "") : (existingBio.alamatKantor || ""),
-      provinsi: data.provinsi !== undefined ? (data.provinsi ?? "") : (existingBio.provinsi || ""),
-      kabupatenKota: data.kabupatenKota !== undefined ? (data.kabupatenKota ?? "") : (existingBio.kabupatenKota || ""),
-      fotoUrl: data.fotoUrl !== undefined ? (data.fotoUrl ?? null) : (existingBio.fotoUrl || null),
-      updatedAt: now,
-    };
-
-    const hasBioData = Boolean(updatedBio.nip && updatedBio.nip.trim().length > 0);
-    const currentRoles: string[] = Array.isArray(existingMeta.roles)
-      ? (existingMeta.roles as string[])
-      : [((existingMeta.role as string) || "registered_user")];
-    const updatedRoles = hasBioData
-      ? Array.from(new Set([...currentRoles, "participant"]))
-      : currentRoles;
-
     const userMetaUpdate = {
       ...existingMeta,
       ...after,
@@ -232,80 +234,20 @@ export const updateAccountProfile = createServerFn({ method: "POST" })
       linkedin: data.linkedin ?? null,
       website: data.website ?? null,
       bio: data.bio ?? null,
-      ...(hasBioData ? { role: "participant", roles: updatedRoles, participant_biodata: updatedBio } : {}),
     };
-
     const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(context.userId, {
       user_metadata: userMetaUpdate,
     });
     if (metadataError) throw new Error(metadataError.message);
 
-    // Coba simpan ke tabel participant_biodata jika ada NIP
-    if (hasBioData) {
-      try {
-        await (supabaseAdmin as any).from("participant_biodata").upsert(
-          {
-            user_id: context.userId,
-            nama: updatedBio.nama,
-            nip: updatedBio.nip,
-            tempat_lahir: updatedBio.tempatLahir,
-            tanggal_lahir: updatedBio.tanggalLahir,
-            jenis_kelamin: updatedBio.jenisKelamin,
-            agama: updatedBio.agama,
-            jabatan: updatedBio.jabatan,
-            pangkat_golongan: updatedBio.pangkatGolongan,
-            pendidikan_terakhir: updatedBio.pendidikanTerakhir,
-            no_hp: updatedBio.noHp,
-            unit_eselon_1: updatedBio.unitEselon1,
-            instansi_unit_kerja: updatedBio.instansiUnitKerja,
-            alamat_kantor: updatedBio.alamatKantor,
-            provinsi: updatedBio.provinsi,
-            kabupaten_kota: updatedBio.kabupatenKota,
-            foto_url: updatedBio.fotoUrl,
-            updated_at: now,
-          },
-          { onConflict: "user_id" },
-        );
-      } catch {
-        /* fallback table */
-      }
-
-      // Pastikan role participant aktif di rbac_user_roles
-      try {
-        const { data: partRole } = await (supabaseAdmin as any)
-          .from("rbac_roles")
-          .select("id")
-          .eq("code", "participant")
-          .maybeSingle();
-        if (partRole?.id) {
-          const { data: existingPrimary } = await (supabaseAdmin as any)
-            .from("rbac_user_roles")
-            .select("id")
-            .eq("user_id", context.userId)
-            .eq("status", "active")
-            .eq("is_primary", true)
-            .maybeSingle();
-
-          await (supabaseAdmin as any).from("rbac_user_roles").upsert(
-            {
-              user_id: context.userId,
-              role_id: partRole.id,
-              status: "active",
-              is_primary: !existingPrimary,
-              scope: {},
-              valid_from: now,
-              approved_at: now,
-              reason: "profile_update_participant_biodata",
-            },
-            { onConflict: "user_id,role_id" },
-          );
-        }
-      } catch {
-        /* best-effort rbac */
-      }
-    }
-
-    await writeProfileAudit(context.userId, "user_profile_self_updated", before, { ...after, ...userMetaUpdate });
+    await writeProfileAudit(context.userId, "user_profile_self_updated", before, {
+      ...after,
+      country: data.country ?? null,
+      linkedin: data.linkedin ?? null,
+      website: data.website ?? null,
+      bio: data.bio ?? null,
+      participant_biodata_saved: hasBioData,
+    });
     return { ok: true };
   });
 
