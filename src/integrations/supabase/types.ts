@@ -4561,6 +4561,18 @@ export type Database = {
         }
         Returns: Json
       }
+      learning_enrol: { Args: { _offering_code: string }; Returns: Json }
+      learning_progress_mark: {
+        Args: { _enrolment_id: string; _activity_id: string; _status?: string; _progress?: number | null }
+        Returns: Json
+      }
+      learning_evaluation_submit: {
+        Args: { _enrolment_id: string; _evaluation_type: string; _response: Json }
+        Returns: Json
+      }
+      learning_enrolment_withdraw: { Args: { _enrolment_id: string; _reason?: string | null }; Returns: Json }
+      issue_my_certificate: { Args: { _enrolment_id: string; _certificate_type?: string }; Returns: Json }
+      verify_certificate: { Args: { _number: string }; Returns: Json }
       expert_duplicate_candidates: {
         Args: { _name: string; _email: string; _exclude_user?: string | null }
         Returns: {

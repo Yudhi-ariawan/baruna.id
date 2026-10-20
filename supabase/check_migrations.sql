@@ -96,7 +96,11 @@ WITH checks(no, migration, ok) AS (
   (30, '20261015100000_review_subjects_archived_status (juga memeriksa 20261006110000)',
       EXISTS (SELECT 1 FROM pg_constraint
                WHERE conname = 'review_subjects_current_status_check'
-                 AND pg_get_constraintdef(oid) LIKE '%archived%'))
+                 AND pg_get_constraintdef(oid) LIKE '%archived%')),
+  (31, '20261020010000_participant_learning_integrity',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'learning_enrol')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'issue_my_certificate')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'verify_certificate'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

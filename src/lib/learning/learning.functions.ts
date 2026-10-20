@@ -169,54 +169,67 @@ export const listMyEnrolments = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+const LEARNING_ERRORS: Record<string, string> = {
+  approval_required:
+    "Kursus ini memerlukan persetujuan admin. Ajukan pendaftaran terlebih dahulu dan tunggu persetujuan.",
+  offering_not_found: "Kursus tidak ditemukan.",
+  offering_closed: "Pendaftaran kursus ini sudah ditutup.",
+  enrolment_window_closed: "Saat ini di luar periode pendaftaran kursus ini.",
+  enrolment_not_found: "Data pendaftaran kursus tidak ditemukan.",
+  enrolment_not_active: "Pendaftaran kursus ini sudah tidak aktif.",
+  activity_not_in_course: "Aktivitas ini bukan bagian dari kursus.",
+  invalid_evaluation_type: "Jenis evaluasi tidak valid.",
+  response_too_large: "Jawaban evaluasi terlalu besar.",
+  invalid_certificate_type: "Jenis sertifikat tidak valid.",
+};
+const ELIGIBILITY_REASONS: Record<string, string> = {
+  modules_incomplete: "Selesaikan semua modul terlebih dahulu.",
+  evaluation_missing: "Isi evaluasi kursus terlebih dahulu.",
+  no_modules_configured: "Kursus ini belum memiliki modul.",
+  enrolment_not_active: "Pendaftaran kursus ini sudah tidak aktif.",
+};
+
+/** Learning writes go through SECURITY DEFINER RPCs (migration 20261020010000). */
+function toFriendlyLearningError(message: string | undefined | null): string {
+  if (!message) return "Terjadi kesalahan. Coba lagi.";
+  if (/Could not find the function|schema cache/.test(message)) {
+    return "Fitur ini membutuhkan migrasi database 20261020010000. Jalankan supabase/check_migrations.sql.";
+  }
+  const notEligible = message.match(/not_eligible:(\w+)/);
+  if (notEligible) {
+    return `Belum memenuhi syarat sertifikat: ${ELIGIBILITY_REASONS[notEligible[1]] ?? notEligible[1]}`;
+  }
+  for (const [code, friendly] of Object.entries(LEARNING_ERRORS)) {
+    if (message.includes(code)) return friendly;
+  }
+  return message;
+}
+
+async function callLearningRpc<T>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: { supabase: any },
+  fn: string,
+  args: Record<string, unknown>,
+): Promise<T> {
+  const { data, error } = await context.supabase.rpc(fn, args);
+  if (error) throw new Error(toFriendlyLearningError(error.message));
+  return data as T;
+}
+
+type EnrolmentRow = { id: string; enrolment_status: string; completion_status: string };
+
+/**
+ * Open/registered offerings may be self-enrolled; approval-required ones only after
+ * an admin approved the application (the database decides, so the SDK cannot skip it).
+ */
 export const enrolInOffering = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ offeringCode: z.string() }).parse(d))
+  .validator((d) => z.object({ offeringCode: z.string().min(1).max(200) }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: offering, error: offErr } = await context.supabase
-      .from("course_offerings")
-      .select("id, offering_code, learning_engine_version")
-      .eq("offering_code", data.offeringCode)
-      .maybeSingle();
-    if (offErr || !offering) throw new Error("Invalid course offering");
-
-    // Idempotent: unique(user_id, course_offering_id)
-    const { data: existing } = await context.supabase
-      .from("enrolments")
-      .select("id, enrolment_status, completion_status")
-      .eq("course_offering_id", offering.id)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (existing) {
-      await context.supabase.from("learning_audit_log").insert({
-        event_type: "enrolment_rejected_duplicate",
-        actor_id: context.userId,
-        entity_type: "enrolment",
-        entity_id: existing.id,
-        details: { offering_code: offering.offering_code },
-      });
-      return existing;
-    }
-
-    const { data: created, error: insErr } = await context.supabase
-      .from("enrolments")
-      .insert({
-        user_id: context.userId,
-        course_offering_id: offering.id,
-        enrolment_status: "enrolled",
-        completion_status: "in-progress",
-      })
-      .select("id, enrolment_status, completion_status")
-      .single();
-    if (insErr) throw new Error(insErr.message);
-    await context.supabase.from("learning_audit_log").insert({
-      event_type: "enrolment_created",
-      actor_id: context.userId,
-      entity_type: "enrolment",
-      entity_id: created.id,
-      details: { offering_code: offering.offering_code },
+    const row = await callLearningRpc<EnrolmentRow & { created: boolean }>(context, "learning_enrol", {
+      _offering_code: data.offeringCode,
     });
-    return created;
+    return { id: row.id, enrolment_status: row.enrolment_status, completion_status: row.completion_status };
   });
 
 export const getEnrolmentDetail = createServerFn({ method: "GET" })
@@ -266,23 +279,13 @@ export const markActivityComplete = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    // RLS ensures enrolment ownership; upsert is idempotent.
-    const { data: row, error } = await context.supabase
-      .from("progress_records")
-      .upsert(
-        {
-          enrolment_id: data.enrolmentId,
-          learning_activity_id: data.activityId,
-          status: data.status,
-          progress_value: data.progressValue ?? (data.status === "completed" ? 100 : 0),
-          completed_at: data.status === "completed" ? new Date().toISOString() : null,
-        },
-        { onConflict: "enrolment_id,learning_activity_id" },
-      )
-      .select("id, status")
-      .single();
-    if (error) throw new Error(error.message);
-    return row;
+    // The RPC checks ownership, an active enrolment and that the activity is a module of the course.
+    return callLearningRpc<{ id: string; status: string }>(context, "learning_progress_mark", {
+      _enrolment_id: data.enrolmentId,
+      _activity_id: data.activityId,
+      _status: data.status,
+      _progress: data.progressValue ?? null,
+    });
   });
 
 export const submitEvaluation = createServerFn({ method: "POST" })
@@ -297,22 +300,11 @@ export const submitEvaluation = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
-      .from("evaluations")
-      .upsert(
-        {
-          enrolment_id: data.enrolmentId,
-          evaluation_type: data.evaluationType,
-          response_data: data.responseData as never,
-          completion_status: "submitted",
-          submitted_at: new Date().toISOString(),
-        },
-        { onConflict: "enrolment_id,evaluation_type" },
-      )
-      .select("id, evaluation_type")
-      .single();
-    if (error) throw new Error(error.message);
-    return row;
+    return callLearningRpc<{ id: string; evaluation_type: string }>(context, "learning_evaluation_submit", {
+      _enrolment_id: data.enrolmentId,
+      _evaluation_type: data.evaluationType,
+      _response: data.responseData,
+    });
   });
 
 export const checkEligibility = createServerFn({ method: "GET" })
@@ -326,6 +318,18 @@ export const checkEligibility = createServerFn({ method: "GET" })
     return result as { eligible: boolean; reason?: string; completed?: number; required?: number };
   });
 
+type IssuedCertificate = {
+  id: string;
+  certificate_number: string;
+  verification_reference: string;
+  certificate_type: string;
+  issue_date: string;
+};
+
+/**
+ * Eligibility, the unique server-generated number and the insert happen in one
+ * transaction locked on the enrolment, so a double click returns the same certificate.
+ */
 export const issueCertificate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) =>
@@ -344,69 +348,39 @@ export const issueCertificate = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    // 1. Verify enrolment belongs to caller.
-    const { data: enrolment, error: enrErr } = await context.supabase
-      .from("enrolments")
-      .select("id, course_offering_id, user_id")
-      .eq("id", data.enrolmentId)
-      .maybeSingle();
-    if (enrErr || !enrolment || enrolment.user_id !== context.userId) {
-      throw new Error("Enrolment not found or not owned by caller");
-    }
-
-    // 2. Server-side eligibility check.
-    const { data: elig, error: eligErr } = await context.supabase.rpc("check_certificate_eligibility", {
+    const cert = await callLearningRpc<IssuedCertificate & { created: boolean }>(context, "issue_my_certificate", {
       _enrolment_id: data.enrolmentId,
+      _certificate_type: data.certificateType,
     });
-    if (eligErr) throw new Error(eligErr.message);
-    const eligibility = elig as { eligible: boolean; reason?: string };
-    if (!eligibility.eligible) {
-      await context.supabase.from("learning_audit_log").insert({
-        event_type: "certificate_issuance_blocked",
-        actor_id: context.userId,
-        entity_type: "enrolment",
-        entity_id: enrolment.id,
-        details: eligibility,
-      });
-      throw new Error(`Not eligible: ${eligibility.reason ?? "unknown"}`);
-    }
+    return {
+      id: cert.id,
+      certificate_number: cert.certificate_number,
+      verification_reference: cert.verification_reference,
+      certificate_type: cert.certificate_type,
+      issue_date: cert.issue_date,
+    };
+  });
 
-    // 3. Load admin client only after authorization (unique constraint prevents duplicates).
+export type CertificateVerification =
+  | { found: false }
+  | {
+      found: true;
+      certificate_number: string;
+      status: string;
+      certificate_type: string;
+      issue_date: string;
+      program: string;
+      holder: string;
+    };
+
+/** Public lookup of one exact certificate number (no login). The holder name is masked. */
+export const verifyCertificate = createServerFn({ method: "GET" })
+  .validator((d) => z.object({ number: z.string().trim().min(1).max(120) }).parse(d))
+  .handler(async ({ data }): Promise<CertificateVerification> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: existing } = await supabaseAdmin
-      .from("certificates")
-      .select("id, certificate_number, verification_reference, certificate_type, issue_date")
-      .eq("learner_id", context.userId)
-      .eq("course_offering_id", enrolment.course_offering_id)
-      .eq("certificate_type", data.certificateType)
-      .maybeSingle();
-    if (existing) return existing;
-
-    const serial = `BARUNA-${data.certificateType.toUpperCase()}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    const { data: cert, error: certErr } = await supabaseAdmin
-      .from("certificates")
-      .insert({
-        learner_id: context.userId,
-        enrolment_id: enrolment.id,
-        course_offering_id: enrolment.course_offering_id,
-        certificate_type: data.certificateType,
-        certificate_number: serial,
-        verification_reference: `https://baruna.org/verify/${serial}`,
-        certificate_status: "issued",
-        source_system: "shared_v1",
-      })
-      .select("id, certificate_number, verification_reference, certificate_type, issue_date")
-      .single();
-    if (certErr) throw new Error(certErr.message);
-
-    await context.supabase.from("learning_audit_log").insert({
-      event_type: "certificate_issued",
-      actor_id: context.userId,
-      entity_type: "certificate",
-      entity_id: cert.id,
-      details: { serial },
-    });
-    return cert;
+    const { data: result, error } = await supabaseAdmin.rpc("verify_certificate", { _number: data.number });
+    if (error) throw new Error(toFriendlyLearningError(error.message));
+    return (result ?? { found: false }) as unknown as CertificateVerification;
   });
 
 export const listMyCertificates = createServerFn({ method: "GET" })
@@ -428,18 +402,9 @@ export const rollbackOwnEnrolment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => z.object({ enrolmentId: z.string().uuid(), reason: z.string().max(500).optional() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("enrolments")
-      .update({ enrolment_status: "withdrawn" })
-      .eq("id", data.enrolmentId)
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    await context.supabase.from("learning_audit_log").insert({
-      event_type: "rollback_executed",
-      actor_id: context.userId,
-      entity_type: "enrolment",
-      entity_id: data.enrolmentId,
-      details: { reason: data.reason ?? "user_requested" },
+    await callLearningRpc(context, "learning_enrolment_withdraw", {
+      _enrolment_id: data.enrolmentId,
+      _reason: data.reason ?? null,
     });
     return { ok: true };
   });
