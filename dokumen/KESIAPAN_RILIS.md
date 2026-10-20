@@ -1,66 +1,59 @@
-# Kesiapan Rilis BARUNA (dicatat 17 Oktober 2026)
+# Kesiapan Rilis BARUNA (diperbarui 20 Oktober 2026, setelah penggabungan PC + laptop)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
-Rincian teknis per perbaikan ada di `dokumen/CATATAN_PERBAIKAN.md`. Keputusan yang menunggu mentor ada di `dokumen/MENUNGGU_ARAHAN_MENTOR.md`.
+Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
+Keputusan yang menunggu mentor: `dokumen/MENUNGGU_ARAHAN_MENTOR.md`.
 
 ## Kesimpulan
 
 **Belum siap untuk rilis luas. Siap untuk uji terbatas (pilot) dengan syarat.**
-"Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (lihat bagian C).
+Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
+"Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
+
+Status pemeriksaan terakhir (20 Okt, PC): `supabase/check_migrations.sql` di intern-update = 37 baris OK; `tsc`, `build`, `test:lifecycle` 14/14, `test:kh-roles` 20/20 lulus; 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
-- **Expert:** keputusan, publikasi, arsip, dan kirim ulang revisi dalam satu transaksi; kunci dua-admin-bersamaan; pemisahan wewenang; jalur tulis langsung dari browser ditutup; direktori dan antrean aman untuk data besar.
+- **Expert:** keputusan, publikasi, arsip, dan revisi dalam satu transaksi; kunci dua-admin-bersamaan; pemisahan wewenang; tulis langsung dari browser ditutup; satu aturan "pemilik profil" (`original_contributor_id`); direktori aman untuk data besar.
 - **Trainer dan modul:** kunci jawaban kuis di tabel privat; simpan modul satu transaksi; kuota menghitung antrean; revisi modul tayang tidak menariknya dari publik.
-- **Peserta:** persetujuan admin tidak bisa dilewati lewat `user_metadata`; pendaftaran ulang tidak menghapus persetujuan; keputusan admin atomik dan final.
-- **Ruang belajar (sesi 17 Okt):** akses hanya lewat persetujuan admin di server; isi modul dan soal kuis tidak dikirim ke yang tidak berhak; draf modul belum tayang tidak bisa diambil publik; Full Training lewat persetujuan admin; link materi 1 jam; `academy.learn.$id.tsx` dipecah (1.629 → 228 baris).
-- **Kebersihan:** 58 akun tes dihapus; cleanup skrip tes diperbaiki.
+- **Peserta:** pendaftaran, progres, dan penerbitan sertifikat lewat RPC database (nomor dari server, klik ganda aman); verifikasi sertifikat membaca data asli; biodata satu RPC dengan validasi (akun nonaktif tidak bisa hidup lagi); sinkron kursus mandiri lewat `self_paced_sync` yang tidak pernah menurunkan progres.
+- **Ruang belajar:** isi modul dan penilaian kuis hanya untuk peserta disetujui, penulis, dan admin (`can_access_module_content`); Full Training lewat persetujuan admin; link materi 1 jam; draf modul belum tayang tidak bisa diambil publik.
+- **Knowledge Hub:** keputusan publikasi dalam satu transaksi dengan aturan status dan peran.
+- **Keamanan database (20 Okt):** audit RLS/view/grant (`supabase/audit_security.sql`); tulis lewat view `languages` dan fungsi internal yang terbuka ditutup; sistem peran lama dihentikan.
+- **Sertifikat:** ditandai "CONTOH / BELUM RESMI" sampai template dan aturan resmi siap.
+- **Kebersihan:** akun uji tidak lagi menumpuk; `academy.learn.$id.tsx` dipecah.
 
 ## B. Belum diperbaiki atau belum diputuskan
 
-- **Keamanan:** sertifikat dan status "selesai" masih dari `localStorage` (bisa dipalsukan); 13 PDF modul Master masih aset publik Lovable; audit keamanan menyeluruh (admin, RLS semua tabel, Knowledge Hub) belum dilakukan.
-- **Menunggu mentor:** template dan syarat sertifikat, syarat lulus, role participant, expert otomatis jadi trainer, publisher vs approver, Profile Claim, Penugasan Expert, notifikasi email, kuota peserta.
+- **Keamanan (sedang), Nomor 4:** pengunjung tanpa login masih bisa membaca `module_registry.metadata` lewat API langsung, termasuk `attached_resources`, `documents`, dan `video_url`. Berkas aman (bucket privat), tetapi **tautan video bisa dibuka tanpa terdaftar**. Ini melewati gerbang isi modul yang sudah dibuat. Rencananya ada di `CATATAN_PERBAIKAN.md` bagian 2l.
+- **Keamanan (rendah), Nomor 5-7:** 9 foreign key ke `auth.users` tanpa `ON DELETE`; izin tulis `anon` yang terlalu longgar; pengajuan Knowledge Hub belum divalidasi di database.
+- **Konsistensi:** halaman governance masih membaca tabel peran lama (Nomor 8); halaman Impact Analytics menampilkan angka perkiraan sebagai "Live Database Metrics" (Nomor 9).
+- **Kelulusan kursus mandiri** (video/PDF/PPT/kuis modul bawaan) tetap laporan dari browser, karena isinya ada di kode. Tidak ada hak di server yang bergantung padanya (sertifikatnya berlabel CONTOH). Status ini sengaja dibiarkan.
+- **Modul bawaan** (Ocean Literacy, AZA, Africa Fisheries) isinya di kode aplikasi, jadi hanya digerbang di tampilan. 13 PDF Master masih aset publik Lovable.
+- **Full Training dan AZA** progresnya hanya di `localStorage` (tidak ikut berpindah perangkat). Program African Countries juga dihapus otomatis dari browser oleh halaman My Learning.
+- **Menunggu mentor:** template dan syarat sertifikat, format nomor resmi, syarat lulus, role participant (otomatis atau lewat admin), expert otomatis jadi trainer, publisher vs approver, Profile Claim (A1), nasib Full Training (P4), Penugasan Expert (disembunyikan), notifikasi email, kuota peserta.
 - **Teknis:** `types.ts` disinkronkan manual; objek database tak tercatat di migrasi (`languages_taxonomy`); paginasi tampilan antrean admin.
-- **Operasional:** migrasi di database `main` (ranah mentor).
-- **Pengujian:** uji manual di browser dengan akun nyata untuk pendaftaran peserta, pengiriman modul trainer, keputusan approver, dan kuis peserta.
+- **Operasional:** database `main` belum diperiksa dan belum menerima migrasi (ranah mentor).
 
 ## C. Kenapa belum siap dirilis luas
 
-1. **Banyak device:** progres belajar **Full Training** (`src/lib/application.ts`) dan data AZA hanya di `localStorage`; pindah laptop ke PC atau ganti browser berarti progres hilang. (Kursus self-paced, yaitu modul Master dan modul dinamis, sudah tersinkron ke server lewat `self_paced_enrollments`; lihat bagian E.)
+1. **Lintas device:** kursus mandiri sudah ikut berpindah perangkat (disinkronkan ke server). Full Training dan AZA tidak.
 2. **Banyak user bersamaan:** belum ada uji beban; pengaturan Supavisor (port 6543) belum diperiksa.
-3. **Banyak perangkat:** tampilan di HP dan browser lain belum diuji.
-4. **Banyak role:** sudah diuji lewat skrip, belum oleh orang lewat browser.
-5. **Sertifikat** masih template sementara dan bisa dipalsukan.
-6. **Operasional:** tidak terlihat pemantauan error, cadangan data, atau pipeline CI.
-7. **Sebagian besar kode belum diaudit;** hanya jalur ruang belajar dan Expert yang disentuh.
+3. **Berbagai perangkat dan browser:** tampilan di HP dan browser lain belum diuji.
+4. **Berbagai role:** diuji lewat skrip dan database, belum oleh orang lewat browser dengan akun nyata. Yang secara khusus belum diuji manual: P3 (modul dinamis), P5 (form biodata, halaman Akun, unggah foto), P6 (kursus mandiri di dua perangkat), keputusan Knowledge Hub.
+5. **Sertifikat** masih contoh; belum ada template, nomor, dan aturan resmi.
+6. **Operasional:** tidak terlihat pemantauan error, cadangan data, atau pipeline CI. Koneksi ke Supabase dari jaringan kantor sempat putus-putus.
+7. **Database `main`:** belum dicek; migrasi berurutan harus dijalankan dengan hati-hati (lihat catatan `20261020070000` dan `20261020030000` di bagian 2l).
 
 ## D. Urutan kerja yang disarankan
 
-1. Commit dan push perubahan setelah ditinjau.
-2. Jalankan migrasi di `intern-update` dengan `supabase/check_migrations.sql`; minta mentor menjalankan di `main`.
-3. Uji manual di browser dengan 3-4 akun nyata (admin, trainer, peserta, pengguna baru), termasuk di HP.
-4. Audit keamanan menyeluruh (`/security-review`).
-5. Kirim daftar pertanyaan ke mentor (`MENUNGGU_ARAHAN_MENTOR.md`).
-6. Uji beban sederhana; pastikan Supavisor dan cadangan data.
-7. **Terakhir: pindahkan progres belajar, kelulusan kuis, dan sertifikat dari `localStorage` ke database** (lihat di bawah).
+1. Kerjakan **Nomor 4** (metadata modul terbaca pengunjung) dulu: ini celah akses yang tersisa.
+2. Uji manual di browser dengan 3-4 akun nyata (admin, trainer, peserta, pengguna baru), termasuk di HP dan dua perangkat bergantian.
+3. Kirim daftar pertanyaan ke mentor (`MENUNGGU_ARAHAN_MENTOR.md`).
+4. Minta mentor memeriksa `main`: `check_migrations.sql` dan `audit_security.sql`, lalu menjalankan migrasi berurutan.
+5. Kerjakan Nomor 5-9 (rendah, konsistensi, kejujuran data).
+6. Setelah aturan sertifikat diputuskan: template resmi, nomor resmi, dan pencatatan kelulusan di server; tambahkan progres Full Training/AZA hanya jika programnya masih dipakai.
+7. Uji beban sederhana; pastikan Supavisor dan cadangan data.
 8. Pilot terbatas (20-50 pengguna) sebelum dibuka luas.
 
-## E. Dikerjakan terakhir: progres lintas device
-
-Ada dua masalah berbeda yang sebelumnya tercampur:
-
-1. **Portabilitas (ikut berpindah perangkat).**
-   - Kursus self-paced (modul Master dan dinamis): **sudah tersinkron** dua arah ke server (`src/lib/shortCourses.ts` → `syncWithCloud`, tabel `self_paced_enrollments` + `user_metadata`).
-   - **Full Training** (`src/lib/application.ts`) dan **AZA** (`src/lib/aza.ts`): hanya `localStorage`, tidak tersinkron.
-2. **Keandalan (tidak bisa dipalsukan).** Sinkronisasi self-paced menerima `completed`, `score`, dan `completedSteps` apa adanya dari browser (`syncMySelfPacedCourses`), jadi pemilik akun bisa menandai dirinya lulus. Penilaian kuis modul dinamis sudah di server, tetapi hasilnya belum dicatat dari sisi server.
-
-Catatan: halaman My Learning menghapus otomatis aplikasi program African Countries dari browser. Jangan membangun penyimpanan server untuk Full Training sebelum mentor memastikan program itu masih dipakai.
-
-Pekerjaan paling kecil yang aman lebih dulu (bila diminta): catat kelulusan kuis modul dinamis di server saat `gradePublishedModuleQuiz` berjalan, dan hentikan sinkronisasi menerima `completed`/`score` dari browser untuk modul itu.
-
-Mengapa terakhir:
-- Bentuk datanya bergantung pada aturan yang belum diputuskan mentor: syarat lulus, jumlah JP, jenis dan format sertifikat. Dikerjakan sekarang berisiko dikerjakan dua kali.
-- Pekerjaan terbesar: tabel baru untuk progres dan hasil kuis, RPC dengan RLS, penerbitan sertifikat lewat `issueCertificate` yang sudah ada, nomor sertifikat dari server, halaman verifikasi QR yang membaca data asli, dan migrasi data lama dari browser. Setiap migrasi baru wajib ikut `check_migrations.sql` dan daftar di `CATATAN_PERBAIKAN.md`.
-- Menyentuh database `main` milik mentor, jadi perlu koordinasi.
-
-Kondisi saat ini yang bisa dipakai: penilaian kuis modul dinamis sudah di server, tabel `certificates` dan fungsi eligibility sudah ada, penerbitan sertifikat server (`issueCertificate`) sudah ada tetapi belum dipakai tampilan.
+Pelajaran proses: sebelum bekerja di perangkat lain selalu `git pull`; setelah selesai commit + push.
