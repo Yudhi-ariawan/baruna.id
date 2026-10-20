@@ -15,6 +15,7 @@
     "test:kh-roles": "node --env-file-if-exists=.env scripts/test-tdd-knowledge-hub-roles.mjs",
     "test:expert-rpc": "node --env-file-if-exists=.env scripts/test-expert-decision-rpc.mjs",
     "test:participant-rpc": "node --env-file-if-exists=.env scripts/test-participant-learning-rpc.mjs",
+    "test:kr-rpc": "node --env-file-if-exists=.env scripts/test-kr-decision-rpc.mjs",
     "audit:bom-waktu": "npx tsc --noEmit && npm run test:lifecycle && npm run test:kh-roles && npm run build",
     "lint": "eslint .",
     "format": "prettier --write ."
