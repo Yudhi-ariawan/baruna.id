@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft, ChevronRight, Inbox, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Inbox, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ServiceRequestActionPanel } from "@/components/admin/service-requests/ServiceRequestActionPanel";
 import { useDebounced } from "@/hooks/use-debounced";
@@ -82,6 +82,17 @@ function AdminServiceRequestsPage() {
         <Button variant="outline" size="sm" onClick={() => void query.refetch()} disabled={query.isFetching} className="self-start text-xs font-semibold">
           <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${query.isFetching ? "animate-spin" : ""}`} /> Segarkan
         </Button>
+      </div>
+
+      {/* Banner informasi status disembunyikan */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs sm:text-sm text-amber-900 shadow-2xs">
+        <p className="font-bold text-amber-950 flex items-center gap-1.5">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          Status Navigasi: Disembunyikan Sementara
+        </p>
+        <p className="mt-1 text-amber-800 leading-relaxed">
+          Menu Penugasan Expert disembunyikan sementara dari navigasi sidebar admin karena alur tata kelola dan SOP penugasan layanan expert masih dalam tahap peninjauan proses bisnis resmi BARUNA.
+        </p>
       </div>
 
       {counts && (

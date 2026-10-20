@@ -8,7 +8,6 @@ import {
   ExternalLink,
   FileText,
   GraduationCap,
-  Inbox,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -210,12 +209,7 @@ function AdminShell() {
           icon: GraduationCap,
           description: "Pengajuan status trainer",
         },
-        {
-          label: "Penugasan Expert",
-          to: "/admin/service-requests" as const,
-          icon: Inbox,
-          description: "Permintaan layanan expert",
-        },
+        // Penugasan Expert is hidden pending business process finalization
         {
           label: "Verifikasi Modul",
           to: "/admin/modules" as const,

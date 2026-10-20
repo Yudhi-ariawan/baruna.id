@@ -3,10 +3,12 @@ import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-r
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Check,
   CheckCircle2,
+  Info,
   Mic,
   GraduationCap,
   ClipboardCheck,
@@ -145,22 +147,10 @@ function RequestExpertPage() {
     setStep((s) => Math.max(1, s - 1));
   };
 
-  const persist = async (status: "draft" | "submitted") => {
-    // Ref guard: a second click before re-render would create a duplicate request.
-    if (!type || inFlightRef.current) return;
-    inFlightRef.current = true;
-    setSaving(true);
-    setError(null);
-    try {
-      await createRequest({ data: { type, status, targetExpertSlug: expert ?? null, payload: { values: draft.values, files: draft.files } } });
-      void queryClient.invalidateQueries({ queryKey: ["experts", "my-service-requests"] });
-      setSubmitted(status);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save this request.");
-    } finally {
-      inFlightRef.current = false;
-      setSaving(false);
-    }
+  const persist = async (_status: "draft" | "submitted") => {
+    // Disabled as per user request: "matikan tombol fungsi submitnya"
+    setError("Fitur pengajuan dan penyimpanan draft permintaan expert dinonaktifkan sementara karena alur tata kelola sedang dalam penyesuaian proses bisnis resmi.");
+    return;
   };
 
   if (submitted) {
@@ -216,6 +206,17 @@ function RequestExpertPage() {
             specialists from the BARUNA network.
           </p>
           {expert && <p className="mt-3 inline-flex rounded-full bg-marine/10 px-3 py-1 text-xs font-semibold text-marine">Directed request: {expert.replaceAll("-", " ")}</p>}
+        </div>
+
+        {/* Informational banner: Submission paused */}
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs sm:text-sm text-amber-900 shadow-2xs">
+          <p className="font-bold text-amber-950 flex items-center gap-1.5">
+            <Info className="h-4 w-4 text-amber-600 shrink-0" />
+            Informasi Formulir Permintaan Layanan
+          </p>
+          <p className="mt-1 text-amber-800 leading-relaxed">
+            Halaman ini dapat diakses untuk melihat opsi dan kebutuhan data permohonan layanan pakar. Tombol submit dinonaktifkan sementara karena alur tata kelola penugasan expert sedang dalam tahap penyesuaian proses bisnis resmi BARUNA.
+          </p>
         </div>
 
         {/* Stepper */}
@@ -342,6 +343,17 @@ function RequestExpertPage() {
                   />
                 ))}
               </div>
+
+              {/* Informational notice that submit is disabled */}
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs sm:text-sm text-amber-900 shadow-2xs">
+                <p className="font-bold text-amber-950 flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  Tombol Submit Dinonaktifkan Sementara
+                </p>
+                <p className="mt-1 text-amber-800 leading-relaxed">
+                  Pengajuan permintaan expert baru sementara belum dibuka. Anda dapat meninjau rincian kebutuhan data yang telah diisi di atas.
+                </p>
+              </div>
             </div>
           )}
 
@@ -367,9 +379,9 @@ function RequestExpertPage() {
               {type && (
                 <button
                   type="button"
-                  onClick={() => void persist("draft")}
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-marine px-4 py-2.5 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+                  disabled={true}
+                  title="Penyimpanan draf dinonaktifkan sementara"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400 cursor-not-allowed"
                 >
                   Save Draft
                 </button>
@@ -385,11 +397,11 @@ function RequestExpertPage() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => void persist("submitted")}
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
+                  disabled={true}
+                  title="Pengajuan layanan expert dinonaktifkan sementara"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500 cursor-not-allowed border border-slate-300"
                 >
-                  {saving ? "Submitting…" : "Submit Request"} <Check className="h-4 w-4" />
+                  Submit Request (Dinonaktifkan) <Check className="h-4 w-4" />
                 </button>
               )}
             </div>
