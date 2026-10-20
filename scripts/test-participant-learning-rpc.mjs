@@ -165,6 +165,21 @@ async function run() {
   const w = await budi.client.rpc("learning_enrolment_withdraw", { _enrolment_id: enrolmentId, _reason: "uji" });
   ok(!w.error && w.data?.changed === true, "mundur berhasil");
   await rejects(budi.client.rpc("learning_progress_mark", { _enrolment_id: enrolmentId, _activity_id: "module:TDD-01" }), /enrolment_not_active/, "tidak ada progres setelah mundur");
+
+  console.log("\n7. Hak akses isi modul (P3, migrasi 20261020020000)");
+  const { data: mod } = await admin.from("module_registry").select("id")
+    .eq("current_status", "published").eq("visibility", "public").limit(1).maybeSingle();
+  if (!mod) {
+    console.log("  (dilewati: tidak ada modul tayang di database ini)");
+    return;
+  }
+  const can = async (u) => (await admin.rpc("can_access_module_content", { _uid: u, _module_id: mod.id })).data;
+  ok((await can(budi.id)) === false, "belum mendaftar: tidak boleh");
+  await admin.from("course_enrollment_applications").insert({ user_id: rina.id, course_id: mod.id, course_title: "TDD", status: "pending" });
+  ok((await can(rina.id)) === false, "pendaftaran masih menunggu: tidak boleh");
+  await admin.from("course_enrollment_applications").update({ status: "approved" }).eq("user_id", rina.id).eq("course_id", mod.id);
+  ok((await can(rina.id)) === true, "pendaftaran disetujui: boleh");
+  ok(Boolean((await budi.client.rpc("can_access_module_content", { _uid: budi.id, _module_id: mod.id })).error), "browser tidak bisa memanggil pengecek akses langsung");
 }
 
 try {

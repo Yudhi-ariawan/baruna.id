@@ -100,7 +100,7 @@ import {
   getPublishedModuleDetail,
   type PublishedModuleDetail,
 } from "@/lib/learning/learning.functions";
-import { DynamicModuleLmsPlayer } from "@/components/baruna/academy/DynamicModuleLmsPlayer";
+import { DynamicModuleLmsGate } from "@/components/baruna/academy/DynamicModuleLmsGate";
 import { MasterModuleLmsPlayer } from "@/components/baruna/academy/MasterModuleLmsPlayer";
 
 type LearnLoaderData =
@@ -262,8 +262,12 @@ function LearningDashboard() {
       isAppAccepted ||
       hasApprovedEnrollment);
 
-  const accessCheckPending = !authChecked || Boolean(userId && statusLoading);
-  const accessDenied = authChecked && (!userId || (!statusLoading && !isApproved));
+  // Dynamic (database) modules are gated by the server (DynamicModuleLmsGate ->
+  // getPublishedModuleContent), which also admits the author and admins. Only a signed-in
+  // user is required here; localStorage and demo mode never open them.
+  const isDynamicModule = loaderData.kind === "dynamic";
+  const accessCheckPending = !authChecked || (!isDynamicModule && Boolean(userId && statusLoading));
+  const accessDenied = authChecked && (!userId || (!isDynamicModule && !statusLoading && !isApproved));
 
   useEffect(() => {
     if (!accessDenied) return;
@@ -295,7 +299,7 @@ function LearningDashboard() {
   }
 
   if (loaderData.kind === "dynamic") {
-    return <DynamicModuleLmsPlayer module={loaderData.module} />;
+    return <DynamicModuleLmsGate module={loaderData.module} />;
   }
 
   if (loaderData.kind === "master") {

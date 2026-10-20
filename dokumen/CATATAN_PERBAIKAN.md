@@ -180,12 +180,27 @@ Pengujian: tes Postgres lokal 27 pengecekan lulus (termasuk RLS sebagai role `au
 
 ---
 
+## 2i. Peserta: isi belajar modul hanya untuk yang berhak (P3)
+
+| Celah | Perbaikan |
+|---|---|
+| `getPublishedModuleDetail` bisa dipanggil tanpa login dan mengembalikan semua dokumen modul (dengan tautan unduhan) dan soal kuis. Gerbang ruang belajar hanya di tampilan dan bisa dibuka lewat localStorage atau "demo mode". | Fungsi dipecah: **ringkasan publik** (judul, ringkasan, trainer, sampul; dokumen tanpa tautan; tanpa kuis) untuk katalog, halaman kursus, dan Knowledge Hub; **isi belajar** `getPublishedModuleContent` hanya bila `can_access_module_content` (migrasi `20261020020000`) mengizinkan: pendaftaran modul **disetujui**, penulis modul, atau admin/approver. Ruang belajar modul dinamis tidak lagi memakai localStorage/demo mode. |
+| Penilaian kuis bisa dipanggil siapa pun yang login. | `gradePublishedModuleQuiz` memakai pemeriksaan akses yang sama. |
+| Katalog publik ikut mengirim metadata mentah (daftar lampiran dengan path, soal kuis). | Kunci sensitif dibuang dari metadata katalog. |
+| Modul yang masih draf/di-review bisa dibuka lewat jalur cadangan `expert_module_submissions`. | Jalur cadangan dihapus: hanya modul tayang yang pernah dikembalikan. |
+
+Batasan yang disengaja: modul bawaan (Ocean Literacy, AZA, Africa Fisheries) isinya ada di kode aplikasi (`src/data/lms`), jadi tetap hanya digerbang di tampilan sampai isinya dipindah ke database (keputusan terpisah).
+
+Pengujian: tes Postgres lokal 14 pengecekan (termasuk pendaftaran untuk modul lain tidak berlaku, dan `created_by` saja tidak memberi akses); uji langsung `npm run test:participant-rpc` bagian 7.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (32 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (33 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -205,6 +220,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261015090000_expert_language_taxonomy.sql` (bahasa expert dipetakan ke taksonomi bahasa)
 - `20261015100000_review_subjects_archived_status.sql` (status `archived` pada review_subjects; mengulang 20261006110000 yang ternyata belum berlaku di database intern-update)
 - `20261020010000_participant_learning_integrity.sql` (pendaftaran, progres, sertifikat peserta lewat RPC; verifikasi sertifikat)
+- `20261020020000_module_content_access.sql` (isi belajar modul hanya untuk peserta disetujui, penulis, admin; boleh dijalankan sebelum atau sesudah 030000)
 - `20261020030000_expert_profile_ownership.sql` (satu aturan pemilik profil expert; perbaikan terbit langsung admin)
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.

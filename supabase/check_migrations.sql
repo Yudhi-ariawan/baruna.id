@@ -105,7 +105,12 @@ WITH checks(no, migration, ok) AS (
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_is_owner'
                 AND prosrc LIKE '%original_contributor_id%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_portal_bootstrap'
-                    AND prosrc NOT LIKE '%created_by=v_uid%'))
+                    AND prosrc NOT LIKE '%created_by=v_uid%')),
+  -- Nomor urut 33 walau berkasnya 20261020020000: dibuat bersamaan dengan 030000 dan
+  -- tidak saling bergantung, jadi boleh dijalankan sebelum atau sesudahnya.
+  (33, '20261020020000_module_content_access',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'can_access_module_content'
+                AND prosrc LIKE '%original_contributor_id%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
