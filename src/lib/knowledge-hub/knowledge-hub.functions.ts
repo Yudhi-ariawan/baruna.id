@@ -701,7 +701,7 @@ export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: resource, error } = await supabaseAdmin
       .from("knowledge_resources")
-      .select("id, title, external_url, metadata")
+      .select("id, title, resource_type, external_url, metadata")
       .eq("id", resourceId)
       .eq("current_status", "published")
       .eq("visibility", "public")
@@ -709,6 +709,14 @@ export const getKnowledgeResourceDownload = createServerFn({ method: "POST" })
 
     if (error || !resource) {
       throw new Error("Publikasi tidak ditemukan atau tidak tersedia untuk publik.");
+    }
+    // A module's files are learning material: only the Academy learning room
+    // serves them, to approved participants (P3). This public download must never
+    // sign them, whatever the resource metadata says.
+    if (resource.resource_type === "module") {
+      throw new Error(
+        "Materi modul hanya tersedia di ruang belajar Academy bagi peserta yang pendaftarannya disetujui.",
+      );
     }
 
     const metadata = metadataRecord(resource.metadata);

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import { MODULE_CATEGORY_LABELS, primaryModuleCategory } from "@/lib/academy/module-categories";
 
 const COVER_BUCKET = "knowledge-module-covers";
@@ -7,6 +8,46 @@ function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+/**
+ * Metadata for the public Knowledge Hub copy of a module: everything except the
+ * learning material (file paths, video link, documents, quiz). The material stays
+ * in module_registry and reaches only approved participants through the learning
+ * room. Mirrors public._kr_module_public_metadata, which the database also
+ * applies to every write of a module row (migration 20261021010000).
+ */
+export function publicModuleMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  const {
+    attached_resources: attached,
+    documents: _documents,
+    video_url: _video,
+    quiz_questions: _quiz,
+    file: _file,
+    filePath: _filePath,
+    uploadedFilePath: _uploadedFilePath,
+    externalUrl: _externalUrl,
+    ...rest
+  } = metadata;
+  if (!Array.isArray(attached)) return rest;
+  const notUrl = (value: unknown) =>
+    typeof value === "string" && !/^https?:\/\//i.test(value) ? value : undefined;
+  const summary = attached
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object" && !Array.isArray(item))
+    .map((item) =>
+      Object.fromEntries(
+        Object.entries({
+          name: notUrl(item.name),
+          fileName: notUrl(item.fileName),
+          type: item.type,
+          category: item.category,
+          fileType: item.fileType,
+          fileSize: item.fileSize,
+          size: item.size,
+        }).filter(([, value]) => value !== undefined && value !== null),
+      ),
+    );
+  return { ...rest, attached_resources: summary };
 }
 
 export function moduleCodeForId(moduleId: string): string {
@@ -203,7 +244,8 @@ export async function projectPublishedModuleToKnowledge(moduleId: string): Promi
     keywords: ["Learning Module", "Self-Paced", module.title],
     related_expert_ids: module.author_expert_id ? [module.author_expert_id] : [],
     related_module_refs: [module.id],
-    metadata: projectedMetadata,
+    // Public copy: no learning material (paths, video, documents, quiz).
+    metadata: publicModuleMetadata(projectedMetadata) as Json,
     version: nextKrVersion,
   }, { onConflict: "id" });
   if (resourceError) throw new Error(resourceError.message);
@@ -218,6 +260,8 @@ export async function projectPublishedModuleToKnowledge(moduleId: string): Promi
     const { error: authorError } = await query;
     if (authorError) throw new Error(authorError.message);
   }
+  // module_registry keeps the full metadata (material included); never write the
+  // public copy back here, or the module would lose its files.
   await supabaseAdmin.from("module_registry").update({ metadata: projectedMetadata }).eq("id", module.id);
 
   const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
