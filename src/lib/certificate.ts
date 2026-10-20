@@ -100,6 +100,39 @@ export function formatTanggalIndo(str?: string | null): string {
 
 
 // ── Certificate ──────────────────────────────────────────────────────────────
+/**
+ * Set to true ONLY when the official template, the server-issued certificate
+ * number and the verification registry are in place. Until then every certificate
+ * carries a "CONTOH / BELUM RESMI" mark so a printed copy cannot be mistaken for
+ * an official STTP.
+ */
+export const CERTIFICATE_IS_OFFICIAL = false;
+
+function drawUnofficialMark(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  ctx.save();
+  // Faint diagonal watermark (survives cropping better than a footer alone).
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(-Math.PI / 9);
+  ctx.globalAlpha = 0.09;
+  ctx.fillStyle = "#b91c1c";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 92px Arial, sans-serif";
+  ctx.fillText("CONTOH", 0, -30);
+  ctx.font = "bold 54px Arial, sans-serif";
+  ctx.fillText("BELUM RESMI", 0, 38);
+  ctx.restore();
+
+  // Small readable footer line.
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#b91c1c";
+  ctx.font = "bold 11px Arial, sans-serif";
+  ctx.fillText("CONTOH / BELUM RESMI — dokumen percobaan, bukan STTP yang sah dan belum dapat diverifikasi", W / 2, H - 10);
+  ctx.restore();
+}
+
 async function renderCertificateCanvas(d: CertificateData): Promise<HTMLCanvasElement> {
   const W = 1040;
   const H = 726; // Exact aspect ratio of official template (1040x726)
@@ -251,6 +284,7 @@ async function renderCertificateCanvas(d: CertificateData): Promise<HTMLCanvasEl
     renderStandaloneTemplate(ctx, d, W, H, hours, hoursWord, formattedTanggalLahir, instansiText);
   }
 
+  if (!CERTIFICATE_IS_OFFICIAL) drawUnofficialMark(ctx, W, H);
   return canvas;
 }
 
