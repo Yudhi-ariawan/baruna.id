@@ -30,7 +30,7 @@ export type AdminEnrollmentsResponse = {
   };
 };
 
-async function assertAdminAccess(context: { supabase: any; userId: string }) {
+export async function assertAdminAccess(context: { supabase: any; userId: string }) {
   const allowed = ["super_admin", "admin", "operator", "approver"];
   const now = new Date().toISOString();
   const { data: assignments } = await context.supabase

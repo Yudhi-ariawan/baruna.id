@@ -102,7 +102,7 @@ function SubjectPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/governance/queue" className="text-xs text-primary hover:underline">
+        <Link to="/governance/training-needs" className="text-xs text-primary hover:underline">
           ← Back to queue
         </Link>
         <h2 className="mt-2 text-xl font-semibold">{subject.title}</h2>

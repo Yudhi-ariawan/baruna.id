@@ -172,11 +172,11 @@ export type AdminPublicationStats = {
   archived: number;
 };
 
-async function assertAdminOrReviewer(
+export async function assertAdminOrReviewer(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: { supabase: any; userId: string },
 ) {
-  const allowed = ["super_admin", "admin", "management", "qa_reviewer", "verifier", "approver"];
+  const allowed = ["super_admin", "admin", "reviewer", "verifier", "approver"];
   const now = new Date().toISOString();
   const { data: assignments } = await context.supabase
     .from("rbac_user_roles")
@@ -304,30 +304,22 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
     const rolesByUserId = new Map<string, Set<string>>();
     if (submitterIds.length > 0) {
       try {
+        // Roles come only from rbac_user_roles (the legacy user_roles table was
+        // retired in migration 20261020070000), within their validity window.
+        const now = new Date().toISOString();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const [{ data: rbacRows }, { data: legacyRoleRows }] = await Promise.all([
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (supabaseAdmin as any)
-            .from("rbac_user_roles")
-            .select("user_id, rbac_roles(code)")
-            .in("user_id", submitterIds)
-            .eq("status", "active"),
-          supabaseAdmin
-            .from("user_roles")
-            .select("user_id, role")
-            .in("user_id", submitterIds),
-        ]);
+        const { data: rbacRows } = await (supabaseAdmin as any)
+          .from("rbac_user_roles")
+          .select("user_id, rbac_roles(code)")
+          .in("user_id", submitterIds)
+          .eq("status", "active")
+          .lte("valid_from", now)
+          .or(`valid_until.is.null,valid_until.gt.${now}`);
         for (const r of rbacRows ?? []) {
           const code = r.rbac_roles?.code;
           if (r.user_id && code) {
             if (!rolesByUserId.has(r.user_id)) rolesByUserId.set(r.user_id, new Set());
             rolesByUserId.get(r.user_id)!.add(String(code));
-          }
-        }
-        for (const r of legacyRoleRows ?? []) {
-          if (r.user_id && r.role) {
-            if (!rolesByUserId.has(r.user_id)) rolesByUserId.set(r.user_id, new Set());
-            rolesByUserId.get(r.user_id)!.add(String(r.role));
           }
         }
       } catch {
@@ -799,10 +791,17 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => DecisionInput.parse(input))
   .handler(async ({ data: input, context }) => {
-    if (!(await assertAdminOrReviewer(context))) {
-      throw new Error("forbidden: Akses tidak mencukupi untuk mengambil keputusan kurasi.");
-    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Decide rights first: the same rule admin_kr_decide enforces in the database
+    // (reviewer/verifier may read the queue but never decide).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: canDecide, error: decideError } = await (supabaseAdmin as any).rpc("_can_decide_review", {
+      _uid: context.userId,
+    });
+    if (decideError) throw new Error(`Gagal memeriksa hak keputusan: ${decideError.message}`);
+    if (!canDecide) {
+      throw new Error("forbidden: hanya Approver atau Administrator yang dapat memutuskan, mengarsipkan, atau memulihkan publikasi.");
+    }
 
     let resource: ReturnType<typeof buildCatalogValues>["resource"] | null = null;
     let cover: ReturnType<typeof buildCatalogValues>["cover"] = null;

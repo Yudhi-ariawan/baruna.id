@@ -8,6 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { hasGovernanceRole } from "./governance-roles";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseCtx = any;
@@ -373,18 +374,38 @@ export const setRequiredRecommendations = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Lookup: qa_reviewers available for assignment
+// Lookup: qa_reviewers available for assignment. "Reviewer" means exactly what
+// the database checks (public.has_role(_, 'qa_reviewer') → rbac_user_roles), so
+// every listed account can actually act on an assignment.
 export const listReviewers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertGovRole(context);
-    const { data, error } = await context.supabase
-      .from("user_roles")
-      .select("user_id, role, created_at")
-      .eq("role", "qa_reviewer")
-      .order("created_at", { ascending: false });
+    // Other users' role rows are not readable under RLS; admin/management only.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await (supabaseAdmin as SupabaseCtx)
+      .from("rbac_user_roles")
+      .select("user_id, created_at, rbac_roles!inner(code)")
+      // has_role(_, 'qa_reviewer') also accepts the official `reviewer` role
+      // (migration 20261021020000); the check below decides.
+      .in("rbac_roles.code", ["qa_reviewer", "reviewer"])
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(500);
     if (error) throw new Error(error.message);
-    return (data ?? []) as { user_id: string; role: string; created_at: string }[];
+
+    const firstSeen = new Map<string, string>();
+    for (const row of (data ?? []) as { user_id: string; created_at: string }[]) {
+      if (!firstSeen.has(row.user_id)) firstSeen.set(row.user_id, row.created_at);
+    }
+    // has_role also applies the validity window and an active profile.
+    const reviewers: { user_id: string; role: string; created_at: string }[] = [];
+    for (const [userId, createdAt] of firstSeen) {
+      if (await hasGovernanceRole(supabaseAdmin as SupabaseCtx, userId, "qa_reviewer")) {
+        reviewers.push({ user_id: userId, role: "qa_reviewer", created_at: createdAt });
+      }
+    }
+    return reviewers;
   });
 
 
@@ -531,91 +552,4 @@ export const deprecateReviewTemplate = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { ok: true };
-  });
-
-// ─── Dashboard rollup ──────────────────────────────────────────────────────
-export const getGovernanceDashboard = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data: roleRows, error: roleErr } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (roleErr) throw new Error(roleErr.message);
-    const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
-    const isAdmin = roles.includes("admin");
-    const isMgmt = roles.includes("management");
-    const isReviewer = roles.includes("qa_reviewer");
-
-    // Submitter rollup — always available
-    const draftsRes = await context.supabase
-      .from("review_drafts")
-      .select("status")
-      .eq("submitter_id", context.userId);
-    if (draftsRes.error) throw new Error(draftsRes.error.message);
-    const submitter = {
-      draft: 0,
-      submitted: 0,
-      withdrawn: 0,
-    } as Record<string, number>;
-    for (const r of draftsRes.data ?? []) {
-      const s = (r as { status: string }).status;
-      submitter[s] = (submitter[s] ?? 0) + 1;
-    }
-
-    // Reviewer rollup
-    let reviewer: { active: number; recused: number; draftRecords: number; submittedRecords: number } | null = null;
-    if (isReviewer || isAdmin) {
-      const [asgRes, recRes] = await Promise.all([
-        context.supabase
-          .from("review_assignments")
-          .select("status")
-          .eq("reviewer_id", context.userId),
-        context.supabase
-          .from("review_records")
-          .select("status")
-          .eq("reviewer_id", context.userId),
-      ]);
-      if (asgRes.error) throw new Error(asgRes.error.message);
-      if (recRes.error) throw new Error(recRes.error.message);
-      reviewer = {
-        active: (asgRes.data ?? []).filter((a: { status: string }) => a.status === "active").length,
-        recused: (asgRes.data ?? []).filter((a: { status: string }) => a.status === "recused").length,
-        draftRecords: (recRes.data ?? []).filter((r: { status: string }) => r.status === "draft").length,
-        submittedRecords: (recRes.data ?? []).filter((r: { status: string }) => r.status === "submitted").length,
-      };
-    }
-
-    // Admin/mgmt rollup
-    let admin: {
-      pending: number;
-      underReview: number;
-      decisionPending: number;
-      approved: number;
-      rejected: number;
-      templates: number;
-    } | null = null;
-    if (isAdmin || isMgmt) {
-      const [subjRes, tplRes] = await Promise.all([
-        context.supabase.from("review_subjects").select("current_status"),
-        context.supabase.from("review_templates").select("id").is("deprecated_at", null),
-      ]);
-      if (subjRes.error) throw new Error(subjRes.error.message);
-      if (tplRes.error) throw new Error(tplRes.error.message);
-      const counts: Record<string, number> = {};
-      for (const r of subjRes.data ?? []) {
-        const s = (r as { current_status: string }).current_status;
-        counts[s] = (counts[s] ?? 0) + 1;
-      }
-      admin = {
-        pending: counts.pending ?? 0,
-        underReview: counts.under_review ?? 0,
-        decisionPending: counts.decision_pending ?? 0,
-        approved: counts.approved ?? 0,
-        rejected: counts.rejected ?? 0,
-        templates: (tplRes.data ?? []).length,
-      };
-    }
-
-    return { roles, submitter, reviewer, admin };
   });

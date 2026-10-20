@@ -109,7 +109,7 @@ function AdminOverviewPage() {
               <Users className="h-4 w-4 text-marine" /> Kelola Pengguna
             </Link>
             <Link
-              to="/admin/experts"
+              to="/governance/experts"
               className="inline-flex items-center gap-2 rounded-xl bg-marine/40 border border-white/20 px-4 py-2.5 text-xs font-bold text-white hover:bg-marine/60 transition"
             >
               <UserCheck className="h-4 w-4" /> Verifikasi Pakar
@@ -218,7 +218,7 @@ function AdminOverviewPage() {
                 </h2>
               </div>
               <Link
-                to="/admin/experts"
+                to="/governance/experts"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-marine hover:text-navy transition"
               >
                 Lihat Semua <ArrowRight className="h-3 w-3" />
@@ -249,7 +249,7 @@ function AdminOverviewPage() {
                       {app.status}
                     </span>
                     <Link
-                      to="/admin/experts"
+                      to="/governance/experts"
                       className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                     >
                       Periksa
@@ -272,7 +272,7 @@ function AdminOverviewPage() {
                 </h2>
               </div>
               <Link
-                to="/admin/modules"
+                to="/governance/modules"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-marine hover:text-navy transition"
               >
                 Lihat Semua <ArrowRight className="h-3 w-3" />
@@ -303,7 +303,7 @@ function AdminOverviewPage() {
                       {mod.status}
                     </span>
                     <Link
-                      to="/admin/modules"
+                      to="/governance/modules"
                       className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                     >
                       Tinjau
@@ -336,7 +336,7 @@ function AdminOverviewPage() {
               </Link>
 
               <Link
-                to="/admin/experts"
+                to="/governance/experts"
                 className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 hover:border-marine/40 hover:bg-white hover:shadow-2xs transition"
               >
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
@@ -349,7 +349,7 @@ function AdminOverviewPage() {
               </Link>
 
               <Link
-                to="/admin/modules"
+                to="/governance/modules"
                 className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 hover:border-marine/40 hover:bg-white hover:shadow-2xs transition"
               >
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-purple-100 text-purple-700 shrink-0">
@@ -362,7 +362,7 @@ function AdminOverviewPage() {
               </Link>
 
               <Link
-                to="/admin/enrollments"
+                to="/governance/enrollments"
                 className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 hover:border-marine/40 hover:bg-white hover:shadow-2xs transition"
               >
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal-100 text-teal-700 shrink-0">
@@ -375,7 +375,7 @@ function AdminOverviewPage() {
               </Link>
 
               <Link
-                to="/admin/publications"
+                to="/governance/publications"
                 className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 hover:border-marine/40 hover:bg-white hover:shadow-2xs transition"
               >
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-amber-100 text-amber-700 shrink-0">

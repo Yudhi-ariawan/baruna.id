@@ -70,7 +70,7 @@ const GOVERNANCE_DECIDE_ROLES = new Set(["super_admin", "admin", "approver"]);
 
 type GovernanceAccess = { canRead: boolean; canDecide: boolean };
 
-async function getExpertGovernanceAccess(
+export async function getExpertGovernanceAccess(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: { supabase: any; userId: string },
 ): Promise<GovernanceAccess> {

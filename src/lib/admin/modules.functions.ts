@@ -65,11 +65,11 @@ export type AdminModuleDetail = AdminModuleItem & {
   }>;
 };
 
-async function assertAdminOrReviewer(
+export async function assertAdminOrReviewer(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: { supabase: any; userId: string },
 ) {
-  const allowed = ["super_admin", "admin", "management", "qa_reviewer", "verifier", "approver"];
+  const allowed = ["super_admin", "admin", "reviewer", "verifier", "approver"];
   const now = new Date().toISOString();
   const { data: assignments } = await context.supabase
     .from("rbac_user_roles")

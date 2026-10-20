@@ -4,7 +4,7 @@
 // A Full Training application form still lives in browser storage, but the
 // decision does not: the program's slug is its course id in
 // course_enrollment_applications, and an administrator approves it in
-// /admin/enrollments like any other course. The browser copy of the status is
+// /governance/enrollments like any other course. The browser copy of the status is
 // display data only and never opens the learning room.
 // ============================================================================
 import type { AppStatus } from "@/lib/application";

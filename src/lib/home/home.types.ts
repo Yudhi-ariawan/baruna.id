@@ -39,5 +39,9 @@ export type HomeViewer = {
   primaryRoleLabel: string;
   variant: "registered" | "participant" | "admin";
   dashboardUrl: string;
+  /** Any active role may use the admin portal (/admin). */
+  canUseAdminPortal: boolean;
+  /** Any active role has a place in the curation console (/governance). */
+  canUseCurationConsole: boolean;
   metrics: HomeMetric[];
 };

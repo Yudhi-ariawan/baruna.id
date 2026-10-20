@@ -840,7 +840,7 @@ function UserDialog({
 
   const hasRoleChanges = addedRoles.length > 0 || removedRoles.length > 0;
 
-  const HIGH_PRIVILEGE_ROLES: AdminRoleCode[] = ["super_admin", "admin", "management"];
+  const HIGH_PRIVILEGE_ROLES: AdminRoleCode[] = ["super_admin", "admin"];
   const touchedHighPrivilege = useMemo(
     () => [
       ...addedRoles.filter((r) => HIGH_PRIVILEGE_ROLES.includes(r)),

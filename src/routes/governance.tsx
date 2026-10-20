@@ -1,110 +1,117 @@
-import { createFileRoute, Outlet, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { Users } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { getMyRoles } from "@/lib/governance/governance.functions";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import {
+  BookOpen,
+  ClipboardList,
+  FileText,
+  GraduationCap,
+  LayoutDashboard,
+  ListChecks,
+  Settings,
+  ShieldAlert,
+  UserCheck,
+} from "lucide-react";
+import {
+  ConsoleAccessDenied,
+  ConsoleLoading,
+  ConsoleShell,
+  type ConsoleNavGroup,
+} from "@/components/baruna/console/ConsoleShell";
+import { useConsoleSession } from "@/components/baruna/console/useConsoleSession";
+import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
+import { hasConsoleAccess, type ConsoleAccess } from "@/lib/governance/console-access.functions";
 
 export const Route = createFileRoute("/governance")({
   head: () => ({
     meta: [
-      { title: "Governance Review — BARUNA" },
-      { name: "description", content: "Institutional quality-assurance review workspace." },
+      { title: "Konsol Kurasi — BARUNA" },
+      { name: "description", content: "Review, verifikasi, dan persetujuan sesuai peran (Slide 16)." },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
-  component: GovernanceShell,
+  component: GovernanceLayout,
+  errorComponent: ({ error, reset }) => (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <div className="max-w-md text-center rounded-2xl border border-red-200 bg-white p-8 shadow-lg space-y-4">
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-red-100 text-red-600">
+          <ShieldAlert className="h-6 w-6" />
+        </div>
+        <h2 className="font-display text-xl font-bold text-navy">Kendala Memuat Konsol Kurasi</h2>
+        <p className="text-xs text-muted-foreground">
+          {error instanceof Error ? error.message : "Terjadi kesalahan sistem saat memuat konsol."}
+        </p>
+        <button
+          onClick={() => reset()}
+          className="rounded-xl bg-navy px-4 py-2 text-xs font-bold text-white hover:bg-navy/90 transition"
+        >
+          Coba Lagi
+        </button>
+      </div>
+    </div>
+  ),
 });
 
-function GovernanceShell() {
-  const navigate = useNavigate();
-  const [userReady, setUserReady] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
+/** Sidebar of the curation console: only the menus this account may open. */
+function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
+  const { menus } = access;
+  const curation = [
+    menus.experts.read && { label: "Verifikasi Expert", to: "/governance/experts", icon: UserCheck },
+    menus.modules.read && { label: "Verifikasi Modul", to: "/governance/modules", icon: BookOpen },
+    menus.publications.read && { label: "Verifikasi Publikasi", to: "/governance/publications", icon: FileText },
+    menus.enrollments.read && { label: "Persetujuan Peserta", to: "/governance/enrollments", icon: GraduationCap },
+    menus.trainingNeeds.read && { label: "Permintaan Pelatihan", to: "/governance/training-needs", icon: ClipboardList },
+  ].filter(Boolean) as ConsoleNavGroup["items"];
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setSignedIn(Boolean(data.user));
-      setUserReady(true);
-      if (!data.user) navigate({ to: "/auth", search: { redirect: "/governance" } });
-    });
-  }, [navigate]);
+  const groups: ConsoleNavGroup[] = [
+    { group: "Ringkasan", items: [{ label: "Beranda Konsol", to: "/governance", icon: LayoutDashboard, exact: true }] },
+    { group: "Verifikasi & Kurasi", items: curation },
+  ];
+  const settings = [
+    menus.trainingNeeds.decide && { label: "Template Review", to: "/governance/templates", icon: ListChecks },
+    access.isAdmin && { label: "Portal Admin", to: "/admin", icon: Settings },
+  ].filter(Boolean) as ConsoleNavGroup["items"];
+  if (settings.length) groups.push({ group: "Pengaturan", items: settings });
+  return groups;
+}
 
-  const fetchRoles = useServerFn(getMyRoles);
-  const rolesQ = useQuery({
-    queryKey: ["governance", "my-roles"],
-    queryFn: () => fetchRoles(),
-    enabled: signedIn,
-  });
+function GovernanceLayout() {
+  const { authReady, signedIn, currentUser, signOut } = useConsoleSession("/governance");
+  const accessQuery = useConsoleAccess(signedIn);
 
-  if (!userReady) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (!authReady || (signedIn && accessQuery.isLoading)) {
+    return <ConsoleLoading message="Memeriksa peran kurasi Anda…" />;
+  }
   if (!signedIn) return null;
 
-  const roles = rolesQ.data ?? [];
-  const isAdmin = roles.includes("admin");
-  const isMgmt = roles.includes("management");
-  const isReviewer = roles.includes("qa_reviewer");
-  const hasAny = isAdmin || isMgmt || isReviewer;
-
-  if (rolesQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Checking access…</div>;
-
-  if (!hasAny) {
+  if (accessQuery.isError || !hasConsoleAccess(accessQuery.data)) {
     return (
-      <div className="mx-auto max-w-xl px-6 py-16 text-center">
-        <h1 className="text-2xl font-semibold text-foreground">Governance workspace</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          You don't have a governance role. This area is reserved for admins, management, and QA reviewers.
-        </p>
-        <Link to="/" className="mt-6 inline-block text-sm text-primary hover:underline">
-          Return home
-        </Link>
-      </div>
+      <ConsoleAccessDenied
+        title="Konsol Kurasi"
+        message="Akun Anda belum memiliki peran kurasi (reviewer, verifier, approver, publisher, operator, atau admin). Perubahan peran dilakukan administrator."
+        onSignOut={signOut}
+        action={
+          accessQuery.data?.isAdmin ? (
+            <Link
+              to="/admin"
+              className="rounded-xl bg-marine px-5 py-2.5 text-xs font-semibold text-white hover:bg-navy transition shadow-xs"
+            >
+              Buka Portal Admin
+            </Link>
+          ) : null
+        }
+      />
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Governance Review</h1>
-          <p className="text-xs text-muted-foreground">
-            Roles: {roles.join(", ") || "—"} · Recommendations only; final decisions rest with admin/management.
-          </p>
-        </div>
-        <nav className="flex flex-wrap items-center gap-2 text-sm">
-          {isAdmin ? (
-            <Link
-              to="/admin/users"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Users className="h-3.5 w-3.5" /> Users Management
-            </Link>
-          ) : null}
-          <Link
-            to="/governance/subjects"
-            className="rounded border border-border px-3 py-1.5 hover:bg-muted"
-            activeProps={{ className: "bg-primary text-primary-foreground" }}
-          >
-            All Subjects
-          </Link>
-          {isReviewer || isAdmin ? (
-            <Link to="/governance/queue" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
-              My Queue
-            </Link>
-          ) : null}
-          {isAdmin || isMgmt ? (
-            <Link to="/governance/templates" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
-              Templates
-            </Link>
-          ) : null}
-          {isAdmin ? (
-            <Link to="/governance/roles" className="rounded border border-border px-3 py-1.5 hover:bg-muted" activeProps={{ className: "bg-primary text-primary-foreground" }}>
-              Role Admin
-            </Link>
-          ) : null}
-        </nav>
-      </header>
+    <ConsoleShell
+      brandTitle="BARUNA Kurasi"
+      brandSubtitle="Konsol Review & Persetujuan"
+      sectionLabel="Konsol Kurasi"
+      navGroups={consoleNav(accessQuery.data!)}
+      user={currentUser}
+      onSignOut={signOut}
+    >
       <Outlet />
-    </div>
+    </ConsoleShell>
   );
 }

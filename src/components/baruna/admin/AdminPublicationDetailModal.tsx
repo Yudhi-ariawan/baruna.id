@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
 import { useRouter } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -83,6 +84,8 @@ export function AdminPublicationDetailModal({
   const router = useRouter();
   const queryClient = useQueryClient();
   const recordDecision = useServerFn(recordAdminPublicationDecision);
+  // Reviewer/verifier read only; approver/admin decide (same rule as admin_kr_decide).
+  const canDecide = Boolean(useConsoleAccess().data?.menus.publications.decide);
 
   const [activeTab, setActiveTab] = useState<"detail" | "history">("detail");
   const [docViewerOpen, setDocViewerOpen] = useState(false);
@@ -270,6 +273,7 @@ export function AdminPublicationDetailModal({
                         )}
                       </div>
                     </div>
+                    {canDecide ? (
                     <Button
                       size="sm"
                       onClick={() => handleActionClick("restore")}
@@ -277,6 +281,7 @@ export function AdminPublicationDetailModal({
                     >
                       <ArchiveRestore className="h-3.5 w-3.5" /> Pulihkan &amp; Publikasikan Ulang
                     </Button>
+                    ) : null}
                   </div>
                 )}
 
@@ -300,6 +305,7 @@ export function AdminPublicationDetailModal({
                           <ExternalLink className="h-3.5 w-3.5" /> Lihat di Knowledge Hub
                         </a>
                       )}
+                      {canDecide ? (
                       <Button
                         size="sm"
                         variant="outline"
@@ -308,6 +314,7 @@ export function AdminPublicationDetailModal({
                       >
                         <Archive className="h-3.5 w-3.5 text-slate-600" /> Arsipkan (Tarik Tayang)
                       </Button>
+                      ) : null}
                     </div>
                   </div>
                 )}
@@ -756,7 +763,12 @@ export function AdminPublicationDetailModal({
               Tutup
             </Button>
 
-            {decisionMode === "none" && (
+            {!canDecide ? (
+              <p className="text-xs text-slate-600">
+                Akses baca: keputusan diambil oleh Approver atau Administrator.
+              </p>
+            ) : null}
+            {decisionMode === "none" && canDecide && (
               <div className="flex flex-wrap items-center gap-2">
                 {item.status === "archived" ? (
                   <>

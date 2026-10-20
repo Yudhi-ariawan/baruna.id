@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { getReviewSubjectFull } from "@/lib/governance/governance-ops.functions";
 import { AssignmentPanel } from "@/components/governance/AssignmentPanel";
+import { TrainingNeedDecisionPanel } from "@/components/governance/TrainingNeedDecisionPanel";
+import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
 
 export const Route = createFileRoute("/governance/subjects/$id")({
   component: SubjectDetail,
@@ -12,6 +14,7 @@ export const Route = createFileRoute("/governance/subjects/$id")({
 function SubjectDetail() {
   const { id } = Route.useParams();
   const fn = useServerFn(getReviewSubjectFull);
+  const access = useConsoleAccess();
 
   const q = useQuery({
     queryKey: ["governance", "subjects", "detail", id],
@@ -23,12 +26,16 @@ function SubjectDetail() {
   if (!q.data) return <p className="text-sm">Subject not found.</p>;
 
   const { subject, revisions, assignments, records, decisions, drafts } = q.data;
+  // Expert, module and Knowledge Hub submissions have their own verification
+  // menu and decision RPC; only Request a Training uses this generic flow.
+  const isTrainingNeed = subject.kind === "training_need";
+  const canDecide = Boolean(access.data?.menus.trainingNeeds.decide);
   const adminVerificationRoute =
     subject.kind === "expert"
-      ? ("/admin/experts" as const)
+      ? ("/governance/experts" as const)
       : subject.kind === "module"
-        ? ("/admin/modules" as const)
-        : ("/admin/publications" as const);
+        ? ("/governance/modules" as const)
+        : ("/governance/publications" as const);
   const adminVerificationLabel =
     subject.kind === "expert"
       ? "Buka Verifikasi Expert"
@@ -39,8 +46,8 @@ function SubjectDetail() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/governance/subjects" className="text-xs text-primary hover:underline">
-          ← All subjects
+        <Link to="/governance/training-needs" className="text-xs text-primary hover:underline">
+          ← Permintaan Pelatihan
         </Link>
         <h2 className="mt-2 text-xl font-semibold">{subject.title}</h2>
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -60,6 +67,7 @@ function SubjectDetail() {
           >
             View audit trail
           </Link>
+          {isTrainingNeed ? null : (
           <Link
             to={adminVerificationRoute}
             className="inline-flex items-center gap-1.5 rounded bg-marine px-3 py-1.5 text-xs font-semibold text-white hover:bg-navy"
@@ -68,6 +76,7 @@ function SubjectDetail() {
             {adminVerificationLabel}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
+          )}
         </div>
       </div>
 
@@ -86,6 +95,8 @@ function SubjectDetail() {
         )}
       </Section>
 
+      {isTrainingNeed ? (
+        <>
       <Section title={`Assignments (${assignments.length})`}>
         <AssignmentPanel
           subjectId={subject.id}
@@ -95,6 +106,18 @@ function SubjectDetail() {
           onChanged={() => q.refetch()}
         />
       </Section>
+
+      {canDecide ? (
+        <Section title="Keputusan akhir">
+          <TrainingNeedDecisionPanel subjectId={subject.id} onDecided={() => q.refetch()} />
+        </Section>
+      ) : null}
+        </>
+      ) : (
+        <p className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          Pengajuan ini ditinjau dan diputuskan lewat menu Verifikasi di Konsol Kurasi, bukan lewat penugasan reviewer.
+        </p>
+      )}
 
 
       <Section title={`Recommendations (${records.length})`}>

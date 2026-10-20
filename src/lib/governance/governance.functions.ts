@@ -8,10 +8,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { requirePermission } from "@/lib/auth/permissions.server";
 import type { Json } from "@/integrations/supabase/types";
+import { getGovernanceRoles } from "./governance-roles";
 
-const AppRole = z.enum(["admin", "management", "qa_reviewer"]);
+
 const Recommendation = z.enum(["approve", "reject", "request_changes"]);
 const Decision = z.enum(["approve", "reject", "return_for_revision"]);
 const SubjectKind = z.enum(["expert", "module", "knowledge_resource", "training_need"]);
@@ -30,16 +30,11 @@ async function assertRole(
 }
 
 // ─── Role queries ──────────────────────────────────────────────────────────
+// Same rule as the database (public.has_role → rbac_user_roles), not the legacy
+// user_roles table, so the page never shows access the database would refuse.
 export const getMyRoles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => r.role as string);
-  });
+  .handler(async ({ context }): Promise<string[]> => getGovernanceRoles(context));
 
 export const getModuleReviewPacket = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -376,6 +371,10 @@ export const listSubmittedRecommendations = createServerFn({ method: "GET" })
     return rows ?? [];
   });
 
+// Final decision on a Request a Training submission (Slide 12). Expert, module
+// and Knowledge Hub submissions are decided through their own verification
+// RPCs; finalize_decision / return_for_revision refuse those kinds in the
+// database (migration 20261020070000), and this function refuses them first.
 export const recordFinalDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) =>
@@ -383,101 +382,37 @@ export const recordFinalDecision = createServerFn({ method: "POST" })
       .object({
         subjectId: z.string().uuid(),
         decision: Decision,
-        rationale: z.string().max(5000).optional(),
+        rationale: z.string().trim().min(1, "Alasan keputusan wajib diisi.").max(5000),
       })
       .parse(d),
   )
-  .handler(async () => {
-    throw new Error(
-      "Persetujuan dan revisi melalui Portal Governance telah dinonaktifkan. Silakan gunakan menu Verifikasi Expert (/admin/experts), Verifikasi Modul (/admin/modules), atau Verifikasi Publikasi (/admin/publications) di Portal Admin.",
-    );
-  });
-
-export const listApprovedModulesForPublication = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await requirePermission(context, "academy.publish");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.from("review_subjects")
-      .select("id,title,updated_at,review_decisions!inner(id,decision,decided_at,rationale)")
-      .eq("kind", "module").eq("current_status", "approved")
-      .eq("review_decisions.decision", "approve").order("updated_at", { ascending: true });
-    if (error) throw new Error(error.message);
-    if (!data?.length) return [];
-    const { data: published, error: publishedError } = await supabaseAdmin.from("module_registry").select("source_submission_id").in("source_submission_id", data.map((row) => row.id));
-    if (publishedError) throw new Error(publishedError.message);
-    const publishedIds = new Set((published ?? []).map((row) => row.source_submission_id));
-    return data.filter((row) => !publishedIds.has(row.id)).map((row) => {
-      const decisions = Array.isArray(row.review_decisions) ? row.review_decisions : [row.review_decisions];
-      const decision = decisions.sort((a, b) => String(b.decided_at).localeCompare(String(a.decided_at)))[0];
-      return { id: row.id, title: row.title, updatedAt: row.updated_at, decisionId: decision.id, approvedAt: decision.decided_at, rationale: decision.rationale };
-    });
-  });
-
-export const publishApprovedModule = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input) => z.object({ subjectId: z.string().uuid(), decisionId: z.string().uuid() }).parse(input))
-  .handler(async ({ context, data }) => {
-    await requirePermission(context, "academy.publish");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: revisionDraft } = await supabaseAdmin
-      .from("review_drafts")
-      .select("payload")
-      .eq("linked_subject_id", data.subjectId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const revisionPayload = revisionDraft?.payload && typeof revisionDraft.payload === "object" && !Array.isArray(revisionDraft.payload)
-      ? revisionDraft.payload as Record<string, unknown>
-      : {};
-    const canonicalModuleId = typeof revisionPayload.canonical_module_id === "string"
-      ? revisionPayload.canonical_module_id
-      : null;
-    if (canonicalModuleId) {
-      const [{ data: existingMod }, { data: latestModVer }] = await Promise.all([
-        supabaseAdmin.from("module_registry").select("version").eq("id", canonicalModuleId).maybeSingle(),
-        supabaseAdmin
-          .from("module_registry_versions")
-          .select("version")
-          .eq("module_id", canonicalModuleId)
-          .order("version", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      const nextModVersion =
-        Math.max(Number(existingMod?.version || 1), Number(latestModVer?.version || 0)) + 1;
-
-      const { error: updateError } = await supabaseAdmin.from("module_registry").update({
-        title: typeof revisionPayload.title === "string" ? revisionPayload.title : undefined,
-        summary: typeof revisionPayload.summary === "string" ? revisionPayload.summary : undefined,
-        language: typeof revisionPayload.language === "string" ? revisionPayload.language : undefined,
-        estimated_learning_hours: Number(revisionPayload.estimated_learning_hours || 0),
-        target_participants: typeof revisionPayload.target_participants === "string" ? revisionPayload.target_participants : undefined,
-        learning_objectives: Array.isArray(revisionPayload.learning_objectives) ? revisionPayload.learning_objectives as string[] : [],
-        content_outline: (revisionPayload.content_outline ?? {}) as Json,
-        assessment_approach: (revisionPayload.assessment_approach ?? {}) as Json,
-        metadata: (revisionPayload.metadata ?? {}) as Json,
-        current_status: "published",
-        visibility: "public",
-        verification_status: "governance_verified",
-        approved_by: context.userId,
-        published_by: context.userId,
-        approval_date: new Date().toISOString(),
-        publication_date: new Date().toISOString(),
-        version: nextModVersion,
-      }).eq("id", canonicalModuleId);
-      if (updateError) throw new Error(updateError.message);
-      const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
-      await projectPublishedModuleToKnowledge(canonicalModuleId);
-      return { moduleId: canonicalModuleId };
+  .handler(async ({ data, context }) => {
+    // Rights first (same rule as the console menu), then the submission.
+    if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
+      throw new Error("forbidden: hanya Approver atau Administrator yang dapat memutuskan permintaan pelatihan.");
     }
-    const client = context.supabase as unknown as { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
-    const result = await client.rpc("module_publish_from_decision", { _subject_id: data.subjectId, _decision_id: data.decisionId, _visibility: "public", _verification: "governance_verified" });
-    if (result.error) throw new Error(result.error.message);
-    const moduleId = result.data as string;
-    const { projectPublishedModuleToKnowledge } = await import("@/lib/knowledge-hub/module-projection.server");
-    await projectPublishedModuleToKnowledge(moduleId);
-    return { moduleId };
+    const { data: subject, error: subjectError } = await context.supabase
+      .from("review_subjects")
+      .select("id, kind")
+      .eq("id", data.subjectId)
+      .maybeSingle();
+    if (subjectError) throw new Error(subjectError.message);
+    if (!subject) throw new Error("Pengajuan tidak ditemukan.");
+    if (subject.kind !== "training_need") {
+      throw new Error(
+        "Pengajuan expert, modul, dan publikasi diputuskan lewat menu Verifikasi masing-masing di Konsol Kurasi.",
+      );
+    }
+    const { data: id, error } =
+      data.decision === "return_for_revision"
+        ? await context.supabase.rpc("return_for_revision", { _subject_id: data.subjectId, _rationale: data.rationale })
+        : await context.supabase.rpc("finalize_decision", {
+            _subject_id: data.subjectId,
+            _decision: data.decision,
+            _rationale: data.rationale,
+          });
+    if (error) throw new Error(error.message);
+    return { id: id as string };
   });
 
 
@@ -624,35 +559,3 @@ export const exportGovernanceAuditCsv = createServerFn({ method: "POST" })
     return { csv: (csv as string) ?? "" };
   });
 
-// ─── Role administration (admin only) ──────────────────────────────────────
-export const grantRole = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ userId: z.string().uuid(), role: AppRole }).parse(d))
-  .handler(async ({ data, context }) => {
-    await requirePermission(context, "users.assign_role");
-    const { data: row, error } = await context.supabase.rpc(
-      "assign_rbac_role" as never,
-      {
-        _target_user_id: data.userId,
-        _role_code: data.role,
-      } as never,
-    );
-    if (error) throw new Error(error.message);
-    return { id: row as string };
-  });
-
-export const revokeRole = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ userId: z.string().uuid(), role: AppRole }).parse(d))
-  .handler(async ({ data, context }) => {
-    await requirePermission(context, "users.assign_role");
-    const { error } = await context.supabase.rpc(
-      "revoke_rbac_role" as never,
-      {
-        _target_user_id: data.userId,
-        _role_code: data.role,
-      } as never,
-    );
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });

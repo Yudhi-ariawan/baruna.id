@@ -167,7 +167,7 @@ export function AssignmentPanel({
         <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide">Assign reviewer</h4>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col text-xs">
-            <span className="mb-1 text-muted-foreground">Reviewer (qa_reviewer)</span>
+            <span className="mb-1 text-muted-foreground">Reviewer</span>
             <select
               value={reviewerId}
               onChange={(e) => setReviewerId(e.target.value)}

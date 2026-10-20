@@ -71,11 +71,7 @@ function DashboardPage() {
   const { viewer } = useHomeExperience();
   const isId = language === "id";
 
-  const isAdmin =
-    viewer?.variant === "admin" ||
-    ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(
-      viewer?.primaryRoleCode ?? "",
-    );
+  const isAdmin = Boolean(viewer?.canUseAdminPortal);
 
   // Live user-scoped learning enrollments (synced with Supabase cloud)
   const { enrollments: shortCourses } = useShortCourses();

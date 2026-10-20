@@ -58,11 +58,9 @@ export function Navbar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { authState, viewer, signOut } = useHomeExperience();
   const { t } = useLanguage();
-  const isAdmin =
-    viewer?.variant === "admin" ||
-    ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(
-      viewer?.primaryRoleCode ?? "",
-    );
+  // From every active role (an expert can also be a reviewer), not only the primary one.
+  const isAdmin = Boolean(viewer?.canUseAdminPortal);
+  const canUseConsole = Boolean(viewer?.canUseCurationConsole);
   const dashboardUrl = isAdmin
     ? "/admin"
     : viewer?.dashboardUrl ?? (viewer?.primaryRoleCode === "expert" ? "/experts/portal" : "/dashboard");
@@ -209,22 +207,19 @@ export function Navbar() {
                     <BookOpen className="h-4 w-4" /> Kontribusi Knowledge Hub
                   </Link>
                 </DropdownMenuItem>
-                {viewer.variant === "admin" ||
-                ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(
-                  viewer.primaryRoleCode,
-                ) ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin/experts">
-                        <UserCheck className="h-4 w-4" /> {t("header.expertVerification")}
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/governance/subjects">
-                        <ClipboardCheck className="h-4 w-4" /> {t("header.approvalsGovernance")}
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
+                {isAdmin ? (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">
+                      <UserCheck className="h-4 w-4" /> {t("welcome.openAdminConsole")}
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                {canUseConsole ? (
+                  <DropdownMenuItem asChild>
+                    <Link to="/governance">
+                      <ClipboardCheck className="h-4 w-4" /> {t("header.approvalsGovernance")}
+                    </Link>
+                  </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => void handleSignOut()}>
@@ -324,12 +319,9 @@ export function Navbar() {
                       >
                         <BookOpen className="h-5 w-5" /> Kontribusi Knowledge Hub
                       </Link>
-                      {viewer.variant === "admin" ||
-                      ["super_admin", "admin", "management", "qa_reviewer", "approver"].includes(
-                        viewer.primaryRoleCode,
-                      ) ? (
+                      {canUseConsole ? (
                         <Link
-                          to="/governance/subjects"
+                          to="/governance"
                           onClick={() => setOpen(false)}
                           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
                         >

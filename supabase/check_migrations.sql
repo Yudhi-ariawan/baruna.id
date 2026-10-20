@@ -126,7 +126,22 @@ WITH checks(no, migration, ok) AS (
   (37, '20261020070000_retire_legacy_role_system',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'has_role' AND prosrc LIKE '%has_rbac_role%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'finalize_decision'
-                    AND prosrc LIKE '%use_kind_specific_decision%'))
+                    AND prosrc LIKE '%use_kind_specific_decision%')),
+  -- BELUM juga bila migrasi batal karena pengamannya; lihat pesan error di SQL Editor.
+  (38, '20261021010000_module_material_metadata_privacy',
+      NOT has_column_privilege('anon', 'public.module_registry', 'metadata', 'SELECT')
+      AND has_column_privilege('anon', 'public.module_registry', 'title', 'SELECT')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'kr_module_metadata_guard')),
+  (39, '20261021020000_governance_role_alignment',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'has_role' AND prosrc LIKE '%''reviewer''%'
+                AND prosrc LIKE '%''approver''%')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_assert_reviewer_assignable')),
+  -- Jalankan SETELAH no. 39. BELUM juga bila migrasi batal karena pengamannya.
+  (40, '20261021030000_retire_legacy_governance_role_codes',
+      NOT EXISTS (SELECT 1 FROM public.rbac_roles WHERE code IN ('qa_reviewer', 'management'))),
+  (41, '20261021040000_rbac_role_catalog_readable',
+      EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'rbac_roles'
+                AND policyname = 'rbac_roles_catalog_read'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

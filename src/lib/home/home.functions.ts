@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { getUpcomingEvents } from "@/data/events";
 import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
+import { ADMIN_PORTAL_ROLE_CODES, CURATION_CONSOLE_ROLE_CODES } from "@/lib/governance/console-access.functions";
 import type { HomeKnowledgeResource, HomeMetric, HomeViewer, PublicHomeStats } from "./home.types";
 
 const RESOURCE_TYPE_LABELS: Record<string, string> = {
@@ -242,11 +243,9 @@ async function registeredMetrics(
 }
 
 function dashboardUrlForRole(roleCode: string): string {
-  if (["super_admin", "admin", "management", "qa_reviewer"].includes(roleCode)) return "/admin";
+  if ((ADMIN_PORTAL_ROLE_CODES as readonly string[]).includes(roleCode)) return "/admin";
   if (roleCode === "expert") return "/experts/portal";
-  if (["operator", "reviewer", "verifier", "approver", "publisher"].includes(roleCode)) {
-    return "/governance/queue";
-  }
+  if ((CURATION_CONSOLE_ROLE_CODES as readonly string[]).includes(roleCode)) return "/governance";
   return "/dashboard";
 }
 
@@ -360,6 +359,11 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
       primaryRoleLabel: roleLabel,
       variant,
       dashboardUrl: dashboardUrlForRole(roleCode),
+      // From every active role, not only the primary one (an expert can also be a reviewer).
+      canUseAdminPortal: roleCodes.some((code) => (ADMIN_PORTAL_ROLE_CODES as readonly string[]).includes(code)),
+      canUseCurationConsole: roleCodes.some((code) =>
+        (CURATION_CONSOLE_ROLE_CODES as readonly string[]).includes(code),
+      ),
       metrics,
     };
   });

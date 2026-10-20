@@ -37,7 +37,7 @@ export async function hasPermission(
       .eq("status", "active")
       .lte("valid_from", now)
       .or(`valid_until.is.null,valid_until.gt.${now}`)
-      .in("rbac_roles.code", ["super_admin", "admin", "management"]);
+      .in("rbac_roles.code", ["super_admin", "admin"]);
 
     if (adminRoles && adminRoles.length > 0) {
       return true;
