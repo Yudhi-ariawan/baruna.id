@@ -10,7 +10,6 @@ import {
   type ToolkitStructure,
 } from "@/lib/resources";
 import { getYouTubeThumbnailUrl } from "@/lib/knowledge-hub/video-utils";
-import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
 
 type ResourceType = Database["public"]["Enums"]["resource_type_v1"];
 const typeMap: Record<string, ResourceType> = {
@@ -646,8 +645,156 @@ const DecisionInput = z.object({
   subjectId: z.string().uuid(),
   decision: z.enum(["approve", "return_for_revision", "reject", "archive", "restore"]),
   rationale: z.string().max(5000).optional(),
+  /** review_subjects.updated_at the admin was looking at (stops double clicks / two admins). */
+  expectedUpdatedAt: z.string().max(64).optional(),
 });
 
+const KR_DECISION_ERRORS: Record<string, string> = {
+  stale_subject: "Pengajuan ini baru saja diperbarui (oleh kurator lain atau kontributor). Muat ulang data lalu coba lagi.",
+  self_decision_forbidden: "Anda tidak dapat memutuskan publikasi yang Anda ajukan sendiri.",
+  archived_restore_first: "Publikasi berstatus arsip. Pulihkan terlebih dahulu sebelum mencatat keputusan baru.",
+  not_archived: "Publikasi ini tidak sedang diarsipkan.",
+  already_approved: "Publikasi ini sudah disetujui dan tayang.",
+  awaiting_applicant_revision: "Kontributor sedang merevisi publikasi ini. Tunggu sampai revisi dikirim ulang.",
+  already_rejected: "Publikasi ini sudah berstatus ditolak.",
+  rejected_is_final: "Publikasi yang sudah ditolak tidak dapat dikembalikan untuk revisi.",
+  already_awaiting_revision: "Publikasi ini sudah menunggu revisi dari kontributor.",
+  subject_not_found: "Data submission publikasi tidak ditemukan.",
+  resource_title_required: "Judul publikasi kosong; publikasi tidak dapat ditayangkan.",
+  invalid_resource_type: "Jenis publikasi tidak dikenali katalog Knowledge Hub.",
+  rationale_too_long: "Catatan keputusan terlalu panjang.",
+  forbidden: "forbidden: hanya Approver atau Administrator yang dapat memutuskan, mengarsipkan, atau memulihkan publikasi.",
+  "unsafe_url": "Tautan eksternal atau thumbnail tidak valid (harus diawali http:// atau https://).",
+  ux_kr_extern_url_active: "Tautan eksternal / repositori sudah digunakan oleh publikasi aktif lain.",
+  ux_kr_doi_active: "DOI sudah digunakan oleh publikasi aktif lain.",
+  ux_kr_isbn_active: "ISBN sudah digunakan oleh publikasi aktif lain.",
+};
+
+function toFriendlyKrDecisionError(message: string | undefined | null): string {
+  if (!message) return "Gagal memproses keputusan publikasi.";
+  if (message.includes("Could not find the function") || message.includes("schema cache")) {
+    return "Keputusan publikasi membutuhkan migrasi database 20261020060000. Jalankan supabase/check_migrations.sql.";
+  }
+  for (const [code, friendly] of Object.entries(KR_DECISION_ERRORS)) {
+    if (message.includes(code)) return friendly;
+  }
+  return message;
+}
+
+/**
+ * Catalog values for an approved submission, computed from the submitter's draft
+ * exactly as before. The database (public.admin_kr_decide) writes them together
+ * with the decision in one transaction. The uploaded cover is returned separately:
+ * copying it to the public bucket is a storage operation and runs after commit.
+ */
+function buildCatalogValues(payload: Record<string, unknown>, fallbackTitle: string) {
+  const rawType = String(payload.type ?? "Research Report");
+  const mappedType: ResourceType = typeMap[rawType] ?? "technical_report";
+  const fileData = payload.file as { name?: string; size?: number; storagePath?: string; type?: string } | undefined;
+  const filePath = fileData?.storagePath || (typeof payload.uploadedFilePath === "string" ? payload.uploadedFilePath : undefined);
+  const topics = payload.topicCategory ? [String(payload.topicCategory)] : payload.topic ? [String(payload.topic)] : [];
+  const keywords = Array.isArray(payload.keywords)
+    ? (payload.keywords as string[])
+    : payload.keywords
+      ? String(payload.keywords).split(",").map((s) => s.trim())
+      : [];
+  const coverage = payload.geographicCoverage ? [String(payload.geographicCoverage)] : payload.coverage ? [String(payload.coverage)] : [];
+
+  const rawExtUrl = typeof payload.externalUrl === "string" ? payload.externalUrl.trim() : "";
+  const validExternalUrl = rawExtUrl && /^https?:\/\/\S+/i.test(rawExtUrl) ? rawExtUrl : null;
+  const rawThumbUrl = typeof payload.thumbnailUrl === "string" ? payload.thumbnailUrl.trim() : "";
+  const validThumbnailUrl = rawThumbUrl && /^https?:\/\/\S+/i.test(rawThumbUrl) ? rawThumbUrl : null;
+
+  const attachedFileName = String(fileData?.name || payload.fileName || "document.pdf");
+  const attachedLower = attachedFileName.toLowerCase();
+  const isAttachedImage =
+    /\.(jpg|jpeg|png|webp)$/i.test(attachedLower) || Boolean(fileData?.type && fileData.type.startsWith("image/"));
+  const coverPayload = payload.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
+  const coverAttachedPath =
+    coverPayload?.storagePath ||
+    (typeof payload.coverFilePath === "string" ? payload.coverFilePath : undefined) ||
+    (isAttachedImage && filePath ? filePath : undefined);
+  const coverName =
+    coverPayload?.name || (typeof payload.coverFileName === "string" ? payload.coverFileName : attachedFileName);
+  const thumbnailUrl = validThumbnailUrl || getYouTubeThumbnailUrl(validExternalUrl);
+
+  const resolvedFileType = attachedLower.endsWith(".pdf")
+    ? "application/pdf"
+    : attachedLower.endsWith(".png")
+      ? "image/png"
+      : attachedLower.endsWith(".jpg") || attachedLower.endsWith(".jpeg")
+        ? "image/jpeg"
+        : attachedLower.endsWith(".webp")
+          ? "image/webp"
+          : attachedLower.endsWith(".mp4")
+            ? "video/mp4"
+            : attachedLower.endsWith(".webm")
+              ? "video/webm"
+              : attachedLower.endsWith(".mp3")
+                ? "audio/mpeg"
+                : attachedLower.endsWith(".wav")
+                  ? "audio/wav"
+                  : attachedLower.endsWith(".m4a")
+                    ? "audio/mp4"
+                    : fileData?.type || "application/octet-stream";
+
+  const metadata: Record<string, unknown> = {
+    ...payload,
+    coverFilePath: coverAttachedPath,
+    coverFile: coverPayload,
+    externalUrl: validExternalUrl,
+    thumbnailUrl,
+    author_name: payload.author,
+    contributor_name: payload.author,
+    institution: payload.institution,
+    country: payload.country,
+    duration: typeof payload.duration === "string" && payload.duration.trim() ? payload.duration.trim() : undefined,
+    speaker:
+      (typeof payload.speaker === "string" && payload.speaker.trim()) ||
+      (typeof payload.author === "string" && payload.author.trim()) ||
+      undefined,
+    videoKind: rawType,
+    attached_resources: filePath
+      ? [{ fileName: attachedFileName, fileSize: fileData?.size || Number(payload.fileSize) || 0, filePath, fileType: resolvedFileType }]
+      : [],
+  };
+
+  const resource = {
+    resource_type: mappedType,
+    title: (typeof payload.title === "string" && payload.title) || fallbackTitle || "Untitled Resource",
+    summary:
+      (typeof payload.description === "string" && payload.description) ||
+      (typeof payload.abstract === "string" && payload.abstract) ||
+      "BARUNA public knowledge resource.",
+    abstract:
+      (typeof payload.abstract === "string" && payload.abstract) ||
+      (typeof payload.description === "string" && payload.description) ||
+      "BARUNA public knowledge resource.",
+    language: typeof payload.language === "string" ? payload.language : "Indonesian",
+    publication_year: String(Number(payload.year) || new Date().getFullYear()),
+    publisher: typeof payload.institution === "string" ? payload.institution : "BARUNA Contributor",
+    external_url: validExternalUrl,
+    thumbnail_url: thumbnailUrl,
+    topics,
+    keywords,
+    geographic_focus: coverage,
+    metadata,
+    author_name:
+      (typeof payload.author === "string" && payload.author.trim()) ||
+      (typeof payload.author_name === "string" && payload.author_name.trim()) ||
+      "BARUNA Contributor",
+    author_affiliation: (typeof payload.institution === "string" && payload.institution.trim()) || null,
+    author_role: ["video", "webinar_recording", "podcast"].includes(mappedType) ? "Speaker / Contributor" : "Author",
+  };
+  return { resource, cover: coverAttachedPath ? { path: coverAttachedPath, name: coverName } : null };
+}
+
+/**
+ * Decision, catalog publication, author record, draft status and audit entry run
+ * in ONE database transaction (public.admin_kr_decide, migration 20261020060000):
+ * a failure anywhere rolls everything back, the subject row is locked, and
+ * `expectedUpdatedAt` stops a double click or a second admin from both winning.
+ */
 export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => DecisionInput.parse(input))
@@ -655,586 +802,69 @@ export const recordAdminPublicationDecision = createServerFn({ method: "POST" })
     if (!(await assertAdminOrReviewer(context))) {
       throw new Error("forbidden: Akses tidak mencukupi untuk mengambil keputusan kurasi.");
     }
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1. Fetch subject
-    const { data: subj, error: subjErr } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, kind, title, description, external_ref, submitted_by, current_status, metadata")
-      .eq("id", input.subjectId)
-      .single();
-
-    if (subjErr || !subj) {
-      throw new Error("Data submission publikasi tidak ditemukan.");
-    }
-
-    // 2. Fetch latest linked draft (excluding withdrawn drafts)
-    const { data: draft } = await supabaseAdmin
-      .from("review_drafts")
-      .select("id, title, payload, status")
-      .eq("linked_subject_id", input.subjectId)
-      .neq("status", "withdrawn")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const payload = (draft?.payload as Record<string, unknown>) ?? {};
-    const currentMeta = (subj.metadata as Record<string, unknown>) ?? {};
-    const latestTitle = (typeof payload.title === "string" && payload.title.trim()) || draft?.title || subj.title || "Untitled Resource";
-    const nowIso = new Date().toISOString();
-
-    // 2A. Handle Archive (Tarik Tayang) without violating review_decisions enum check constraint
-    if (input.decision === "archive") {
-      const archiveRationale =
-        input.rationale?.trim() ||
-        "Publikasi diarsipkan sementara dan ditarik dari katalog publik Knowledge Hub oleh Administrator.";
-
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          title: latestTitle,
-          current_status: "withdrawn",
-          metadata: {
-            ...currentMeta,
-            previous_status: subj.current_status,
-            review_status: "archived",
-            last_decision: "archive",
-            last_rationale: archiveRationale,
-            archived_reason: archiveRationale,
-            archived_at: nowIso,
-            archived_by: context.userId,
-          } as never,
-          updated_at: nowIso,
-        })
-        .eq("id", input.subjectId);
-
-      await supabaseAdmin
-        .from("knowledge_resources")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: nowIso,
-        })
-        .eq("source_submission_id", input.subjectId);
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
-      try {
-        await supabaseAdmin.from("governance_audit_log").insert({
-          event_type: "publication_archived",
-          actor_id: context.userId,
-          subject_id: input.subjectId,
-          entity_type: "knowledge_resources",
-          entity_id: input.subjectId,
-          after: {
-            status: "archived",
-            rationale: archiveRationale,
-          },
-        });
-      } catch (logErr) {
-        console.warn("[recordAdminPublicationDecision] governance_audit_log insert skipped:", logErr);
-      }
-
-      return { success: true, decisionId: `archive-${input.subjectId}`, decision: input.decision };
-    }
-
-    // 2B. Handle Restore (Pulihkan & Publikasikan Kembali)
-    if (input.decision === "restore") {
-      const restoreRationale =
-        input.rationale?.trim() ||
-        "Publikasi dipulihkan dan ditayangkan kembali ke katalog publik Knowledge Hub.";
-
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          title: latestTitle,
-          current_status: "approved",
-          metadata: {
-            ...currentMeta,
-            review_status: "approved",
-            last_decision: "approve",
-            last_rationale: restoreRationale,
-            archived_reason: null,
-            restored_at: nowIso,
-            restored_by: context.userId,
-          } as never,
-          updated_at: nowIso,
-        })
-        .eq("id", input.subjectId);
-
-      const { data: existingKr } = await supabaseAdmin
-        .from("knowledge_resources")
-        .select("id")
-        .eq("source_submission_id", input.subjectId)
-        .maybeSingle();
-
-      if (existingKr) {
-        const { error: restoreErr } = await supabaseAdmin
-          .from("knowledge_resources")
-          .update({
-            current_status: "published",
-            visibility: "public",
-            updated_at: nowIso,
-          })
-          .eq("id", existingKr.id);
-
-        if (restoreErr) {
-          if (restoreErr.code === "23505" || restoreErr.message?.includes("ux_kr_extern_url_active")) {
-            throw new Error("Gagal memulihkan publikasi: Tautan eksternal / repositori sudah digunakan oleh publikasi aktif lain.");
-          }
-          throw new Error(`Gagal memulihkan publikasi ke katalog Knowledge Hub: ${restoreErr.message}`);
-        }
-      }
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
-      try {
-        await supabaseAdmin.from("governance_audit_log").insert({
-          event_type: "publication_restored",
-          actor_id: context.userId,
-          subject_id: input.subjectId,
-          entity_type: "knowledge_resources",
-          entity_id: existingKr?.id ?? input.subjectId,
-          after: {
-            status: "published",
-            rationale: restoreRationale,
-          },
-        });
-      } catch (logErr) {
-        console.warn("[recordAdminPublicationDecision] governance_audit_log insert skipped:", logErr);
-      }
-
-      return { success: true, decisionId: `restore-${input.subjectId}`, decision: input.decision };
-    }
-
-    const rationaleText =
-      input.rationale?.trim() ||
-      (input.decision === "return_for_revision"
-        ? "Perlu perbaikan kelengkapan naskah publikasi atau dokumen terlampir."
-        : input.decision === "approve"
-          ? "Publikasi disetujui & ditayangkan ke publik di Knowledge Hub."
-          : "Publikasi ditolak.");
-
-    // Query previous decisions to chain supersedes if needed
-    const { data: prevDecisions } = await supabaseAdmin
-      .from("review_decisions")
-      .select("id, decision, supersedes_decision_id, created_at")
-      .eq("subject_id", input.subjectId)
-      .order("created_at", { ascending: false });
-
-    let supersedesDecisionId: string | null = null;
-    if (input.decision === "approve" || input.decision === "reject") {
-      const existingNullFinal = prevDecisions?.find(
-        (d) => !d.supersedes_decision_id && (d.decision === "approve" || d.decision === "reject"),
-      );
-      if (existingNullFinal) {
-        supersedesDecisionId = existingNullFinal.id;
-      } else if (prevDecisions && prevDecisions.length > 0) {
-        supersedesDecisionId = prevDecisions[0].id;
-      }
-    }
-
-    // Insert decision record
-    const { data: decRecord, error: decErr } = await supabaseAdmin
-      .from("review_decisions")
-      .insert({
-        subject_id: input.subjectId,
-        decided_by: context.userId,
-        decision: input.decision,
-        rationale: rationaleText,
-        supersedes_decision_id: supersedesDecisionId,
-      })
-      .select("id")
-      .single();
-
-    if (decErr || !decRecord) {
-      throw new Error(decErr?.message || "Gagal mencatat keputusan evaluasi.");
-    }
-
-    const decisionId = decRecord.id;
-
-    // Handle Return for Revision
-    if (input.decision === "return_for_revision") {
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          title: latestTitle,
-          current_status: "pending",
-          metadata: {
-            ...currentMeta,
-            review_status: "revision_requested",
-            last_decision: "return_for_revision",
-            last_rationale: rationaleText,
-            archived_reason: null,
-            revised_at: new Date().toISOString(),
-            resubmitted_at: null,
-          } as never,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.subjectId);
-
-      if (draft) {
-        await supabaseAdmin
-          .from("review_drafts")
-          .update({
-            status: "draft",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", draft.id);
-      }
-
-      await supabaseAdmin
-        .from("knowledge_resources")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("source_submission_id", input.subjectId);
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
-      return { success: true, decisionId, decision: input.decision };
-    }
-
-    // Handle Reject
-    if (input.decision === "reject") {
-      await supabaseAdmin
-        .from("review_subjects")
-        .update({
-          title: latestTitle,
-          current_status: "rejected",
-          metadata: {
-            ...currentMeta,
-            review_status: "rejected",
-            last_decision: "reject",
-            last_rationale: rationaleText,
-            archived_reason: null,
-          } as never,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.subjectId);
-
-      await supabaseAdmin
-        .from("knowledge_resources")
-        .update({
-          current_status: "archived",
-          visibility: "private",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("source_submission_id", input.subjectId);
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
-      return { success: true, decisionId, decision: input.decision };
-    }
-
-    // Handle Approve & Publish
+    let resource: ReturnType<typeof buildCatalogValues>["resource"] | null = null;
+    let cover: ReturnType<typeof buildCatalogValues>["cover"] = null;
     if (input.decision === "approve") {
-      await supabaseAdmin
+      const { data: subj, error: subjErr } = await supabaseAdmin
         .from("review_subjects")
-        .update({
-          title: latestTitle,
-          current_status: "approved",
-          metadata: {
-            ...currentMeta,
-            review_status: "approved",
-            last_decision: "approve",
-            last_rationale: rationaleText,
-            archived_reason: null,
-            approved_at: new Date().toISOString(),
-            resubmitted_at: null,
-          } as never,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.subjectId);
-
-      if (draft) {
-        await supabaseAdmin
-          .from("review_drafts")
-          .update({
-            status: "submitted",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", draft.id);
-      }
-
-      // Check if already in knowledge_resources
-      const { data: existingKr } = await supabaseAdmin
-        .from("knowledge_resources")
-        .select("id, version")
-        .eq("source_submission_id", input.subjectId)
+        .select("id, title, submitted_by")
+        .eq("id", input.subjectId)
+        .eq("kind", "knowledge_resource")
         .maybeSingle();
-
-      const rawType = String(payload.type ?? "Research Report");
-      const mappedType: ResourceType = typeMap[rawType] ?? "technical_report";
-      const fileData = payload.file as { name?: string; size?: number; storagePath?: string; type?: string } | undefined;
-      const filePath = fileData?.storagePath || (typeof payload.uploadedFilePath === "string" ? payload.uploadedFilePath : undefined);
-
-      const topics = payload.topicCategory ? [String(payload.topicCategory)] : payload.topic ? [String(payload.topic)] : [];
-      const keywords = Array.isArray(payload.keywords)
-        ? (payload.keywords as string[])
-        : payload.keywords
-          ? String(payload.keywords).split(",").map((s) => s.trim())
-          : [];
-      const coverage = payload.geographicCoverage ? [String(payload.geographicCoverage)] : payload.coverage ? [String(payload.coverage)] : [];
-
-      const rawExtUrl = typeof payload.externalUrl === "string" ? payload.externalUrl.trim() : "";
-      const validExternalUrl = rawExtUrl && /^https?:\/\/\S+/i.test(rawExtUrl) ? rawExtUrl : null;
-
-      const rawThumbUrl = typeof payload.thumbnailUrl === "string" ? payload.thumbnailUrl.trim() : "";
-      const validThumbnailUrl = rawThumbUrl && /^https?:\/\/\S+/i.test(rawThumbUrl) ? rawThumbUrl : null;
-
-      const attachedFileName = String(fileData?.name || payload.fileName || "document.pdf");
-      const attachedLower = attachedFileName.toLowerCase();
-      const isAttachedImage =
-        /\.(jpg|jpeg|png|webp)$/i.test(attachedLower) ||
-        Boolean(fileData?.type && fileData.type.startsWith("image/"));
-
-      const coverPayload = payload.coverFile as { name?: string; size?: number; storagePath?: string } | undefined;
-      const coverAttachedPath =
-        coverPayload?.storagePath ||
-        (typeof payload.coverFilePath === "string" ? payload.coverFilePath : undefined) ||
-        (isAttachedImage && filePath ? filePath : undefined);
-
-      let resolvedThumbnailUrl: string | null = null;
-      if (coverAttachedPath) {
-        resolvedThumbnailUrl = await publishResourceCover(
-          input.subjectId,
-          coverAttachedPath,
-          coverPayload?.name || (typeof payload.coverFileName === "string" ? payload.coverFileName : attachedFileName)
-        );
-      }
-      if (!resolvedThumbnailUrl) {
-        resolvedThumbnailUrl = validThumbnailUrl || getYouTubeThumbnailUrl(validExternalUrl);
-      }
-
-      const resolvedFileType = attachedLower.endsWith(".pdf")
-        ? "application/pdf"
-        : attachedLower.endsWith(".png")
-          ? "image/png"
-          : attachedLower.endsWith(".jpg") || attachedLower.endsWith(".jpeg")
-            ? "image/jpeg"
-            : attachedLower.endsWith(".webp")
-              ? "image/webp"
-              : attachedLower.endsWith(".mp4")
-                ? "video/mp4"
-                : attachedLower.endsWith(".webm")
-                  ? "video/webm"
-                  : attachedLower.endsWith(".mp3")
-                    ? "audio/mpeg"
-                    : attachedLower.endsWith(".wav")
-                      ? "audio/wav"
-                      : attachedLower.endsWith(".m4a")
-                        ? "audio/mp4"
-                        : fileData?.type || "application/octet-stream";
-
-      const resourceMetadata: Record<string, unknown> = {
-        ...payload,
-        coverFilePath: coverAttachedPath,
-        coverFile: coverPayload,
-        externalUrl: validExternalUrl,
-        thumbnailUrl: resolvedThumbnailUrl,
-        author_name: payload.author,
-        contributor_name: payload.author,
-        institution: payload.institution,
-        country: payload.country,
-        duration: typeof payload.duration === "string" && payload.duration.trim() ? payload.duration.trim() : undefined,
-        speaker:
-          (typeof payload.speaker === "string" && payload.speaker.trim()) ||
-          (typeof payload.author === "string" && payload.author.trim()) ||
-          undefined,
-        videoKind: rawType,
-        attached_resources: filePath
-          ? [
-              {
-                fileName: attachedFileName,
-                fileSize: fileData?.size || Number(payload.fileSize) || 0,
-                filePath,
-                fileType: resolvedFileType,
-              },
-            ]
-          : [],
-      };
-
-      let relatedExpertIds: string[] = [];
-      if (subj.submitted_by) {
-        const { data: expertMatch } = await supabaseAdmin
-          .from("experts")
-          .select("id")
-          .eq(EXPERT_OWNER_COLUMN, subj.submitted_by)
-          .eq("current_status", "published")
-          .limit(1)
-          .maybeSingle();
-        if (expertMatch?.id) {
-          relatedExpertIds = [expertMatch.id];
-        }
-      }
-
-      const resolvedTitle = (typeof payload.title === "string" && payload.title) || subj.title || "Untitled Resource";
-      const resolvedSummary = (typeof payload.description === "string" && payload.description) || (typeof payload.abstract === "string" && payload.abstract) || "BARUNA public knowledge resource.";
-      const resolvedAbstract = (typeof payload.abstract === "string" && payload.abstract) || (typeof payload.description === "string" && payload.description) || "BARUNA public knowledge resource.";
-      const resolvedLanguage = typeof payload.language === "string" ? payload.language : "Indonesian";
-      const resolvedYear = Number(payload.year) || new Date().getFullYear();
-      const resolvedPublisher = typeof payload.institution === "string" ? payload.institution : "BARUNA Contributor";
-
-      let publishedResourceId: string | null = existingKr?.id ?? null;
-
-      if (existingKr) {
-        const { data: latestKrVer } = await supabaseAdmin
-          .from("knowledge_resource_versions")
-          .select("version")
-          .eq("resource_id", existingKr.id)
-          .order("version", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const nextKrVersion =
-          Math.max(Number(existingKr.version || 1), Number(latestKrVer?.version || 0)) + 1;
-
-        const { error: updateErr } = await supabaseAdmin
-          .from("knowledge_resources")
-          .update({
-            current_status: "published",
-            visibility: "public",
-            verification_status: "governance_verified",
-            approved_by: context.userId,
-            published_by: context.userId,
-            approval_date: new Date().toISOString(),
-            publication_date: new Date().toISOString(),
-            audit_ref: decisionId,
-            resource_type: mappedType,
-            title: resolvedTitle,
-            summary: resolvedSummary,
-            abstract: resolvedAbstract,
-            language: resolvedLanguage,
-            publication_year: resolvedYear,
-            publisher: resolvedPublisher,
-            external_url: validExternalUrl,
-            thumbnail_url: resolvedThumbnailUrl,
-            topics,
-            keywords,
-            geographic_focus: coverage,
-            ...(relatedExpertIds.length > 0 ? { related_expert_ids: relatedExpertIds } : {}),
-            metadata: resourceMetadata as never,
-            version: nextKrVersion,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingKr.id);
-
-        if (updateErr) {
-          console.error("[recordAdminPublicationDecision] update knowledge_resources error:", updateErr);
-          if (updateErr.code === "23505" || updateErr.message?.includes("ux_kr_extern_url_active")) {
-            throw new Error("Gagal memperbarui: Tautan eksternal / repositori sudah digunakan oleh publikasi aktif lain.");
-          }
-          throw new Error(`Gagal memperbarui publikasi ke katalog Knowledge Hub: ${updateErr.message}`);
-        }
-      } else {
-        const { data: insertedKr, error: insertErr } = await supabaseAdmin
-          .from("knowledge_resources")
-          .insert({
-            source_type: "external_submission",
-            source_submission_id: input.subjectId,
-            created_by: subj.submitted_by || context.userId,
-            original_contributor_id: subj.submitted_by || context.userId,
-            approved_by: context.userId,
-            published_by: context.userId,
-            approval_date: new Date().toISOString(),
-            publication_date: new Date().toISOString(),
-            verification_status: "governance_verified",
-            visibility: "public",
-            current_status: "published",
-            audit_ref: decisionId,
-            resource_type: mappedType,
-            title: resolvedTitle,
-            summary: resolvedSummary,
-            abstract: resolvedAbstract,
-            language: resolvedLanguage,
-            publication_year: resolvedYear,
-            publisher: resolvedPublisher,
-            external_url: validExternalUrl,
-            thumbnail_url: resolvedThumbnailUrl,
-            topics,
-            keywords,
-            geographic_focus: coverage,
-            ...(relatedExpertIds.length > 0 ? { related_expert_ids: relatedExpertIds } : {}),
-            metadata: resourceMetadata as never,
-          })
-          .select("id")
-          .single();
-
-        if (insertErr) {
-          console.error("[recordAdminPublicationDecision] insert knowledge_resources error:", insertErr);
-          if (insertErr.code === "23505" || insertErr.message?.includes("ux_kr_extern_url_active")) {
-            throw new Error("Gagal mempublikasikan: Tautan eksternal / repositori sudah digunakan oleh publikasi aktif lain.");
-          }
-          throw new Error(`Gagal mempublikasikan ke katalog Knowledge Hub: ${insertErr.message}`);
-        }
-        publishedResourceId = insertedKr?.id ?? null;
-      }
-
-      // Sync canonical author record into knowledge_resource_authors
-      if (publishedResourceId) {
-        try {
-          const authorDisplayName =
-            (typeof payload.author === "string" && payload.author.trim()) ||
-            (typeof payload.author_name === "string" && payload.author_name.trim()) ||
-            "BARUNA Contributor";
-          const authorAffiliation =
-            (typeof payload.institution === "string" && payload.institution.trim()) || null;
-          const primaryExpertId = relatedExpertIds[0] ?? null;
-
-          const { data: existingAuthorRow } = await supabaseAdmin
-            .from("knowledge_resource_authors")
-            .select("id")
-            .eq("resource_id", publishedResourceId)
-            .eq("display_order", 0)
-            .maybeSingle();
-
-          const authorValues = {
-            resource_id: publishedResourceId,
-            expert_id: primaryExpertId,
-            display_name: authorDisplayName,
-            affiliation: authorAffiliation,
-            role: ["video", "webinar_recording", "podcast"].includes(mappedType) ? "Speaker / Contributor" : "Author",
-            is_corresponding: true,
-            display_order: 0,
-          };
-
-          if (existingAuthorRow?.id) {
-            await supabaseAdmin
-              .from("knowledge_resource_authors")
-              .update(authorValues)
-              .eq("id", existingAuthorRow.id);
-          } else {
-            await supabaseAdmin.from("knowledge_resource_authors").insert(authorValues);
-          }
-        } catch (authorSyncErr) {
-          console.warn("[recordAdminPublicationDecision] non-critical author sync warning:", authorSyncErr);
-        }
-      }
-
-      // Ensure draft status is canonical ('submitted') if exists
-      if (draft) {
-        await supabaseAdmin
-          .from("review_drafts")
-          .update({
-            status: "submitted",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", draft.id);
-      }
-
-      const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
-      clearKnowledgeHubCache();
-
-      return { success: true, decisionId, decision: input.decision };
+      if (subjErr) throw new Error(subjErr.message);
+      if (!subj) throw new Error("Data submission publikasi tidak ditemukan.");
+      // Same rule as the database: only the submitter's own draft counts.
+      const { data: draft, error: draftErr } = await supabaseAdmin
+        .from("review_drafts")
+        .select("title, payload")
+        .eq("linked_subject_id", input.subjectId)
+        .eq("submitter_id", subj.submitted_by)
+        .neq("status", "withdrawn")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (draftErr) throw new Error(draftErr.message);
+      const payload = (draft?.payload as Record<string, unknown>) ?? {};
+      ({ resource, cover } = buildCatalogValues(payload, draft?.title || subj.title));
     }
 
-    return { success: true, decisionId, decision: input.decision };
-  });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: result, error } = await (context.supabase as any).rpc("admin_kr_decide", {
+      _subject_id: input.subjectId,
+      _decision: input.decision,
+      _rationale: input.rationale?.trim() || null,
+      _expected_updated_at: input.expectedUpdatedAt ?? null,
+      _resource: resource,
+    });
+    if (error) throw new Error(toFriendlyKrDecisionError(error.message));
+    const outcome = (result ?? {}) as { decisionId?: string | null; resourceId?: string | null; status?: string };
 
+    // After commit: copy the uploaded cover to the public bucket. Cosmetic and
+    // idempotent; on failure the resource keeps the thumbnail chosen above.
+    if (input.decision === "approve" && cover && outcome.resourceId) {
+      try {
+        const coverUrl = await publishResourceCover(input.subjectId, cover.path, cover.name);
+        if (coverUrl && resource) {
+          const { error: coverErr } = await supabaseAdmin
+            .from("knowledge_resources")
+            .update({ thumbnail_url: coverUrl, metadata: { ...resource.metadata, thumbnailUrl: coverUrl } as never })
+            .eq("id", outcome.resourceId);
+          if (coverErr) console.error("[recordAdminPublicationDecision] cover update failed:", coverErr.message);
+        }
+      } catch (coverErr) {
+        console.error("[recordAdminPublicationDecision] cover publish failed:", coverErr);
+      }
+    }
+
+    const { clearKnowledgeHubCache } = await import("@/lib/knowledge-hub/knowledge-hub.functions");
+    clearKnowledgeHubCache();
+
+    return {
+      success: true,
+      decisionId: outcome.decisionId ?? `${input.decision}-${input.subjectId}`,
+      decision: input.decision,
+      status: outcome.status ?? null,
+    };
+  });

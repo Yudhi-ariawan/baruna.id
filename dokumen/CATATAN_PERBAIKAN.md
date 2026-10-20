@@ -225,7 +225,19 @@ Celah yang terbukti dan ditutup oleh migrasi `20261020050000`:
 
 Pengujian: tes Postgres lokal 16 pengecekan (termasuk: membaca `languages` tetap bisa, RPC publik yang memakai fungsi internal tetap berjalan, migrasi aman dijalankan di database yang tidak punya objek tersebut).
 
-Temuan audit yang BELUM diperbaiki: keputusan publikasi Knowledge Hub belum atomik dan tanpa guard status/peran; 12 policy tulis admin lama (`has_role`); `finalize_decision` tidak memeriksa jenis pengajuan; metadata modul tayang (`attached_resources`, `documents`, `video_url`) terbaca pengunjung lewat API langsung; 9 foreign key ke `auth.users` tanpa `ON DELETE` (akun tidak bisa dihapus; `test:kh-roles` meninggalkan 3 akun tiap kali dijalankan).
+### Keputusan publikasi Knowledge Hub (migrasi `20261020060000`)
+
+| Masalah | Perbaikan |
+|---|---|
+| `recordAdminPublicationDecision` menulis 5 tabel dalam langkah terpisah dengan service role; error sebagian langkah tidak diperiksa. | Satu RPC `admin_kr_decide`: keputusan, katalog, penulis, draf, dan log dalam satu transaksi. Gagal di tengah = tidak ada yang berubah. |
+| Tanpa kunci/versi: klik ganda atau dua admin (data: satu publikasi punya 3 keputusan approve berturut-turut). | Baris pengajuan dikunci; tampilan mengirim versi yang dilihat (`stale_subject` bila sudah berubah); approve ulang ditolak (`already_approved`). |
+| "Pulihkan" menayangkan apa pun, termasuk yang diarsipkan saat belum pernah disetujui. | Hanya yang sebelumnya tayang dan disetujui yang tayang kembali; lainnya kembali ke antrean. Aturan transisi lain: tidak bisa memutuskan yang terarsip, menyetujui saat kontributor merevisi, menolak dua kali, atau mengembalikan yang sudah ditolak. |
+| Admin bisa memutuskan pengajuannya sendiri; `qa_reviewer`/`verifier` bisa arsip/pulihkan. | Ditolak (`self_decision_forbidden`); hanya approver/admin/super admin (sama dengan Expert). Kurator lain tetap bisa melihat antrean. |
+| Draf yang dipakai tidak difilter ke milik pengaju. | Hanya draf milik pengaju. |
+
+Bentuk data yang ditulis sama dengan sebelumnya, jadi daftar admin dan Knowledge Hub tidak berubah. Sampul unggahan disalin ke bucket publik setelah transaksi berhasil. Pengujian: tes Postgres lokal 35 pengecekan.
+
+Temuan audit yang BELUM diperbaiki: 12 policy tulis admin lama (`has_role`); `finalize_decision` tidak memeriksa jenis pengajuan; metadata modul tayang (`attached_resources`, `documents`, `video_url`) terbaca pengunjung lewat API langsung; 9 foreign key ke `auth.users` tanpa `ON DELETE` (akun tidak bisa dihapus; `test:kh-roles` meninggalkan 3 akun tiap kali dijalankan).
 
 ---
 
@@ -234,7 +246,7 @@ Temuan audit yang BELUM diperbaiki: keputusan publikasi Knowledge Hub belum atom
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (35 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (36 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -258,6 +270,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261020030000_expert_profile_ownership.sql` (satu aturan pemilik profil expert; perbaikan terbit langsung admin)
 - `20261020040000_participant_biodata_selfpaced_integrity.sql` (biodata dan progres pelatihan mandiri lewat RPC tervalidasi)
 - `20261020050000_security_hardening_views_internal_functions.sql` (tutup tulis lewat view `languages` dan fungsi internal yang terbuka untuk publik)
+- `20261020060000_knowledge_resource_decision_atomic.sql` (keputusan publikasi Knowledge Hub dalam satu transaksi)
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

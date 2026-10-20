@@ -120,7 +120,9 @@ WITH checks(no, migration, ok) AS (
       (to_regprocedure('public._service_request_log(uuid, uuid, text, text, text, text, text)') IS NULL
        OR NOT has_function_privilege('anon', 'public._service_request_log(uuid, uuid, text, text, text, text, text)', 'EXECUTE'))
       AND (to_regclass('public.languages') IS NULL
-           OR NOT has_table_privilege('anon', 'public.languages', 'UPDATE')))
+           OR NOT has_table_privilege('anon', 'public.languages', 'UPDATE'))),
+  (36, '20261020060000_knowledge_resource_decision_atomic',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_kr_decide'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

@@ -102,10 +102,11 @@ export function AdminPublicationDetailModal({
           subjectId: item.subjectId,
           decision: vars.decision,
           rationale: vars.rationale,
+          expectedUpdatedAt: item.updatedAt,
         },
       });
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (result, vars) => {
       if (vars.decision === "approve") {
         toast.success("Publikasi berhasil disetujui & ditayangkan di Knowledge Hub!");
       } else if (vars.decision === "return_for_revision") {
@@ -113,7 +114,11 @@ export function AdminPublicationDetailModal({
       } else if (vars.decision === "archive") {
         toast.success("Publikasi berhasil diarsipkan (ditarik dari tayang Knowledge Hub) dan notifikasi telah dikirim ke pemilik publikasi.");
       } else if (vars.decision === "restore") {
-        toast.success("Publikasi berhasil dipulihkan dan ditayangkan kembali ke Knowledge Hub!");
+        toast.success(
+          result?.status === "approved"
+            ? "Publikasi berhasil dipulihkan dan ditayangkan kembali ke Knowledge Hub!"
+            : "Publikasi dipulihkan ke antrean kurasi (belum pernah disetujui, jadi tidak langsung ditayangkan).",
+        );
       } else {
         toast.success("Publikasi telah ditolak.");
       }
