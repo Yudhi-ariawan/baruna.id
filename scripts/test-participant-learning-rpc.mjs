@@ -56,12 +56,19 @@ async function setupCourse() {
     { master_course_id: mc.id, module_code: "TDD-02", title: "Modul 2", sequence: 2 },
   ]);
   if (mErr) throw new Error(`modules: ${mErr.message}`);
-  const offerings = [
-    { master_course_id: mc.id, offering_code: `tdd-open-${stamp}`, offering_title: `TDD Open ${stamp}`, status: "published",
-      learning_model: "self_paced", delivery_format: "fully_online", enrolment_access_rule: "open", access_mode: "open" },
-    { master_course_id: mc.id, offering_code: `tdd-approval-${stamp}`, offering_title: `TDD Approval ${stamp}`, status: "published",
-      learning_model: "cohort_based", delivery_format: "blended", enrolment_access_rule: "approval_required", access_mode: "application-required" },
-  ];
+  // Copy the classification columns of two real, valid offerings (one open, one approval
+  // required) so every database check constraint on course_offerings is satisfied.
+  const { data: templates, error: tErr } = await admin.from("course_offerings")
+    .select("*").in("offering_code", ["of-ocean-literacy-open-2026", "of-africa-fisheries-2026"]);
+  if (tErr || templates?.length !== 2) throw new Error(`offering templates: ${tErr?.message ?? "not found"}`);
+  const open = templates.find((t) => t.offering_code === "of-ocean-literacy-open-2026");
+  const approval = templates.find((t) => t.offering_code === "of-africa-fisheries-2026");
+  const clone = (t, code, title) => {
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = t;
+    return { ...rest, master_course_id: mc.id, offering_code: code, offering_title: title, status: "published",
+             enrolment_start_date: null, enrolment_end_date: null };
+  };
+  const offerings = [clone(open, `tdd-open-${stamp}`, `TDD Open ${stamp}`), clone(approval, `tdd-approval-${stamp}`, `TDD Approval ${stamp}`)];
   const { data: offs, error: oErr } = await admin.from("course_offerings").insert(offerings).select("id, offering_code");
   if (oErr) throw new Error(`offerings: ${oErr.message}`);
   created.offeringIds = offs.map((o) => o.id);
