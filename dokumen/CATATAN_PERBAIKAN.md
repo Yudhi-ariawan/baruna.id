@@ -250,7 +250,44 @@ Ada dua sistem peran: lama `user_roles` (dibaca lewat `has_role`) dan baru `rbac
 
 Pengujian: tes Postgres lokal 21 pengecekan (termasuk migrasi dibatalkan bila tidak ada admin, dan policy lama tetap berfungsi untuk admin resmi).
 
-Temuan audit yang BELUM diperbaiki: metadata modul tayang (`attached_resources`, `documents`, `video_url`) terbaca pengunjung lewat API langsung; 9 foreign key ke `auth.users` tanpa `ON DELETE` (akun tidak bisa dihapus; `test:kh-roles` meninggalkan 3 akun tiap kali dijalankan).
+Verifikasi setelah dijalankan di intern-update (20 Okt): `has_role(admin)` = false untuk kedua akun, true untuk `admin@gmail.com` dan `admin99@gmail.com`; pencabutan tercatat. Uji langsung lulus: `test:expert-rpc` 64, `test:kr-rpc` 24, `test:participant-rpc` 27, `test:kh-roles` 20, `test:lifecycle` 14. Dua skrip tes (`kh-roles`, `lifecycle`) ternyata membuat admin uji dengan cara yang selalu gagal tanpa diperiksa (peran utama ganda) dan hanya lolos karena tabel peran lama; sudah diperbaiki.
+
+---
+
+## 2l. SISA PEKERJAAN (rencana untuk sesi berikutnya)
+
+Status 20 Okt 2026 malam. Semua di bawah BELUM dikerjakan. Pola kerja yang terbukti: migrasi + tes Postgres lokal (PGlite) + baris `check_migrations.sql` + bagian catatan ini + `npm run build`; setelah migrasi dijalankan di intern-update, uji langsung (`npm run test:*`) dan bersihkan akun `@example.test` yang tertinggal.
+
+### Nomor 4 (sedang): metadata modul tayang terbaca pengunjung lewat API langsung
+- Bukti (20 Okt, sebagai pengunjung tanpa login): `select metadata from module_registry` mengembalikan `attached_resources` (4 modul), `documents` (1 modul), `video_url` (2 modul). Berkas aman (bucket `module-attachments` privat), tetapi **tautan video bisa dibuka tanpa terdaftar** (gerbang P3 terlewati). Soal/kunci kuis tidak ada.
+- Penyebab: policy baca publik `module_registry` berlaku untuk semua kolom. View `module_registry_public_v` sudah aman (tanpa `metadata`).
+- Rencana: hak kolom. `REVOKE SELECT ON public.module_registry FROM anon, authenticated;` lalu `GRANT SELECT (<semua kolom kecuali metadata>) ... TO anon, authenticated;`. RLS tetap berlaku untuk baris.
+- Sudah dicek: 7 pembacaan `module_registry` di kode (learning.functions.ts 510/724/813, curriculum-modules.functions.ts 139, knowledge-hub.functions.ts 206, admin/modules.functions.ts 198/499) semuanya memakai `supabaseAdmin`; halaman browser tidak membaca tabel ini langsung.
+- WAJIB dicek sebelum menulis migrasi: tidak ada policy RLS (termasuk `storage.objects` bucket `module-attachments`), view `security_invoker`, atau fungsi INVOKER yang membaca `module_registry.metadata` dengan hak pengguna. Kalau ada, kolomnya harus tetap terbaca untuk konteks itu atau fungsinya dijadikan SECURITY DEFINER.
+- Uji: pengunjung `select metadata` -> permission denied; pengunjung `select title` tetap bisa; katalog Academy dan halaman modul tetap tampil; `test:participant-rpc`, `test:lifecycle`.
+
+### Nomor 5 (rendah): 9 foreign key ke `auth.users` tanpa `ON DELETE`
+- Daftar (hasil `supabase/audit_security.sql` kategori 8): `governance_audit_log.actor_id`, `module_withdrawal_requests.trainer_id`, `rbac_role_change_requests.requested_by`, `review_assignments.assigned_by`, `review_decisions.decided_by`, `review_subjects.submitted_by`, `review_template_versions.published_by`, `review_templates.created_by`, `user_roles.granted_by`.
+- Rencana: kolom jejak pelaku yang boleh NULL (`governance_audit_log.actor_id`, `*_by` di templat/penugasan, `user_roles.granted_by`) -> `ON DELETE SET NULL`. Kolom NOT NULL yang merupakan kepemilikan (`review_subjects.submitted_by`, `review_decisions.decided_by`) sebaiknya TETAP menahan penghapusan akun (akun yang punya pengajuan/keputusan tidak boleh hilang diam-diam); cek dulu nullability tiap kolom di migrasi aslinya.
+- Juga perbaiki pembersihan `scripts/test-tdd-knowledge-hub-roles.mjs`: lepaskan `governance_audit_log.actor_id` sebelum menghapus akun (sekarang meninggalkan 3 akun tiap kali jalan).
+
+### Nomor 6 (rendah): izin tulis pengunjung
+- `review_records` punya GRANT INSERT ke `anon` (saat ini diblok pemicu `assignment_not_found`). Cabut INSERT/UPDATE/DELETE dari `anon`.
+- Opsional (pengerasan): kategori 3 audit -> hampir semua tabel memberi INSERT/UPDATE/DELETE ke `anon` (bawaan Supabase). Tidak bisa dipakai selama RLS aktif (terbukti), tetapi bisa dicabut massal untuk tabel yang memang tidak pernah ditulis pengunjung. Uji ulang semua alur publik setelahnya.
+
+### Nomor 7 (rendah): pengajuan Knowledge Hub tanpa validasi di database
+- `kr_draft_submit` hanya memanggil `submit_draft_for_review`, yang punya aturan khusus untuk expert dan modul saja. Validasi Knowledge Hub (judul, jenis, ukuran berkas, kepemilikan path berkas di bucket `knowledge-resource-submissions`, URL eksternal aman) hanya di `src/lib/knowledge-hub/contribution.functions.ts`.
+- Rencana: tambahkan cabang `knowledge_resource` di `submit_draft_for_review` (definisi terbaru di `20261015070000`) yang meniru validasi server function, terutama kepemilikan path berkas (berkas harus di folder milik pengaju).
+
+### Nomor 8 (baru, konsistensi): halaman governance masih membaca tabel peran lama
+- `src/lib/governance/governance.functions.ts` (`getMyRoles`) dan `src/lib/governance/governance-ops.functions.ts` (`listReviewers`, `getGovernanceDashboard`) membaca `user_roles` langsung. Sejak `20261020070000` tabel itu tidak dipakai lagi, jadi admin yang hanya ada di sistem baru (mis. `admin99@gmail.com`) tidak terlihat sebagai admin di halaman governance, dan daftar reviewer kosong.
+- Rencana: ganti ketiganya ke `rbac_user_roles` (pola seperti `getExpertGovernanceAccess` di `src/lib/admin/experts.functions.ts`). `src/lib/admin/publications.functions.ts` (~baris 311) juga masih menggabungkan `user_roles` untuk label peran pengaju (hanya tampilan).
+
+### Di luar celah keamanan (tetap terbuka)
+- Database main belum dicek: jalankan `supabase/check_migrations.sql` dan `supabase/audit_security.sql`, pastikan admin main ada di `rbac_user_roles` sebelum `20261020070000`, dan periksa akun expert yang dibuat manual lewat SQL (kolom `experts.original_contributor_id` harus berisi akun expert-nya) sebelum `20261020030000`.
+- Uji manual di browser: P3 (modul dinamis), P5 (form biodata, halaman Akun, unggah foto), P6 (kursus mandiri di dua perangkat), keputusan Knowledge Hub (setujui, kembalikan, arsip, pulihkan).
+- Keputusan mentor: P4 Full Training Program (sungguhan atau label contoh), A1 klaim profil, role participant otomatis atau lewat persetujuan, expert otomatis jadi trainer, approver dipisah dari publisher.
+- Koneksi ke Supabase dari jaringan kantor sempat putus-putus (`UND_ERR_CONNECT_TIMEOUT`); bila uji langsung gagal dengan "fetch failed", ulangi dan bersihkan akun `@example.test` yang tertinggal.
 
 ---
 
