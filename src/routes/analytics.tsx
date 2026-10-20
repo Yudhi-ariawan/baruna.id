@@ -1,15 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BarChart3, Users, GraduationCap, Award, Globe, BookOpen, CalendarDays, MessagesSquare, Handshake } from "lucide-react";
+import { BarChart3, Users, GraduationCap, Award, Globe, BookOpen, CalendarDays, MessagesSquare, Handshake, Database } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
-import { getPublicAnalytics, DEMO_CATEGORIES, plhgByCategory, DEMO_SHORT_COURSES, LEVEL_LABEL } from "@/data/demo";
+import { LEVEL_LABEL } from "@/data/demo";
+import { getPlatformImpactAnalytics } from "@/lib/analytics/analytics.functions";
 
 export const Route = createFileRoute("/analytics")({
+  loader: async () => {
+    const analytics = await getPlatformImpactAnalytics();
+    return { analytics };
+  },
   head: () => ({
     meta: [
       { title: "Impact Analytics — BARUNA" },
       { name: "description", content: "BARUNA public impact dashboard: participants, trainers, modules, courses, events, and countries reached." },
       { property: "og:title", content: "Impact Analytics — BARUNA" },
-      { property: "og:description", content: "Demo analytics for the BARUNA network." },
+      { property: "og:description", content: "Live impact metrics from the BARUNA network database." },
     ],
     links: [{ rel: "canonical", href: "/analytics" }],
   }),
@@ -19,7 +24,7 @@ export const Route = createFileRoute("/analytics")({
 function fmt(n: number) { return n.toLocaleString(); }
 
 function AnalyticsPage() {
-  const a = getPublicAnalytics();
+  const { analytics: a } = Route.useLoaderData();
 
   const tiles: { label: string; value: string; to?: string; icon: React.ElementType }[] = [
     { label: "Registered Participants", value: fmt(a.registeredParticipants), icon: Users, to: "/academy" },
@@ -44,20 +49,30 @@ function AnalyticsPage() {
 
   return (
     <PageShell
-      sidebar={{ title: "Impact Analytics", subtitle: "Demo Analytics — every number is derived from the shared demo dataset.", icon: BarChart3, sections: [{ label: "Sections", items: [
+      sidebar={{ title: "Impact Analytics", subtitle: "Live Platform Metrics — agregasi langsung dari database operasional BARUNA.", icon: BarChart3, sections: [{ label: "Sections", items: [
         { label: "Impact Dashboard", to: "/analytics", active: true },
         { label: "Self-Paced Courses", to: "/academy/self-paced" },
         { label: "Experts Directory", to: "/experts/directory" },
         { label: "Alumni", to: "/academy/alumni" },
         { label: "Training Archive", to: "/academy/archive" },
       ] }] }}
-      cta={{ icon: BarChart3, title: "Drill into any number", description: "Every tile links to the underlying records.", button: "Browse Self-Paced Courses", href: "/academy/self-paced" }}
+      cta={{ icon: BarChart3, title: "Lihat Data Langsung", description: "Setiap kartu terhubung dengan data katalog dan direktori terkait.", button: "Jelajahi Kursus Mandiri", href: "/academy/self-paced" }}
     >
       <div className="space-y-8">
         <header>
-          <span className="rounded-full bg-amber-500/15 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber-700">Demo Analytics</span>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-emerald-700">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Database Metrics
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+              <Database className="h-3.5 w-3.5 text-marine" /> Real-time Supabase Data
+            </span>
+          </div>
           <h1 className="mt-3 font-display text-3xl font-extrabold text-navy">BARUNA Public Impact Dashboard</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">All figures are computed from the shared demonstration dataset and update automatically when underlying records change.</p>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+            Seluruh metrik dihitung langsung dari data terverifikasi pada platform BARUNA: profil pengguna, direktori pakar resmi, modul terakreditasi, dan publikasi Knowledge Hub.
+          </p>
         </header>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -80,29 +95,30 @@ function AnalyticsPage() {
 
         <section id="by-category" className="rounded-2xl border border-border bg-card p-6 shadow-soft">
           <h2 className="font-display text-lg font-bold text-navy">Participant Learning Hours Generated — by Category</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Distribusi akumulasi jam pembelajaran materi terakreditasi per kategori kelautan &amp; perikanan.</p>
           <div className="mt-4 space-y-2">
-            {DEMO_CATEGORIES.map((c) => {
-              const plhg = plhgByCategory(c.slug);
-              const sc = DEMO_SHORT_COURSES.find((x) => x.category === c.slug)!;
-              return (
-                <Link key={c.slug} to="/academy/category/$slug" params={{ slug: c.slug }} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm hover:border-marine/50">
+            {a.categoryBreakdown.map((c) => (
+              <Link key={c.slug} to="/academy/category/$slug" params={{ slug: c.slug }} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm hover:border-marine/50 transition">
+                <div>
                   <span className="font-semibold text-navy">{c.name}</span>
-                  <span className="text-xs text-muted-foreground">{sc.instructionalHours} IH × {fmt(sc.usp)} USP = <strong className="text-marine">{fmt(plhg)}</strong> PLHG</span>
-                </Link>
-              );
-            })}
+                  <p className="text-[11px] text-muted-foreground">{c.modulesCount} modul terbit · {c.instructionalHours} jam pembelajaran</p>
+                </div>
+                <span className="text-xs text-muted-foreground">{c.instructionalHours} IH × {fmt(c.usp)} USP = <strong className="text-marine">{fmt(c.plhg)}</strong> PLHG</span>
+              </Link>
+            ))}
             <div className="flex items-center justify-between rounded-lg bg-marine/10 p-3 text-sm">
-              <span className="font-bold text-navy">Total</span>
+              <span className="font-bold text-navy">Total Akumulasi</span>
               <span className="font-bold text-marine">{fmt(a.participantLearningHoursGenerated)} PLHG</span>
             </div>
           </div>
         </section>
 
         <section id="by-level" className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-          <h2 className="font-display text-lg font-bold text-navy">Trainer Recognition Distribution</h2>
+          <h2 className="font-display text-lg font-bold text-navy">Distribusi Kualifikasi Pakar &amp; Trainer</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Kualifikasi jenjang instruktur dan pakar terverifikasi berdasarkan rekam jejak dan pengalaman profesional.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
             {(["certified", "advanced", "senior", "master"] as const).map((lvl) => (
-              <Link key={lvl} to="/experts/recognition" className="rounded-xl border border-border p-4 text-center hover:border-marine/50">
+              <Link key={lvl} to="/experts/recognition" className="rounded-xl border border-border p-4 text-center hover:border-marine/50 transition">
                 <p className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">{LEVEL_LABEL[lvl]}</p>
                 <p className="mt-1 font-display text-2xl font-extrabold text-navy">{a.levelDistribution[lvl]}</p>
               </Link>
