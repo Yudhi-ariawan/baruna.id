@@ -458,221 +458,34 @@ export type PublishedModuleDetail = {
 
 export type PublicQuizQuestion = Omit<CustomQuizQuestion, "correctAnswer" | "explanation">;
 
-type ParsedQuizQuestion = PublicQuizQuestion & { rawIndex: number };
-
-/** Valid questions plus their position in the stored array (answer keys are stored by that position). */
-function parseQuizQuestions(raw: unknown): ParsedQuizQuestion[] | undefined {
-  if (!Array.isArray(raw) || raw.length === 0) return undefined;
-  const valid: ParsedQuizQuestion[] = [];
-  for (let i = 0; i < raw.length; i++) {
-    const item = raw[i];
-    if (item && typeof item === "object") {
-      const q = item as Record<string, unknown>;
-      const question = typeof q.question === "string" ? q.question.trim() : "";
-      const rawOptions = Array.isArray(q.options) ? q.options : [];
-      const options = rawOptions.map((o) => String(o ?? "").trim()).filter(Boolean);
-      if (question && options.length >= 2) {
-        valid.push({ id: (q.id as number | string) ?? (i + 1), question, options, rawIndex: i });
-      }
-    }
-  }
-  return valid.length > 0 ? valid : undefined;
-}
-
-const toPublicQuiz = (parsed: ParsedQuizQuestion[] | undefined): PublicQuizQuestion[] | undefined =>
-  parsed?.map(({ rawIndex: _rawIndex, ...q }) => q);
-
-const IS_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** A cover image is public (catalogue cards, course page, Knowledge Hub); everything else is learning content. */
-function isCoverDocument(d: { type: string; fileType: string | null; name: string }): boolean {
-  return (
-    d.type.toLowerCase().includes("cover") ||
-    Boolean(d.fileType?.includes("image")) ||
-    /\.(jpg|jpeg|png|webp)$/i.test(d.name)
-  );
-}
-
 /**
- * Loads one published module. With includeContent=false (public summary) documents are
- * listed without download links (except the cover image) and quiz questions are left out.
- * With includeContent=true the caller MUST already have checked can_access_module_content.
- * Unpublished modules (drafts, submissions under review) are never returned.
+ * Public preview of a published module: metadata and the cover image only. The
+ * learning material (documents, quiz) is served by getEnrolledModuleContent.
  */
-async function loadPublishedModuleDetail(moduleId: string, includeContent: boolean): Promise<PublishedModuleDetail | null> {
-    if (!IS_UUID.test(moduleId)) return null;
-    const data = { moduleId };
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { resolvePublicAvatarUrl } = await import("@/lib/experts/publishing.server");
-
-      const { data: mod, error: mErr } = await supabaseAdmin
-        .from("module_registry")
-        .select("*")
-        .eq("id", data.moduleId)
-        .maybeSingle();
-
-      if (mErr) {
-        console.error("Error querying module_registry:", mErr);
-      }
-
-      if (mod && (mod.current_status !== "published" || mod.visibility !== "public")) {
-        return null;
-      }
-
-      if (!mod) return null;
-
-    let trainerInfo: PublishedModuleTrainer = {
-      name: "BARUNA Trainer",
-      headline: null,
-      institution: null,
-      avatarUrl: null,
-      slug: null,
-    };
-
-    if (mod.author_expert_id) {
-      // Query experts_directory_v for curated profile and institution
-      const { data: exp } = await supabaseAdmin
-        .from("experts_directory_v")
-        .select("id, display_name, headline, institution, avatar_url, slug")
-        .eq("id", mod.author_expert_id)
-        .maybeSingle();
-
-      if (exp) {
-        trainerInfo = {
-          name: exp.display_name || "BARUNA Trainer",
-          headline: exp.headline || null,
-          institution: exp.institution || null,
-          avatarUrl: await resolvePublicAvatarUrl(exp.avatar_url, exp.id),
-          slug: exp.slug || null,
-        };
-      } else {
-        const { data: rawExp } = await supabaseAdmin
-          .from("experts")
-          .select("id, display_name, headline, avatar_url, slug")
-          .eq("id", mod.author_expert_id)
-          .maybeSingle();
-        if (rawExp) {
-          trainerInfo = {
-            name: rawExp.display_name || "BARUNA Trainer",
-            headline: rawExp.headline || null,
-            institution: null,
-            avatarUrl: await resolvePublicAvatarUrl(rawExp.avatar_url, rawExp.id),
-            slug: rawExp.slug || null,
-          };
-        }
-      }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const contentOutline = (mod.content_outline as Record<string, any>) ?? {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const assessmentApproach = (mod.assessment_approach as Record<string, any>) ?? {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const meta = (mod.metadata as Record<string, any>) ?? {};
-
-    const topic = String(contentOutline.topic || meta.topic || "");
-    const competency = String(contentOutline.competency || meta.competency || "");
-    const assessmentMethod = String(assessmentApproach.method || "Evaluasi Mandiri & Kuis Pemahaman");
-    const passingScore = Number(assessmentApproach.passing_score ?? 70);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawAttached: Array<Record<string, any>> = Array.isArray(meta.attached_resources)
-      ? meta.attached_resources
-      : Array.isArray(meta.documents)
-      ? meta.documents
-      : [];
-
-    const documentsWithUrls: PublishedModuleDocument[] = await Promise.all(
-      rawAttached.map(async (doc) => {
-        const type = String(doc.type || doc.category || "Dokumen Pendukung");
-        const name = String(doc.fileName || doc.name || "Berkas");
-        const size = Number(doc.fileSize || doc.size || 0);
-        const fileType = typeof doc.fileType === "string" ? doc.fileType : (typeof doc.type === "string" ? doc.type : null);
-        const storagePath = typeof doc.path === "string" ? doc.path : null;
-        let downloadUrl: string | null = null;
-
-        if (!includeContent && !isCoverDocument({ type, fileType, name })) {
-          return { type, name, size, fileType, downloadUrl: null };
-        }
-
-        if (storagePath) {
-          downloadUrl = await getModuleStorageSignedUrl(
-            supabaseAdmin,
-            storagePath,
-            86400,
-            typeof doc.bucket === "string" ? doc.bucket : undefined,
-          );
-        } else if (typeof doc.url === "string" && (doc.url.startsWith("http://") || doc.url.startsWith("https://"))) {
-          downloadUrl = doc.url;
-        } else if (name.startsWith("http://") || name.startsWith("https://")) {
-          downloadUrl = name;
-        }
-
-        return {
-          type,
-          name,
-          size,
-          fileType,
-          downloadUrl,
-        };
-      }),
-    );
-
-    return {
-      id: String(mod.id),
-      title: String(mod.title),
-      summary: String(mod.summary || ""),
-      moduleType: String(mod.module_type || "technical"),
-      language: String(mod.language || "English"),
-      hours: Number(mod.estimated_learning_hours || 2),
-      targetParticipants: (mod.target_participants as string | null) ?? null,
-      learningObjectives: Array.isArray(mod.learning_objectives)
-        ? (mod.learning_objectives as string[])
-        : [],
-      competencyOutcomes:
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (typeof (mod as any).competency_outcomes === "string" && (mod as any).competency_outcomes) ||
-        (typeof meta.competency_outcomes === "string" && meta.competency_outcomes) ||
-        null,
-      topic,
-      competency,
-      assessmentMethod,
-      passingScore,
-      trainer: trainerInfo,
-      documents: documentsWithUrls,
-      publishedAt: String(mod.publication_date || mod.created_at),
-      quizQuestions: includeContent ? toPublicQuiz(parseQuizQuestions(publishedQuizSource(mod))) : undefined,
-      contentLocked: !includeContent,
-    };
-  } catch (err) {
-    console.error("Error in loadPublishedModuleDetail:", err);
-    return null;
-  }
-}
-
-/** Public summary: safe for visitors (catalogue, course page, Knowledge Hub). */
 export const getPublishedModuleDetail = createServerFn({ method: "GET" })
   .validator((d) => z.object({ moduleId: z.string() }).parse(d))
-  .handler(async ({ data }): Promise<PublishedModuleDetail | null> => loadPublishedModuleDetail(data.moduleId, false));
-
-/**
- * Learning content (documents with download links, quiz questions). Only for people the
- * database says may access the module: approved participants, the module's author, and
- * admin/approver (public.can_access_module_content).
- */
-export const getPublishedModuleContent = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ moduleId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }): Promise<PublishedModuleDetail> => {
-    await assertModuleContentAccess(context.userId, data.moduleId);
-    const detail = await loadPublishedModuleDetail(data.moduleId, true);
-    if (!detail) throw new Error("Modul tidak ditemukan atau tidak sedang tayang.");
-    return detail;
+  .handler(async ({ data }): Promise<PublishedModuleDetail | null> => {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.moduleId);
+    if (!isUuid) return null;
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { buildPublishedModuleDetail } = await import("./published-module.server");
+      return await buildPublishedModuleDetail(supabaseAdmin, data.moduleId, "preview");
+    } catch (err) {
+      console.error("Error in getPublishedModuleDetail:", err);
+      return null;
+    }
   });
 
+/**
+ * Who may open a module's learning material is decided by the database
+ * (public.can_access_module_content, migration 20261020020000): a participant
+ * whose enrollment in this module was approved, the module's author, and an
+ * admin/approver. Demo Mode and browser storage never grant it.
+ */
 async function assertModuleContentAccess(userId: string, moduleId: string): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabaseAdmin as any).rpc("can_access_module_content", {
     _uid: userId,
     _module_id: moduleId,
@@ -684,16 +497,23 @@ async function assertModuleContentAccess(userId: string, moduleId: string): Prom
     throw new Error(`Gagal memeriksa hak akses modul: ${error.message}`);
   }
   if (data !== true) {
-    throw new Error("module_access_denied: Materi ini hanya untuk peserta yang pendaftarannya telah disetujui.");
+    const { COURSE_ACCESS_DENIED_MESSAGE } = await import("./course-access.server");
+    throw new Error(COURSE_ACCESS_DENIED_MESSAGE);
   }
 }
 
-/** Same source order getPublishedModuleDetail uses, so indexes line up with the stored keys. */
-function publishedQuizSource(mod: Record<string, unknown>): unknown {
-  const meta = (mod.metadata as Record<string, unknown>) ?? {};
-  const assessment = (mod.assessment_approach as Record<string, unknown>) ?? {};
-  return meta.quiz_questions || assessment.quiz_questions || mod.quiz_questions;
-}
+/** Full learning material of a published module (every document link and the quiz questions). */
+export const getEnrolledModuleContent = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => z.object({ moduleId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }): Promise<PublishedModuleDetail> => {
+    await assertModuleContentAccess(context.userId, data.moduleId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { buildPublishedModuleDetail } = await import("./published-module.server");
+    const detail = await buildPublishedModuleDetail(supabaseAdmin, data.moduleId, "content");
+    if (!detail) throw new Error("Modul tidak ditemukan atau tidak sedang tayang.");
+    return detail;
+  });
 
 export type QuizGradeResult = {
   score: number;
@@ -718,8 +538,10 @@ export const gradePublishedModuleQuiz = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }): Promise<QuizGradeResult> => {
+    // Grading reveals the answer keys, so it follows the same rule as the material.
     await assertModuleContentAccess(context.userId, data.moduleId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { parseQuizQuestions, publishedQuizSource } = await import("./published-module.server");
     const { data: mod, error: modErr } = await supabaseAdmin
       .from("module_registry")
       .select("id, current_status, visibility, metadata, assessment_approach")
@@ -770,7 +592,7 @@ export const gradePublishedModuleQuiz = createServerFn({ method: "POST" })
 /**
  * The catalogue is public. Keys that describe the learning content itself (quiz questions,
  * attachment lists with storage paths, assessment details) never leave the server here;
- * they are served by getPublishedModuleContent to people with access.
+ * they are served by getEnrolledModuleContent to people with access.
  */
 const CATALOG_HIDDEN_METADATA_KEYS = [
   "quiz_questions",
@@ -904,6 +726,7 @@ export const getPublishedModulesCatalog = createServerFn({ method: "GET" })
           }
 
           const exp = m.author_expert_id ? expertMap[m.author_expert_id] : null;
+          // The catalog is public: learning material (file links, quiz) stays behind enrollment.
           return {
             id: String(m.id),
             title: String(m.title),

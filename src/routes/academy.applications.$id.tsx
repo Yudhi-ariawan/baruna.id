@@ -1,5 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  getMyCourseEnrollmentStatus,
+  submitCourseEnrollmentApplication,
+} from "@/lib/learning/enrollment-application.functions";
+import {
+  effectiveApplicationStatus,
+  fullTrainingCourseId,
+} from "@/lib/learning/full-training-enrollment";
 import {
   ChevronRight,
   CheckCircle2,
@@ -19,7 +30,6 @@ import {
   Hash,
   ArrowRight,
   Check,
-  ChevronUp,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { Toaster } from "@/components/baruna/Toaster";
@@ -33,7 +43,6 @@ import { trainingBySlug } from "@/data/training";
 import {
   useApplication,
   updateApplication,
-  advanceStatus,
   APP_STATUSES,
   type AppStatus,
   LEARNING_SECTIONS,
@@ -101,13 +110,54 @@ function ApplicationDetail() {
   const [tab, setTab] = useState<Tab>("Status");
   const [demo] = useDemoMode();
 
+  // Selection decision comes from the administrator on the server (PB-ACA-03).
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+      setAuthChecked(true);
+    });
+  }, []);
+  const courseId = app ? fullTrainingCourseId(app.slug) : "";
+  const getStatusFn = useServerFn(getMyCourseEnrollmentStatus);
+  const { data: serverEnrollment, refetch: refetchEnrollment } = useQuery({
+    queryKey: ["course-enrollment-status", courseId, userId],
+    queryFn: () => getStatusFn({ data: { courseId } }),
+    enabled: Boolean(userId && courseId),
+    staleTime: 1000 * 60 * 2,
+  });
+  const submitEnrollmentFn = useServerFn(submitCourseEnrollmentApplication);
+  const [sendingEnrollment, setSendingEnrollment] = useState(false);
+
   if (!app) {
     // Client-side: not found after store load
     throw notFound();
   }
 
   const program = trainingBySlug[app.slug];
-  const accepted = app.status === "Accepted";
+  const status = effectiveApplicationStatus(app.status, serverEnrollment?.status);
+  const accepted = status === "Accepted";
+
+  const sendEnrollmentToServer = async () => {
+    if (sendingEnrollment) return;
+    setSendingEnrollment(true);
+    try {
+      await submitEnrollmentFn({
+        data: {
+          courseId,
+          courseTitle: app.title,
+          notes: app.motivation.trim().slice(0, 1000) || undefined,
+        },
+      });
+      barunaToast("Application sent to the selection committee");
+      await refetchEnrollment();
+    } catch (err) {
+      barunaToast(err instanceof Error ? err.message : "Could not send the application");
+    } finally {
+      setSendingEnrollment(false);
+    }
+  };
   // Real participant state — used for accurate status display.
   const confirmedReal = app.participationConfirmed;
   // Demo Mode relaxes navigation locks only; it never changes stored progress.
@@ -240,9 +290,9 @@ function ApplicationDetail() {
               </div>
             </div>
             <span
-              className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold ${statusTone[app.status]}`}
+              className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold ${statusTone[status]}`}
             >
-              {app.status}
+              {status}
             </span>
           </div>
         </div>
@@ -274,7 +324,7 @@ function ApplicationDetail() {
             {/* Progress tracker (vertical) */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-lg font-bold text-navy">Status Progress Tracker</h2>
-              {app.status === "Rejected" ? (
+              {status === "Rejected" ? (
                 <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
                   <p className="text-sm font-bold text-destructive">Application Not Selected</p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -285,8 +335,8 @@ function ApplicationDetail() {
               ) : (
                 <ol className="mt-5 space-y-0">
                   {APP_STATUSES.map((s, i) => {
-                    const reached = i <= (APP_STATUSES as readonly string[]).indexOf(app.status);
-                    const current = s === app.status;
+                    const reached = i <= (APP_STATUSES as readonly string[]).indexOf(status);
+                    const current = s === status;
                     return (
                       <li key={s} className="relative flex gap-3 pb-6 last:pb-0">
                         {i < APP_STATUSES.length - 1 && (
@@ -320,18 +370,41 @@ function ApplicationDetail() {
                 </ol>
               )}
 
-              {app.status !== "Accepted" && app.status !== "Rejected" && (
+              {status !== "Accepted" && status !== "Rejected" && (
                 <div className="mt-4 rounded-xl border border-dashed border-border bg-background p-4">
-                  <p className="text-xs text-muted-foreground">
-                    Your application is being processed by the selection committee. You will be
-                    notified when the status changes.
-                  </p>
-                  <button
-                    onClick={() => advanceStatus(app.id)}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-marine bg-card px-3.5 py-2 text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
-                  >
-                    Simulate next status (demo) <ChevronUp className="h-3.5 w-3.5" />
-                  </button>
+                  {authChecked && !userId ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        Sign in to see the selection committee&apos;s decision on this application.
+                      </p>
+                      <Link
+                        to="/auth"
+                        search={{ redirect: `/academy/applications/${app.id}` }}
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-marine bg-card px-3.5 py-2 text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+                      >
+                        Sign in <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </>
+                  ) : serverEnrollment?.status === "none" ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        This application has not reached the selection committee yet. Send it so an
+                        administrator can review it.
+                      </p>
+                      <button
+                        onClick={() => void sendEnrollmentToServer()}
+                        disabled={sendingEnrollment}
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-marine bg-card px-3.5 py-2 text-xs font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {sendingEnrollment ? "Sending…" : "Send to selection committee"}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Your application is being processed by the selection committee. You will be
+                      notified when the status changes.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

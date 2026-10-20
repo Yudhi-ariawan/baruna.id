@@ -1,4 +1,13 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
+import { getMyCourseEnrollmentStatus } from "@/lib/learning/enrollment-application.functions";
+import {
+  effectiveApplicationStatus,
+  fullTrainingCourseId,
+} from "@/lib/learning/full-training-enrollment";
 import {
   ChevronRight,
   FileText,
@@ -15,6 +24,7 @@ import {
   useApplications,
   APP_STATUSES,
   type AppStatus,
+  type Application,
   formatDate,
 } from "@/lib/application";
 
@@ -79,6 +89,10 @@ function StatusTracker({ status }: { status: AppStatus }) {
 
 function ApplicationsDashboard() {
   const apps = useApplications();
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
 
   return (
     <AcademyShell active="my-applications">
@@ -115,65 +129,79 @@ function ApplicationsDashboard() {
           </div>
         ) : (
           <div className="space-y-5">
-            {apps.map((app) => {
-              const docs = Object.values(app.documents).filter(Boolean).length;
-              const total = Object.keys(app.documents).length;
-              const accepted = app.status === "Accepted";
-              return (
-                <article key={app.id} className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine">
-                        <GraduationCap className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <Link
-                          to="/academy/applications/$id"
-                          params={{ id: app.id }}
-                          className="font-display text-lg font-bold text-navy transition-colors hover:text-marine"
-                        >
-                          {app.title}
-                        </Link>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-marine/70" /> Applied {formatDate(app.createdAt)}</span>
-                          <span className="flex items-center gap-1.5"><Hash className="h-3.5 w-3.5 text-marine/70" /> {app.id}</span>
-                          <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-marine/70" /> {docs}/{total} documents</span>
-                        </div>
-                      </div>
-                    </div>
-                    <span className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold ${statusTone[app.status]}`}>
-                      {app.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-5 rounded-xl border border-border bg-background p-4">
-                    <StatusTracker status={app.status} />
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap justify-end gap-2.5">
-                    <Link
-                      to="/academy/applications/$id"
-                      params={{ id: app.id }}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-marine bg-card px-4 py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
-                    >
-                      View Details <ArrowRight className="h-4 w-4" />
-                    </Link>
-                    {accepted && (
-                      <Link
-                        to="/academy/learn/$id"
-                        params={{ id: app.id }}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-marine-foreground transition-colors hover:bg-marine/90"
-                      >
-                        <PlayCircle className="h-4 w-4" /> Open Training
-                      </Link>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
+            {apps.map((app) => (
+              <ApplicationCard key={app.id} app={app} userId={userId} />
+            ))}
           </div>
         )}
       </div>
     </AcademyShell>
+  );
+}
+
+function ApplicationCard({ app, userId }: { app: Application; userId: string | null }) {
+  // Acceptance is the administrator's decision on the server, not the browser copy.
+  const courseId = fullTrainingCourseId(app.slug);
+  const getStatusFn = useServerFn(getMyCourseEnrollmentStatus);
+  const { data: serverEnrollment } = useQuery({
+    queryKey: ["course-enrollment-status", courseId, userId],
+    queryFn: () => getStatusFn({ data: { courseId } }),
+    enabled: Boolean(userId),
+    staleTime: 1000 * 60 * 2,
+  });
+  const status = effectiveApplicationStatus(app.status, serverEnrollment?.status);
+  const docs = Object.values(app.documents).filter(Boolean).length;
+  const total = Object.keys(app.documents).length;
+  const accepted = status === "Accepted";
+  return (
+    <article className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marine/10 text-marine">
+            <GraduationCap className="h-5 w-5" />
+          </span>
+          <div>
+            <Link
+              to="/academy/applications/$id"
+              params={{ id: app.id }}
+              className="font-display text-lg font-bold text-navy transition-colors hover:text-marine"
+            >
+              {app.title}
+            </Link>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-marine/70" /> Applied {formatDate(app.createdAt)}</span>
+              <span className="flex items-center gap-1.5"><Hash className="h-3.5 w-3.5 text-marine/70" /> {app.id}</span>
+              <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-marine/70" /> {docs}/{total} documents</span>
+            </div>
+          </div>
+        </div>
+        <span className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold ${statusTone[status]}`}>
+          {status}
+        </span>
+      </div>
+
+      <div className="mt-5 rounded-xl border border-border bg-background p-4">
+        <StatusTracker status={status} />
+      </div>
+
+      <div className="mt-4 flex flex-wrap justify-end gap-2.5">
+        <Link
+          to="/academy/applications/$id"
+          params={{ id: app.id }}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-marine bg-card px-4 py-2 text-sm font-semibold text-marine transition-colors hover:bg-marine hover:text-marine-foreground"
+        >
+          View Details <ArrowRight className="h-4 w-4" />
+        </Link>
+        {accepted && (
+          <Link
+            to="/academy/learn/$id"
+            params={{ id: app.id }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-4 py-2 text-sm font-semibold text-marine-foreground transition-colors hover:bg-marine/90"
+          >
+            <PlayCircle className="h-4 w-4" /> Open Training
+          </Link>
+        )}
+      </div>
+    </article>
   );
 }
