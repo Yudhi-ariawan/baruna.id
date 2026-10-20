@@ -237,7 +237,20 @@ Pengujian: tes Postgres lokal 16 pengecekan (termasuk: membaca `languages` tetap
 
 Bentuk data yang ditulis sama dengan sebelumnya, jadi daftar admin dan Knowledge Hub tidak berubah. Sampul unggahan disalin ke bucket publik setelah transaksi berhasil. Pengujian: tes Postgres lokal 35 pengecekan.
 
-Temuan audit yang BELUM diperbaiki: 12 policy tulis admin lama (`has_role`); `finalize_decision` tidak memeriksa jenis pengajuan; metadata modul tayang (`attached_resources`, `documents`, `video_url`) terbaca pengunjung lewat API langsung; 9 foreign key ke `auth.users` tanpa `ON DELETE` (akun tidak bisa dihapus; `test:kh-roles` meninggalkan 3 akun tiap kali dijalankan).
+### Sistem peran lama dihentikan (migrasi `20261020070000`)
+
+Ada dua sistem peran: lama `user_roles` (dibaca lewat `has_role`) dan baru `rbac_user_roles` (dikelola di halaman admin). Sistem lama tidak terlihat di halaman admin tetapi masih dibaca 12 policy tulis, policy baca, dan pemeriksa pemutus. Di intern-update dua akun tercatat admin **hanya** di sistem lama (satu akun expert biasa, satu akun tanpa peran aktif): admin tersembunyi yang bisa memutuskan pengajuan, mengubah status pengajuan langsung dari browser, dan membaca kontak privat expert. Keputusan pemilik proyek: keduanya bukan admin.
+
+| Perbaikan | Keterangan |
+|---|---|
+| `has_role()` membaca sistem baru (nama peran sama: admin, management, qa_reviewer; super_admin = admin). | Satu perubahan berlaku untuk semua policy dan fungsi lama sekaligus. Peran `management`/`qa_reviewer` di sistem baru di intern-update hanya dipegang super admin, jadi tidak ada orang yang mendapat hak baru. |
+| Baris `user_roles` yang tidak didukung sistem baru dihapus dan dicatat di `admin_audit_log`. | Migrasi menampilkan NOTICE nama akun yang dicabut. |
+| Pengaman anti-terkunci. | Bila database tidak punya admin aktif di sistem baru, migrasi dibatalkan. **Untuk main: periksa dulu bahwa admin main ada di `rbac_user_roles`.** |
+| `finalize_decision` dan `return_for_revision` (jalur keputusan generik) menolak expert, modul, dan Knowledge Hub. | Jenis itu mengubah status tanpa menayangkan/menurunkan profil, modul, atau katalog; sekarang wajib lewat RPC khususnya. Tidak dipanggil kode aplikasi. |
+
+Pengujian: tes Postgres lokal 21 pengecekan (termasuk migrasi dibatalkan bila tidak ada admin, dan policy lama tetap berfungsi untuk admin resmi).
+
+Temuan audit yang BELUM diperbaiki: metadata modul tayang (`attached_resources`, `documents`, `video_url`) terbaca pengunjung lewat API langsung; 9 foreign key ke `auth.users` tanpa `ON DELETE` (akun tidak bisa dihapus; `test:kh-roles` meninggalkan 3 akun tiap kali dijalankan).
 
 ---
 
@@ -246,7 +259,7 @@ Temuan audit yang BELUM diperbaiki: 12 policy tulis admin lama (`has_role`); `fi
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (36 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (37 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -271,6 +284,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261020040000_participant_biodata_selfpaced_integrity.sql` (biodata dan progres pelatihan mandiri lewat RPC tervalidasi)
 - `20261020050000_security_hardening_views_internal_functions.sql` (tutup tulis lewat view `languages` dan fungsi internal yang terbuka untuk publik)
 - `20261020060000_knowledge_resource_decision_atomic.sql` (keputusan publikasi Knowledge Hub dalam satu transaksi)
+- `20261020070000_retire_legacy_role_system.sql` (peran hanya dari sistem baru; jalur keputusan generik menolak expert/modul/Knowledge Hub). Untuk main: pastikan admin main ada di `rbac_user_roles` dulu.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

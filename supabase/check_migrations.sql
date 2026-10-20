@@ -122,7 +122,11 @@ WITH checks(no, migration, ok) AS (
       AND (to_regclass('public.languages') IS NULL
            OR NOT has_table_privilege('anon', 'public.languages', 'UPDATE'))),
   (36, '20261020060000_knowledge_resource_decision_atomic',
-      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_kr_decide'))
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_kr_decide')),
+  (37, '20261020070000_retire_legacy_role_system',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'has_role' AND prosrc LIKE '%has_rbac_role%')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'finalize_decision'
+                    AND prosrc LIKE '%use_kind_specific_decision%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
