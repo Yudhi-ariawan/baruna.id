@@ -664,17 +664,18 @@ async function runTests() {
   // -------------------------------------------------------------------------
   const { user: adminUser } = await createTestUser("admin", { role: "admin" });
   const { data: adminRole } = await admin.from("rbac_roles").select("id").eq("code", "admin").single();
-  if (adminRole) {
-    await admin.from("rbac_user_roles").insert({
-      user_id: adminUser.id,
-      role_id: adminRole.id,
-      status: "active",
-      is_primary: true,
-      valid_from: new Date(Date.now() - 60000).toISOString(),
-      reason: "tdd_kh_admin",
-    });
-  }
-  await admin.from("user_roles").insert({ user_id: adminUser.id, role: "admin" });
+  // Added as a SECONDARY role: the signup role is already primary and only one
+  // primary role is allowed. Roles come from RBAC only (migration 20261020070000).
+  if (!adminRole) throw new Error("Peran admin tidak ditemukan di rbac_roles.");
+  const { error: adminRoleErr } = await admin.from("rbac_user_roles").insert({
+    user_id: adminUser.id,
+    role_id: adminRole.id,
+    status: "active",
+    is_primary: false,
+    valid_from: new Date(Date.now() - 60000).toISOString(),
+    reason: "tdd_kh_admin",
+  });
+  if (adminRoleErr) throw new Error(`Gagal memberi peran admin uji: ${adminRoleErr.message}`);
 
   // Create Participant User + Biodata
   const { user: participantUser, email: participantEmail } = await createTestUser("participant", {
