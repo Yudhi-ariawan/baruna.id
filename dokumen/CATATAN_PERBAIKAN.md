@@ -434,6 +434,8 @@ Masih untuk mentor: catatan reviewer dan rekam verifikasi, tahap publisher terpi
 
 **Uji:** PGlite 22 pengecekan lulus (centang/cabut expert ditolak, juga untuk akun admin; peran staf tetap bisa; permintaan expert ditolak; persetujuan dan arsip expert tetap memberi/mencabut peran; izin anon tertutup; migrasi bisa diulang). `tsc` dan `build` lulus.
 
+**Uji langsung (intern-update, 21 Okt, setelah migrasi dijalankan):** `npm run test:expert-role-lock` 10/10 (akun super_admin uji: centang expert ditolak, cabut expert ditolak, publisher tetap bisa dicentang/dicabut; pengguna meminta expert untuk dirinya ditolak dan tidak tersimpan; pengunjung ditolak). Catatan: izin `users.assign_role` hanya dimiliki `super_admin`. Uji lain tetap lulus: rbac 820, expert-rpc 64, kr-rpc 24, participant-rpc 27, kh-roles 20, lifecycle 14, console-decisions 16. Akun `@example.test` tersisa: 0.
+
 ---
 
 ## 3. Migrasi yang harus dijalankan
