@@ -480,7 +480,7 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 - Konsol Kurasi → **Pemantauan Progres** (`/governance/learning-progress`, peran sama dengan Persetujuan Peserta): ringkasan per kursus + daftar peserta (progres, kuis, status, aktivitas terakhir) dengan penanda tindak lanjut (belum mulai > 7 hari, tidak aktif > 14 hari, 3x kuis belum lulus, kuis resmi belum ada).
 - Portal Trainer → Analytics: Completion Rate dari data nyata + tabel per modul (menunggu, disetujui, mulai, lulus, rata-rata nilai terbaik). Average Rating tetap "Not available" (belum ada data rating).
 
-**Uji:** PGlite 32/32 (sinkron browser tidak bisa meluluskan; pencatatan lulus/gagal/batas/sudah lulus; validasi; izin; hapus; ringkasan trainer tanpa data pribadi, trainer ditangguhkan ditolak; migrasi bisa diulang). `tsc` dan `build` lulus. Uji langsung `npm run test:learning-progress` setelah migrasi dijalankan.
+**Uji:** PGlite 32/32 (sinkron browser tidak bisa meluluskan; pencatatan lulus/gagal/batas/sudah lulus; validasi; izin; hapus; ringkasan trainer tanpa data pribadi, trainer ditangguhkan ditolak; migrasi bisa diulang). `tsc` dan `build` lulus. **Uji langsung (intern-update, 21 Okt, setelah migrasi dijalankan):** `npm run test:learning-progress` 12/12; uji lain tetap lulus (rbac 820, expert-rpc 64, kr-rpc 24, participant-rpc 27, kh-roles 20, lifecycle 14, console-decisions 16, expert-role-lock 10, review-lockdown 13). Satu baris selesai lama (Lorem Ipsum, nilai 100 dari kuis otomatis) kini bertanda `legacy_browser`. Data uji tersisa: 0.
 
 **Masih terbuka:** template dan penerbitan sertifikat resmi (mentor); tabel kehadiran (PB-ACA-04, untuk Full Training); rating trainer; Full Training dan AZA tetap mode uji di browser.
 
