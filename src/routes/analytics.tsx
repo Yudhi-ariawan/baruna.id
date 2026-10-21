@@ -14,14 +14,16 @@ export const Route = createFileRoute("/analytics")({
       { title: "Impact Analytics — BARUNA" },
       { name: "description", content: "BARUNA public impact dashboard: participants, trainers, modules, courses, events, and countries reached." },
       { property: "og:title", content: "Impact Analytics — BARUNA" },
-      { property: "og:description", content: "Live impact metrics from the BARUNA network database." },
+      { property: "og:description", content: "Impact metrics counted from the BARUNA platform database." },
     ],
     links: [{ rel: "canonical", href: "/analytics" }],
   }),
   component: AnalyticsPage,
 });
 
-function fmt(n: number) { return n.toLocaleString(); }
+const NOT_AVAILABLE = "Belum tersedia";
+/** A metric the platform does not record yet is null: shown as "Belum tersedia", never estimated. */
+function fmt(n: number | null) { return n === null ? NOT_AVAILABLE : n.toLocaleString(); }
 
 function AnalyticsPage() {
   const { analytics: a } = Route.useLoaderData();
@@ -49,7 +51,7 @@ function AnalyticsPage() {
 
   return (
     <PageShell
-      sidebar={{ title: "Impact Analytics", subtitle: "Live Platform Metrics — agregasi langsung dari database operasional BARUNA.", icon: BarChart3, sections: [{ label: "Sections", items: [
+      sidebar={{ title: "Impact Analytics", subtitle: "Dihitung dari database platform BARUNA. Data yang belum dicatat ditandai Belum tersedia.", icon: BarChart3, sections: [{ label: "Sections", items: [
         { label: "Impact Dashboard", to: "/analytics", active: true },
         { label: "Self-Paced Courses", to: "/academy/self-paced" },
         { label: "Experts Directory", to: "/experts/directory" },
@@ -62,16 +64,15 @@ function AnalyticsPage() {
         <header>
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-emerald-700">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Database Metrics
+              <Database className="h-3.5 w-3.5" /> Data Platform BARUNA
             </span>
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-              <Database className="h-3.5 w-3.5 text-marine" /> Real-time Supabase Data
+              Diperbarui {new Date(a.generatedAt).toLocaleString("id-ID")}
             </span>
           </div>
           <h1 className="mt-3 font-display text-3xl font-extrabold text-navy">BARUNA Public Impact Dashboard</h1>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Seluruh metrik dihitung langsung dari data terverifikasi pada platform BARUNA: profil pengguna, direktori pakar resmi, modul terakreditasi, dan publikasi Knowledge Hub.
+            Setiap angka dihitung dari catatan di database BARUNA: peran peserta, pendaftaran dan sertifikat, direktori pakar dan status trainer resmi, modul dan penawaran kursus yang terbit, publikasi Knowledge Hub, dan mitra aktif. Angka yang belum dicatat platform ditampilkan <strong>Belum tersedia</strong>, tidak diperkirakan.
           </p>
         </header>
 
@@ -82,7 +83,7 @@ function AnalyticsPage() {
                 <div className="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
                   <t.icon className="h-3.5 w-3.5 text-marine" /> {t.label}
                 </div>
-                <p className="mt-2 font-display text-3xl font-extrabold text-navy">{t.value}</p>
+                <p className={t.value === NOT_AVAILABLE ? "mt-3 text-sm font-semibold text-muted-foreground" : "mt-2 font-display text-3xl font-extrabold text-navy"}>{t.value}</p>
               </>
             );
             return t.to ? (
@@ -94,8 +95,8 @@ function AnalyticsPage() {
         </div>
 
         <section id="by-category" className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-          <h2 className="font-display text-lg font-bold text-navy">Participant Learning Hours Generated — by Category</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Distribusi akumulasi jam pembelajaran materi terakreditasi per kategori kelautan &amp; perikanan.</p>
+          <h2 className="font-display text-lg font-bold text-navy">Modul Terbit per Kategori</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Jumlah modul tayang dan jam pembelajaran (instructional hours) per kategori kelautan &amp; perikanan. Participant Learning Hours Generated (jam pembelajaran × peserta lulus) belum tersedia karena kelulusan per modul belum dicatat.</p>
           <div className="mt-4 space-y-2">
             {a.categoryBreakdown.map((c) => (
               <Link key={c.slug} to="/academy/category/$slug" params={{ slug: c.slug }} className="flex items-center justify-between rounded-lg border border-border p-3 text-sm hover:border-marine/50 transition">
@@ -103,19 +104,19 @@ function AnalyticsPage() {
                   <span className="font-semibold text-navy">{c.name}</span>
                   <p className="text-[11px] text-muted-foreground">{c.modulesCount} modul terbit · {c.instructionalHours} jam pembelajaran</p>
                 </div>
-                <span className="text-xs text-muted-foreground">{c.instructionalHours} IH × {fmt(c.usp)} USP = <strong className="text-marine">{fmt(c.plhg)}</strong> PLHG</span>
+                <span className="text-xs font-semibold text-marine">{c.instructionalHours} jam</span>
               </Link>
             ))}
             <div className="flex items-center justify-between rounded-lg bg-marine/10 p-3 text-sm">
-              <span className="font-bold text-navy">Total Akumulasi</span>
-              <span className="font-bold text-marine">{fmt(a.participantLearningHoursGenerated)} PLHG</span>
+              <span className="font-bold text-navy">Participant Learning Hours Generated</span>
+              <span className="font-bold text-marine">{fmt(a.participantLearningHoursGenerated)}</span>
             </div>
           </div>
         </section>
 
         <section id="by-level" className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-          <h2 className="font-display text-lg font-bold text-navy">Distribusi Kualifikasi Pakar &amp; Trainer</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Kualifikasi jenjang instruktur dan pakar terverifikasi berdasarkan rekam jejak dan pengalaman profesional.</p>
+          <h2 className="font-display text-lg font-bold text-navy">Distribusi Level Trainer Aktif</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Level dari status trainer resmi yang ditetapkan administrator BARUNA.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
             {(["certified", "advanced", "senior", "master"] as const).map((lvl) => (
               <Link key={lvl} to="/experts/recognition" className="rounded-xl border border-border p-4 text-center hover:border-marine/50 transition">
