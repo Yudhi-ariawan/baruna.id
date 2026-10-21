@@ -14,7 +14,6 @@ import { getGovernanceRoles } from "./governance-roles";
 
 const Recommendation = z.enum(["approve", "reject", "request_changes"]);
 const Decision = z.enum(["approve", "reject", "return_for_revision"]);
-const SubjectKind = z.enum(["expert", "module", "knowledge_resource", "training_need"]);
 
 async function assertRole(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -312,30 +311,14 @@ export const declareConflict = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { data: updated, error } = await context.supabase
-      .from("review_assignments")
-      .update({
-        conflict_of_interest_declared: true,
-        conflict_of_interest_reason: data.reason,
-        conflict_declared_at: new Date().toISOString(),
-        status: "recused",
-      })
-      .eq("id", data.assignmentId)
-      .eq("reviewer_id", context.userId)
-      .select("id, subject_id, status")
-      .single();
+    // One transaction: own ACTIVE assignment only, conflict columns + 'recused'
+    // only, audit entry included (migration 20261021090000).
+    const { data: updated, error } = await context.supabase.rpc(
+      "review_assignment_declare_conflict" as never,
+      { _assignment_id: data.assignmentId, _reason: data.reason } as never,
+    );
     if (error) throw new Error(error.message);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.rpc("log_governance_event", {
-      _event_type: "conflict_declared",
-      _actor_id: context.userId,
-      _subject_id: updated.subject_id,
-      _entity_type: "review_assignment",
-      _entity_id: updated.id,
-      _before: null,
-      _after: { reason: data.reason },
-    });
-    return updated;
+    return updated as unknown as { id: string; subject_id: string; status: string };
   });
 
 // ─── Admin / management ────────────────────────────────────────────────────
@@ -415,102 +398,10 @@ export const recordFinalDecision = createServerFn({ method: "POST" })
     return { id: id as string };
   });
 
-
-// ─── Subject creation (admin/management) ───────────────────────────────────
-export const createReviewSubject = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) =>
-    z
-      .object({
-        kind: SubjectKind,
-        title: z.string().min(1).max(200),
-        description: z.string().max(5000).optional(),
-        externalRef: z.string().max(200).optional(),
-        submittedBy: z.string().uuid(),
-        requiredRecommendations: z.number().int().min(1).max(10).default(1),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
-      throw new Error("forbidden");
-    }
-    const { data: created, error } = await context.supabase
-      .from("review_subjects")
-      .insert({
-        kind: data.kind,
-        title: data.title,
-        description: data.description ?? null,
-        external_ref: data.externalRef ?? null,
-        submitted_by: data.submittedBy,
-        required_recommendations: data.requiredRecommendations,
-      })
-      .select("id, current_status")
-      .single();
-    if (error) throw new Error(error.message);
-    return created;
-  });
-
-export const assignReviewer = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) =>
-    z
-      .object({
-        subjectId: z.string().uuid(),
-        reviewerId: z.string().uuid(),
-        dueAt: z.string().datetime().optional(),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    if (!(await assertRole(context, "admin")) && !(await assertRole(context, "management"))) {
-      throw new Error("forbidden");
-    }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // Reviewer must have qa_reviewer role
-    const { data: hasRole } = await supabaseAdmin.rpc("has_role", {
-      _user_id: data.reviewerId,
-      _role: "qa_reviewer",
-    });
-    if (!hasRole) throw new Error("reviewer_not_qualified");
-
-    // Subject submitter cannot equal reviewer
-    const { data: subject } = await supabaseAdmin
-      .from("review_subjects")
-      .select("id, submitted_by, current_status")
-      .eq("id", data.subjectId)
-      .maybeSingle();
-    if (!subject) throw new Error("subject_not_found");
-    if (subject.submitted_by === data.reviewerId) throw new Error("self_review_forbidden");
-
-    const { data: created, error } = await context.supabase
-      .from("review_assignments")
-      .insert({
-        subject_id: data.subjectId,
-        reviewer_id: data.reviewerId,
-        assigned_by: context.userId,
-        due_at: data.dueAt ?? null,
-        status: "active",
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-
-    if (subject.current_status === "pending") {
-      await supabaseAdmin.from("review_subjects").update({ current_status: "under_review" }).eq("id", data.subjectId);
-    }
-    await supabaseAdmin.rpc("log_governance_event", {
-      _event_type: "reviewer_assigned",
-      _actor_id: context.userId,
-      _subject_id: data.subjectId,
-      _entity_type: "review_assignment",
-      _entity_id: created.id,
-      _before: null,
-      _after: { reviewer_id: data.reviewerId },
-    });
-    return created;
-  });
+// Subjects are created by submit_draft_for_review / submitTrainingNeedRequest and
+// reviewers are assigned through assign_reviewer (governance-ops.functions.ts);
+// the direct-write versions that lived here were removed with migration
+// 20261021090000.
 
 // ─── Audit trail (admin/management) ────────────────────────────────────────
 export const listGovernanceAudit = createServerFn({ method: "GET" })

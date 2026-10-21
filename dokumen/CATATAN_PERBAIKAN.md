@@ -438,12 +438,34 @@ Masih untuk mentor: catatan reviewer dan rekam verifikasi, tahap publisher terpi
 
 ---
 
+## 2q. Audit lintas peran (21 Okt) dan penutupan tulis langsung ke pengajuan
+
+**Cara audit (uji langsung intern-update, akun `@example.test` sementara, dihapus sesudahnya):** 9 peran (pengunjung, registered_user, participant, reviewer, verifier, approver, operator, publisher, admin) × 89 tabel/view: berapa baris yang terlihat dan apakah bisa menambah baris langsung.
+
+**Aman (terbukti):** tidak ada peran yang berhasil menambah baris ke tabel mana pun; akun biasa hanya melihat profil dan perannya sendiri; kontak pribadi expert, biodata, pendaftaran kursus, dan log audit tidak terlihat oleh registered_user/participant/reviewer/verifier/publisher; operator hanya pendaftaran kursus.
+
+**Celah yang ditemukan dan diperbaiki (migrasi `20261021090000`):**
+1. Policy lama Juli `review_subjects_admin_write/_admin_update` dan `review_assignments_admin_write/_admin_update` (admin|management; sejak `20261021020000` termasuk approver). Terbukti dari browser: approver **menyetujui pengajuannya sendiri** (expert, modul, Knowledge Hub, permintaan pelatihan) dan **menugaskan dirinya sendiri** sebagai reviewer, melewati semua pengaman RPC. Admin sama.
+2. `review_assignments_reviewer_coi_update` mengizinkan reviewer mengubah semua kolom penugasannya. Terbukti: reviewer memindahkan penugasan ke pengajuan lain (rekomendasi untuk pengajuan sendiri tetap ditolak pemicu `self_review_forbidden`).
+
+Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticated`/`anon` (baca tidak berubah). Semua penulisan sah sudah lewat fungsi SECURITY DEFINER (diperiksa otomatis: 16 fungsi penulis, semuanya DEFINER; satu fungsi INVOKER hanya membaca). "Nyatakan konflik" diganti RPC `review_assignment_declare_conflict` (hanya penugasan aktif milik sendiri, hanya kolom konflik + status `recused`, tercatat di log audit). Dua fungsi server lama yang tidak dipakai (`createReviewSubject`, `assignReviewer` di `governance.functions.ts`, menulis langsung) dihapus.
+
+**Uji:** PGlite 24/24 (celah direproduksi sebelum migrasi; sesudahnya ditolak untuk keempat jenis, admin juga; baca tetap; `assign_reviewer` dan pengamannya tetap jalan; RPC konflik). `npm run test:review-lockdown` (uji langsung, 13 pengecekan): sebelum migrasi dijalankan **0 lulus, 13 gagal** (celah terbukti di database asli).
+
+**Temuan lain, belum dikerjakan:**
+- Approver ikut bisa menulis daftar keahlian/peran expert/bahasa dan aturan level trainer (policy lama admin|management). Usul: khusus admin; menunggu keputusan.
+- "My Training Requests" (`academy.training-requests.*`) membaca salinan di browser + contoh palsu; keputusan approver tidak terlihat peminta.
+- `createUser` (Tambah User) mengabaikan peran yang gagal diberikan tanpa pesan.
+- Approver/admin bisa menyunting rincian profil expert langsung: sengaja (`20261015070000`).
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (45 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (46 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -477,6 +499,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261021060000_revoke_anon_write_grants.sql` (cabut izin tulis pengunjung tanpa login di semua tabel dan view). Lihat Nomor 6.
 - `20261021070000_auth_user_fk_set_null.sql` (catatan pelaku dikosongkan saat akun dihapus). Lihat Nomor 5.
 - `20261021080000_expert_role_flow_only.sql` (peran `expert` tidak bisa dicentang/dicabut manual; hanya lewat persetujuan pendaftaran dan arsip expert). Lihat bagian 2p.
+- `20261021090000_review_direct_write_lockdown.sql` (status pengajuan dan penugasan reviewer tidak bisa ditulis langsung dari browser; konflik kepentingan lewat RPC). Lihat bagian 2q. Butuh kode branch ini (tombol "nyatakan konflik" memakai RPC baru).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

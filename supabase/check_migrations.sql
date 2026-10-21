@@ -161,7 +161,13 @@ WITH checks(no, migration, ok) AS (
   (45, '20261021080000_expert_role_flow_only',
       (SELECT count(*) FROM pg_proc
         WHERE proname IN ('assign_rbac_role', 'revoke_rbac_role', 'request_rbac_role_change', 'decide_rbac_role_change')
-          AND prosrc LIKE '%expert_role_managed_by_flow%') = 4)
+          AND prosrc LIKE '%expert_role_managed_by_flow%') = 4),
+  (46, '20261021090000_review_direct_write_lockdown',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'review_assignment_declare_conflict')
+      AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public'
+                        AND tablename IN ('review_subjects', 'review_assignments') AND cmd <> 'SELECT')
+      AND NOT has_table_privilege('authenticated', 'public.review_subjects', 'UPDATE')
+      AND NOT has_table_privilege('authenticated', 'public.review_assignments', 'INSERT'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
