@@ -1,13 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, ClipboardList, Inbox } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Plus, ClipboardList, Inbox, LogIn } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { AcademyHeader } from "@/components/baruna/academy/ui";
-import {
-  useRequests,
-  formatDate,
-  STATUS_STYLES,
-  type RequestStatus,
-} from "@/lib/trainingRequests";
+import { StageBadge } from "@/components/baruna/academy/training-requests/shared";
+import { formatDateTime, localToSummary } from "@/components/baruna/academy/training-requests/view-model";
+import { listMyTrainingRequests } from "@/lib/training-requests/my-requests.functions";
+import { useRequests } from "@/lib/trainingRequests";
+import { usePresentationMode } from "@/lib/demoMode";
+import { useAuthUser } from "@/lib/learning/useBackendEnrolment";
 
 export const Route = createFileRoute("/academy/training-requests/")({
   head: () => ({
@@ -24,24 +26,29 @@ export const Route = createFileRoute("/academy/training-requests/")({
   component: TrainingRequestsPage,
 });
 
-function StatusBadge({ status }: { status: RequestStatus }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLES[status]}`}
-    >
-      {status}
-    </span>
-  );
-}
-
 function TrainingRequestsPage() {
-  const requests = useRequests();
+  const [presentation] = usePresentationMode();
+  const { user, loading: authLoading } = useAuthUser();
+  const listFn = useServerFn(listMyTrainingRequests);
+  const query = useQuery({
+    queryKey: ["training-requests", "mine", user?.id],
+    queryFn: () => listFn(),
+    enabled: !presentation && Boolean(user),
+    staleTime: 30_000,
+    retry: false,
+  });
+  const demoRequests = useRequests();
+  const requests = presentation ? demoRequests.map(localToSummary) : (query.data ?? []);
+
   const counts = {
     total: requests.length,
-    active: requests.filter((r) => !["Completed", "Closed"].includes(r.status)).length,
-    scheduled: requests.filter((r) => r.status === "Scheduled" || r.status === "Approved").length,
-    completed: requests.filter((r) => r.status === "Completed").length,
+    active: requests.filter((r) => r.stage.open || r.stage.key === "revision_requested").length,
+    revision: requests.filter((r) => r.stage.key === "revision_requested").length,
+    approved: requests.filter((r) => r.stage.key === "approved").length,
   };
+
+  const signedOut = !presentation && !authLoading && !user;
+  const loading = !presentation && (authLoading || (Boolean(user) && query.isLoading));
 
   return (
     <AcademyShell active="my-training-requests">
@@ -57,9 +64,9 @@ function TrainingRequestsPage() {
           <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: "Total", value: counts.total },
-              { label: "Active", value: counts.active },
-              { label: "Approved / Scheduled", value: counts.scheduled },
-              { label: "Completed", value: counts.completed },
+              { label: "In Progress", value: counts.active },
+              { label: "Revision Requested", value: counts.revision },
+              { label: "Approved", value: counts.approved },
             ].map((s) => (
               <div
                 key={s.label}
@@ -81,7 +88,30 @@ function TrainingRequestsPage() {
           </Link>
         </div>
 
-        {requests.length === 0 ? (
+        {signedOut ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+            <LogIn className="mx-auto h-8 w-8 text-marine" />
+            <p className="mt-3 font-display text-lg font-bold text-navy">Sign in to see your requests</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+              Your training requests are saved to your BARUNA account, so they are available on every device.
+            </p>
+            <Link
+              to="/auth"
+              search={{ redirect: "/academy/training-requests" }}
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy"
+            >
+              <LogIn className="h-4 w-4" /> Sign in
+            </Link>
+          </div>
+        ) : loading ? (
+          <p className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
+            Loading your training requests…
+          </p>
+        ) : query.isError ? (
+          <p className="rounded-xl bg-destructive/10 p-5 text-sm text-destructive">
+            Unable to load your training requests. {(query.error as Error).message}
+          </p>
+        ) : requests.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <Inbox className="mx-auto h-8 w-8 text-marine" />
             <p className="mt-3 font-display text-lg font-bold text-navy">No training requests yet</p>
@@ -130,17 +160,20 @@ function TrainingRequestsPage() {
                         params={{ id: r.id }}
                         className="font-semibold text-navy hover:text-marine"
                       >
-                        {r.trainingTopic}
+                        {r.title}
                       </Link>
-                      <p className="text-xs text-muted-foreground">{r.trainingCategory}</p>
+                      <p className="text-xs text-muted-foreground">{r.category}</p>
                     </td>
                     <td className="px-5 py-4 text-foreground/80">
                       {r.organization}
                       <p className="text-xs text-muted-foreground">{r.country}</p>
                     </td>
-                    <td className="px-5 py-4 text-foreground/80">{formatDate(r.createdAt)}</td>
+                    <td className="px-5 py-4 text-foreground/80">{formatDateTime(r.submittedAt)}</td>
                     <td className="px-5 py-4">
-                      <StatusBadge status={r.status} />
+                      <StageBadge stage={r.stage.key} />
+                      {r.stage.sla?.overdue ? (
+                        <p className="mt-1 text-[0.65rem] font-semibold text-amber-700">Past target time</p>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -158,14 +191,14 @@ function TrainingRequestsPage() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-xs font-bold text-marine">{r.reference}</span>
-                    <StatusBadge status={r.status} />
+                    <StageBadge stage={r.stage.key} />
                   </div>
-                  <p className="mt-1.5 font-semibold text-navy">{r.trainingTopic}</p>
+                  <p className="mt-1.5 font-semibold text-navy">{r.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {r.organization} · {r.country}
+                    {[r.organization, r.country].filter(Boolean).join(" · ")}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Submitted {formatDate(r.createdAt)}
+                    Submitted {formatDateTime(r.submittedAt)}
                   </p>
                 </Link>
               ))}
@@ -175,7 +208,7 @@ function TrainingRequestsPage() {
 
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <ClipboardList className="h-3.5 w-3.5" /> Click any request to view its full status
-          timeline.
+          history.
         </p>
       </div>
     </AcademyShell>

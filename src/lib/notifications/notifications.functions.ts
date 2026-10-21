@@ -2,13 +2,27 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { EXPERT_OWNER_COLUMN } from "@/lib/experts/ownership";
+import { hasGovernanceRole } from "@/lib/governance/governance-roles";
+import {
+  buildReviewerAssignmentNotifications,
+  buildStatusStepNotifications,
+  buildTrainingNeedStaffNotifications,
+  submitterUrl,
+} from "./workflow-notifications.server";
 
 export type InAppNotification = {
   id: string;
   type: "revision_requested" | "approved" | "rejected" | "archived" | "info";
   title: string;
   body: string;
-  subjectKind: "expert" | "module" | "knowledge_resource" | "service_request" | "trainer_application" | "other";
+  subjectKind:
+    | "expert"
+    | "module"
+    | "knowledge_resource"
+    | "training_need"
+    | "service_request"
+    | "trainer_application"
+    | "other";
   subjectTitle: string;
   targetUrl: string;
   createdAt: string;
@@ -71,10 +85,12 @@ async function buildReviewNotifications(userId: string): Promise<{ raw: RawNotif
 
   const draftMap = new Map<string, string>();
   const draftStatusMap = new Map<string, string>();
+  const openDraftSubjects = new Set<string>();
   (drafts ?? []).forEach((d) => {
     if (d.linked_subject_id) {
       draftMap.set(d.linked_subject_id, d.id);
       draftStatusMap.set(d.linked_subject_id, d.status);
+      if (d.status === "draft") openDraftSubjects.add(d.linked_subject_id);
     }
   });
 
@@ -88,6 +104,9 @@ async function buildReviewNotifications(userId: string): Promise<{ raw: RawNotif
       subject.metadata && typeof subject.metadata === "object"
         ? (subject.metadata as Record<string, unknown>)
         : {};
+
+    // A training request is only ever withdrawn by its own requester: not news to them.
+    if (kind === "training_need") continue;
 
     const isArchived =
       subject.current_status === "withdrawn" ||
@@ -147,7 +166,7 @@ async function buildReviewNotifications(userId: string): Promise<{ raw: RawNotif
         : {};
     const isResubmittedAfterDecision =
       dec.decision === "return_for_revision" &&
-      (subjectMeta.review_status === "resubmitted" ||
+      (kind === "training_need" ? !openDraftSubjects.has(dec.subject_id) : subjectMeta.review_status === "resubmitted" ||
         draftStatus === "submitted" ||
         (kind === "expert" &&
           subject?.current_status === "submitted" &&
@@ -182,6 +201,13 @@ async function buildReviewNotifications(userId: string): Promise<{ raw: RawNotif
           draftId && !isResubmittedAfterDecision
             ? `/knowledge-hub/submit-resource?edit=${draftId}`
             : `/knowledge-hub/my-contributions`;
+      } else if (kind === "training_need") {
+        title = isResubmittedAfterDecision
+          ? `Revisi Terkirim — Menunggu Evaluasi Ulang: "${subjectTitle}"`
+          : `Permintaan Revisi: Permintaan Pelatihan "${subjectTitle}"`;
+        targetUrl = isResubmittedAfterDecision
+          ? submitterUrl(kind, dec.subject_id)
+          : `/academy/request-training?revise=${dec.subject_id}`;
       } else {
         title = isResubmittedAfterDecision
           ? `Revisi Terkirim — Menunggu Evaluasi Ulang: ${subjectTitle}`
@@ -190,7 +216,10 @@ async function buildReviewNotifications(userId: string): Promise<{ raw: RawNotif
       }
     } else if (dec.decision === "approve") {
       type = "approved";
-      if (kind === "expert") {
+      if (kind === "training_need") {
+        title = `Permintaan Pelatihan Disetujui: "${subjectTitle}"`;
+        targetUrl = submitterUrl(kind, dec.subject_id);
+      } else if (kind === "expert") {
         title = `Selamat! Pengajuan Expert Anda Telah Disetujui`;
         targetUrl = `/experts/portal`;
       } else if (kind === "module") {
@@ -211,7 +240,9 @@ async function buildReviewNotifications(userId: string): Promise<{ raw: RawNotif
           ? `/experts/join`
           : kind === "module"
             ? `/experts/portal/review-status`
-            : `/knowledge-hub/my-contributions`;
+            : kind === "training_need"
+              ? submitterUrl(kind, dec.subject_id)
+              : `/knowledge-hub/my-contributions`;
     }
 
     const body =
@@ -384,11 +415,21 @@ export const listMyNotifications = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<InAppNotification[]> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Request a Training staff items go to whoever may assign and decide (admin / approver).
+    const isTrainingNeedStaff = async () =>
+      (await hasGovernanceRole(context.supabase, context.userId, "admin")) ||
+      (await hasGovernanceRole(context.supabase, context.userId, "management"));
+
     // A failure in one source must not hide the others.
-    const [review, services, trainerApps, reads] = await Promise.all([
+    const [review, services, trainerApps, statusSteps, assignments, staff, reads] = await Promise.all([
       buildReviewNotifications(context.userId).catch(() => ({ raw: [] as RawNotif[], legacyReadIds: [] as string[] })),
       buildServiceRequestNotifications(context.userId).catch(() => [] as RawNotif[]),
       buildTrainerApplicationNotifications(context.userId).catch(() => [] as RawNotif[]),
+      buildStatusStepNotifications(context.userId).catch(() => [] as RawNotif[]),
+      buildReviewerAssignmentNotifications(context.userId).catch(() => [] as RawNotif[]),
+      isTrainingNeedStaff()
+        .then((yes) => (yes ? buildTrainingNeedStaffNotifications(context.userId) : []))
+        .catch(() => [] as RawNotif[]),
       supabaseAdmin
         .from("notification_reads")
         .select("notification_id")
@@ -401,7 +442,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
     const readIdsSet = new Set<string>(review.legacyReadIds);
     for (const r of reads.data ?? []) readIdsSet.add(r.notification_id);
 
-    const rawNotifications = [...review.raw, ...services, ...trainerApps];
+    const rawNotifications = [...review.raw, ...services, ...trainerApps, ...statusSteps, ...assignments, ...staff];
     rawNotifications.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );

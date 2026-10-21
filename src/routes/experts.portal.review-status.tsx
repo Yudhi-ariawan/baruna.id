@@ -24,6 +24,11 @@ import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
 import type { TrainerPortalBootstrap } from "@/lib/experts/portal-services.types";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { moduleUpdateInfo } from "@/lib/experts/module-update";
+import {
+  CancelModuleUpdate,
+  RequestModuleUpdate,
+} from "@/components/baruna/experts/module-update/ModuleUpdateControls";
 
 export const Route = createFileRoute("/experts/portal/review-status")({
   head: () => ({
@@ -330,6 +335,10 @@ function ReviewStatusPage() {
               const draftPayload = (d.payload as Record<string, unknown>) ?? {};
               const draftMetadata = (draftPayload.metadata as Record<string, unknown>) ?? {};
               const isPublishedUpdate = draftMetadata.revision_kind === "published_module_update";
+              // An update the trainer opened, still on the trainer's side (no verifier note since).
+              const update = moduleUpdateInfo(d.payload);
+              const isTrainerUpdate =
+                isRevision && update.byTrainer && latestDecision?.decision !== "return_for_revision";
 
               // Tentukan tahapan stepper
               // Step 1: Draf Disusun (Selalu done)
@@ -373,7 +382,12 @@ function ReviewStatusPage() {
                         </Badge>
                       ) : isRevision ? (
                         <Badge className="bg-amber-100 text-amber-800 border-amber-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
-                          <RotateCcw className="h-3.5 w-3.5" /> {isPublishedUpdate ? "Pembaruan Diminta oleh Verifikator" : "Perlu Revisi Dokumen"}
+                          <RotateCcw className="h-3.5 w-3.5" />{" "}
+                          {isTrainerUpdate
+                            ? "Pembaruan Sedang Disiapkan"
+                            : isPublishedUpdate
+                              ? "Pembaruan Diminta oleh Verifikator"
+                              : "Perlu Revisi Dokumen"}
                         </Badge>
                       ) : isApproved ? (
                         <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 flex items-center gap-1 font-semibold text-xs py-1 px-3">
@@ -569,13 +583,14 @@ function ReviewStatusPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <Link
                           to="/experts/portal/portfolio"
                           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition"
                         >
                           <BookOpenCheck className="h-3.5 w-3.5" /> Buka di Portofolio
                         </Link>
+                        {d.subjectId && !isArchived ? <RequestModuleUpdate subjectId={d.subjectId} /> : null}
                       </div>
                     </div>
                   )}
@@ -589,11 +604,24 @@ function ReviewStatusPage() {
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-amber-900">
-                            {isPublishedUpdate
-                              ? "Pembaruan Modul Tayang Diminta oleh Verifikator"
-                              : "Verifikator Meminta Perbaikan Kurikulum / Dokumen"}
+                            {isTrainerUpdate
+                              ? `Pembaruan modul sedang Anda siapkan${update.baseVersion ? ` (dari versi ${update.baseVersion})` : ""}`
+                              : isPublishedUpdate
+                                ? "Pembaruan Modul Tayang Diminta oleh Verifikator"
+                                : "Verifikator Meminta Perbaikan Kurikulum / Dokumen"}
                           </p>
-                          {latestDecision?.comment && (
+                          {isTrainerUpdate ? (
+                            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-slate-800">
+                              <p className="text-slate-700 leading-relaxed">
+                                Versi saat ini tetap tayang untuk peserta sampai pembaruan disetujui.
+                              </p>
+                              {update.note ? (
+                                <p className="mt-1.5 text-slate-700">
+                                  <span className="font-bold text-amber-800">Ringkasan perubahan:</span> {update.note}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : latestDecision?.comment && (
                             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-slate-800">
                               <span className="font-bold text-amber-800 uppercase tracking-wide block mb-1 text-[11px]">
                                 Catatan Evaluasi Verifikator:
@@ -603,14 +631,16 @@ function ReviewStatusPage() {
                               </p>
                             </div>
                           )}
-                          <div className="mt-3.5">
+                          <div className="mt-3.5 flex flex-wrap gap-2">
                             <Link
                               to="/experts/portal/submit-module"
                               search={{ draftId: d.id }}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 transition"
                             >
-                              <FileEdit className="h-3.5 w-3.5" /> Perbaiki Draf &amp; Unggah Ulang Berkas
+                              <FileEdit className="h-3.5 w-3.5" />{" "}
+                              {isTrainerUpdate ? "Lanjutkan Pembaruan" : <>Perbaiki Draf &amp; Unggah Ulang Berkas</>}
                             </Link>
+                            {isTrainerUpdate && d.subjectId ? <CancelModuleUpdate subjectId={d.subjectId} /> : null}
                           </div>
                         </div>
                       </div>

@@ -95,9 +95,14 @@ function resolveDraftStatus(d: {
     const payload = (d.payload as Record<string, unknown> | null) ?? {};
     const metadata = (payload.metadata as Record<string, unknown> | null) ?? {};
     const isPublishedUpdate = metadata.revision_kind === "published_module_update";
+    const byTrainer = isPublishedUpdate && metadata.revision_initiated_by === "trainer" && dec !== "return_for_revision";
     return {
       status: "revision_requested",
-      label: isPublishedUpdate ? "Pembaruan Diminta oleh Verifikator" : "Perlu Revisi",
+      label: byTrainer
+        ? "Pembaruan Sedang Disiapkan"
+        : isPublishedUpdate
+          ? "Pembaruan Diminta oleh Verifikator"
+          : "Perlu Revisi",
       badgeClass: "bg-amber-100 text-amber-800 border-amber-300",
       cardBorder: "border-amber-300 bg-amber-50/30",
       icon: RotateCcw,

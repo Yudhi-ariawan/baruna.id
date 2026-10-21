@@ -41,7 +41,13 @@ import {
   type TrainingRequestDraft,
   type TrainingRequest,
 } from "@/lib/trainingRequests";
-import { submitTrainingNeedRequest } from "@/lib/trainingNeeds.functions";
+import {
+  resubmitTrainingNeedRequest,
+  submitTrainingNeedRequest,
+  type TrainingNeedRequestPayload,
+} from "@/lib/trainingNeeds.functions";
+import { getMyTrainingRequest } from "@/lib/training-requests/my-requests.functions";
+import { trainingRequestReference } from "@/lib/training-requests/workflow";
 import { usePresentationMode } from "@/lib/demoMode";
 
 const BARUNA_VENUE = "Denpasar, Bali, Indonesia";
@@ -107,6 +113,11 @@ export const Route = createFileRoute("/academy/request-training")({
     ],
     links: [{ rel: "canonical", href: "/academy/request-training" }],
   }),
+  // ?revise=<subject id>: edit and resubmit a request returned for revision.
+  validateSearch: (search: Record<string, unknown>): { revise?: string } => ({
+    revise:
+      typeof search.revise === "string" && /^[0-9a-f-]{36}$/i.test(search.revise) ? search.revise : undefined,
+  }),
   component: RequestTrainingPage,
 });
 
@@ -159,12 +170,45 @@ function RequestTrainingPage() {
   const [error, setError] = useState<string | null>(null);
   const [restoredFromAuth, setRestoredFromAuth] = useState(false);
   const submitInFlight = useRef(false);
+  const { revise: reviseId } = Route.useSearch();
+  const [revising, setRevising] = useState<{ reference: string; note: string | null } | null>(null);
 
   const submitToBackend = useServerFn(submitTrainingNeedRequest);
+  const resubmitToBackend = useServerFn(resubmitTrainingNeedRequest);
+  const loadRequest = useServerFn(getMyTrainingRequest);
+
+  // Revision mode: start from the draft the BARUNA team returned for revision.
+  useEffect(() => {
+    if (!reviseId || presentation) return;
+    let cancelled = false;
+    (async () => {
+      const { data: sess } = await supabase.auth.getSession();
+      if (!sess.session) {
+        // The request page (Revise & Resubmit) is the way back after signing in.
+        navigate({ to: "/auth", search: { redirect: `/academy/training-requests/${reviseId}` } });
+        return;
+      }
+      try {
+        const request = await loadRequest({ data: { id: reviseId } });
+        if (cancelled) return;
+        if (!request?.canRevise) {
+          setError("This training request is not waiting for a revision.");
+          return;
+        }
+        setDraft(request.form);
+        setRevising({ reference: request.reference, note: request.revisionNote });
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load the request to revise.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reviseId, presentation, loadRequest, navigate]);
 
   // Restore a draft saved before an auth redirect (once, on mount).
   useEffect(() => {
-    if (typeof window === "undefined" || presentation) return;
+    if (typeof window === "undefined" || presentation || reviseId) return;
     try {
       const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
       const s = sessionStorage.getItem(STEP_STORAGE_KEY);
@@ -181,7 +225,7 @@ function RequestTrainingPage() {
     } catch {
       /* ignore */
     }
-  }, [presentation]);
+  }, [presentation, reviseId]);
 
   const set = <K extends keyof TrainingRequestDraft>(key: K, value: TrainingRequestDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -283,9 +327,14 @@ function RequestTrainingPage() {
         return;
       }
 
+      // A revision that failed to load must never turn into a second, new request.
+      if (reviseId && !revising) {
+        setError("This training request is not waiting for a revision.");
+        return;
+      }
+
       // Backend is the source of truth — only mark submitted after it succeeds.
-      const result = await submitToBackend({
-        data: {
+      const payload: TrainingNeedRequestPayload = {
           requesterType: draft.requesterType,
           fullName: draft.fullName,
           position: draft.position,
@@ -331,12 +380,28 @@ function RequestTrainingPage() {
           supportRequested: draft.supportRequested,
           existingPartners: draft.existingPartners,
           remarks: draft.remarks,
-        },
-      });
+      };
 
-      // Mirror to local tracker so "My Training Requests" continues to work.
-      const created = createRequest(draft);
-      setSubmitted({ request: created, subjectId: result?.subjectId ?? null });
+      if (reviseId && revising) {
+        await resubmitToBackend({ data: { subjectId: reviseId, request: payload } });
+        navigate({ to: "/academy/training-requests/$id", params: { id: reviseId } });
+        return;
+      }
+
+      const result = await submitToBackend({ data: payload });
+      // "My Training Requests" reads the server; nothing is kept in the browser.
+      const now = new Date().toISOString();
+      setSubmitted({
+        request: {
+          ...draft,
+          id: result.subjectId,
+          reference: trainingRequestReference(result.subjectId, now),
+          status: "Submitted",
+          createdAt: now,
+          updatedAt: now,
+        },
+        subjectId: result.subjectId,
+      });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setError(
@@ -371,7 +436,7 @@ function RequestTrainingPage() {
             <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
               Thank you, {req.fullName}. BARUNA has received your request. It will proceed through
               Training Needs Analysis together with the requesting organization or partner network.
-              You will receive updates by email as the analysis progresses.
+              You can follow every step in My Training Requests and in your BARUNA notifications.
 
             </p>
 
@@ -408,7 +473,7 @@ function RequestTrainingPage() {
                   "BARUNA reviews your request through Training Needs Analysis and matches it against existing programs where possible.",
                   "If no suitable program exists, BARUNA may coordinate with partner institutions and experts to explore a new training.",
                   "Any schedule, participant, or cost arrangements will be discussed and mutually agreed before the training is confirmed.",
-                  "You will be notified by email at every stage of Training Needs Analysis.",
+                  "You will be notified in BARUNA at every stage of Training Needs Analysis.",
                 ].map((t) => (
 
                   <li key={t} className="flex items-start gap-2">
@@ -420,22 +485,13 @@ function RequestTrainingPage() {
             </div>
 
             <div className="mt-7 flex flex-wrap justify-center gap-3">
-              {submitted.subjectId ? (
-                <Link
-                  to="/my-submissions"
-                  className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy"
-                >
-                  View My Submission <ArrowRight className="h-4 w-4" />
-                </Link>
-              ) : (
-                <Link
-                  to="/academy/training-requests/$id"
-                  params={{ id: req.id }}
-                  className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy"
-                >
-                  Track My Request <ArrowRight className="h-4 w-4" />
-                </Link>
-              )}
+              <Link
+                to="/academy/training-requests/$id"
+                params={{ id: submitted.subjectId ?? req.id }}
+                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy"
+              >
+                Track My Request <ArrowRight className="h-4 w-4" />
+              </Link>
               <Link
                 to="/academy/training"
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-navy transition-colors hover:bg-muted"
@@ -482,6 +538,21 @@ function RequestTrainingPage() {
           </p>
         </div>
 
+
+        {revising && (
+          <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+            <p className="text-sm font-bold text-navy">Revising request {revising.reference}</p>
+            <p className="mt-1 text-sm text-foreground/80">
+              Update the request as asked below, then resubmit it from the Review step. It keeps its reference
+              number and status history.
+            </p>
+            {revising.note ? (
+              <p className="mt-2 whitespace-pre-line rounded-lg bg-card p-3 text-sm text-foreground/90">
+                {revising.note}
+              </p>
+            ) : null}
+          </div>
+        )}
 
         {restoredFromAuth && (
           <div className="mt-4 flex items-start gap-3 rounded-xl border border-eco-community/30 bg-eco-community/5 p-4">
@@ -1197,7 +1268,8 @@ function RequestTrainingPage() {
                 disabled={busy}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-marine-foreground transition-colors hover:bg-navy disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {busy ? "Submitting…" : "Submit Training Request"} <Check className="h-4 w-4" />
+                {busy ? "Submitting…" : revising ? "Resubmit Revised Request" : "Submit Training Request"}{" "}
+                <Check className="h-4 w-4" />
               </button>
             )}
           </div>

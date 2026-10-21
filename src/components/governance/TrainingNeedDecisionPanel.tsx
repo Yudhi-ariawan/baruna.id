@@ -12,6 +12,8 @@ const DECISION_ERRORS: Array<[RegExp, string]> = [
   [/reviewer_cannot_approve_same_subject/, "Anda meninjau pengajuan ini, jadi tidak boleh sekaligus memutuskannya."],
   [/self_approval_forbidden|self_decision_forbidden/, "Anda tidak dapat memutuskan pengajuan Anda sendiri."],
   [/rationale_required/, "Alasan keputusan wajib diisi."],
+  [/subject_not_open/, "Pengajuan ini sudah diputuskan atau ditarik pemohon."],
+  [/already_awaiting_revision/, "Pengajuan ini sudah dikembalikan dan masih menunggu revisi dari pemohon."],
   [/forbidden/, "Hanya Approver atau Administrator yang dapat memutuskan."],
 ];
 

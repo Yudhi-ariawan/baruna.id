@@ -4,7 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { ClipboardList, Info, UserCheck } from "lucide-react";
 import { listReviewSubjects } from "@/lib/governance/governance-ops.functions";
 import { listMyReviewQueue } from "@/lib/governance/governance.functions";
+import { listTrainingNeedStages } from "@/lib/governance/workflow-sla.functions";
 import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
+import { StageSlaLine } from "@/components/governance/WorkflowStatus";
 
 // Request a Training (Slide 12): the only submission kind that still uses the
 // generic review flow — admin/approver assign a reviewer, the reviewer gives a
@@ -45,6 +47,15 @@ function TrainingNeedsPage() {
     const subject = Array.isArray(row.review_subjects) ? row.review_subjects[0] : row.review_subjects;
     return subject?.kind === "training_need";
   });
+  // Stage and SLA per request (RLS: approver/admin see all, a reviewer only theirs).
+  const stagesFn = useServerFn(listTrainingNeedStages);
+  const stagesQ = useQuery({
+    queryKey: ["governance", "training-needs", "stages"],
+    queryFn: () => stagesFn(),
+    enabled: Boolean(access.data?.menus.trainingNeeds.read),
+    staleTime: 30_000,
+  });
+  const stages = stagesQ.data ?? {};
 
   return (
     <div className="space-y-6">
@@ -85,7 +96,12 @@ function TrainingNeedsPage() {
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-navy">{subject?.title ?? "(tanpa judul)"}</p>
                     <p className="text-xs text-muted-foreground">
-                      {STATUS_LABEL[subject?.current_status ?? ""] ?? subject?.current_status}
+                      {stages[row.subject_id] ? (
+                        <StageSlaLine stage={stages[row.subject_id]} />
+                      ) : (
+                        (STATUS_LABEL[subject?.current_status ?? ""] ?? subject?.current_status)
+                      )}
+                      {row.due_at ? ` · batas review ${new Date(row.due_at).toLocaleString("id-ID")}` : ""}
                       {row.conflict_of_interest_declared ? " · konflik kepentingan dinyatakan" : ""}
                     </p>
                   </div>
@@ -123,8 +139,14 @@ function TrainingNeedsPage() {
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-navy">{subject.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {STATUS_LABEL[subject.current_status] ?? subject.current_status} · diperbarui{" "}
-                      {new Date(subject.updated_at).toLocaleString("id-ID")}
+                      {stages[subject.id] ? (
+                        <StageSlaLine stage={stages[subject.id]} />
+                      ) : (
+                        <>
+                          {STATUS_LABEL[subject.current_status] ?? subject.current_status} · diperbarui{" "}
+                          {new Date(subject.updated_at).toLocaleString("id-ID")}
+                        </>
+                      )}
                     </p>
                   </div>
                   <Link

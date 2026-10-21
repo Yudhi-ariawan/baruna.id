@@ -1,14 +1,14 @@
 // ============================================================================
-// BARUNA — Training Demand Management store (client-side, localStorage)
+// BARUNA — Request a Training: wizard option lists + Presentation Mode store
 // ----------------------------------------------------------------------------
-// Powers the "Request a Training" workflow, the "My Training Requests" tracker,
-// and the per-request status timeline.
+// Real requests live in the database (review_subjects kind 'training_need');
+// "My Training Requests" reads them through
+// src/lib/training-requests/my-requests.functions.ts.
 //
-// Requests move through:
+// The localStorage store below is used ONLY in Presentation Mode, where the
+// wizard must never write to the backend. Its statuses:
 //   Submitted → Under Review → Needs Clarification → Approved → Scheduled →
 //   Completed → Closed
-//
-// No backend required — everything persists in the browser.
 // ============================================================================
 
 import { useEffect, useState } from "react";

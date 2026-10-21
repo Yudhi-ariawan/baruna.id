@@ -9,6 +9,7 @@ import {
   ListChecks,
   Settings,
   ShieldAlert,
+  Timer,
   UserCheck,
 } from "lucide-react";
 import {
@@ -69,6 +70,7 @@ function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
   ];
   const settings = [
     menus.trainingNeeds.decide && { label: "Template Review", to: "/governance/templates", icon: ListChecks },
+    menus.trainingNeeds.read && { label: "SLA Alur Kerja", to: "/governance/sla", icon: Timer },
     access.isAdmin && { label: "Portal Admin", to: "/admin", icon: Settings },
   ].filter(Boolean) as ConsoleNavGroup["items"];
   if (settings.length) groups.push({ group: "Pengaturan", items: settings });
