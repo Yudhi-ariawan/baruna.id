@@ -460,12 +460,38 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 ---
 
+## 2r. Kelulusan dicatat server, dashboard peserta, pemantauan Admin/Operator, ringkasan trainer (21 Okt)
+
+**Acuan:** PB-ACA-03/04/05 (Slide 22–24), Slide 15 (tidak ada data di luar sistem resmi), Slide 40.
+
+**Temuan (dicek di kode dan database intern-update):**
+- Kuis modul database dinilai server tetapi hasilnya tidak dicatat; browser menandai "selesai" dan `self_paced_sync` menerimanya. Kuis modul bawaan dinilai di browser dan kunci jawabannya ikut terkirim ke browser.
+- Keempat modul tayang **tidak punya kuis dari trainer**; "lulus" didapat dari kuis otomatis 5 soal yang jawabannya selalu pilihan pertama.
+- Dashboard peserta menghitung "sertifikat resmi" dan "pendaftaran" dari data browser (database: sertifikat 0).
+- Admin/Operator tidak punya halaman pemantauan (PB-ACA-04 "Monitor Progress Peserta"); trainer melihat "Completion Rate: Not available".
+
+**Keputusan pemilik proyek (21 Okt):** kelulusan hanya dari **kuis resmi** (kuis trainer, atau bank soal modul bawaan) yang dinilai server. Modul tanpa kuis tetap bisa dipelajari tetapi belum bisa lulus; trainer menambahkan kuis lewat revisi modul.
+
+**Perbaikan:**
+- Migrasi `20261021100000`: tabel `module_quiz_attempts`; `learning_record_quiz_attempt` (hanya service_role, satu transaksi, hanya peserta disetujui, batas percobaan, tidak bisa dicatat ulang setelah lulus); kolom `completion_source` (`server_quiz` / `legacy_browser`; baris selesai lama tidak dihapus, hanya ditandai); `self_paced_sync` tidak lagi menerima selesai/nilai/langkah kuis dari browser; baris yang sudah lulus tidak bisa dihapus peserta; `trainer_module_learning_summary()` (agregat, tanpa data pribadi).
+- Kuis modul database: kuis otomatis dihapus; hasil kuis trainer dicatat; kunci jawaban hanya dibuka setelah lulus.
+- Kuis modul bawaan: bank soal (200 soal + kunci) dipindah ke `src/data/quiz-banks.server.ts`; soal diambil dan dinilai lewat `module-quiz.functions.ts`. Diperiksa di hasil build: teks bank soal 0 kali di file browser, 1 di server. Full Training (mode uji) memakai penilaian server yang sama tetapi tidak dicatat sebagai kelulusan.
+- Dashboard peserta (`MyLearningOverview`): status pendaftaran, lanjutkan belajar (progres + status kuis), kelulusan tercatat, sertifikat dari tabel `certificates`; semua dari database milik peserta sendiri (RLS). Kontribusi Knowledge Hub dipindah ke bawah; kartu yang menghitung data browser dihapus.
+- Konsol Kurasi → **Pemantauan Progres** (`/governance/learning-progress`, peran sama dengan Persetujuan Peserta): ringkasan per kursus + daftar peserta (progres, kuis, status, aktivitas terakhir) dengan penanda tindak lanjut (belum mulai > 7 hari, tidak aktif > 14 hari, 3x kuis belum lulus, kuis resmi belum ada).
+- Portal Trainer → Analytics: Completion Rate dari data nyata + tabel per modul (menunggu, disetujui, mulai, lulus, rata-rata nilai terbaik). Average Rating tetap "Not available" (belum ada data rating).
+
+**Uji:** PGlite 32/32 (sinkron browser tidak bisa meluluskan; pencatatan lulus/gagal/batas/sudah lulus; validasi; izin; hapus; ringkasan trainer tanpa data pribadi, trainer ditangguhkan ditolak; migrasi bisa diulang). `tsc` dan `build` lulus. Uji langsung `npm run test:learning-progress` setelah migrasi dijalankan.
+
+**Masih terbuka:** template dan penerbitan sertifikat resmi (mentor); tabel kehadiran (PB-ACA-04, untuk Full Training); rating trainer; Full Training dan AZA tetap mode uji di browser.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (46 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (47 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -500,6 +526,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261021070000_auth_user_fk_set_null.sql` (catatan pelaku dikosongkan saat akun dihapus). Lihat Nomor 5.
 - `20261021080000_expert_role_flow_only.sql` (peran `expert` tidak bisa dicentang/dicabut manual; hanya lewat persetujuan pendaftaran dan arsip expert). Lihat bagian 2p.
 - `20261021090000_review_direct_write_lockdown.sql` (status pengajuan dan penugasan reviewer tidak bisa ditulis langsung dari browser; konflik kepentingan lewat RPC). Lihat bagian 2q. Butuh kode branch ini (tombol "nyatakan konflik" memakai RPC baru).
+- `20261021100000_learning_progress_server_record.sql` (kelulusan modul hanya dicatat server dari kuis resmi; percobaan kuis; ringkasan trainer). Lihat bagian 2r. Butuh kode branch ini; kode lama tetap jalan tetapi kelulusan dari browser tidak lagi tersimpan.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

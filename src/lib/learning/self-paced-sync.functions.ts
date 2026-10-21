@@ -8,6 +8,8 @@ export type SelfPacedEnrollmentPayload = {
   completed: boolean;
   completedAt?: number;
   score?: number;
+  /** 'server_quiz' = passed an official quiz graded on the server; 'legacy_browser' = old, unverified. */
+  completionSource?: "server_quiz" | "legacy_browser";
   source?: "self-paced" | "full-training-program";
   title?: string;
   hours?: number | string;
@@ -65,6 +67,7 @@ type SelfPacedRow = {
   source: string | null;
   completed: boolean;
   completed_at: string | null;
+  completion_source: string | null;
   completed_steps: SelfPacedEnrollmentPayload["completedSteps"] | null;
   enrolled_at: string | null;
 };
@@ -75,6 +78,10 @@ function rowToPayload(row: SelfPacedRow): SelfPacedEnrollmentPayload {
     enrolledAt: row.enrolled_at ? new Date(row.enrolled_at).getTime() : Date.now(),
     completed: Boolean(row.completed),
     completedAt: row.completed_at ? new Date(row.completed_at).getTime() : undefined,
+    completionSource:
+      row.completion_source === "server_quiz" || row.completion_source === "legacy_browser"
+        ? row.completion_source
+        : undefined,
     score: row.score === null || row.score === undefined ? undefined : Number(row.score),
     source: row.source === "full-training-program" ? "full-training-program" : "self-paced",
     title: row.title ?? undefined,
@@ -89,10 +96,15 @@ function rowToPayload(row: SelfPacedRow): SelfPacedEnrollmentPayload {
 function legacyMetadataCourses(meta: Record<string, unknown>): Record<string, SelfPacedEnrollmentPayload> {
   const stored = meta.self_paced_courses;
   if (!stored || typeof stored !== "object") return {};
+  // Enrolments only: a completion written by the browser into user_metadata is not
+  // evidence of a pass (migration 20261021100000).
   return Object.fromEntries(
-    Object.entries(stored as Record<string, SelfPacedEnrollmentPayload>).filter(
-      ([, course]) => course?.code && course.explicitlyEnrolled === true,
-    ),
+    Object.entries(stored as Record<string, SelfPacedEnrollmentPayload>)
+      .filter(([, course]) => course?.code && course.explicitlyEnrolled === true)
+      .map(([code, course]) => [
+        code,
+        { ...course, completed: false, completedAt: undefined, score: undefined, completionSource: undefined },
+      ]),
   );
 }
 
@@ -100,7 +112,7 @@ function legacyMetadataCourses(meta: Record<string, unknown>): Record<string, Se
 async function readMyCourses(client: any): Promise<Record<string, SelfPacedEnrollmentPayload>> {
   const { data, error } = await client
     .from("self_paced_enrollments")
-    .select("code,title,hours,instructor,category,score,source,completed,completed_at,completed_steps,enrolled_at")
+    .select("code,title,hours,instructor,category,score,source,completed,completed_at,completion_source,completed_steps,enrolled_at")
     .order("code")
     .limit(500);
   if (error) throw new Error(`Gagal memuat progres pelatihan mandiri: ${error.message}`);
@@ -132,8 +144,10 @@ export const getMySelfPacedCourses = createServerFn({ method: "GET" })
 
 /**
  * Saves local progress. Merging happens per row inside ONE database call
- * (public.self_paced_sync, migration 20261020040000) and never lowers progress,
- * so two devices syncing at the same time cannot overwrite each other.
+ * (public.self_paced_sync) and never lowers progress, so two devices syncing at
+ * the same time cannot overwrite each other. Since migration 20261021100000 it
+ * stores enrolments and the video/pdf/ppt steps only; a pass comes solely from a
+ * quiz graded and recorded on the server.
  */
 export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -165,11 +179,21 @@ export const syncMySelfPacedCourses = createServerFn({ method: "POST" })
     return readMyCourses(context.supabase);
   });
 
-/** Removes one self-paced enrolment (course reset). RLS allows deleting own rows only. */
+/** Removes one self-paced enrolment (course reset). RLS allows deleting own rows that are not passed. */
 export const deleteMySelfPacedCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input) => z.object({ code: z.string().min(1).max(120) }).parse(input))
   .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: kept, error: keptError } = await (context.supabase as any)
+      .from("self_paced_enrollments")
+      .select("code")
+      .eq("user_id", context.userId)
+      .eq("code", data.code)
+      .eq("completed", true)
+      .maybeSingle();
+    if (keptError) throw new Error(`Gagal mengatur ulang kursus: ${keptError.message}`);
+    if (kept) throw new Error("Kursus yang sudah lulus tidak dapat diatur ulang; catatan kelulusannya tetap tersimpan.");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (context.supabase as any)
       .from("self_paced_enrollments")

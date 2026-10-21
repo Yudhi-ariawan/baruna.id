@@ -5,7 +5,10 @@
 // yields a Credit that can bypass the same module inside a Full Training
 // Program. Credit is also awarded automatically when the participant passes
 // the module quiz inside the Full Training Program (Prior Learning Recognised).
-// All state is persisted in localStorage — no backend required.
+// This file keeps a per-account browser copy for responsiveness. The server
+// (self_paced_enrollments) is the source of truth: a pass exists only when an
+// official quiz was graded and recorded there (completionSource "server_quiz",
+// migration 20261021100000); the browser copy never decides it.
 // ============================================================================
 
 import { useEffect, useState } from "react";
@@ -34,6 +37,8 @@ export type ShortCourseEnrollment = {
   completedAt?: number;
   /** Score % on the module quiz at the moment of completion. */
   score?: number;
+  /** Set by the server only: "server_quiz" = verified pass, "legacy_browser" = old unverified record. */
+  completionSource?: "server_quiz" | "legacy_browser";
   /** How this credit was earned. */
   source?: "self-paced" | "full-training-program";
   /** Optional metadata for dynamic modules from module_registry */
@@ -55,6 +60,8 @@ type Store = Record<string, ShortCourseEnrollment>;
 
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let isSyncing = false;
+/** A sync requested while another runs (e.g. right after a quiz pass) runs again afterwards. */
+let resyncRequested = false;
 
 function readStore(): Store {
   if (typeof window === "undefined") return {};
@@ -94,11 +101,13 @@ function writeStore(store: Store) {
   triggerDebouncedCloudSync(store);
 }
 
+const SELF_REPORTED_STEPS = ["video", "pdf", "ppt"] as const;
+
 /**
  * Bidirectional cloud synchronization:
  * - Fetches remote courses from Supabase.
- * - Merges with local browser courses (keeping best score and completions).
- * - Pushes any newly found local courses to the cloud.
+ * - Completion, score and the quiz step always come from the server.
+ * - Enrolments and the video/pdf/ppt steps of this device are merged and pushed.
  * - Updates localStorage and notifies subscribers.
  */
 export async function syncWithCloud(): Promise<Store> {
@@ -106,7 +115,10 @@ export async function syncWithCloud(): Promise<Store> {
   const userId = getActiveUserId();
   if (!userId) return {};
 
-  if (isSyncing) return readStore();
+  if (isSyncing) {
+    resyncRequested = true;
+    return readStore();
+  }
   isSyncing = true;
 
   try {
@@ -119,34 +131,29 @@ export async function syncWithCloud(): Promise<Store> {
 
     for (const [code, localItem] of Object.entries(localStore)) {
       const remoteItem = merged[code];
+      const localSteps = localItem.completedSteps || {};
       if (!remoteItem) {
-        merged[code] = localItem;
+        // Not on the server yet: the enrolment is uploaded; a pass never is.
+        merged[code] = {
+          ...localItem,
+          completed: false,
+          completedAt: undefined,
+          score: undefined,
+          completionSource: undefined,
+          completedSteps: Object.fromEntries(SELF_REPORTED_STEPS.map((k) => [k, Boolean(localSteps[k])])),
+        };
         hasLocalChangesToUpload = true;
       } else {
-        const completed = Boolean(remoteItem.completed || localItem.completed);
-        const score = Math.max(remoteItem.score || 0, localItem.score || 0) || undefined;
-        const mergedSteps = {
-          ...(remoteItem.completedSteps || {}),
-          ...(localItem.completedSteps || {}),
-        };
-
-        const localHasHigherProgress =
-          (!remoteItem.completed && localItem.completed) ||
-          (localItem.score || 0) > (remoteItem.score || 0) ||
-          JSON.stringify(remoteItem.completedSteps) !== JSON.stringify(mergedSteps);
-
-        if (localHasHigherProgress) {
-          hasLocalChangesToUpload = true;
+        const remoteSteps = remoteItem.completedSteps || {};
+        const mergedSteps: NonNullable<ShortCourseEnrollment["completedSteps"]> = { ...remoteSteps };
+        for (const k of SELF_REPORTED_STEPS) {
+          if (localSteps[k] && !remoteSteps[k]) {
+            mergedSteps[k] = true;
+            hasLocalChangesToUpload = true;
+          }
         }
-
-        merged[code] = {
-          ...remoteItem,
-          ...localItem,
-          completed,
-          completedAt: completed ? (remoteItem.completedAt || localItem.completedAt || Date.now()) : undefined,
-          score,
-          completedSteps: mergedSteps,
-        };
+        // Server values win for everything that decides a pass.
+        merged[code] = { ...localItem, ...remoteItem, completedSteps: mergedSteps };
       }
     }
 
@@ -169,7 +176,16 @@ export async function syncWithCloud(): Promise<Store> {
     return readStore();
   } finally {
     isSyncing = false;
+    if (resyncRequested) {
+      resyncRequested = false;
+      void syncWithCloud();
+    }
   }
+}
+
+/** True only for a pass recorded by the server (an official quiz graded there). */
+export function isServerVerifiedPass(enrollment: ShortCourseEnrollment | undefined): boolean {
+  return Boolean(enrollment?.completed && enrollment.completionSource === "server_quiz");
 }
 
 // ── Prior-learning recognition ──────────────────────────────────────────────
@@ -284,6 +300,10 @@ export function completeShortCourse(
 
 export function resetShortCourse(code: string) {
   const store = readStore();
+  // A recorded pass is part of the learning record; the server refuses to delete it too.
+  if (isServerVerifiedPass(store[code])) {
+    throw new Error("Kursus yang sudah lulus tidak dapat diatur ulang.");
+  }
   delete store[code];
   writeStore(store);
   if (getActiveUserId()) {
@@ -293,17 +313,18 @@ export function resetShortCourse(code: string) {
   }
 }
 
-/** Keep dashboard and homepage progress calculations aligned. */
+/**
+ * Keep dashboard and homepage progress calculations aligned: video, pdf and ppt
+ * (marked by the participant) are 25% each; the last 25% is the quiz pass
+ * recorded by the server. An old unverified "completed" flag does not count.
+ */
 export function shortCourseProgress(enrollment: ShortCourseEnrollment): number {
-  if (enrollment.completed) return 100;
+  if (isServerVerifiedPass(enrollment)) return 100;
   const steps = enrollment.completedSteps;
   const completedSteps = steps
-    ? Number(Boolean(steps.video)) +
-      Number(Boolean(steps.pdf)) +
-      Number(Boolean(steps.ppt)) +
-      Number(Boolean(steps.quiz))
+    ? Number(Boolean(steps.video)) + Number(Boolean(steps.pdf)) + Number(Boolean(steps.ppt))
     : 0;
-  return completedSteps > 0 ? Math.round((completedSteps / 4) * 100) : 0;
+  return Math.round((completedSteps / 4) * 100);
 }
 
 /** Is this Master Module already earned as credit via a standalone Short Course
@@ -311,7 +332,7 @@ export function shortCourseProgress(enrollment: ShortCourseEnrollment): number {
 export function isModuleCredited(code: string): boolean {
   const master = masterByCode[code];
   if (!master) return false;
-  if (readStore()[code]?.completed) return true;
+  if (isServerVerifiedPass(readStore()[code])) return true;
   return lmsCompletedIds().has(master.lmsId);
 }
 
@@ -365,15 +386,13 @@ export function useShortCourses() {
     };
   }, []);
 
-  const isCompleted = (code: string) => {
-    if (store[code]?.completed) return true;
-    const m = masterByCode[code];
-    return m ? lmsIds.has(m.lmsId) : false;
-  };
+  // A pass is the server's record only; Full Training credit kept in this
+  // browser (testing-only program) is shown as prior learning, never as a pass.
+  const isCompleted = (code: string) => isServerVerifiedPass(store[code]);
 
   const priorLearning = (code: string) => {
     const m = masterByCode[code];
-    return !store[code]?.completed && !!m && lmsIds.has(m.lmsId);
+    return !isServerVerifiedPass(store[code]) && !!m && lmsIds.has(m.lmsId);
   };
 
   return {

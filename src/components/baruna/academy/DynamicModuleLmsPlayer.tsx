@@ -46,7 +46,7 @@ import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.funct
 import { useQuery } from "@tanstack/react-query";
 import {
   useShortCourses,
-  completeShortCourse,
+  syncWithCloud,
   updateShortCourseSteps,
 } from "@/lib/shortCourses";
 import { gradePublishedModuleQuiz, type PublishedModuleDetail, type QuizGradeResult } from "@/lib/learning/learning.functions";
@@ -127,87 +127,19 @@ type DynamicQuizQuestion = {
   id: number | string;
   question: string;
   options: string[];
-  /** Known locally only for the generated fallback quiz; custom quizzes are graded on the server. */
-  correctAnswer?: number;
-  explanation?: string;
 };
 
+/**
+ * The trainer's official quiz only (graded and recorded on the server). A module
+ * without one has no quiz here: passing is not possible until the trainer adds
+ * it (decision 21 Okt 2026, migration 20261021100000).
+ */
 function getDynamicModuleQuiz(module: PublishedModuleDetail): DynamicQuizQuestion[] {
-  if (module.quizQuestions && module.quizQuestions.length > 0) {
-    return module.quizQuestions.map((q, idx) => ({
-      id: q.id ?? idx + 1,
-      question: q.question,
-      options: Array.isArray(q.options) && q.options.length >= 2 ? q.options : ["Pilihan A", "Pilihan B"],
-    }));
-  }
-
-  const objectives =
-    module.learningObjectives.length > 0
-      ? module.learningObjectives
-      : ["Mastery of core concepts and standardized implementation"];
-
-  return [
-    {
-      id: 1,
-      question: `Based on the module "${module.title}", what is the primary objective of this material?`,
-      options: [
-        objectives[0] || "Understand the module’s fundamental principles and framework comprehensively",
-        "Menghafal teori tanpa melakukan implementasi lapangan",
-        "Ignore applicable standards and regulations",
-        "Delay evaluation and report preparation",
-      ],
-      correctAnswer: 0,
-      explanation: `The primary learning objective of this module is: ${objectives[0] || "Understand the module’s fundamental principles and framework comprehensively"}.`,
-    },
-    {
-      id: 2,
-      question: `Bidang kajian atau topik utama yang dibahas secara mendalam dalam modul ini adalah...`,
-      options: [
-        module.topic || "Capacity Development & Sustainable Governance",
-        "Pemberian subsidi tanpa evaluasi kinerja",
-        "Eksploitasi sumber daya tanpa batas kuota",
-        "Penutupan akses informasi bagi publik",
-      ],
-      correctAnswer: 0,
-      explanation: `This module specifically covers: ${module.topic || "Capacity Development & Sustainable Governance"}.`,
-    },
-    {
-      id: 3,
-      question: `Berapa batas nilai minimum (Passing Grade) yang ditetapkan untuk dinyatakan lulus pada modul ini?`,
-      options: [
-        `${module.passingScore}% (Standar Kelulusan Kurikulum BARUNA)`,
-        "40% (No passing requirement)",
-        "50% (Basic score)",
-        "100% (Harus sempurna tanpa salah)",
-      ],
-      correctAnswer: 0,
-      explanation: `The official passing score for the module "${module.title}" is ${module.passingScore}%.`,
-    },
-    {
-      id: 4,
-      question: `Which competency outcome is expected after participants complete the learning activities?`,
-      options: [
-        module.competencyOutcomes || "Participants can apply technical skills and address professional challenges in their field",
-        "Participants only read the material without understanding its application",
-        "Participants are not permitted to apply the material learned",
-        "Participants discontinue all capacity-development activities",
-      ],
-      correctAnswer: 0,
-      explanation: `Module competency outcome: ${module.competencyOutcomes || "Able to apply technical skills in their field"}.`,
-    },
-    {
-      id: 5,
-      question: `How can participants earn the official digital certificate after completing all materials?`,
-      options: [
-        "Complete the video lecture, read the module material, review the presentation slides, and pass the assessment quiz",
-        "Only open the main page without studying the material",
-        "Request a certificate without completing the assessment quiz",
-        "Menunggu proses manual selama 6 bulan",
-      ],
-      correctAnswer: 0,
-      explanation: "The certificate is automatically issued and verified after all learning activities and the passing requirement are completed.",
-    },
-  ];
+  return (module.quizQuestions ?? []).map((q, idx) => ({
+    id: q.id ?? idx + 1,
+    question: q.question,
+    options: Array.isArray(q.options) && q.options.length >= 2 ? q.options : ["Pilihan A", "Pilihan B"],
+  }));
 }
 
 function formatBytes(bytes: number): string {
@@ -361,13 +293,14 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
   // Quiz State
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(done);
-  const [quizScore, setQuizScore] = useState<number | null>(enrollment?.score ?? (done ? 100 : null));
-  // Trainer-authored quizzes are graded server-side; the answer keys arrive only with the result.
-  const serverGradedQuiz = Boolean(module.quizQuestions && module.quizQuestions.length > 0);
+  const [quizScore, setQuizScore] = useState<number | null>(done ? (enrollment?.score ?? null) : null);
+  // Only the trainer's official quiz exists; it is graded and recorded on the server,
+  // and the answer keys arrive only after a pass.
+  const hasOfficialQuiz = dynamicQuizQuestions.length > 0;
   const gradeQuizFn = useServerFn(gradePublishedModuleQuiz);
-  const [quizGrades, setQuizGrades] = useState<QuizGradeResult["results"] | null>(null);
+  const [quizGrades, setQuizGrades] = useState<QuizGradeResult["results"]>(null);
   const [quizGrading, setQuizGrading] = useState(false);
-  const correctAnswerAt = (idx: number) => quizGrades?.[idx]?.correctAnswer ?? dynamicQuizQuestions[idx]?.correctAnswer;
+  const correctAnswerAt = (idx: number) => quizGrades?.[idx]?.correctAnswer;
 
   // Keep state synced with enrollment changes
   useEffect(() => {
@@ -389,43 +322,39 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
   };
 
   const handleSubmitQuiz = async () => {
-    if (quizGrading) return;
-    let score: number;
-    if (serverGradedQuiz) {
-      setQuizGrading(true);
-      try {
-        const graded = await gradeQuizFn({
-          data: { moduleId: module.id, answers: dynamicQuizQuestions.map((_, idx) => quizAnswers[idx]) },
-        });
-        setQuizGrades(graded.results);
-        score = graded.score;
-      } catch (err) {
-        barunaToast(err instanceof Error ? err.message : "Gagal menilai kuis. Silakan coba lagi.");
-        return;
-      } finally {
-        setQuizGrading(false);
-      }
-    } else {
-      let correct = 0;
-      dynamicQuizQuestions.forEach((q, idx) => {
-        if (quizAnswers[idx] === q.correctAnswer) {
-          correct++;
-        }
+    if (quizGrading || !hasOfficialQuiz) return;
+    setQuizGrading(true);
+    let graded: QuizGradeResult;
+    try {
+      graded = await gradeQuizFn({
+        data: { moduleId: module.id, answers: dynamicQuizQuestions.map((_, idx) => quizAnswers[idx]) },
       });
-      score = Math.round((correct / dynamicQuizQuestions.length) * 100);
+    } catch (err) {
+      barunaToast(err instanceof Error ? err.message : "Gagal menilai kuis. Silakan coba lagi.");
+      return;
+    } finally {
+      setQuizGrading(false);
     }
 
-    setQuizScore(score);
+    setQuizGrades(graded.results);
+    setQuizScore(graded.score);
     setQuizSubmitted(true);
-    barunaToast(`Quiz score: ${score}%`);
 
-    if (score >= module.passingScore) {
-      completeShortCourse(module.id, score, "self-paced");
-      setCompletedSteps((prev) => ({ ...prev, quiz: true, video: true, pdf: true, ppt: true }));
-      barunaToast(`🎉 Congratulations! You passed with a score of ${score}% (Passing Grade: ${module.passingScore}%); your certificate is now available!`);
+    if (!graded.record.recorded) {
+      barunaToast(
+        graded.record.reason === "already_passed"
+          ? "Anda sudah lulus modul ini; hasil percobaan ini tidak mengubah catatan kelulusan."
+          : `Nilai: ${graded.score}%. Hasil tidak dicatat karena akun ini bukan peserta yang pendaftarannya disetujui (pratinjau).`,
+      );
+      return;
+    }
+    if (graded.passed) {
+      // The pass is recorded on the server; refresh the local copy from it.
+      await syncWithCloud();
+      barunaToast(`Selamat! Anda lulus dengan nilai ${graded.score}% (batas lulus ${graded.passingScore}%). Kelulusan tercatat di server.`);
       setActiveTab("certificate");
     } else {
-      barunaToast(`Your score is ${score}%. below the passing score of ${module.passingScore}%. Please try again.`);
+      barunaToast(`Nilai Anda ${graded.score}%, di bawah batas lulus ${graded.passingScore}%. Silakan pelajari materi lalu coba lagi.`);
     }
   };
 
@@ -682,7 +611,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                 <Award className="h-4 w-4" /> Module Completed
               </p>
               <p className="mt-1 text-success/80">
-                Passing score: <strong>{quizScore ?? 100}%</strong>. Official certificate has been issued.
+                Nilai kuis resmi: <strong>{enrollment?.score ?? quizScore ?? "-"}%</strong>. Kelulusan tercatat di server BARUNA.
               </p>
               <button
                 onClick={handleDownloadCertificate}
@@ -1467,6 +1396,16 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                 )}
               </div>
 
+              {!hasOfficialQuiz && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+                  <p className="font-bold">Kuis resmi belum tersedia</p>
+                  <p className="mt-1 text-xs leading-relaxed">
+                    Trainer modul ini belum menambahkan kuis penilaian. Materi tetap bisa Anda pelajari, tetapi kelulusan
+                    dan sertifikat baru bisa dicatat setelah kuis resmi tersedia.
+                  </p>
+                </div>
+              )}
+
               {/* Questions List */}
               <div className="space-y-6">
                 {dynamicQuizQuestions.map((q, qIndex) => {
@@ -1520,7 +1459,6 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                             <div className="mt-3 rounded-lg bg-muted/40 p-2.5 text-[11px] text-muted-foreground">
                               <strong>Penjelasan:</strong>{" "}
                               {quizGrades?.[qIndex]?.explanation ||
-                                q.explanation ||
                                 `Pilihan ${String.fromCharCode(65 + correctAnswer)} adalah jawaban yang tepat untuk pertanyaan ini.`}
                             </div>
                           )}
@@ -1541,13 +1479,13 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
 
                 {!quizSubmitted ? (
                   <button
-                    disabled={quizGrading || Object.keys(quizAnswers).length < dynamicQuizQuestions.length}
+                    disabled={!hasOfficialQuiz || quizGrading || Object.keys(quizAnswers).length < dynamicQuizQuestions.length}
                     onClick={handleSubmitQuiz}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-marine px-6 py-2.5 text-xs font-bold text-white hover:bg-marine/90 disabled:opacity-50 disabled:pointer-events-none transition shadow-xs"
                   >
                     {quizGrading ? "Menilai jawaban…" : "Submit Quiz Answers"} <CheckCircle2 className="h-4 w-4" />
                   </button>
-                ) : quizScore !== null && quizScore >= passingScore ? (
+                ) : done ? (
                   <button
                     onClick={() => setActiveTab("certificate")}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-amber-700 transition shadow-xs"

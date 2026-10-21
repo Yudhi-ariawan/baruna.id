@@ -1,6 +1,6 @@
 import { Lock, CheckCircle2, ChevronDown, Award, Clock, Target, ExternalLink } from "lucide-react";
 import type { LmsModule, ResourceKind } from "@/data/lms";
-import { hasQuizBank, getQuizBank, QUIZ_PASS_PERCENT } from "@/data/quizzes";
+import { hasQuizBank, getAssessmentConfig, QUIZ_PASS_PERCENT } from "@/data/quizzes";
 import { isModuleComplete, type ModuleProgress, type QuizRecord } from "@/lib/application";
 import { RESOURCE_ORDER, resourceMeta } from "./shared";
 
@@ -96,10 +96,9 @@ export function ModuleCard({
               const hasFile = !!res.url;
 
               if (kind === "quiz") {
-                const bank = getQuizBank(m.id);
                 const attempts = quizRecord.attempts.length;
-                const meta = bank
-                  ? `${Math.min(bank.questions.length, 10)} questions · pass mark ${QUIZ_PASS_PERCENT}%${
+                const meta = moduleHasQuiz
+                  ? `${getAssessmentConfig(m.id).count} questions · pass mark ${QUIZ_PASS_PERCENT}%${
                       attempts ? ` · best ${quizRecord.bestScore}%` : ""
                     }`
                   : `${res.meta} · uploading soon`;
@@ -128,7 +127,7 @@ export function ModuleCard({
                             : "border-marine bg-marine text-marine-foreground hover:bg-marine/90"
                         }`}
                       >
-                        {!bank ? "View quiz" : quizRecord.passed ? "Review quiz" : attempts > 0 ? "Continue quiz" : "Take quiz"}
+                        {!moduleHasQuiz ? "View quiz" : quizRecord.passed ? "Review quiz" : attempts > 0 ? "Continue quiz" : "Take quiz"}
                       </button>
                     </div>
                   </div>

@@ -6,7 +6,7 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 ## Yang menunggu arahan
 
 1. **Template dan isi sertifikat**: penandatangan, format nomor, JP, dan jenis sertifikat.
-2. **Syarat lulus pelatihan.**
+2. **Syarat lulus pelatihan.** Sebagian DIPUTUSKAN pemilik proyek (21 Okt): kelulusan **modul** hanya dari kuis resmi (kuis trainer atau bank soal modul bawaan) yang dinilai dan dicatat server, dengan nilai batas dari modul; modul tanpa kuis resmi belum bisa lulus (CATATAN_PERBAIKAN 2r). Yang masih menunggu: syarat lulus **program/pelatihan** (pre/post-test, ujian akhir, kehadiran) dan apakah kuis wajib saat trainer mengajukan modul.
 3. ~~**Role participant**~~ **DIPUTUSKAN pemilik proyek (21 Okt): tetap otomatis** saat biodata disimpan, agar admin tidak perlu menyetujui satu per satu saat pendaftar banyak. Akses materi tetap lewat persetujuan admin per kursus; peran yang dicabut admin tidak diberikan lagi. Berbeda dari teks PB-ACA-03 (peran diberikan saat admin menyetujui); mohon mentor mengonfirmasi.
 4. **Expert yang disetujui**: otomatis jadi trainer atau tidak.
 5. **Publisher** terpisah dari **approver** atau tidak.

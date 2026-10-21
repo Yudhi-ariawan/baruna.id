@@ -39,7 +39,7 @@ function ContinueCard({
 }) {
   const { t } = useLanguage();
   const progress = shortCourseProgress(enrollment);
-  const isCompleted = enrollment.completed || progress >= 100;
+  const isCompleted = progress >= 100;
   const title = enrollment.title || module?.title || `BARUNA Learning Module`;
   const cover = module?.coverUrl || defaultCover;
 
@@ -216,7 +216,7 @@ export function LearningSections({ publishedModules }: { publishedModules: Publi
     })
     .sort(newestFirst);
   const completed = enrollments
-    .filter((enrollment) => enrollment.completed || shortCourseProgress(enrollment) >= 100)
+    .filter((enrollment) => shortCourseProgress(enrollment) >= 100)
     .sort(newestFirst);
   const notStarted = enrollments
     .filter((enrollment) => shortCourseProgress(enrollment) === 0)

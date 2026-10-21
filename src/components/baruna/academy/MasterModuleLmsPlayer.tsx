@@ -45,7 +45,7 @@ import {
 } from "@/lib/application";
 import {
   useShortCourses,
-  completeShortCourse,
+  syncWithCloud,
 } from "@/lib/shortCourses";
 
 const RESOURCE_ICONS: Record<ResourceKind, typeof PlayCircle> = {
@@ -87,12 +87,6 @@ export function MasterModuleLmsPlayer({
   const isWorkspaceComplete = app && lmsModule
     ? isModuleCompleteInApp(app, lmsModule.id)
     : done;
-
-  useEffect(() => {
-    if (quizRec?.passed && enrollment && !enrollment.completed) {
-      completeShortCourse(master.code, quizRec.bestScore, "self-paced");
-    }
-  }, [quizRec?.passed, quizRec?.bestScore, master.code, enrollment]);
 
   const toggleResource = (kind: ResourceKind) => {
     if (!app || !lmsModule) return;
@@ -333,7 +327,7 @@ export function MasterModuleLmsPlayer({
                       <div className="flex items-start gap-3">
                         <span
                           className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${
-                            quizRec?.passed
+                            done
                               ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
                               : "bg-muted text-muted-foreground"
                           }`}
@@ -346,7 +340,7 @@ export function MasterModuleLmsPlayer({
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
-                        {quizRec?.passed && (
+                        {done && (
                           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[0.65rem] font-bold uppercase text-emerald-700">
                             <CheckCircle2 className="h-3 w-3" /> Lulus
                           </span>
@@ -435,6 +429,11 @@ export function MasterModuleLmsPlayer({
         <ModuleQuiz
           app={app}
           module={lmsModule}
+          masterCode={master.code}
+          onGraded={(grade) => {
+            // The pass (if any) is recorded by the server; refresh the local copy from it.
+            if (grade.record?.recorded && grade.passed) void syncWithCloud();
+          }}
           onClose={() => setQuizOpen(false)}
         />
       )}

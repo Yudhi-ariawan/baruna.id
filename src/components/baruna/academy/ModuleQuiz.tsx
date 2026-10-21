@@ -11,38 +11,44 @@ import {
   Lock,
   Clock,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import {
-  buildAttempt,
-  getQuizBank,
+  hasQuizBank,
   getAssessmentConfig,
   type AssessmentConfig,
   type RunQuestion,
 } from "@/data/quizzes";
 import { getQuizRecord, recordQuizAttempt, type Application } from "@/lib/application";
 import type { LmsModule } from "@/data/lms";
+import { gradeModuleQuiz, startModuleQuiz, type ModuleQuizGrade } from "@/lib/learning/module-quiz.functions";
 
-type Phase = "intro" | "taking" | "result";
+type Phase = "intro" | "loading" | "taking" | "grading" | "result";
 
 /**
  * Full-screen, mobile-responsive quiz engine used for module quizzes and the
- * standalone Pre-Test, Post-Test and Final Examination. Randomizes questions and
- * answers, supports per-assessment question count / attempts / pass mark / time
- * limit, scores immediately, reviews each question and saves results to the
- * learner record.
+ * standalone Pre-Test, Post-Test and Final Examination. Questions come from the
+ * server without answers and are graded there (module-quiz.functions.ts), so the
+ * answer keys never reach the browser. Inside a self-paced Master module
+ * (`masterCode`) the server also records the attempt and any pass; elsewhere
+ * (Full Training, testing only) the result is kept in this browser as before.
  */
 export function ModuleQuiz({
   app,
   module: m,
   onClose,
   config: configOverride,
+  masterCode,
+  onGraded,
 }: {
   app: Application;
   module: LmsModule;
   onClose: () => void;
   config?: AssessmentConfig;
+  masterCode?: string;
+  onGraded?: (grade: ModuleQuizGrade) => void;
 }) {
   const config = configOverride ?? getAssessmentConfig(m.id);
-  const bank = getQuizBank(m.id);
+  const bankAvailable = hasQuizBank(m.id);
   const record = getQuizRecord(app, m.id);
   const attemptsUsed = record.attempts.length;
   const attemptsLeft = Math.max(0, config.maxAttempts - attemptsUsed);
@@ -50,39 +56,56 @@ export function ModuleQuiz({
   const exhausted = attemptsLeft === 0 && !record.passed;
   const finished = record.passed || completedOnce;
 
+  const startFn = useServerFn(startModuleQuiz);
+  const gradeFn = useServerFn(gradeModuleQuiz);
   const [phase, setPhase] = useState<Phase>("intro");
   const [questions, setQuestions] = useState<RunQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-  const [result, setResult] = useState<{ correct: number; total: number; score: number; passed: boolean } | null>(null);
+  const [result, setResult] = useState<ModuleQuizGrade | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const headerLabel = config.label ?? (m.id === "postTest" ? "Post-Test" : `Module ${m.no} Quiz`);
-  const count = bank ? Math.min(bank.questions.length, config.count) : config.count;
+  const count = config.count;
 
-  const start = () => {
-    if (!bank || exhausted || finished) return;
-    setQuestions(buildAttempt(bank, config.count));
-    setAnswers({});
-    setResult(null);
-    setSecondsLeft(config.timeLimitMin ? config.timeLimitMin * 60 : null);
-    setPhase("taking");
+  const start = async () => {
+    if (!bankAvailable || exhausted || finished || phase === "loading") return;
+    setError(null);
+    setPhase("loading");
+    try {
+      const { questions: served } = await startFn({ data: { bankId: m.id } });
+      setQuestions(served);
+      setAnswers({});
+      setResult(null);
+      setSecondsLeft(config.timeLimitMin ? config.timeLimitMin * 60 : null);
+      setPhase("taking");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kuis gagal dimuat. Coba lagi.");
+      setPhase("intro");
+    }
   };
 
   const answered = useMemo(() => Object.keys(answers).length, [answers]);
   const allAnswered = questions.length > 0 && answered === questions.length;
 
-  const submit = (auto = false) => {
-    let correct = 0;
-    for (const q of questions) if (answers[q.id] === q.correctIndex) correct++;
-    const total = questions.length;
-    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const passed = config.noPassMark ? true : score >= config.passPercent;
-    recordQuizAttempt(app.id, m.id, correct, total, config.passPercent);
-    setResult({ correct, total, score, passed });
+  const submit = async (auto = false) => {
+    if (phase !== "taking") return;
+    setPhase("grading");
     setSecondsLeft(null);
-    setPhase("result");
-    if (auto) {
-      /* time ran out — result is shown automatically */
+    // Unanswered questions (time ran out) are sent as null and count as wrong.
+    const payload = Object.fromEntries(
+      questions.map((q) => [q.id, answers[q.id] === undefined ? null : q.choices[answers[q.id]]]),
+    );
+    try {
+      const grade = await gradeFn({ data: { bankId: m.id, answers: payload, masterCode } });
+      recordQuizAttempt(app.id, m.id, grade.correct, grade.total, grade.passMark || config.passPercent);
+      setResult(grade);
+      setPhase("result");
+      onGraded?.(grade);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kuis gagal dinilai. Coba lagi.");
+      // A timed attempt cannot be resumed; any other attempt can be resubmitted.
+      setPhase(auto ? "intro" : "taking");
     }
   };
 
@@ -130,7 +153,12 @@ export function ModuleQuiz({
         </div>
 
         <div className="p-5">
-          {!bank ? (
+          {error && (
+            <p className="mb-4 flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs font-medium text-destructive">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
+            </p>
+          )}
+          {!bankAvailable ? (
             <IntroEmpty />
           ) : phase === "intro" ? (
             <Intro
@@ -144,6 +172,10 @@ export function ModuleQuiz({
               onStart={start}
               onClose={onClose}
             />
+          ) : phase === "loading" || phase === "grading" ? (
+            <p className="py-10 text-center text-sm font-medium text-muted-foreground">
+              {phase === "loading" ? "Menyiapkan soal…" : "Menilai jawaban di server…"}
+            </p>
           ) : phase === "taking" ? (
             <Taking
               questions={questions}
@@ -160,7 +192,9 @@ export function ModuleQuiz({
                 result={result}
                 questions={questions}
                 answers={answers}
-                attemptsLeft={Math.max(0, config.maxAttempts - (attemptsUsed + 1))}
+                attemptsLeft={
+                  result.record?.attemptsLeft ?? Math.max(0, config.maxAttempts - (attemptsUsed + 1))
+                }
                 onRetry={start}
                 onClose={onClose}
               />
@@ -219,7 +253,7 @@ function Intro({
   exhausted: boolean;
   finished: boolean;
   count: number;
-  onStart: () => void;
+  onStart: () => void | Promise<void>;
   onClose: () => void;
 }) {
   return (
@@ -309,7 +343,7 @@ function Taking({
               <span className="text-marine">{qi + 1}.</span> {q.prompt}
             </p>
             <div className="mt-3 grid gap-2">
-              {q.choices.map((c, ci) => {
+              {q.choices.map((choice, ci) => {
                 const selected = answers[q.id] === ci;
                 return (
                   <button
@@ -328,7 +362,7 @@ function Taking({
                     >
                       {letters[ci]}
                     </span>
-                    <span>{c.text}</span>
+                    <span>{choice}</span>
                   </button>
                 );
               })}
@@ -365,13 +399,14 @@ function Result({
   onClose,
 }: {
   config: AssessmentConfig;
-  result: { correct: number; total: number; score: number; passed: boolean };
+  result: ModuleQuizGrade;
   questions: RunQuestion[];
   answers: Record<string, number>;
   attemptsLeft: number;
-  onRetry: () => void;
+  onRetry: () => void | Promise<void>;
   onClose: () => void;
 }) {
+  const keys = result.correctChoices;
   const letters = ["A", "B", "C", "D", "E", "F"];
   const noPass = config.noPassMark;
   const good = noPass ? true : result.passed;
@@ -409,12 +444,24 @@ function Result({
         )}
       </div>
 
+      {result.record && !result.record.recorded && result.record.reason === "not_enrolled" && (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          Hasil ini tidak dicatat karena akun Anda belum memiliki pendaftaran yang disetujui untuk modul ini.
+        </p>
+      )}
+
+      {!keys ? (
+        <p className="rounded-lg border border-border bg-background p-3 text-xs text-muted-foreground">
+          Kunci jawaban ditampilkan setelah Anda lulus atau kesempatan mengerjakan habis.
+        </p>
+      ) : (
       <div>
         <p className="mb-2 text-xs font-bold uppercase tracking-wide text-foreground/70">Review answers</p>
         <ol className="space-y-3">
           {questions.map((q, qi) => {
             const picked = answers[q.id];
-            const correct = picked === q.correctIndex;
+            const correctIndex = q.choices.indexOf(keys[q.id]);
+            const correct = picked === correctIndex;
             return (
               <li key={q.id} className="rounded-xl border border-border bg-background p-4">
                 <p className="flex items-start gap-2 text-sm font-semibold text-navy">
@@ -426,8 +473,8 @@ function Result({
                   <span>{qi + 1}. {q.prompt}</span>
                 </p>
                 <div className="mt-2 grid gap-1.5">
-                  {q.choices.map((c, ci) => {
-                    const isCorrect = ci === q.correctIndex;
+                  {q.choices.map((choice, ci) => {
+                    const isCorrect = ci === correctIndex;
                     const isPicked = ci === picked;
                     return (
                       <div
@@ -441,7 +488,7 @@ function Result({
                         }`}
                       >
                         <span className="text-xs font-bold text-muted-foreground">{letters[ci]}</span>
-                        <span className="flex-1">{c.text}</span>
+                        <span className="flex-1">{choice}</span>
                         {isCorrect && <span className="text-[0.65rem] font-bold uppercase text-badge-training">Correct</span>}
                         {isPicked && !isCorrect && (
                           <span className="text-[0.65rem] font-bold uppercase text-destructive">Your answer</span>
@@ -455,6 +502,7 @@ function Result({
           })}
         </ol>
       </div>
+      )}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <button

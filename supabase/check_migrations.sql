@@ -167,7 +167,14 @@ WITH checks(no, migration, ok) AS (
       AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public'
                         AND tablename IN ('review_subjects', 'review_assignments') AND cmd <> 'SELECT')
       AND NOT has_table_privilege('authenticated', 'public.review_subjects', 'UPDATE')
-      AND NOT has_table_privilege('authenticated', 'public.review_assignments', 'INSERT'))
+      AND NOT has_table_privilege('authenticated', 'public.review_assignments', 'INSERT')),
+  (47, '20261021100000_learning_progress_server_record',
+      to_regclass('public.module_quiz_attempts') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'learning_record_quiz_attempt')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_module_learning_summary')
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+                    AND table_name = 'self_paced_enrollments' AND column_name = 'completion_source')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'self_paced_sync' AND prosrc NOT LIKE '%v_score%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

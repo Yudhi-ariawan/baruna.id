@@ -519,13 +519,17 @@ export type QuizGradeResult = {
   score: number;
   passed: boolean;
   passingScore: number;
-  results: Array<{ correct: boolean; correctAnswer: number; explanation: string | null }>;
+  /** Per-question keys: only after a pass (a failed attempt must not hand out the answers). */
+  results: Array<{ correct: boolean; correctAnswer: number; explanation: string | null }> | null;
+  /** The server learning record of this attempt (migration 20261021100000). */
+  record: import("./quiz-record.server").QuizRecordResult;
 };
 
 /**
- * Grades a published module quiz on the server. Answer keys live in
- * module_quiz_answer_keys (service role only), so they are revealed per question
- * only after the participant has submitted a full set of answers.
+ * Grades a published module quiz on the server and records the attempt; a pass
+ * here is the only way the module becomes "passed" (decision 21 Okt 2026: only
+ * the trainer's official quiz counts). Answer keys live in module_quiz_answer_keys
+ * (service role only) and are revealed only after a pass.
  */
 export const gradePublishedModuleQuiz = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -544,7 +548,7 @@ export const gradePublishedModuleQuiz = createServerFn({ method: "POST" })
     const { parseQuizQuestions, publishedQuizSource } = await import("./published-module.server");
     const { data: mod, error: modErr } = await supabaseAdmin
       .from("module_registry")
-      .select("id, current_status, visibility, metadata, assessment_approach")
+      .select("id, title, estimated_learning_hours, current_status, visibility, metadata, assessment_approach")
       .eq("id", data.moduleId)
       .maybeSingle();
     if (modErr) throw new Error(`Gagal memuat modul: ${modErr.message}`);
@@ -553,7 +557,7 @@ export const gradePublishedModuleQuiz = createServerFn({ method: "POST" })
     }
 
     const questions = parseQuizQuestions(publishedQuizSource(mod as unknown as Record<string, unknown>));
-    if (!questions?.length) throw new Error("Modul ini tidak memiliki kuis.");
+    if (!questions?.length) throw new Error("Modul ini belum memiliki kuis resmi dari trainer.");
     if (data.answers.length !== questions.length) {
       throw new Error("Jawab semua pertanyaan kuis sebelum mengirim.");
     }
@@ -584,9 +588,25 @@ export const gradePublishedModuleQuiz = createServerFn({ method: "POST" })
     });
 
     const assessment = (mod.assessment_approach as Record<string, unknown>) ?? {};
-    const passingScore = Number(assessment.passing_score ?? 70);
-    const score = Math.round((results.filter((r) => r.correct).length / results.length) * 100);
-    return { score, passed: score >= passingScore, passingScore, results };
+    const rawPassing = Number(assessment.passing_score ?? 70);
+    const passingScore = Number.isFinite(rawPassing) ? Math.min(100, Math.max(0, Math.round(rawPassing))) : 70;
+    const correctCount = results.filter((r) => r.correct).length;
+    const score = Math.round((correctCount / results.length) * 100);
+    const passed = score >= passingScore;
+
+    const { recordServerQuizAttempt } = await import("./quiz-record.server");
+    const record = await recordServerQuizAttempt(supabaseAdmin, {
+      userId: context.userId,
+      code: data.moduleId,
+      kind: "published",
+      correct: correctCount,
+      total: results.length,
+      passMark: passingScore,
+      maxAttempts: null,
+      title: (mod as { title?: string | null }).title ?? null,
+      hours: (mod as { estimated_learning_hours?: number | null }).estimated_learning_hours ?? null,
+    });
+    return { score, passed, passingScore, results: passed ? results : null, record };
   });
 
 /**

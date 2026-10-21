@@ -5,6 +5,7 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
+  LineChart,
   ListChecks,
   Settings,
   ShieldAlert,
@@ -58,6 +59,7 @@ function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
     menus.modules.read && { label: "Verifikasi Modul", to: "/governance/modules", icon: BookOpen },
     menus.publications.read && { label: "Verifikasi Publikasi", to: "/governance/publications", icon: FileText },
     menus.enrollments.read && { label: "Persetujuan Peserta", to: "/governance/enrollments", icon: GraduationCap },
+    menus.enrollments.read && { label: "Pemantauan Progres", to: "/governance/learning-progress", icon: LineChart },
     menus.trainingNeeds.read && { label: "Permintaan Pelatihan", to: "/governance/training-needs", icon: ClipboardList },
   ].filter(Boolean) as ConsoleNavGroup["items"];
 
