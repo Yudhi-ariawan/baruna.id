@@ -284,25 +284,28 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<HomeViewer> => {
     const { supabaseAdmin: admin } = await import("@/integrations/supabase/client.server");
     const now = new Date().toISOString();
-    const [{ data: identity, error: identityError }, { data: profile, error: profileError }] =
-      await Promise.all([
-        admin.auth.admin.getUserById(context.userId),
-        admin
-          .from("profiles")
-          .select("display_name, avatar_url, phone, job_title, organization")
-          .eq("id", context.userId)
-          .single(),
-      ]);
+    // Independent reads in one round trip (each trip to the database costs ~0.2-0.5 s).
+    const [
+      { data: identity, error: identityError },
+      { data: profile, error: profileError },
+      { data: assignments, error: assignmentError },
+    ] = await Promise.all([
+      admin.auth.admin.getUserById(context.userId),
+      admin
+        .from("profiles")
+        .select("display_name, avatar_url, phone, job_title, organization")
+        .eq("id", context.userId)
+        .single(),
+      admin
+        .from("rbac_user_roles")
+        .select("rbac_roles(code)")
+        .eq("user_id", context.userId)
+        .eq("status", "active")
+        .lte("valid_from", now)
+        .or(`valid_until.is.null,valid_until.gt.${now}`),
+    ]);
     if (identityError || !identity.user) throw new Error("user_identity_not_found");
     if (profileError || !profile) throw new Error("profile_not_found");
-
-    const { data: assignments, error: assignmentError } = await admin
-      .from("rbac_user_roles")
-      .select("rbac_roles(code)")
-      .eq("user_id", context.userId)
-      .eq("status", "active")
-      .lte("valid_from", now)
-      .or(`valid_until.is.null,valid_until.gt.${now}`);
     if (assignmentError) throw new Error(assignmentError.message);
 
     const roleCodes = (assignments ?? [])
@@ -311,8 +314,15 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
     // Roles come from RBAC only: user_metadata is editable by the user (and the
     // participant role is granted in rbac_user_roles by participant_biodata_save).
     const roleCode = highestPriorityRole(roleCodes);
-    let roleLabel = ROLE_LABELS[roleCode] ?? roleCode.replaceAll("_", " ");
-    if (roleCode === "expert") {
+    const variant = ["super_admin", "admin"].includes(roleCode)
+      ? "admin"
+      : roleCode === "participant"
+        ? "participant"
+        : "registered";
+
+    // The trainer label and the metrics do not depend on each other: fetched together.
+    const trainerLabel = async (): Promise<string | null> => {
+      if (roleCode !== "expert") return null;
       const { data: expert } = await admin
         .from("experts")
         .select("id")
@@ -320,31 +330,28 @@ export const getAuthenticatedHomeContext = createServerFn({ method: "GET" })
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (expert) {
-        // Versioned history: only the newest effective version decides (same as trainer_portal_bootstrap).
-        const { data: latest } = await admin
-          .from("expert_trainer_status")
-          .select("trainer_status")
-          .eq("expert_id", expert.id)
-          .lte("effective_from", now)
-          .or(`expires_at.is.null,expires_at.gt.${now}`)
-          .order("version", { ascending: false })
-          .order("granted_at", { ascending: false })
-          .limit(1);
-        if (latest?.[0]?.trainer_status === "active") roleLabel = "BARUNA Trainer";
-      }
-    }
-    const variant = ["super_admin", "admin"].includes(roleCode)
-      ? "admin"
-      : roleCode === "participant"
-        ? "participant"
-        : "registered";
-    const metrics =
+      if (!expert) return null;
+      // Versioned history: only the newest effective version decides (same as trainer_portal_bootstrap).
+      const { data: latest } = await admin
+        .from("expert_trainer_status")
+        .select("trainer_status")
+        .eq("expert_id", expert.id)
+        .lte("effective_from", now)
+        .or(`expires_at.is.null,expires_at.gt.${now}`)
+        .order("version", { ascending: false })
+        .order("granted_at", { ascending: false })
+        .limit(1);
+      return latest?.[0]?.trainer_status === "active" ? "BARUNA Trainer" : null;
+    };
+    const [trainer, metrics] = await Promise.all([
+      trainerLabel(),
       variant === "admin"
-        ? await adminMetrics(admin)
+        ? adminMetrics(admin)
         : variant === "participant"
-          ? await participantMetrics(admin, context.userId)
-          : await registeredMetrics(admin, context.userId, profile);
+          ? participantMetrics(admin, context.userId)
+          : registeredMetrics(admin, context.userId, profile),
+    ]);
+    const roleLabel = trainer ?? ROLE_LABELS[roleCode] ?? roleCode.replaceAll("_", " ");
     const displayName =
       profile.display_name?.trim() ||
       ((identity?.user?.user_metadata?.full_name as string | undefined) || "")?.trim() ||
