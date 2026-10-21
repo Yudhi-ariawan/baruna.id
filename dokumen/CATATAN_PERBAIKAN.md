@@ -291,7 +291,13 @@ Catatan rencana semula:
 - `review_records` punya GRANT INSERT ke `anon` (saat ini diblok pemicu `assignment_not_found`). Cabut INSERT/UPDATE/DELETE dari `anon`.
 - Opsional (pengerasan): kategori 3 audit -> hampir semua tabel memberi INSERT/UPDATE/DELETE ke `anon` (bawaan Supabase). Tidak bisa dipakai selama RLS aktif (terbukti), tetapi bisa dicabut massal untuk tabel yang memang tidak pernah ditulis pengunjung. Uji ulang semua alur publik setelahnya.
 
-### Nomor 7 (rendah): pengajuan Knowledge Hub tanpa validasi di database
+### Nomor 7: SELESAI (21 Okt, laptop) - aturan pengajuan Knowledge Hub di database (migrasi `20261021050000`)
+- Temuan saat dikerjakan (lebih serius dari perkiraan): server function pun TIDAK memeriksa lokasi berkas. `file.storagePath`/`coverFile.storagePath` diambil apa adanya dari browser, sehingga pengaju bisa menunjuk berkas pengguna lain di bucket privat `knowledge-resource-submissions`; bila disetujui, sampulnya disalin ke bucket publik dan berkasnya bisa diunduh dari katalog.
+- Perbaikan: `public._kr_payload_problem` dipanggil `submit_draft_for_review` untuk jenis `knowledge_resource` (berlaku untuk `kr_draft_submit` dan `/my-submissions`): judul wajib maks 300; jenis valid dan bukan `module`; setiap lokasi berkas (utama, sampul, semua kunci lama) wajib di `users/<id-pengaju>/` tanpa `..`; PDF <= 10 MB, PPT/PPTX <= 25 MB, lainnya <= 50 MB, sampul <= 2 MB; tautan hanya http/https; wajib berkas atau tautan; Best Practice lengkap. Kirim ulang hanya bila pengajuan berstatus menunggu revisi; status `resubmitted` + judul ditulis di transaksi yang sama (perintah terpisah di `contribution.functions.ts` dihapus). Pesan error diterjemahkan di server function.
+- Diuji: tes Postgres lokal 31 pengecekan; 5 draf Knowledge Hub asli dari intern-update diuji terhadap aturan baru dan semuanya lolos.
+- Setelah migrasi dijalankan: `npm run test:kh-roles`, `test:kr-rpc`, `test:lifecycle`, lalu uji manual kirim publikasi + kirim ulang revisi di browser.
+
+### (arsip) Nomor 7 semula: pengajuan Knowledge Hub tanpa validasi di database
 - `kr_draft_submit` hanya memanggil `submit_draft_for_review`, yang punya aturan khusus untuk expert dan modul saja. Validasi Knowledge Hub (judul, jenis, ukuran berkas, kepemilikan path berkas di bucket `knowledge-resource-submissions`, URL eksternal aman) hanya di `src/lib/knowledge-hub/contribution.functions.ts`.
 - Rencana: tambahkan cabang `knowledge_resource` di `submit_draft_for_review` (definisi terbaru di `20261015070000`) yang meniru validasi server function, terutama kepemilikan path berkas (berkas harus di folder milik pengaju).
 

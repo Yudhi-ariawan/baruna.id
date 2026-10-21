@@ -141,7 +141,11 @@ WITH checks(no, migration, ok) AS (
       NOT EXISTS (SELECT 1 FROM public.rbac_roles WHERE code IN ('qa_reviewer', 'management'))),
   (41, '20261021040000_rbac_role_catalog_readable',
       EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'rbac_roles'
-                AND policyname = 'rbac_roles_catalog_read'))
+                AND policyname = 'rbac_roles_catalog_read')),
+  (42, '20261021050000_knowledge_resource_submission_rules',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_kr_payload_problem')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review'
+                    AND prosrc LIKE '%_kr_payload_problem%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

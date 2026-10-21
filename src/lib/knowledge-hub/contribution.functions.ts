@@ -11,6 +11,33 @@ const SubmissionInput = z.object({
   submit: z.boolean(),
   form: z.record(z.unknown()),
 });
+// Codes raised by public._kr_payload_problem / submit_draft_for_review (migration 20261021050000).
+const KR_SUBMIT_ERRORS: Record<string, string> = {
+  kr_title_required: "Judul publikasi wajib diisi sebelum mengirim pengajuan.",
+  kr_title_too_long: "Judul publikasi terlalu panjang (maksimal 300 karakter).",
+  kr_module_requires_portal:
+    "Pengajuan Learning Module wajib melalui Portal Pengajuan Modul Pembelajaran (/experts/portal/submit-module).",
+  kr_type_invalid: "Jenis publikasi tidak dikenali.",
+  kr_file_not_owned: "Berkas yang dilampirkan bukan unggahan akun Anda. Unggah ulang berkas dari formulir ini.",
+  kr_external_url_invalid: "Tautan eksternal harus diawali http:// atau https://.",
+  kr_file_or_url_required: "Wajib menyertakan minimal salah satu: berkas dokumen atau tautan eksternal.",
+  kr_pdf_too_large: "Ukuran file PDF melebihi batas maksimal 10MB.",
+  kr_ppt_too_large: "Ukuran file presentasi (PPT/PPTX) melebihi batas maksimal 25MB.",
+  kr_file_too_large: "Ukuran file melebihi batas maksimal 50MB.",
+  kr_cover_too_large: "Ukuran foto banner melebihi batas maksimal 2MB.",
+  kr_best_practice_incomplete:
+    "Untuk tipe Best Practice, kolom Tantangan, Konteks Lokasi, Intervensi, Langkah Implementasi, Capaian Terukur, dan Pembelajaran Kunci wajib dilengkapi.",
+  not_awaiting_revision: "Pengajuan ini tidak sedang menunggu revisi, sehingga tidak dapat dikirim ulang.",
+  revision_unchanged: "Belum ada perubahan dibanding pengiriman sebelumnya.",
+};
+
+function toFriendlyKrSubmitError(message: string): string {
+  for (const [code, friendly] of Object.entries(KR_SUBMIT_ERRORS)) {
+    if (message.includes(code)) return friendly;
+  }
+  return message;
+}
+
 const UploadInput = z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().min(1).max(160), size: z.number().int().positive().max(52_428_800) });
 
 type ResourceType = Database["public"]["Enums"]["resource_type_v1"];
@@ -532,41 +559,11 @@ export const saveKnowledgeResourceDraft = createServerFn({ method: "POST" })
             return { draftId, status: "submitted" };
           }
         }
-        throw new Error(submitted.error.message);
+        throw new Error(toFriendlyKrSubmitError(submitted.error.message));
       }
-
-      // Update linked subject to resubmitted if previously revised, and sync latest title
-      const { data: dRow } = await context.supabase
-        .from("review_drafts")
-        .select("linked_subject_id")
-        .eq("id", draftId)
-        .single();
-
-      if (dRow?.linked_subject_id) {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: subj } = await supabaseAdmin
-          .from("review_subjects")
-          .select("current_status, metadata")
-          .eq("id", dRow.linked_subject_id)
-          .single();
-
-        const sm = (subj?.metadata as Record<string, unknown>) ?? {};
-        const wasRevised = sm.review_status === "revision_requested" || typeof sm.last_rationale === "string";
-
-        await supabaseAdmin
-          .from("review_subjects")
-          .update({
-            title,
-            current_status: "pending",
-            metadata: {
-              ...sm,
-              review_status: wasRevised ? "resubmitted" : "pending",
-              resubmitted_at: wasRevised ? new Date().toISOString() : undefined,
-            } as never,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", dRow.linked_subject_id);
-      }
+      // The database re-checks every rule (file ownership, sizes, URL, type) and, for a
+      // re-sent revision, marks the submission "resubmitted" in the same transaction
+      // (public.submit_draft_for_review, migration 20261021050000).
     }
     return { draftId, status: data.submit ? "submitted" : "draft" };
   });
