@@ -287,7 +287,13 @@ Catatan rencana semula:
 - Rencana: kolom jejak pelaku yang boleh NULL (`governance_audit_log.actor_id`, `*_by` di templat/penugasan, `user_roles.granted_by`) -> `ON DELETE SET NULL`. Kolom NOT NULL yang merupakan kepemilikan (`review_subjects.submitted_by`, `review_decisions.decided_by`) sebaiknya TETAP menahan penghapusan akun (akun yang punya pengajuan/keputusan tidak boleh hilang diam-diam); cek dulu nullability tiap kolom di migrasi aslinya.
 - Juga perbaiki pembersihan `scripts/test-tdd-knowledge-hub-roles.mjs`: lepaskan `governance_audit_log.actor_id` sebelum menghapus akun (sekarang meninggalkan 3 akun tiap kali jalan).
 
-### Nomor 6 (rendah): izin tulis pengunjung
+### Nomor 6: SELESAI (21 Okt, laptop) - izin tulis pengunjung dicabut (migrasi `20261021060000`)
+- Semua izin INSERT/UPDATE/DELETE/TRUNCATE role `anon` pada tabel dan view `public` dicabut (termasuk `review_records`). Izin baca tidak diubah.
+- Dicek dulu: tidak ada kode aplikasi yang menulis tabel sebagai pengunjung (semua lewat server function/RPC; unggahan berkas memakai skema storage) dan tidak ada policy tulis untuk anon.
+- Default privileges tidak diubah: tabel baru yang dibuat sesudahnya mendapat izin bawaan lagi; terlihat di `audit_security.sql` kategori 3 dan baris 43 pengecek (jalankan ulang migrasi ini).
+- Diuji: tes Postgres lokal 21 pengecekan. Setelah migrasi: `audit_security.sql` kategori 3 harus kosong; semua `npm run test:*`.
+
+### (arsip) Nomor 6 semula: izin tulis pengunjung
 - `review_records` punya GRANT INSERT ke `anon` (saat ini diblok pemicu `assignment_not_found`). Cabut INSERT/UPDATE/DELETE dari `anon`.
 - Opsional (pengerasan): kategori 3 audit -> hampir semua tabel memberi INSERT/UPDATE/DELETE ke `anon` (bawaan Supabase). Tidak bisa dipakai selama RLS aktif (terbukti), tetapi bisa dicabut massal untuk tabel yang memang tidak pernah ditulis pengunjung. Uji ulang semua alur publik setelahnya.
 

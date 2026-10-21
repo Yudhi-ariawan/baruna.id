@@ -145,7 +145,13 @@ WITH checks(no, migration, ok) AS (
   (42, '20261021050000_knowledge_resource_submission_rules',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_kr_payload_problem')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review'
-                    AND prosrc LIKE '%_kr_payload_problem%'))
+                    AND prosrc LIKE '%_kr_payload_problem%')),
+  -- BELUM lagi bila tabel baru dibuat sesudahnya dengan izin bawaan; jalankan ulang migrasinya.
+  (43, '20261021060000_revoke_anon_write_grants',
+      NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace
+                   WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+                     AND (has_table_privilege('anon', c.oid, 'INSERT') OR has_table_privilege('anon', c.oid, 'UPDATE')
+                          OR has_table_privilege('anon', c.oid, 'DELETE'))))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
