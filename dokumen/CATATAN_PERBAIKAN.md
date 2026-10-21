@@ -420,12 +420,28 @@ Masih untuk mentor: catatan reviewer dan rekam verifikasi, tahap publisher terpi
 
 ---
 
+## 2p. Peran expert hanya lewat alur pendaftaran (21 Okt, laptop)
+
+**Masalah.** Menjadi expert = dua bagian: peran `expert` di akun dan profil di tabel `experts` (direktori, Portal Expert, status trainer). Persetujuan pendaftaran dan Arsip mengubah keduanya bersamaan (`_expert_set_role`). Centang "expert" di Users & Access, Tambah User, dan alur permintaan peran (`request_rbac_role_change`, yang boleh dipakai siapa pun untuk dirinya sendiri) hanya mengubah perannya. Akibatnya akun "expert setengah jadi": login diarahkan ke Portal Expert tetapi diperlakukan pengguna biasa, formulir Become an Expert menganggapnya sudah expert, dan namanya tidak ada di direktori. Sebaliknya, mencabut centang membuat profil tetap tayang sementara portal tertutup.
+
+**Data intern-update saat dicek:** 15 akun berperan expert, 11 tanpa profil (10 akun `@kkp.go.id` dibuat 1 Okt dengan keterangan `instructor_expert_provisioned` di luar repo, ditambah admin99 untuk uji). Menurut pemilik proyek, akun-akun itu hanya salinan percobaan; yang asli ada di database main. Migrasi ini **tidak mengubah** data tersebut.
+
+**Perbaikan:**
+- Migrasi `20261021080000`: `assign_rbac_role`, `revoke_rbac_role`, `request_rbac_role_change` menolak peran `expert` (`expert_role_managed_by_flow`); `decide_rbac_role_change` tidak menerapkan permintaan expert lama (masih bisa ditolak). Isi fungsi lainnya identik dengan `20260911080000` (dibandingkan otomatis baris per baris).
+- `users.functions.ts`: `FLOW_MANAGED_ROLES`; Tambah User dan Simpan Perubahan Peran menolak perubahan expert **sebelum** ada perubahan apa pun (tidak ada akun atau peran yang setengah jadi).
+- `admin.users.tsx`: kotak expert terkunci dengan label "Lewat pendaftaran" dan keterangan; expert tidak ada di pilihan Tambah User; pesan error dalam bahasa Indonesia.
+- `audit_security.sql` kategori 9 `expert_tanpa_profil`: daftar akun berperan expert tanpa profil tayang, beserta asal perannya. **Untuk main:** jalankan ini untuk melihat apakah akun instruktur asli mengalami kebuntuan yang sama.
+
+**Uji:** PGlite 22 pengecekan lulus (centang/cabut expert ditolak, juga untuk akun admin; peran staf tetap bisa; permintaan expert ditolak; persetujuan dan arsip expert tetap memberi/mencabut peran; izin anon tertutup; migrasi bisa diulang). `tsc` dan `build` lulus.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (41 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (45 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -455,6 +471,10 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261021020000_governance_role_alignment.sql` (peran resmi `reviewer`/`approver` dikenali sebagai `qa_reviewer`/`management`; pengaman penugasan reviewer). Approver mendapat hak management lama; lihat Nomor 8 di bagian 2l.
 - `20261021030000_retire_legacy_governance_role_codes.sql` (hapus kode peran lama `qa_reviewer`/`management`; pemegang qa_reviewer dipindah ke reviewer). Jalankan SETELAH `20261021020000`. Batal tanpa perubahan bila ada pemegang `management` yang bukan admin: di database main periksa dulu siapa pemegangnya.
 - `20261021040000_rbac_role_catalog_readable.sql` (katalog peran `rbac_roles` terbaca pengguna login; tanpa ini semua pemeriksaan akses non-admin di Verifikasi Expert/Modul/Publikasi/Persetujuan Peserta selalu menolak). Lihat bagian 2o.
+- `20261021050000_knowledge_resource_submission_rules.sql` (aturan pengajuan Knowledge Hub di database: lokasi berkas milik pengaju, batas ukuran, isian per jenis). Lihat Nomor 7 di bagian 2l.
+- `20261021060000_revoke_anon_write_grants.sql` (cabut izin tulis pengunjung tanpa login di semua tabel dan view). Lihat Nomor 6.
+- `20261021070000_auth_user_fk_set_null.sql` (catatan pelaku dikosongkan saat akun dihapus). Lihat Nomor 5.
+- `20261021080000_expert_role_flow_only.sql` (peran `expert` tidak bisa dicentang/dicabut manual; hanya lewat persetujuan pendaftaran dan arsip expert). Lihat bagian 2p.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

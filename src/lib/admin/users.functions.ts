@@ -21,6 +21,15 @@ const RoleCode = z.enum([
 ]);
 const UserId = z.string().uuid();
 
+/**
+ * Roles that come from a business flow, never from a checkbox: `expert` is granted
+ * when an expert application is approved and removed when the profile is archived,
+ * together with the experts profile (migration 20261021080000 rejects it in the
+ * RBAC RPCs with `expert_role_managed_by_flow`).
+ */
+export const FLOW_MANAGED_ROLES = ["expert"] as const;
+const isFlowManaged = (role: string) => (FLOW_MANAGED_ROLES as readonly string[]).includes(role);
+
 export type AdminUser = {
   id: string;
   email: string;
@@ -240,6 +249,8 @@ export const createUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requirePermission(context, "users.invite");
+    // Before the account exists: a refused role must not leave a half-created user.
+    if (data.roles.some(isFlowManaged)) throw new Error("expert_role_managed_by_flow");
     const admin = await loadAdmin();
     const db = admin as any;
 
@@ -396,6 +407,12 @@ export const updateUserRoles = createServerFn({ method: "POST" })
     );
 
     const targetRoles = new Set(data.roles);
+
+    // Checked before any change so a refused flow-managed role never leaves the
+    // other roles half-applied.
+    for (const code of FLOW_MANAGED_ROLES) {
+      if (activeRoles.has(code) !== targetRoles.has(code)) throw new Error("expert_role_managed_by_flow");
+    }
 
     // Revoke roles not in targetRoles
     for (const code of activeRoles) {

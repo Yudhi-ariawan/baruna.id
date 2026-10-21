@@ -157,7 +157,11 @@ WITH checks(no, migration, ok) AS (
                          ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
                    WHERE c.contype = 'f' AND c.confrelid = 'auth.users'::regclass AND c.confdeltype <> 'n'
                      AND (c.conrelid, a.attname) IN (('public.governance_audit_log'::regclass, 'actor_id'),
-                                                     ('public.user_roles'::regclass, 'granted_by'))))
+                                                     ('public.user_roles'::regclass, 'granted_by')))),
+  (45, '20261021080000_expert_role_flow_only',
+      (SELECT count(*) FROM pg_proc
+        WHERE proname IN ('assign_rbac_role', 'revoke_rbac_role', 'request_rbac_role_change', 'decide_rbac_role_change')
+          AND prosrc LIKE '%expert_role_managed_by_flow%') = 4)
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

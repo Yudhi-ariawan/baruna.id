@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  FLOW_MANAGED_ROLES,
   assignUserRole,
   createUser,
   getAdminAccess,
@@ -63,8 +64,14 @@ function messageOf(error: unknown) {
     forbidden: "You do not have permission for this action.",
     self_lockout_protected: "You cannot suspend yourself or remove your own super-admin access.",
     last_super_admin_protected: "The last active super-admin is protected.",
+    expert_role_managed_by_flow:
+      "Peran expert tidak bisa dicentang manual. Peran ini diberikan saat pendaftaran expert disetujui dan dicabut lewat Arsip di menu persetujuan expert.",
   };
   return translations[message] ?? message;
+}
+
+function isFlowManagedRole(role: string) {
+  return (FLOW_MANAGED_ROLES as readonly string[]).includes(role);
 }
 
 function formatDate(value: string | null) {
@@ -478,9 +485,9 @@ function UsersPage() {
 
       {showCreate ? (
         <CreateUserDialog
-          availableRoles={((rolesQuery.data ?? []) as AdminRole[]).map(
-            (role) => role.code as AdminRoleCode,
-          )}
+          availableRoles={((rolesQuery.data ?? []) as AdminRole[])
+            .map((role) => role.code as AdminRoleCode)
+            .filter((code) => !isFlowManagedRole(code))}
           onClose={() => setShowCreate(false)}
           onSuccess={(text) => {
             setShowCreate(false);
@@ -954,7 +961,10 @@ function UserDialog({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Pilih satu atau beberapa peran. Anda dapat mencentang atau menghapus centang peran (misal: mengganti dari participant ke expert), lalu klik tombol <strong>Simpan Perubahan Peran</strong>.
+              Pilih satu atau beberapa peran staf. Anda dapat mencentang atau menghapus centang peran (misal: menambahkan reviewer atau publisher), lalu klik tombol <strong>Simpan Perubahan Peran</strong>.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Peran <strong>expert</strong> terkunci: diberikan saat pendaftaran expert disetujui (bersama profil expert) dan dicabut lewat <strong>Arsip</strong> di menu persetujuan expert.
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {roles.map((role) => {
@@ -963,11 +973,15 @@ function UserDialog({
                 const isNewlyAdded = isSelected && !isOriginallyAssigned;
                 const isNewlyRemoved = !isSelected && isOriginallyAssigned;
                 const isHighPrivilege = HIGH_PRIVILEGE_ROLES.includes(role);
+                const isLocked = isFlowManagedRole(role);
 
                 return (
                   <label
                     key={role}
-                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm cursor-pointer transition select-none ${
+                    title={isLocked ? "Diatur lewat alur pendaftaran expert" : undefined}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition select-none ${
+                      isLocked ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+                    } ${
                       isSelected
                         ? isHighPrivilege
                           ? "border-indigo-300 bg-indigo-50/70 text-indigo-950 font-medium"
@@ -980,6 +994,11 @@ function UserDialog({
                       {isHighPrivilege && (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded">
                           Admin Level
+                        </span>
+                      )}
+                      {isLocked && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                          Lewat pendaftaran
                         </span>
                       )}
                       {isNewlyAdded && (
@@ -996,13 +1015,14 @@ function UserDialog({
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      disabled={updateRolesM.isPending}
+                      disabled={updateRolesM.isPending || isLocked}
                       onChange={() => {
+                        if (isLocked) return;
                         setSelectedRoles((prev) =>
                           prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
                         );
                       }}
-                      className="h-4 w-4 rounded border-slate-300 text-marine focus:ring-marine cursor-pointer"
+                      className={`h-4 w-4 rounded border-slate-300 text-marine focus:ring-marine ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}
                     />
                   </label>
                 );

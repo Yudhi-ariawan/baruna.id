@@ -11,6 +11,9 @@
 --   6 definer_anon          fungsi SECURITY DEFINER yang bisa dipanggil anon
 --   7 internal_terbuka      fungsi berawalan "_" yang bisa dipanggil authenticated
 --   8 fk_blok_hapus_akun    foreign key ke auth.users tanpa ON DELETE (akun tidak bisa dihapus)
+--   9 expert_tanpa_profil   akun berperan expert tanpa profil expert yang tayang (buntu: portal menolak,
+--                           formulir Become an Expert menganggapnya sudah expert). Detail = asal perannya.
+--                           Akun admin uji yang diberi semua peran juga muncul di sini.
 
 WITH pub AS (
   SELECT c.oid, c.relname, c.relkind, c.relrowsecurity, c.reloptions
@@ -58,4 +61,12 @@ UNION ALL
 SELECT 8, 'fk_blok_hapus_akun', conrelid::regclass::text, conname::text
   FROM pg_constraint
  WHERE contype = 'f' AND confrelid = 'auth.users'::regclass AND confdeltype IN ('a', 'r')
+UNION ALL
+SELECT 9, 'expert_tanpa_profil', u.email::text, COALESCE(ur.reason, '')
+  FROM public.rbac_user_roles ur
+  JOIN public.rbac_roles r ON r.id = ur.role_id AND r.code = 'expert'
+  JOIN auth.users u ON u.id = ur.user_id
+ WHERE ur.status = 'active'
+   AND NOT EXISTS (SELECT 1 FROM public.experts e
+                    WHERE e.original_contributor_id = ur.user_id AND e.current_status::text = 'published')
 ORDER BY 1, 3;
