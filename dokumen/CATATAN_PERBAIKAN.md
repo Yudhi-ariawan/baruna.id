@@ -260,7 +260,7 @@ Status 20 Okt 2026 malam. Semua di bawah BELUM dikerjakan. Pola kerja yang terbu
 
 ### Nomor 4 (sedang → ternyata BERAT): metadata modul tayang terbaca pengunjung lewat API langsung
 
-**Status 21 Okt (PC): kode + migrasi `20261021010000` SELESAI; migrasi menunggu dijalankan di intern-update.**
+**Status 21 Okt (PC): kode + migrasi `20261021010000` SELESAI; migrasi sudah dijalankan di intern-update (21 Okt, pengecek OK) dan semua `npm run test:*` lulus sesudahnya.**
 
 Temuan tambahan saat dikerjakan (lebih berat dari rencana semula):
 - Proyeksi modul ke Knowledge Hub (`module-projection.server.ts`) menyalin **seluruh** metadata modul ke `knowledge_resources.metadata` (publik): 4 modul tayang terbaca pengunjung lengkap dengan path lampiran dan tautan YouTube.
@@ -316,7 +316,7 @@ Catatan rencana semula:
 
 ### Nomor 8 (baru, konsistensi): halaman governance masih membaca tabel peran lama
 
-**Status 21 Okt (PC): kode + migrasi `20261021020000` SELESAI; migrasi menunggu dijalankan di intern-update.**
+**Status 21 Okt (PC): kode + migrasi `20261021020000` (dan `20261021030000`, `20261021040000`) SELESAI; sudah dijalankan di intern-update (21 Okt, pengecek OK) dan semua `npm run test:*` lulus sesudahnya.**
 
 - 8a (kode, tanpa migrasi): halaman governance membaca peran lewat `has_role` (aturan yang sama dengan semua policy dan RPC), helper bersama `src/lib/governance/governance-roles.ts`. `getMyRoles`, `getGovernanceDashboard`, `listReviewers` tidak lagi membaca `user_roles`; `listReviewers` memakai service role (baris peran orang lain tidak terbaca lewat RLS) dan hanya mendaftar akun yang lolos `has_role(_, 'qa_reviewer')`. Label peran pengaju di daftar publikasi admin hanya dari `rbac_user_roles` (dalam masa berlaku). Uji langsung: super admin sebelumnya **tidak terlihat sebagai admin** di halaman governance, kini terlihat.
 - 8b (temuan + keputusan pemilik proyek 21 Okt): database punya dua nama peran untuk tugas yang sama. Kode lama `qa_reviewer`/`management` masih ada (hanya dipegang super admin), sedangkan peran resmi `reviewer`/`approver` tidak dikenali lapisan review governance. Migrasi: `has_role(_, 'qa_reviewer')` juga menerima `reviewer`, `has_role(_, 'management')` juga menerima `approver`. Approver kini mendapat hak management lama (data review governance, baca semua baris modul tanpa `metadata` dan versinya, lampiran modul untuk tinjauan, evaluasi penyelesaian); di intern-update yang benar-benar mendapat hak baru 1 akun. Reviewer tetap hanya membaca pengajuan yang ditugaskan kepadanya.
