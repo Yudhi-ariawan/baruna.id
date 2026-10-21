@@ -282,7 +282,14 @@ Catatan rencana semula:
 - WAJIB dicek sebelum menulis migrasi: tidak ada policy RLS (termasuk `storage.objects` bucket `module-attachments`), view `security_invoker`, atau fungsi INVOKER yang membaca `module_registry.metadata` dengan hak pengguna. Kalau ada, kolomnya harus tetap terbaca untuk konteks itu atau fungsinya dijadikan SECURITY DEFINER.
 - Uji: pengunjung `select metadata` -> permission denied; pengunjung `select title` tetap bisa; katalog Academy dan halaman modul tetap tampil; `test:participant-rpc`, `test:lifecycle`.
 
-### Nomor 5 (rendah): 9 foreign key ke `auth.users` tanpa `ON DELETE`
+### Nomor 5: SELESAI (21 Okt, laptop) - catatan pelaku dikosongkan saat akun dihapus (migrasi `20261021070000`)
+- `ON DELETE SET NULL` untuk kolom jejak pelaku yang memang boleh NULL: `governance_audit_log.actor_id`, `review_template_versions.published_by`, `user_roles.granted_by`. Baris log/riwayat tetap ada.
+- Sengaja tidak diubah (NOT NULL, bukti kepemilikan/keputusan): `review_subjects.submitted_by`, `review_decisions.decided_by`, `review_assignments.assigned_by`, `review_templates.created_by`, `rbac_role_change_requests.requested_by` (RESTRICT sejak awal), `module_withdrawal_requests.trainer_id` (tabel dibuat di luar migrasi repo). Akun yang memilikinya tetap tidak bisa dihapus; nonaktifkan saja. Aplikasi memang tidak punya fitur hapus akun (penghapusan hanya lewat dashboard/skrip).
+- Setelah migrasi, `audit_security.sql` kategori 8 masih menampilkan 6 baris di atas: itu disengaja.
+- Pembersihan akun uji di skrip tes sudah diperbaiki di PC (0 akun tertinggal sejak 20 Okt).
+- Diuji: tes Postgres lokal 9 pengecekan.
+
+### (arsip) Nomor 5 semula: 9 foreign key ke `auth.users` tanpa `ON DELETE`
 - Daftar (hasil `supabase/audit_security.sql` kategori 8): `governance_audit_log.actor_id`, `module_withdrawal_requests.trainer_id`, `rbac_role_change_requests.requested_by`, `review_assignments.assigned_by`, `review_decisions.decided_by`, `review_subjects.submitted_by`, `review_template_versions.published_by`, `review_templates.created_by`, `user_roles.granted_by`.
 - Rencana: kolom jejak pelaku yang boleh NULL (`governance_audit_log.actor_id`, `*_by` di templat/penugasan, `user_roles.granted_by`) -> `ON DELETE SET NULL`. Kolom NOT NULL yang merupakan kepemilikan (`review_subjects.submitted_by`, `review_decisions.decided_by`) sebaiknya TETAP menahan penghapusan akun (akun yang punya pengajuan/keputusan tidak boleh hilang diam-diam); cek dulu nullability tiap kolom di migrasi aslinya.
 - Juga perbaiki pembersihan `scripts/test-tdd-knowledge-hub-roles.mjs`: lepaskan `governance_audit_log.actor_id` sebelum menghapus akun (sekarang meninggalkan 3 akun tiap kali jalan).

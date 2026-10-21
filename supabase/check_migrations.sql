@@ -151,7 +151,13 @@ WITH checks(no, migration, ok) AS (
       NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace
                    WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
                      AND (has_table_privilege('anon', c.oid, 'INSERT') OR has_table_privilege('anon', c.oid, 'UPDATE')
-                          OR has_table_privilege('anon', c.oid, 'DELETE'))))
+                          OR has_table_privilege('anon', c.oid, 'DELETE')))),
+  (44, '20261021070000_auth_user_fk_set_null',
+      NOT EXISTS (SELECT 1 FROM pg_constraint c JOIN pg_attribute a
+                         ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+                   WHERE c.contype = 'f' AND c.confrelid = 'auth.users'::regclass AND c.confdeltype <> 'n'
+                     AND (c.conrelid, a.attname) IN (('public.governance_audit_log'::regclass, 'actor_id'),
+                                                     ('public.user_roles'::regclass, 'granted_by'))))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
