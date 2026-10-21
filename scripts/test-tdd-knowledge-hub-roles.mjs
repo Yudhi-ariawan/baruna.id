@@ -847,7 +847,7 @@ async function runTests() {
       name: "best-practice-pokmaswas-2026.pdf",
       size: 1450000,
       type: "application/pdf",
-      storagePath: `${participantUser.id}/bp-${stamp}.pdf`,
+      storagePath: `users/${participantUser.id}/resources/bp-${stamp}.pdf`,
     },
     practiceStructure: {
       challenge: "Degradasi terumbu karang akibat jangkar perahu wisata.",
@@ -893,7 +893,7 @@ async function runTests() {
       name: "laporan-sampah-laut-2026.pdf",
       size: 2850000,
       type: "application/pdf",
-      storagePath: `${regUser.id}/pub-${stamp}.pdf`,
+      storagePath: `users/${regUser.id}/resources/pub-${stamp}.pdf`,
     },
     author: regUserBootstrap.contributorName,
     institution: regUserBootstrap.institution,
@@ -1178,7 +1178,7 @@ async function runTests() {
       language: "Indonesian",
       keywords: ["zonasi", "konservasi", "policy brief"],
       topicCategory: "Marine Conservation & Spatial Planning",
-      uploadedFilePath: `submissions/${trainerUser.id}/policy-brief-zonasi.pdf`,
+      uploadedFilePath: `users/${trainerUser.id}/resources/policy-brief-zonasi.pdf`,
       fileName: "policy-brief-zonasi.pdf",
       fileSize: 980400,
       policyBriefStructure: {
@@ -1206,7 +1206,7 @@ async function runTests() {
       language: "Indonesian",
       keywords: ["rantai dingin", "infografik", "mutu ikan"],
       topicCategory: "Fisheries & Capture Management",
-      uploadedFilePath: `submissions/${regUser.id}/infografik-rantai-dingin.png`,
+      uploadedFilePath: `users/${regUser.id}/resources/infografik-rantai-dingin.png`,
       fileName: "infografik-rantai-dingin.png",
       fileSize: 1240000,
       infographicStructure: {
@@ -1234,7 +1234,7 @@ async function runTests() {
       language: "Indonesian",
       keywords: ["mangrove", "ekowisata", "studi kasus"],
       topicCategory: "Coastal Community & Blue Economy",
-      uploadedFilePath: `submissions/${participantUser.id}/case-study-mangrove.pdf`,
+      uploadedFilePath: `users/${participantUser.id}/resources/case-study-mangrove.pdf`,
       fileName: "case-study-mangrove.pdf",
       fileSize: 1540000,
       caseStudyStructure: {
@@ -1266,7 +1266,7 @@ async function runTests() {
       language: "Indonesian",
       keywords: ["toolkit", "biosekuriti", "kualitas air"],
       topicCategory: "Aquaculture & Mariculture",
-      uploadedFilePath: `submissions/${regUser.id}/toolkit-audit-tambak.xlsx`,
+      uploadedFilePath: `users/${regUser.id}/resources/toolkit-audit-tambak.xlsx`,
       fileName: "toolkit-audit-tambak.xlsx",
       fileSize: 640000,
       toolkitStructure: {
@@ -1413,7 +1413,7 @@ async function runTests() {
         language: "Indonesian",
         keywords: ["policy brief", "dekarbonisasi", `siklus-${cycle}`],
         topicCategory: "Marine Policy & Governance",
-        uploadedFilePath: `submissions/${trainerUser.id}/policy-brief-dekarbonisasi-v${cycle + 1}.pdf`,
+        uploadedFilePath: `users/${trainerUser.id}/resources/policy-brief-dekarbonisasi-v${cycle + 1}.pdf`,
         fileName: `policy-brief-dekarbonisasi-v${cycle + 1}.pdf`,
         fileSize: 980000 + cycle * 10000,
         policyBriefStructure: {
