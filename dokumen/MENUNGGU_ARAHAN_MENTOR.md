@@ -7,7 +7,7 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 
 1. **Template dan isi sertifikat**: penandatangan, format nomor, JP, dan jenis sertifikat.
 2. **Syarat lulus pelatihan.**
-3. **Role participant**: diberikan saat biodata disimpan atau saat admin menyetujui.
+3. ~~**Role participant**~~ **DIPUTUSKAN pemilik proyek (21 Okt): tetap otomatis** saat biodata disimpan, agar admin tidak perlu menyetujui satu per satu saat pendaftar banyak. Akses materi tetap lewat persetujuan admin per kursus; peran yang dicabut admin tidak diberikan lagi. Berbeda dari teks PB-ACA-03 (peran diberikan saat admin menyetujui); mohon mentor mengonfirmasi.
 4. **Expert yang disetujui**: otomatis jadi trainer atau tidak.
 5. **Publisher** terpisah dari **approver** atau tidak.
 6. **Profile Claim** dan fitur **Penugasan Expert**.
@@ -29,7 +29,7 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 - Kelulusan kuis dan sertifikat masih dicatat di `localStorage` (melanggar Slide 15).
 
 ### Role dan alur
-- Role participant: PB-ACA-03 menyebut role diberikan saat admin menyetujui, tetapi kode memberikannya saat biodata disimpan.
+- Role participant: PB-ACA-03 menyebut role diberikan saat admin menyetujui, tetapi kode memberikannya saat biodata disimpan. **Keputusan pemilik proyek 21 Okt: tetap otomatis** (lihat butir 3 di atas).
 - Expert disetujui otomatis jadi trainer aktif; Slide 39 menyiratkan persetujuan trainer terpisah.
 - Approve modul langsung menayangkan; apakah perlu langkah publisher terpisah.
 - Profile Claim (Slide 37) dan Penugasan Expert (fitur disembunyikan sementara).
