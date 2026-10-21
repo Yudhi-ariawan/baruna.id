@@ -450,7 +450,7 @@ Masih untuk mentor: catatan reviewer dan rekam verifikasi, tahap publisher terpi
 
 Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticated`/`anon` (baca tidak berubah). Semua penulisan sah sudah lewat fungsi SECURITY DEFINER (diperiksa otomatis: 16 fungsi penulis, semuanya DEFINER; satu fungsi INVOKER hanya membaca). "Nyatakan konflik" diganti RPC `review_assignment_declare_conflict` (hanya penugasan aktif milik sendiri, hanya kolom konflik + status `recused`, tercatat di log audit). Dua fungsi server lama yang tidak dipakai (`createReviewSubject`, `assignReviewer` di `governance.functions.ts`, menulis langsung) dihapus.
 
-**Uji:** PGlite 24/24 (celah direproduksi sebelum migrasi; sesudahnya ditolak untuk keempat jenis, admin juga; baca tetap; `assign_reviewer` dan pengamannya tetap jalan; RPC konflik). `npm run test:review-lockdown` (uji langsung, 13 pengecekan): sebelum migrasi dijalankan **0 lulus, 13 gagal** (celah terbukti di database asli).
+**Uji:** PGlite 24/24 (celah direproduksi sebelum migrasi; sesudahnya ditolak untuk keempat jenis, admin juga; baca tetap; `assign_reviewer` dan pengamannya tetap jalan; RPC konflik). `npm run test:review-lockdown` (uji langsung, 13 pengecekan): sebelum migrasi dijalankan **0 lulus, 13 gagal** (celah terbukti di database asli); **sesudah migrasi dijalankan (21 Okt): 13/13**. Uji lain tetap lulus: rbac 820, expert-rpc 64, kr-rpc 24, participant-rpc 27, kh-roles 20, lifecycle 14, console-decisions 16, expert-role-lock 10. Akun `@example.test` dan pengajuan uji tersisa: 0.
 
 **Temuan lain, belum dikerjakan:**
 - Approver ikut bisa menulis daftar keahlian/peran expert/bahasa dan aturan level trainer (policy lama admin|management). Usul: khusus admin; menunggu keputusan.
