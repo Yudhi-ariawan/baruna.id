@@ -1,4 +1,4 @@
-# Kesiapan Rilis BARUNA (diperbarui 20 Oktober 2026, setelah penggabungan PC + laptop)
+# Kesiapan Rilis BARUNA (diperbarui 21 Oktober 2026, setelah Nomor 4-10 selesai)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
 Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
@@ -25,9 +25,8 @@ Status pemeriksaan terakhir (20 Okt, PC): `supabase/check_migrations.sql` di int
 
 ## B. Belum diperbaiki atau belum diputuskan
 
-- **Keamanan (sedang), Nomor 4:** pengunjung tanpa login masih bisa membaca `module_registry.metadata` lewat API langsung, termasuk `attached_resources`, `documents`, dan `video_url`. Berkas aman (bucket privat), tetapi **tautan video bisa dibuka tanpa terdaftar**. Ini melewati gerbang isi modul yang sudah dibuat. Rencananya ada di `CATATAN_PERBAIKAN.md` bagian 2l.
-- **Keamanan (rendah), Nomor 5-7:** 9 foreign key ke `auth.users` tanpa `ON DELETE`; izin tulis `anon` yang terlalu longgar; pengajuan Knowledge Hub belum divalidasi di database.
-- **Konsistensi:** halaman governance masih membaca tabel peran lama (Nomor 8); halaman Impact Analytics menampilkan angka perkiraan sebagai "Live Database Metrics" (Nomor 9).
+- ~~Keamanan, Nomor 4-7~~ **SELESAI 21 Okt:** metadata modul tidak lagi terbaca pengunjung (4); izin tulis pengunjung dicabut di semua tabel/view (6); pengajuan Knowledge Hub divalidasi di database, termasuk berkas wajib milik pengaju (7); catatan pelaku dikosongkan saat akun dihapus, kepemilikan tetap dilindungi (5). Rincian: `CATATAN_PERBAIKAN.md` bagian 2l.
+- ~~Konsistensi, Nomor 8-9~~ **SELESAI 21 Okt:** halaman governance membaca sistem peran baru, nama peran resmi (8); Impact Analytics hanya angka dari data, sisanya "Belum tersedia" (9).
 - **Kelulusan kursus mandiri** (video/PDF/PPT/kuis modul bawaan) tetap laporan dari browser, karena isinya ada di kode. Tidak ada hak di server yang bergantung padanya (sertifikatnya berlabel CONTOH). Status ini sengaja dibiarkan.
 - **Modul bawaan** (Ocean Literacy, AZA, Africa Fisheries) isinya di kode aplikasi, jadi hanya digerbang di tampilan. 13 PDF Master masih aset publik Lovable.
 - **Full Training dan AZA** progresnya hanya di `localStorage` (tidak ikut berpindah perangkat). Program African Countries juga dihapus otomatis dari browser oleh halaman My Learning.
@@ -47,11 +46,11 @@ Status pemeriksaan terakhir (20 Okt, PC): `supabase/check_migrations.sql` di int
 
 ## D. Urutan kerja yang disarankan
 
-1. Kerjakan **Nomor 4** (metadata modul terbaca pengunjung) dulu: ini celah akses yang tersisa.
+1. ~~Kerjakan Nomor 4~~ (selesai 21 Okt).
 2. Uji manual di browser dengan 3-4 akun nyata (admin, trainer, peserta, pengguna baru), termasuk di HP dan dua perangkat bergantian.
 3. Kirim daftar pertanyaan ke mentor (`MENUNGGU_ARAHAN_MENTOR.md`).
 4. Minta mentor memeriksa `main`: `check_migrations.sql` dan `audit_security.sql`, lalu menjalankan migrasi berurutan.
-5. Kerjakan Nomor 5-9 (rendah, konsistensi, kejujuran data).
+5. ~~Kerjakan Nomor 5-9~~ (selesai 21 Okt).
 6. Setelah aturan sertifikat diputuskan: template resmi, nomor resmi, dan pencatatan kelulusan di server; tambahkan progres Full Training/AZA hanya jika programnya masih dipakai.
 7. Uji beban sederhana; pastikan Supavisor dan cadangan data.
 8. Pilot terbatas (20-50 pengguna) sebelum dibuka luas.
