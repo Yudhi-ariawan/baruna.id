@@ -624,7 +624,7 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 - **Verifikator minta revisi:** profil/role/trainer tetap; pemilik tidak bisa membatalkan; minta revisi atas kiriman membuka draf kiriman.
 - **Lainnya:** arsip/pulihkan (2 skenario), pengajuan pertama tidak berubah, migrasi bisa diulang.
 
-`tsc` dan `build` lulus. Uji langsung baru `npm run test:expert-profile-update` (19 cek). **Sebelum migrasi (intern-update, 22 Okt): 5/19**: profil menjadi private dan role/trainer dicabut saat diminta revisi, profil ditolak tetap hilang, dan fungsi pembaruan belum ada. Data uji tersisa 0.
+`tsc` dan `build` lulus. Uji langsung baru `npm run test:expert-profile-update` (19 cek). **Sebelum migrasi (intern-update, 22 Okt): 5/19**: profil menjadi private dan role/trainer dicabut saat diminta revisi, profil ditolak tetap hilang, dan fungsi pembaruan belum ada. Data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 22 Okt): 19/19.** Percobaan pertama migrasi ini tidak masuk ke database (fungsi baru tidak ditemukan); setelah dijalankan ulang, berhasil.
 
 ---
 
@@ -647,7 +647,7 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 **Uji:**
 - PGlite 17/17: akses (pemilik, orang lain, approver, admin, reviewer sebelum/sesudah ditugaskan, tanpa login, anon tanpa EXECUTE), urutan versi, alasan dan penyetuju, v1 dari approve pertama, snapshot tidak terbuka (termasuk kontak expert), versi hasil sinkron ulang, belum tayang, jenis tanpa versi, migrasi bisa diulang. Satu bug saya sendiri ketemu di sini: `published` bernilai null untuk konten yang belum tayang; sudah diperbaiki.
 - `tsc` dan `build` lulus.
-- Uji langsung baru `npm run test:version-history` (16 cek; bagian notifikasi memanggil aplikasi yang berjalan, `npm run dev`). **Sebelum migrasi (intern-update, 22 Okt): 10/16.** Semua cek notifikasi lulus: peserta aktif diberi tahu v2 dengan tautan yang benar; yang sudah lulus, yang mendaftar setelah v2, dan orang luar tidak. Cek riwayat versi gagal karena fungsinya belum ada. Data uji tersisa 0.
+- Uji langsung baru `npm run test:version-history` (16 cek; bagian notifikasi memanggil aplikasi yang berjalan, `npm run dev`). **Sebelum migrasi (intern-update, 22 Okt): 10/16.** Semua cek notifikasi lulus: peserta aktif diberi tahu v2 dengan tautan yang benar; yang sudah lulus, yang mendaftar setelah v2, dan orang luar tidak. Cek riwayat versi gagal karena fungsinya belum ada. Data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 22 Okt): 16/16.**
 
 **Masih terbuka:** perlakuan bagi peserta yang sudah lulus saat modul naik versi (mentor, butir 9).
 
@@ -673,7 +673,9 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 - PGlite 11/11: bug terbukti di fungsi lama; tidak memilih Trainer berarti tetap expert tanpa status trainer; memilih Trainer berarti aktif; huruf kecil/spasi dikenali; portal tidak memberi status ke non-Trainer; Trainer tanpa baris status dipulihkan; pembaruan menambah Trainer; status lama tidak dicabut; publikasi profil tetap; migrasi bisa diulang.
 - PGlite pembaruan profil expert (2w) tetap 47/47.
 - `tsc` dan `build` lulus.
-- Uji langsung baru `npm run test:trainer-choice` (5 cek). **Sebelum migrasi (intern-update, 22 Okt): 2/5**: expert yang memilih Reviewer dan Speaker menjadi trainer aktif dan tidak bisa mengajukan Kualifikasi Trainer. Data uji tersisa 0.
+- Uji langsung baru `npm run test:trainer-choice` (5 cek). **Sebelum migrasi (intern-update, 22 Okt): 2/5**: expert yang memilih Reviewer dan Speaker menjadi trainer aktif dan tidak bisa mengajukan Kualifikasi Trainer. Data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 22 Okt): 5/5**, dan 4 expert asli tetap trainer aktif.
+
+**Uji gabungan setelah migrasi 2w, 2x, 2y (intern-update, 22 Okt):** expert-profile-update 19, trainer-choice 5, version-history 16, expert-rpc 64 (versi baru), knowledge-update 19, kr-rpc 24, kh-roles 20, admin-module-revision 18, module-update 24, training-requests 33, lifecycle 14, participant-rpc 27, expert-role-lock 10, review-lockdown 13, learning-progress 12, console-roles dan console-decisions lulus, rbac 820. Akun uji tersisa 0, total akun 27.
 
 ---
 
