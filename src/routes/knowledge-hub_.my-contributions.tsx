@@ -25,6 +25,10 @@ import {
   type KnowledgeContributionItem,
 } from "@/lib/knowledge-hub/contribution.functions";
 import { formatDate, formatBytes } from "@/lib/resources";
+import {
+  CancelResourceUpdate,
+  RequestResourceUpdate,
+} from "@/components/baruna/knowledge-hub/ResourceUpdateControls";
 
 export const Route = createFileRoute("/knowledge-hub_/my-contributions")({
   head: () => ({
@@ -69,6 +73,13 @@ function StatusBadge({ status, label }: { status: KnowledgeContributionItem["sta
       </span>
     );
   }
+  if (status === "update_drafting") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+        <Pencil className="h-3.5 w-3.5" /> {label}
+      </span>
+    );
+  }
   if (status === "under_review" || status === "submitted") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
@@ -87,7 +98,7 @@ function Pipeline({ status }: { status: KnowledgeContributionItem["status"] }) {
   const steps = ["Submitted", "Under Review", "Published"];
   let activeIndex = 0;
   if (status === "under_review") activeIndex = 1;
-  if (status === "approved" || status === "published") activeIndex = 2;
+  if (status === "approved" || status === "published" || status === "update_drafting") activeIndex = 2;
   if (status === "revision_requested") activeIndex = 1;
 
   return (
@@ -113,6 +124,7 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
   const editId = r.draftId || r.id;
   const isPublished = r.status === "published" || r.status === "approved";
   const isRevision = r.status === "revision_requested";
+  const isUpdateDrafting = r.status === "update_drafting";
 
   return (
     <article className="rounded-2xl border border-border bg-card p-5 shadow-soft">
@@ -177,6 +189,29 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
         </div>
       )}
 
+      {r.liveVersionKept && (
+        <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-900">
+          <strong className="mb-1 flex items-center gap-1.5 font-bold text-emerald-800">
+            <Globe className="h-3.5 w-3.5 text-emerald-600" /> Versi saat ini tetap tayang
+          </strong>
+          <p className="leading-relaxed">
+            {isUpdateDrafting
+              ? "Pembaruan belum dikirim. Lanjutkan draf lalu kirim agar ditinjau kurator, atau batalkan bila tidak jadi."
+              : "Publikasi yang sudah disetujui tetap tampil di katalog Knowledge Hub sampai perubahan ini disetujui."}
+          </p>
+          {r.updateNote && <p className="mt-1.5 text-[11px] italic text-emerald-800/90">Ringkasan perubahan: "{r.updateNote}"</p>}
+        </div>
+      )}
+
+      {r.updateRejected && r.reviewNote && (
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
+          <strong className="mb-1 flex items-center gap-1.5 font-bold text-amber-800">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Pembaruan terakhir ditolak, versi sebelumnya tetap tayang
+          </strong>
+          <p className="leading-relaxed">{r.reviewNote}</p>
+        </div>
+      )}
+
       {r.isResubmitted && r.status === "under_review" && (
         <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/80 p-3 text-xs text-indigo-900">
           <strong className="block font-bold mb-1 flex items-center gap-1.5 text-indigo-800">
@@ -194,7 +229,18 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
       )}
 
       <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-        {isPublished ? (
+        {isUpdateDrafting ? (
+          <>
+            <Link
+              to="/knowledge-hub/submit-resource"
+              search={{ edit: editId }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition-colors hover:bg-navy"
+            >
+              <Pencil className="h-3.5 w-3.5" /> Lanjutkan Pembaruan
+            </Link>
+            {r.subjectId && <CancelResourceUpdate subjectId={r.subjectId} />}
+          </>
+        ) : isPublished ? (
           r.resourceId ? (
             <Link
               to="/knowledge-hub/resource/$id"
@@ -236,7 +282,18 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
               <Eye className="h-3.5 w-3.5 text-marine" /> Lihat di Katalog Publik
             </Link>
           )
-        ) : (
+        ) : null}
+        {isPublished && r.canOpenUpdate && r.subjectId && <RequestResourceUpdate subjectId={r.subjectId} />}
+        {(isUpdateDrafting || (r.liveVersionKept && !isPublished)) && r.resourceId && (
+          <Link
+            to="/knowledge-hub/resource/$id"
+            params={{ id: r.resourceId }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:bg-muted"
+          >
+            <Eye className="h-3.5 w-3.5 text-marine" /> Lihat Versi yang Tayang
+          </Link>
+        )}
+        {!isUpdateDrafting && !isPublished && (
           <Link
             to="/knowledge-hub/submit-resource"
             search={{ edit: editId }}
@@ -292,7 +349,9 @@ function MyContributionsPage() {
 
   const counts = {
     total: contributions.length,
-    published: contributions.filter((r) => r.status === "published" || r.status === "approved").length,
+    published: contributions.filter(
+      (r) => r.status === "published" || r.status === "approved" || r.status === "update_drafting",
+    ).length,
     review: contributions.filter((r) => r.status === "under_review" || r.status === "submitted" || r.status === "revision_requested").length,
     drafts: contributions.filter((r) => r.status === "draft").length,
   };

@@ -593,8 +593,27 @@ export type KnowledgeContributionItem = {
   title: string;
   type: string;
   typeGroup: string;
-  status: "draft" | "submitted" | "under_review" | "approved" | "published" | "revision_requested" | "rejected" | "archived";
+  status:
+    | "draft"
+    | "submitted"
+    | "under_review"
+    | "approved"
+    | "published"
+    | "revision_requested"
+    | "rejected"
+    | "archived"
+    | "update_drafting";
   statusLabel: string;
+  /** Review subject of the submission (needed to open or cancel an update). */
+  subjectId?: string;
+  /** The approved version stays in the catalog while a revision/update is reviewed. */
+  liveVersionKept?: boolean;
+  /** The owner may open an update of this live publication. */
+  canOpenUpdate?: boolean;
+  /** Note the owner wrote when opening the update in progress. */
+  updateNote?: string;
+  /** The latest update was rejected; the approved version stayed live (reason in reviewNote). */
+  updateRejected?: boolean;
   description?: string;
   topicCategory?: string;
   institution?: string;
@@ -897,6 +916,13 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       let status: KnowledgeContributionItem["status"] = "draft";
       let statusLabel = "Draf";
 
+      // The approved version stays in the catalog while a revision or an update of
+      // it is prepared or reviewed (migration 20261022020000).
+      const isLive = matchedKr?.current_status === "published";
+      const isPendingReview = subject?.current_status === "pending";
+      const updateOpen =
+        subject?.current_status === "approved" && subMeta.update_open === true && d.status === "draft";
+
       const isRevisionOrRejected =
         subject?.current_status === "rejected" ||
         subMeta.review_status === "rejected" ||
@@ -922,7 +948,13 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
       if (isArchived) {
         status = "archived";
         statusLabel = "Diarsipkan (Tarik Tayang)";
-      } else if (subject?.current_status === "approved" || subMeta.review_status === "approved" || matchedKr?.current_status === "published") {
+      } else if (updateOpen) {
+        status = "update_drafting";
+        statusLabel = "Pembaruan Sedang Disiapkan (Versi Saat Ini Tetap Tayang)";
+      } else if (
+        subject?.current_status === "approved" ||
+        (!isPendingReview && (subMeta.review_status === "approved" || isLive))
+      ) {
         status = "approved";
         statusLabel = "Disetujui & Tayang";
       } else if (subject?.current_status === "rejected" || subMeta.review_status === "rejected") {
@@ -941,6 +973,13 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
         status = "under_review";
         statusLabel = "Dalam Peninjauan";
       }
+      const liveVersionKept = isLive && (status === "under_review" || status === "revision_requested");
+      if (liveVersionKept) {
+        statusLabel =
+          status === "revision_requested"
+            ? "Perlu Revisi (Versi Saat Ini Tetap Tayang)"
+            : "Pembaruan Dalam Peninjauan (Versi Saat Ini Tetap Tayang)";
+      }
 
       const rawType = normalizeUiResourceType(payload.type ?? payload.resource_type ?? "Research Report");
       const fileData = payload.file as { name?: string; size?: number } | undefined;
@@ -957,7 +996,9 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
         id: d.id,
         draftId: d.id,
         resourceId: matchedKr?.id,
-        title: d.title,
+        // A live publication shows what the catalog shows: after a rejected update
+        // the newest draft is the rejected one.
+        title: status === "approved" && isLive && matchedKr ? matchedKr.title : d.title,
         type: rawType,
         typeGroup: groupForType(rawType),
         status,
@@ -971,6 +1012,11 @@ export const listMyKnowledgeContributions = createServerFn({ method: "GET" })
         fileInfo: fileData?.name || payload.fileName ? { name: fileData?.name || String(payload.fileName), size: fileData?.size || Number(payload.fileSize) || undefined } : undefined,
         reviewNote: note,
         isResubmitted: Boolean(isResubmitted),
+        subjectId: d.linked_subject_id ?? undefined,
+        liveVersionKept: liveVersionKept || updateOpen,
+        canOpenUpdate: Boolean(d.linked_subject_id) && status === "approved" && isLive,
+        updateNote: updateOpen && typeof subMeta.update_note === "string" ? subMeta.update_note : undefined,
+        updateRejected: status === "approved" && isLive && subMeta.last_decision === "reject",
       });
       seenTitles.add(d.title.trim().toLowerCase());
     }

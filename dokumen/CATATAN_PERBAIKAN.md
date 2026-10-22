@@ -556,12 +556,46 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 ---
 
+## 2v. Knowledge Hub: versi tayang tetap tayang selama revisi; kontributor bisa memperbarui publikasinya (22 Okt)
+
+**Acuan:** Slide 26-34 (Knowledge Hub: kontribusi → kurasi → publikasi), Slide 13 (tidak ada konten tayang tanpa approval), pola versioning modul (2t, 2u). Butir 1 antrean di MENUNGGU_ARAHAN_MENTOR.md.
+
+**Temuan (dibuktikan di PGlite dan di database intern-update):**
+- `admin_kr_decide` (`20261020060000`) dengan **Minta Revisi** atau **Tolak** pada publikasi yang sudah tayang mengubahnya menjadi archived + private. Akibatnya publikasi **hilang dari katalog** selama revisi, dan revisi yang ditolak menghapus versi yang sebelumnya sudah disetujui. Terjadi di intern-update: "Teknologi Pemantauan Rumpon & Penangkapan…" (disetujui, lalu diminta revisi) sedang tersembunyi.
+- Kontributor tidak bisa memperbarui publikasinya sendiri. `submit_draft_for_review` hanya menerima draf tertaut bila kurator meminta revisi.
+- Konsol Kurasi mengecek "Disetujui & Tayang" sebelum "Revisi Diajukan Ulang". Bila versi lama tetap tayang, kiriman revisi akan terlihat seperti sudah tayang, dan admin tidak tahu ada yang perlu diputuskan.
+
+**Perbaikan (migrasi `20261022020000`):**
+- **Versi tayang tetap tayang** selama revisi dan pembaruan. **Disetujui**: isi katalog diganti dan versi naik (tercatat di `knowledge_resource_versions`). **Ditolak**: versi lama tetap tayang dan status kembali "disetujui". **Tolak** tanpa pengajuan yang menunggu ditolak (`nothing_to_decide`); untuk menarik tayang gunakan **Arsipkan**.
+- **Minta Revisi pada publikasi tayang:** draf baru berisi versi yang **tayang** (revisi yang disetujui keputusan `knowledge_resources.audit_ref`), bukan draf terakhir yang bisa saja isi yang ditolak.
+- **Kontributor memperbarui sendiri:** `contributor_open_resource_update` (hanya pemilik, wajib ringkasan perubahan 5–2.000 karakter, hanya untuk publikasi yang tayang) dan `contributor_cancel_resource_update` (sebelum dikirim). Status tetap "disetujui" sampai dikirim. Pengiriman lewat jalur biasa (`kr_draft_submit`), sehingga semua aturan berkas/tautan/jenis tetap berlaku. Selama pembaruan disiapkan, approver tidak bisa memutuskan atau meminta revisi atasnya.
+- **Arsip dan pulihkan:** arsip saat pembaruan masih disiapkan membatalkan pembaruan itu. Pulihkan dari arsip menayangkan kembali versi yang disetujui walau pengajuan kembali ke antrean.
+- **Perbaikan data:** publikasi yang tersembunyi karena permintaan revisi (bukan karena diarsipkan admin) ditayangkan kembali. Di intern-update ini 1 publikasi; tautannya sudah dicek tidak bentrok dengan publikasi aktif lain.
+- **Aplikasi:**
+  - My Contributions: tombol **Ajukan Pembaruan**, status "Pembaruan Sedang Disiapkan", **Lanjutkan / Batalkan Pembaruan**, tautan "Lihat Versi yang Tayang", serta pemberitahuan bila pembaruan ditolak.
+  - Kartu publikasi di portal trainer.
+  - Konsol Kurasi: status antrean didahulukan, dengan label "Pembaruan Menunggu Keputusan (Versi Lama Tetap Tayang)". Selama pembaruan belum dikirim, admin melihat versi yang sedang tayang. Tombol Tolak disembunyikan untuk publikasi yang sudah disetujui.
+  - Notifikasi "Pembaruan Publikasi Ditolak (Versi Sebelumnya Tetap Tayang)".
+- `test:kr-rpc` langkah 3 disesuaikan: dulu mengecek "salinan tayang diturunkan", sekarang mengecek "versi yang disetujui tetap tayang selama revisi".
+
+**Uji:** PGlite 48/48:
+- **Sebelum:** 2 bug terbukti.
+- **Kurator:** tetap tayang selama revisi; draf dari versi tayang; ditolak tetap tayang; Tolak tanpa antrean ditolak; disetujui naik ke v2 dan tercatat di riwayat versi.
+- **Kontributor:** izin, validasi catatan, draf dari versi tayang, status tetap disetujui, tidak dua kali, approver tidak bisa memutuskan saat disiapkan, batal memulihkan draf, kirim tanpa perubahan ditolak, setelah dikirim tidak bisa dibatalkan atau dibuka lagi, disetujui jadi v3.
+- **Arsip/pulihkan:** dua skenario.
+- **Pengajuan baru:** perilaku lama tetap.
+- **Lainnya:** anon tanpa EXECUTE, fungsi internal tertutup, migrasi bisa diulang. Perbaikan data hanya menayangkan publikasi yang disembunyikan oleh permintaan revisi.
+
+`tsc` dan `build` lulus. Uji langsung baru `npm run test:knowledge-update` (19 cek). **Sebelum migrasi (intern-update, 22 Okt): 5/19**: v1 hilang dari katalog saat diminta revisi, revisi ditolak menghapus versi tayang, dan fungsi kontributor belum ada. Data uji tersisa 0.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (50 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (51 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -600,6 +634,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261021110000_workflow_status_history_sla.sql` (riwayat status semua pengajuan lewat trigger; SLA per langkah; pemohon menarik permintaan pelatihan). Lihat bagian 2s. Kode branch ini tetap jalan tanpa migrasi ini (riwayat dan SLA kosong; tombol tarik error dengan jelas).
 - `20261021120000_trainer_module_update.sql` (trainer membuka/membatalkan pembaruan modul tayangnya sendiri). Lihat bagian 2t. Tanpa migrasi ini tombol "Ajukan Pembaruan" menampilkan error; fitur lain tidak terpengaruh.
 - `20261022010000_admin_module_revision_live_source.sql` ("Buka revisi modul tayang" oleh approver/admin mulai dari versi tayang; ditolak bila kiriman trainer menunggu keputusan). Lihat bagian 2u. Kode lama tetap jalan.
+- `20261022020000_knowledge_resource_live_during_revision.sql` (publikasi Knowledge Hub tetap tayang selama revisi/pembaruan; kontributor membuka/membatalkan pembaruan; 1 publikasi yang tersembunyi karena permintaan revisi ditayangkan kembali). Lihat bagian 2v. Butuh kode branch ini untuk tombol pembaruan dan label konsol; setelah migrasi `test:kr-rpc` versi branch ini yang berlaku.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

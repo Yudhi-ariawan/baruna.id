@@ -291,7 +291,13 @@ export function AdminPublicationDetailModal({
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                       <span>
-                        <strong>Publikasi Disetujui &amp; Tayang:</strong> Dokumen pengetahuan ini aktif ditampilkan di katalog publik Knowledge Hub.
+                        <strong>Publikasi Disetujui &amp; Tayang:</strong>{" "}
+                        {item.updateDrafting
+                          ? "Versi yang disetujui tetap tayang. Kontributor sedang menyiapkan pembaruan (belum dikirim)."
+                          : item.liveVersionKept
+                            ? "Versi yang disetujui tetap tayang. Isi di bawah adalah perubahan yang menunggu keputusan; disetujui = menggantikan versi tayang, ditolak = versi tayang tetap."
+                            : "Dokumen pengetahuan ini aktif ditampilkan di katalog publik Knowledge Hub."}
+                        {item.updateNote ? ` Ringkasan perubahan: "${item.updateNote}"` : ""}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -801,6 +807,8 @@ export function AdminPublicationDetailModal({
                   </>
                 ) : (
                   <>
+                    {/* A contributor's unsent update is theirs until sent. */}
+                    {!item.updateDrafting && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -810,6 +818,9 @@ export function AdminPublicationDetailModal({
                       <AlertCircle className="h-3.5 w-3.5 mr-1" />
                       Minta Revisi
                     </Button>
+                    )}
+                    {/* Nothing waits for a decision on an approved publication: take it down with Arsipkan. */}
+                    {item.status !== "approved" && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -819,6 +830,7 @@ export function AdminPublicationDetailModal({
                       <XCircle className="h-3.5 w-3.5 mr-1" />
                       Tolak
                     </Button>
+                    )}
                     {(item.status === "approved" || item.isPublished) && (
                       <Button
                         size="sm"

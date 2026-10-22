@@ -54,7 +54,7 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 
 Lanjutan bagian 2t di CATATAN_PERBAIKAN.md (modul: trainer bisa memperbarui modul tayang, sudah selesai dan diuji). Urutan yang disarankan:
 
-1. **Knowledge Hub: versi lama tetap tayang selama revisi, plus pembaruan dari kontributor.**
+1. ~~**Knowledge Hub: versi lama tetap tayang selama revisi, plus pembaruan dari kontributor.**~~ Selesai 22 Okt (CATATAN_PERBAIKAN 2v, migrasi `20261022020000`). Catatan asli:
    - Temuan: `admin_kr_decide` (migrasi `20261020060000`) dengan keputusan `return_for_revision` pada publikasi yang sudah tayang mengubah `knowledge_resources` menjadi `archived` + `private`, jadi publikasi hilang dari katalog selama revisi. Kontributor juga tidak bisa memulai pembaruan sendiri, karena `submit_draft_for_review` (`20261021050000`) hanya menerima draf tertaut saat statusnya `revision_requested`.
    - Arah perbaikan: ikuti pola modul. Kalau resource sedang tayang, revisi tidak mengarsipkannya. Persetujuan menaikkan `version` (trigger `trg_kr_version_snapshot` sudah mengisi `knowledge_resource_versions`). Penolakan mempertahankan versi lama. Tambah RPC kontributor `contributor_open_resource_update` / `contributor_cancel_resource_update` seperti `trainer_open_module_update`. Uji: `test:kr-rpc`, `test:kh-roles`, dan skrip uji langsung baru.
 2. **Expert: pembaruan profil oleh expert sendiri (review → versi baru).**

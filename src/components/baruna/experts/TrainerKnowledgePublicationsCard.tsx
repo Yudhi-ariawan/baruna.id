@@ -45,6 +45,12 @@ function resolvePublicationStatus(item: KnowledgeContributionItem) {
         badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300",
         icon: CheckCircle2,
       };
+    case "update_drafting":
+      return {
+        label: "Tayang · Pembaruan Disiapkan",
+        badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-300",
+        icon: FileEdit,
+      };
     case "archived":
       return {
         label: "Diarsipkan (Tarik Tayang)",
@@ -53,7 +59,7 @@ function resolvePublicationStatus(item: KnowledgeContributionItem) {
       };
     case "revision_requested":
       return {
-        label: "Perlu Revisi",
+        label: item.liveVersionKept ? "Tayang · Perlu Revisi" : "Perlu Revisi",
         badgeClass: "bg-amber-100 text-amber-800 border-amber-300",
         icon: RotateCcw,
       };
@@ -66,7 +72,7 @@ function resolvePublicationStatus(item: KnowledgeContributionItem) {
     case "under_review":
     case "submitted":
       return {
-        label: "Dalam Peninjauan",
+        label: item.liveVersionKept ? "Tayang · Pembaruan Ditinjau" : "Dalam Peninjauan",
         badgeClass: "bg-blue-100 text-blue-800 border-blue-300",
         icon: Clock,
       };

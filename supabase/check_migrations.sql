@@ -189,7 +189,12 @@ WITH checks(no, migration, ok) AS (
   (50, '20261022010000_admin_module_revision_live_source',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'request_published_module_revision'
                 AND prosrc LIKE '%module_review_in_progress%'
-                AND prosrc LIKE '%audit_ref%'))
+                AND prosrc LIKE '%audit_ref%')),
+  (51, '20261022020000_knowledge_resource_live_during_revision',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'contributor_open_resource_update')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'contributor_cancel_resource_update')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_kr_decide' AND prosrc LIKE '%nothing_to_decide%')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review' AND prosrc LIKE '%update_open%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

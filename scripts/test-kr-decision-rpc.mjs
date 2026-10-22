@@ -146,7 +146,8 @@ async function run() {
   console.log("3. Siklus revisi");
   const r3 = await decide(approver.client, s1, "return_for_revision", { rationale: "Lengkapi data uji." });
   ok(!r3.error, "kembalikan untuk revisi");
-  ok((await krOf(s1))?.current_status === "archived", "salinan tayang diturunkan");
+  // Since 20261022020000 the approved version stays on air while a revision is pending.
+  ok((await krOf(s1))?.current_status === "published", "versi yang disetujui tetap tayang selama revisi");
   await rejects(decide(approver.client, s1, "approve"), /awaiting_applicant_revision/, "approve saat kontributor merevisi ditolak");
   await admin.from("review_drafts").update({ status: "submitted" }).eq("linked_subject_id", s1).eq("submitter_id", author.id);
   const meta = (await subjectRow(s1)).metadata ?? {};

@@ -234,7 +234,11 @@ async function buildReviewNotifications(userId: string): Promise<{ raw: RawNotif
       }
     } else if (dec.decision === "reject") {
       type = "rejected";
-      title = `Pengajuan Ditolak: ${subjectTitle}`;
+      // A rejected update of a live publication: the approved version stays on air.
+      title =
+        kind === "knowledge_resource" && subject?.current_status === "approved"
+          ? `Pembaruan Publikasi Ditolak (Versi Sebelumnya Tetap Tayang): "${subjectTitle}"`
+          : `Pengajuan Ditolak: ${subjectTitle}`;
       targetUrl =
         kind === "expert"
           ? `/experts/join`

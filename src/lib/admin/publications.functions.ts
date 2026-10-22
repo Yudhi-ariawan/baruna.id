@@ -154,6 +154,12 @@ export type AdminPublicationItem = {
   updatedAt: string;
   isPublished?: boolean;
   publishedResourceId?: string | null;
+  /** A revision or update of the live publication is in progress; the approved version stays on air. */
+  liveVersionKept?: boolean;
+  /** The contributor is preparing an update that has not been sent yet. */
+  updateDrafting?: boolean;
+  /** Summary the contributor wrote when opening the update. */
+  updateNote?: string | null;
   decisionsHistory?: Array<{
     id: string;
     decision: string;
@@ -231,6 +237,21 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
     const draftBySubjectId = new Map(
       (drafts ?? []).filter((d) => d.linked_subject_id).map((d) => [d.linked_subject_id as string, d]),
     );
+    // While a contributor prepares an update (not sent yet) the console shows the
+    // version under review before it, not the unsent draft (migration 20261022020000).
+    const previousDraftIds = (subjects ?? [])
+      .map((s) => (s.metadata as Record<string, unknown> | null) ?? {})
+      .filter((m) => m.update_open === true && typeof m.previous_draft_id === "string")
+      .map((m) => m.previous_draft_id as string);
+    if (previousDraftIds.length > 0) {
+      const { data: previousDrafts } = await supabaseAdmin
+        .from("review_drafts")
+        .select("id, title, payload, status, linked_subject_id, submitter_id, created_at, updated_at")
+        .in("id", previousDraftIds);
+      for (const d of previousDrafts ?? []) {
+        if (d.linked_subject_id) draftBySubjectId.set(d.linked_subject_id, d);
+      }
+    }
 
     // 3. Fetch latest decisions
     const subjectIds = (subjects ?? []).map((s) => s.id);
@@ -477,13 +498,24 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
           subjMeta.review_status !== "resubmitted" &&
           subjMeta.review_status !== "rejected");
 
+      // A revision or update of a live publication waits in the queue while the
+      // approved version stays on air: the queue state comes first.
+      const inQueue = ["pending", "under_review", "decision_pending"].includes(subj.current_status);
+      const updateDrafting = subj.current_status === "approved" && subjMeta.update_open === true;
+
       if (isArchived) {
         status = "archived";
         statusLabel = "Diarsipkan (Tarik Tayang)";
-      } else if (subj.current_status === "approved" || subjMeta.review_status === "approved" || published?.current_status === "published") {
+      } else if (
+        subj.current_status === "approved" ||
+        (!inQueue && (subjMeta.review_status === "approved" || published?.current_status === "published"))
+      ) {
         status = "approved";
-        statusLabel = "Disetujui & Tayang";
-      } else if (subj.current_status === "rejected" || subjMeta.review_status === "rejected" || latestDec?.decision === "reject") {
+        statusLabel = updateDrafting ? "Disetujui & Tayang · Kontributor Menyiapkan Pembaruan" : "Disetujui & Tayang";
+      } else if (
+        !inQueue &&
+        (subj.current_status === "rejected" || subjMeta.review_status === "rejected" || latestDec?.decision === "reject")
+      ) {
         status = "rejected";
         statusLabel = "Ditolak";
       } else if (isResubmitted) {
@@ -495,6 +527,13 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
       } else if (subj.current_status === "under_review") {
         status = "under_review";
         statusLabel = "Sedang Ditinjau";
+      }
+      const liveVersionKept = inQueue && published?.current_status === "published" && !isArchived;
+      if (liveVersionKept) {
+        statusLabel =
+          status === "revision_requested"
+            ? "Menunggu Revisi Kontributor (Versi Lama Tetap Tayang)"
+            : "Pembaruan Menunggu Keputusan (Versi Lama Tetap Tayang)";
       }
 
       const rawType = String(payload.type ?? payload.resource_type ?? "Research Report");
@@ -617,6 +656,9 @@ export const listAdminPublicationSubmissions = createServerFn({ method: "GET" })
         updatedAt: subj.updated_at,
         isPublished: published?.current_status === "published" && !isArchived,
         publishedResourceId: published?.id ?? null,
+        liveVersionKept: liveVersionKept || updateDrafting,
+        updateDrafting,
+        updateNote: typeof subjMeta.update_note === "string" ? subjMeta.update_note : null,
         decisionsHistory,
       });
     }
@@ -648,6 +690,8 @@ const KR_DECISION_ERRORS: Record<string, string> = {
   not_archived: "Publikasi ini tidak sedang diarsipkan.",
   already_approved: "Publikasi ini sudah disetujui dan tayang.",
   awaiting_applicant_revision: "Kontributor sedang merevisi publikasi ini. Tunggu sampai revisi dikirim ulang.",
+  contributor_update_open: "Kontributor sedang menyiapkan pembaruan publikasi ini. Tunggu sampai pembaruan dikirim, lalu putuskan.",
+  nothing_to_decide: "Tidak ada pengajuan yang menunggu keputusan. Untuk menarik publikasi dari katalog, gunakan Arsipkan.",
   already_rejected: "Publikasi ini sudah berstatus ditolak.",
   rejected_is_final: "Publikasi yang sudah ditolak tidak dapat dikembalikan untuk revisi.",
   already_awaiting_revision: "Publikasi ini sudah menunggu revisi dari kontributor.",
