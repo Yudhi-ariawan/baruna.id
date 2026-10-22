@@ -539,12 +539,29 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 ---
 
+## 2u. "Buka revisi modul tayang" (admin) mulai dari versi yang tayang (22 Okt)
+
+**Acuan:** PB-ACA-01 (Slide 20, versioning dan approval), Slide 13 (tidak ada konten tayang tanpa approval). Butir 4 antrean di MENUNGGU_ARAHAN_MENTOR.md.
+
+**Temuan (dibuktikan di PGlite dengan fungsi lama `20261015040000`):**
+- `request_published_module_revision` (jalur Approver/Admin) mengambil kuis lengkap dan lampiran dari **draf terbaru**. Setelah pembaruan trainer ditolak, draf terbaru adalah isi yang ditolak. Akibatnya revisi yang dibuka admin membawa lagi kuis dan lampiran yang ditolak, bukan yang sedang tayang.
+- Fungsi itu juga tidak memeriksa status pengajuan. Bila trainer sudah **mengirim** pembaruan yang menunggu keputusan, membuka revisi menarik kiriman itu (`withdrawn`) tanpa keputusan atas isinya. Kasus ini ada di intern-update: modul "Ministry Professional English Program" berstatus pending/resubmitted (revisi ke-2 menunggu keputusan).
+
+**Perbaikan (migrasi `20261022010000`):**
+- Isi awal revisi diambil dari revisi yang disetujui oleh keputusan yang menayangkan modul (`module_registry.audit_ref`), sama dengan `trainer_open_module_update` (2t). Bila tidak ada, cadangannya draf aktif terakhir (perilaku lama). Semua modul tayang di intern-update punya `audit_ref` ke keputusan approve.
+- Ditolak dengan `module_review_in_progress` bila status pengajuan bukan `approved`. Kiriman yang menunggu diputuskan lewat Setujui / Tolak / Minta Revisi. Pesan ramah di Konsol Kurasi.
+- Peran, larangan memutuskan milik sendiri, kunci baris, dan bentuk hasil tidak berubah. Tombol di Konsol sudah hanya tampil untuk modul berstatus approved; penjaga di server menutup layar yang belum dimuat ulang atau klik bersamaan.
+
+**Uji:** PGlite 28/28. Bagian A (fungsi lama) membuktikan 3 bug: kuis ditolak terbawa, lampiran ditolak terbawa, kiriman menunggu ditarik diam-diam. Bagian B (fungsi baru): izin (bukan approver, pengaju sendiri, tanpa login, anon tanpa EXECUTE), validasi catatan, kuis dan lampiran dari revisi yang disetujui, isi deskriptif dari modul tayang, draf milik trainer, draf lama withdrawn, status menunggu revisi, keputusan dan audit trail tercatat, versi tayang tetap, tidak dua kali, status pending/under_review/decision_pending ditolak dan kiriman tetap utuh, cadangan tanpa `audit_ref`, modul tidak tayang ditolak, migrasi bisa diulang. `tsc` dan `build` lulus. Uji langsung baru `npm run test:admin-module-revision` (18 cek). **Sebelum migrasi (intern-update, 22 Okt): 13/18.** Yang gagal tepat di bug ini: kuis dan lampiran revisi berasal dari versi yang ditolak, revisi tetap dibuka saat kiriman menunggu keputusan, dan dua langkah sesudahnya ikut gagal. Data uji tersisa 0.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (49 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (50 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -582,6 +599,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261021100000_learning_progress_server_record.sql` (kelulusan modul hanya dicatat server dari kuis resmi; percobaan kuis; ringkasan trainer). Lihat bagian 2r. Butuh kode branch ini; kode lama tetap jalan tetapi kelulusan dari browser tidak lagi tersimpan.
 - `20261021110000_workflow_status_history_sla.sql` (riwayat status semua pengajuan lewat trigger; SLA per langkah; pemohon menarik permintaan pelatihan). Lihat bagian 2s. Kode branch ini tetap jalan tanpa migrasi ini (riwayat dan SLA kosong; tombol tarik error dengan jelas).
 - `20261021120000_trainer_module_update.sql` (trainer membuka/membatalkan pembaruan modul tayangnya sendiri). Lihat bagian 2t. Tanpa migrasi ini tombol "Ajukan Pembaruan" menampilkan error; fitur lain tidak terpengaruh.
+- `20261022010000_admin_module_revision_live_source.sql` ("Buka revisi modul tayang" oleh approver/admin mulai dari versi tayang; ditolak bila kiriman trainer menunggu keputusan). Lihat bagian 2u. Kode lama tetap jalan.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

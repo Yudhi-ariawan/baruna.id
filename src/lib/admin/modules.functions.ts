@@ -131,6 +131,7 @@ const PUBLISHED_REVISION_ERRORS: Array<[RegExp, string]> = [
   [/forbidden|42501|decider_role_required/, "Akses ditolak: revisi modul tayang hanya dapat dibuka oleh Approver, Admin, atau Super Admin."],
   [/self_decision_forbidden/, "Anda tidak dapat membuka revisi untuk modul yang Anda ajukan sendiri."],
   [/published_revision_already_open/, "Revisi untuk modul ini sudah dibuka dan sedang dikerjakan trainer. Tunggu trainer mengirim ulang."],
+  [/module_review_in_progress/, "Trainer sudah mengirim pembaruan modul ini dan kiriman itu menunggu keputusan. Putuskan lewat Setujui, Tolak, atau Minta Revisi."],
   [/published_module_not_found/, "Modul ini tidak sedang tayang, jadi tidak ada versi publik yang bisa direvisi."],
   [/module_subject_not_found/, "Modul pelatihan tidak ditemukan."],
   [/revision_rationale_required/, "Catatan pembaruan modul untuk Trainer wajib diisi (minimal 5 karakter)."],

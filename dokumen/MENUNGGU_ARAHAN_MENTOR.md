@@ -29,7 +29,7 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 - Penerbitan sudah di server (`issueCertificate`, RPC `check_certificate_eligibility`, tabel `certificates`).
 - Tampilan digambar di browser (`src/lib/certificate.ts`) memakai `/template-sttp-sementara.jpeg`.
 - Data tetap di kode: penandatangan "Lilly Aprilya Pregiwati", JP bawaan 8, instansi bawaan KKP, badge "CERTIFIED 2026".
-- Kelulusan kuis dan sertifikat masih dicatat di `localStorage` (melanggar Slide 15).
+- ~~Kelulusan kuis dan sertifikat masih dicatat di `localStorage` (melanggar Slide 15).~~ Sejak 21 Okt kelulusan modul dicatat server dari kuis resmi (CATATAN_PERBAIKAN 2r); sertifikat diterbitkan server.
 
 ### Role dan alur
 - Role participant: PB-ACA-03 menyebut role diberikan saat admin menyetujui, tetapi kode memberikannya saat biodata disimpan. **Keputusan pemilik proyek 21 Okt: tetap otomatis** (lihat butir 3 di atas).
@@ -63,6 +63,6 @@ Lanjutan bagian 2t di CATATAN_PERBAIKAN.md (modul: trainer bisa memperbarui modu
 3. **Riwayat versi yang bisa dilihat, dan notifikasi ke peserta aktif saat modul diperbarui.**
    - Riwayat versi (v1, v2, … + tanggal + siapa yang menyetujui) untuk modul, publikasi, dan profil expert. Sumbernya `module_registry_versions` / `knowledge_resource_versions` / `expert_versions`, dan penyetuju dari `review_decisions` lewat `audit_ref`. Tampilkan di portal pemilik dan Konsol Kurasi. Catatan: versi 1 modul tidak masuk `module_registry_versions` (trigger hanya saat UPDATE); isinya ada di `review_subject_revisions`.
    - Notifikasi peserta aktif saat modul naik versi: penerima dari `self_paced_enrollments` / `course_enrollment_applications` yang disetujui dan belum lulus. Apakah peserta yang sudah lulus wajib mengulang menunggu jawaban mentor (nomor 9 di atas).
-4. **Celah kecil yang sama di jalur admin:** `request_published_module_revision` (`20261015040000`) masih mengambil kuis dan lampiran dari draf terbaru. Setelah pembaruan ditolak, draf terbaru itu adalah versi yang ditolak. Samakan dengan `trainer_open_module_update`, yang mengambil isi dari revisi yang disetujui lewat `module_registry.audit_ref`.
+4. ~~**Celah kecil yang sama di jalur admin.**~~ Selesai 22 Okt (CATATAN_PERBAIKAN 2u, migrasi `20261022010000`). Catatan asli: `request_published_module_revision` (`20261015040000`) masih mengambil kuis dan lampiran dari draf terbaru. Setelah pembaruan ditolak, draf terbaru itu adalah versi yang ditolak. Samakan dengan `trainer_open_module_update`, yang mengambil isi dari revisi yang disetujui lewat `module_registry.audit_ref`.
 
 Ingat untuk setiap migrasi baru: tambah baris di `supabase/check_migrations.sql` dan daftar migrasi di CATATAN_PERBAIKAN.md bagian 3, lalu jalankan `npm run build`.

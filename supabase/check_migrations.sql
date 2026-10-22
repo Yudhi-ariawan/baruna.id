@@ -185,7 +185,11 @@ WITH checks(no, migration, ok) AS (
                     AND prosrc LIKE '%already_awaiting_revision%')),
   (49, '20261021120000_trainer_module_update',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_open_module_update')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_cancel_module_update'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_cancel_module_update')),
+  (50, '20261022010000_admin_module_revision_live_source',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'request_published_module_revision'
+                AND prosrc LIKE '%module_review_in_progress%'
+                AND prosrc LIKE '%audit_ref%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
