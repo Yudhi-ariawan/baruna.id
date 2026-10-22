@@ -454,7 +454,7 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 **Temuan lain, belum dikerjakan:**
 - Approver ikut bisa menulis daftar keahlian/peran expert/bahasa dan aturan level trainer (policy lama admin|management). Usul: khusus admin; menunggu keputusan.
-- "My Training Requests" (`academy.training-requests.*`) membaca salinan di browser + contoh palsu; keputusan approver tidak terlihat peminta.
+- ~~"My Training Requests" (`academy.training-requests.*`) membaca salinan di browser + contoh palsu; keputusan approver tidak terlihat peminta.~~ Diperbaiki di bagian 2s.
 - `createUser` (Tambah User) mengabaikan peran yang gagal diberikan tanpa pesan.
 - Approver/admin bisa menyunting rincian profil expert langsung: sengaja (`20261015070000`).
 
@@ -486,12 +486,65 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 ---
 
+## 2s. My Training Requests dari server; riwayat status, SLA, dan notifikasi alur kerja (21 Okt)
+
+**Acuan:** Slide 13 (setiap langkah dapat memiliki SLA; notifikasi otomatis di setiap perubahan status; riwayat dapat dilihat pada halaman status proses), PB-ACA-06 (Slide 25: minta perbaikan/klarifikasi ke pengguna, notifikasi ke pengguna).
+
+**Temuan (dicek di kode dan database intern-update):**
+- Pengajuan Request a Training sudah masuk server (`training_need_draft_*`), tetapi "My Training Requests" membaca salinan localStorage plus tiga contoh palsu. Di device lain daftar kosong; keputusan approver (setuju/tolak/minta revisi) tidak pernah terlihat; tombol "Withdraw" hanya menghapus salinan browser.
+- Permintaan revisi (`return_for_revision`) membuka draf untuk pemohon, tetapi tidak ada halaman untuk mengubah dan mengirim ulang; pengajuan berhenti di situ.
+- Perubahan status `review_subjects` tidak tercatat lengkap (audit log hanya sebagian event dan hanya terbaca admin/approver). Tidak ada SLA. Notifikasi hanya untuk keputusan akhir; untuk permintaan pelatihan judul dan tautannya salah (ke Knowledge Hub). Reviewer tidak diberi tahu saat ditugaskan.
+- Halaman sukses menjanjikan pembaruan lewat email (tidak ada pengiriman email).
+
+**Perbaikan:**
+- Migrasi `20261021110000`:
+  - `review_subject_status_history` diisi trigger di setiap perubahan `current_status`, untuk semua jenis pengajuan dan semua RPC. Pengajuan lama diisi perkiraan bertanda `is_backfill`. Dibaca lewat `can_read_review_subject` (pemohon, reviewer aktif, admin/approver); kolom `changed_by` tidak dibuka untuk pengguna.
+  - `workflow_sla_policies` (jam per jenis + langkah) hanya bisa diubah lewat `set_workflow_sla_policy` (khusus admin, tercatat di audit trail). Isi awal untuk permintaan pelatihan bersifat **sementara**: penugasan 72 jam, review 120 jam, keputusan 72 jam.
+  - `training_need_withdraw`: pemohon menarik pengajuannya sendiri sebelum diputuskan. Penugasan aktif dibatalkan, draf revisi yang belum dikirim dihapus, dan penarikan tercatat di audit trail.
+- "My Training Requests" (daftar dan detail) membaca server lewat klien pengguna (RLS). Detail menampilkan tahap saat ini, target SLA, riwayat lengkap (diajukan, mulai direview, review selesai, minta revisi + catatan, disetujui/ditolak + alasan, ditarik), isi pengajuan, dan tombol tarik. Mode Presentasi tetap memakai data demo browser.
+- Revisi: tombol "Revise & Resubmit" membuka wizard berisi draf revisi (`?revise=<id>`). Kiriman ulang memakai draf yang sama, jadi id, riwayat, dan reviewer tetap. Kiriman tanpa perubahan ditolak (`revision_unchanged`). Bila draf revisi gagal dimuat, wizard tidak akan membuat pengajuan baru.
+- Notifikasi (dihitung dari data server, penanda baca tetap di `notification_reads`):
+  - Pemohon (semua jenis): mulai direview, review selesai.
+  - Permintaan pelatihan: judul dan tautan keputusan diperbaiki; minta revisi mengarah ke wizard revisi.
+  - Reviewer: ditugaskan (dengan batas waktu dari `due_at` atau SLA), dan saat batas waktu terlewati.
+  - Admin/approver: permintaan baru atau revisi masuk, menunggu keputusan, dan langkah yang melewati SLA.
+- Konsol Kurasi: tahap + status SLA di daftar Permintaan Pelatihan, riwayat status di halaman pengajuan, dan menu baru **SLA Alur Kerja** (`/governance/sla`: semua peran kurasi bisa melihat, hanya admin yang bisa mengubah).
+- Teks email di halaman sukses diganti menjadi notifikasi BARUNA.
+
+**Uji:** PGlite 36/36 (trigger: insert, ganti status, tanpa ganti status; backfill dan migrasi bisa diulang; RLS: pemohon, orang lain, approver, reviewer sebelum/sesudah ditugaskan; `changed_by` tertutup; tulis langsung ditolak; SLA: baca, anon ditolak, update langsung ditolak, approver ditolak, validasi, admin berhasil + audit; withdraw: orang lain/admin/jenis lain/alasan terlalu panjang ditolak, berhasil + efeknya, tidak bisa dua kali, anon ditolak; cascade). PGlite juga menguji `return_for_revision` baru (48/48 total). `tsc` dan `build` lulus. **Uji langsung (intern-update, 21 Okt, setelah migrasi dijalankan):** `npm run test:training-requests` 33/33. Alurnya: ajukan → riwayat & RLS → SLA (baca, tolak, ubah via RPC + audit) → tugaskan → rekomendasi → kembalikan untuk revisi (penugasan ditutup, catatan terlihat pemohon, tidak dua kali) → kirim ulang (tanpa perubahan ditolak, revisi ke-2) → tugaskan lagi → tarik (orang lain/admin ditolak) → jalur disetujui dengan riwayat lengkap. Nilai SLA dikembalikan ke semula; data uji tersisa 0. Backfill mengisi riwayat untuk 17 pengajuan lama. Uji lain tetap lulus: rbac 820, lifecycle 14, kh-roles 20, expert-rpc 64, kr-rpc 24, participant-rpc 27, expert-role-lock 10, review-lockdown 13, learning-progress 12.
+
+**Masih terbuka:** nilai SLA resmi dan apakah dihitung hari kerja (mentor); notifikasi email (belum ada layanan email); langkah TNA/rekomendasi/konversi ke course (PB-ACA-06) tetap menunggu arahan.
+
+---
+
+## 2t. Trainer memperbarui modul tayangnya sendiri (21 Okt)
+
+**Acuan:** PB-ACA-01 (Slide 20, Master Course/Module dengan versioning dan approval), Slide 38 (versioning), Slide 13 (tidak ada konten tayang tanpa approval).
+
+**Temuan:** modul tayang hanya bisa direvisi lewat "Buka revisi modul tayang" milik approver/admin (`request_published_module_revision`). Trainer yang ingin memperbarui materi secara berkala harus meminta admin dulu. Pondasinya sudah benar: versi lama tetap tayang selama revisi, persetujuan menaikkan versi (`module_registry_versions`), dan penolakan mempertahankan versi lama.
+
+**Perbaikan:**
+- Migrasi `20261021120000`:
+  - `trainer_open_module_update(subject, catatan)`. Hanya trainer aktif, untuk modulnya sendiri yang sedang tayang, dan wajib dengan ringkasan perubahan (5–2.000 karakter). Membuka satu draf pembaruan: isi deskriptif dari versi tayang, sedangkan kuis lengkap dan lampiran dari **revisi yang menghasilkan versi tayang** (lewat `module_registry.audit_ref`), bukan dari draf terakhir yang bisa saja pembaruan yang ditolak. Ini bukan keputusan, dan status tetap `approved` sampai dikirim. Ditolak bila modul diarsipkan, tidak tayang, sedang diverifikasi, atau pembaruan sudah terbuka. Tercatat di audit trail.
+  - `trainer_cancel_module_update(subject)`: membatalkan pembaruan yang belum dikirim dan memulihkan draf sebelumnya. Tidak bisa bila verifikator sudah membuat keputusan sesudahnya, dan tidak berlaku untuk revisi yang diminta verifikator.
+- Kiriman, verifikasi, dan keputusan memakai jalur yang sudah ada (`trainer_module_save`, `admin_module_decide`). Kuota level tidak bertambah karena revisi modul yang sudah di registry tidak dihitung.
+- Portal Trainer → Status Review:
+  - Kartu modul tayang punya tombol **Ajukan Pembaruan** (isi ringkasan perubahan, lalu langsung ke editor).
+  - Status "Pembaruan Sedang Disiapkan" dengan tombol **Lanjutkan Pembaruan** / **Batalkan Pembaruan**.
+  - Editor modul menjelaskan bahwa versi saat ini tetap tayang. Label di beranda portal ikut disesuaikan.
+
+**Uji:** PGlite 28/28 (izin: bukan trainer, trainer lain, anon; validasi catatan; modul tidak tayang/diarsipkan/sedang diverifikasi; isi draf dari versi tayang + revisi yang disetujui, bukan pembaruan yang ditolak; draf lama withdrawn; status tetap approved; versi tayang tidak berubah; tidak ada keputusan; tidak dua kali; batal: orang lain ditolak, draf dipulihkan, metadata bersih, tidak dua kali, tidak setelah keputusan, tidak untuk revisi dari verifikator; migrasi bisa diulang). `tsc` dan `build` lulus. **Uji langsung (intern-update, 21 Okt, setelah migrasi dijalankan):** `npm run test:module-update` 24/24. Isinya: modul tayang → buka pembaruan (validasi dan izin) → versi tayang tetap → kuota tetap → admin tidak bisa membuka revisi kedua → batal → kirim → disetujui naik ke v2 dan tersimpan di riwayat versi → pembaruan ditolak, v2 tetap tayang → diminta revisi, trainer tidak bisa membatalkan → kirim ulang dan disetujui jadi v3 → kuota tetap. Data uji tersisa 0 (akun, profil expert, modul). Uji lain tetap lulus: lifecycle 14, kh-roles 20, expert-rpc 64, learning-progress 12, review-lockdown 13, training-requests 33, rbac 820.
+
+**Masih terbuka:** peserta yang sudah lulus versi lama tetap lulus dan belum diberi tahu saat ada versi baru (kebijakan, tanya mentor); halaman riwayat versi (v1, v2, …) untuk trainer/admin belum ada.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (47 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (49 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -527,6 +580,8 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261021080000_expert_role_flow_only.sql` (peran `expert` tidak bisa dicentang/dicabut manual; hanya lewat persetujuan pendaftaran dan arsip expert). Lihat bagian 2p.
 - `20261021090000_review_direct_write_lockdown.sql` (status pengajuan dan penugasan reviewer tidak bisa ditulis langsung dari browser; konflik kepentingan lewat RPC). Lihat bagian 2q. Butuh kode branch ini (tombol "nyatakan konflik" memakai RPC baru).
 - `20261021100000_learning_progress_server_record.sql` (kelulusan modul hanya dicatat server dari kuis resmi; percobaan kuis; ringkasan trainer). Lihat bagian 2r. Butuh kode branch ini; kode lama tetap jalan tetapi kelulusan dari browser tidak lagi tersimpan.
+- `20261021110000_workflow_status_history_sla.sql` (riwayat status semua pengajuan lewat trigger; SLA per langkah; pemohon menarik permintaan pelatihan). Lihat bagian 2s. Kode branch ini tetap jalan tanpa migrasi ini (riwayat dan SLA kosong; tombol tarik error dengan jelas).
+- `20261021120000_trainer_module_update.sql` (trainer membuka/membatalkan pembaruan modul tayangnya sendiri). Lihat bagian 2t. Tanpa migrasi ini tombol "Ajukan Pembaruan" menampilkan error; fitur lain tidak terpengaruh.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

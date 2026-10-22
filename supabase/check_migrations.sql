@@ -174,7 +174,18 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_module_learning_summary')
       AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
                     AND table_name = 'self_paced_enrollments' AND column_name = 'completion_source')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'self_paced_sync' AND prosrc NOT LIKE '%v_score%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'self_paced_sync' AND prosrc NOT LIKE '%v_score%')),
+  (48, '20261021110000_workflow_status_history_sla',
+      to_regclass('public.review_subject_status_history') IS NOT NULL
+      AND to_regclass('public.workflow_sla_policies') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'review_subject_status_history_trg')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'set_workflow_sla_policy')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'training_need_withdraw')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'return_for_revision'
+                    AND prosrc LIKE '%already_awaiting_revision%')),
+  (49, '20261021120000_trainer_module_update',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_open_module_update')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_cancel_module_update'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

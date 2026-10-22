@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { getReviewSubjectFull } from "@/lib/governance/governance-ops.functions";
 import { AssignmentPanel } from "@/components/governance/AssignmentPanel";
 import { TrainingNeedDecisionPanel } from "@/components/governance/TrainingNeedDecisionPanel";
 import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
+import { StatusHistoryPanel } from "@/components/governance/WorkflowStatus";
 
 export const Route = createFileRoute("/governance/subjects/$id")({
   component: SubjectDetail,
@@ -16,6 +17,12 @@ function SubjectDetail() {
   const fn = useServerFn(getReviewSubjectFull);
   const access = useConsoleAccess();
 
+  const queryClient = useQueryClient();
+  const refresh = () => {
+    void q.refetch();
+    void queryClient.invalidateQueries({ queryKey: ["governance", "status-history", id] });
+    void queryClient.invalidateQueries({ queryKey: ["governance", "training-needs"] });
+  };
   const q = useQuery({
     queryKey: ["governance", "subjects", "detail", id],
     queryFn: () => fn({ data: { id } }),
@@ -80,6 +87,10 @@ function SubjectDetail() {
         </div>
       </div>
 
+      <Section title="Riwayat status">
+        <StatusHistoryPanel subjectId={subject.id} />
+      </Section>
+
       <Section title={`Revisions (${revisions.length})`}>
         {revisions.length === 0 ? (
           <Empty>No revisions submitted yet.</Empty>
@@ -103,13 +114,13 @@ function SubjectDetail() {
           subjectKind={subject.kind as "expert" | "module" | "knowledge_resource" | "training_need"}
           requiredRecommendations={subject.required_recommendations}
           assignments={assignments}
-          onChanged={() => q.refetch()}
+          onChanged={refresh}
         />
       </Section>
 
       {canDecide ? (
         <Section title="Keputusan akhir">
-          <TrainingNeedDecisionPanel subjectId={subject.id} onDecided={() => q.refetch()} />
+          <TrainingNeedDecisionPanel subjectId={subject.id} onDecided={refresh} />
         </Section>
       ) : null}
         </>

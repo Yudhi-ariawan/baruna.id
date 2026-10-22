@@ -19,6 +19,8 @@
     "test:expert-role-lock": "node --env-file-if-exists=.env scripts/test-expert-role-lock.mjs",
     "test:review-lockdown": "node --env-file-if-exists=.env scripts/test-review-lockdown.mjs",
     "test:learning-progress": "node --env-file-if-exists=.env scripts/test-learning-progress.mjs",
+    "test:training-requests": "node --env-file-if-exists=.env scripts/test-training-requests.mjs",
+    "test:module-update": "node --env-file-if-exists=.env scripts/test-module-update.mjs",
     "audit:bom-waktu": "npx tsc --noEmit && npm run test:lifecycle && npm run test:kh-roles && npm run build",
     "lint": "eslint .",
     "format": "prettier --write .",

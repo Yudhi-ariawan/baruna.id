@@ -16,6 +16,7 @@ import { saveTrainerModuleSubmission } from "@/lib/experts/portal-services.funct
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/lib/i18n";
 import { parseModuleDraft } from "@/lib/experts/submit-module-draft";
+import { moduleUpdateInfo } from "@/lib/experts/module-update";
 import { uploadModuleAttachments, resolveCoverImageUrl } from "@/lib/experts/submit-module-upload";
 import type { CustomQuizQuestion } from "@/lib/learning/learning.functions";
 import {
@@ -162,6 +163,9 @@ function SubmitModulePage() {
   const isRevision =
     activeDraft?.reviewStatus === "revision_requested" ||
     latestDecision?.decision === "return_for_revision";
+  const moduleUpdate = moduleUpdateInfo(activeDraft?.payload);
+  const isTrainerUpdate =
+    isRevision && moduleUpdate.byTrainer && latestDecision?.decision !== "return_for_revision";
 
   // Step Validation checks
   const isStep1Valid = useMemo(() => {
@@ -380,7 +384,14 @@ function SubmitModulePage() {
         </div>
 
         {/* Revision Alert Box */}
-        {isRevision && <RevisionAlert isId={isId} comment={latestDecision?.comment} />}
+        {isRevision && (
+          <RevisionAlert
+            isId={isId}
+            comment={latestDecision?.comment}
+            trainerUpdate={isTrainerUpdate}
+            updateNote={moduleUpdate.note}
+          />
+        )}
 
         {/* Limit Warning */}
         {!gate.allowed && (
