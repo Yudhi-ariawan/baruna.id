@@ -586,7 +586,7 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 - **Pengajuan baru:** perilaku lama tetap.
 - **Lainnya:** anon tanpa EXECUTE, fungsi internal tertutup, migrasi bisa diulang. Perbaikan data hanya menayangkan publikasi yang disembunyikan oleh permintaan revisi.
 
-`tsc` dan `build` lulus. Uji langsung baru `npm run test:knowledge-update` (19 cek). **Sebelum migrasi (intern-update, 22 Okt): 5/19**: v1 hilang dari katalog saat diminta revisi, revisi ditolak menghapus versi tayang, dan fungsi kontributor belum ada. Data uji tersisa 0.
+`tsc` dan `build` lulus. Uji langsung baru `npm run test:knowledge-update` (19 cek). **Sebelum migrasi (intern-update, 22 Okt): 5/19**: v1 hilang dari katalog saat diminta revisi, revisi ditolak menghapus versi tayang, dan fungsi kontributor belum ada. Data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 22 Okt): 19/19.** Perbaikan data terbukti: "Teknologi Pemantauan Rumpon & Penangkapan…" kini published/public (v1) sambil tetap menunggu revisi kontributor; "lorelipsum" (diarsipkan admin) tetap tersembunyi. Uji lain tetap lulus: kr-rpc 24 (versi baru), kh-roles 20, admin-module-revision 18, module-update 24, training-requests 33, lifecycle 14, expert-rpc 64, participant-rpc 27, expert-role-lock 10, review-lockdown 13, learning-progress 12, rbac 820. Akun uji tersisa 0.
 
 ---
 
