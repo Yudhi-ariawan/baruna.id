@@ -210,7 +210,7 @@ export function TrainerKnowledgePublicationsCard({
                     {item.fileInfo?.name && (
                       <>
                         <span>•</span>
-                        <span className="truncate max-w-[160px]">📎 {item.fileInfo.name}</span>
+                        <span className="truncate max-w-40">📎 {item.fileInfo.name}</span>
                       </>
                     )}
                   </p>

@@ -358,7 +358,7 @@ function AdminModulesPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                     <div className="min-w-0">
                       <span className="text-[10px] text-muted-foreground block">Trainer</span>
-                      <span className="font-semibold text-navy truncate block flex items-center gap-1 mt-0.5">
+                      <span className="font-semibold text-navy truncate flex items-center gap-1 mt-0.5">
                         <User className="h-3 w-3 text-marine shrink-0" />
                         <span className="truncate">{item.authorName}</span>
                       </span>

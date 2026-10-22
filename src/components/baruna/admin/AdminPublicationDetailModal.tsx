@@ -615,7 +615,7 @@ export function AdminPublicationDetailModal({
                 {/* Revision Rationale (if revision requested) */}
                 {item.lastRevisionRationale && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-                    <strong className="block font-bold mb-1 flex items-center gap-1.5">
+                    <strong className="font-bold mb-1 flex items-center gap-1.5">
                       <AlertCircle className="h-4 w-4 text-amber-600" /> Catatan Revisi Terakhir:
                     </strong>
                     <p>{item.lastRevisionRationale}</p>

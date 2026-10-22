@@ -335,7 +335,7 @@ function MyExpertProfilePage() {
                             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-navy hover:border-marine hover:text-marine transition-colors"
                           >
                             <FileText className="h-3.5 w-3.5 text-marine" />
-                            <span className="truncate max-w-[180px]">{d.name || d.category}</span>
+                            <span className="truncate max-w-45">{d.name || d.category}</span>
                             <ExternalLink className="h-3 w-3 text-muted-foreground ml-0.5" />
                           </button>
                         ))}
