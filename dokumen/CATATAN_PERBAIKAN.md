@@ -653,12 +653,36 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 ---
 
+## 2y. Expert menjadi trainer otomatis hanya bila memilih peran "Trainer" (22 Okt)
+
+**Acuan:** keputusan pemilik proyek 22 Okt (MENUNGGU_ARAHAN_MENTOR butir 4, menunggu konfirmasi mentor), Slide 39 (Kualifikasi Trainer), formulir Become an Expert (peran: Speaker, Trainer, Reviewer, Mentor, Technical Expert).
+
+**Temuan (dibuktikan di PGlite dan di database intern-update):**
+- `_expert_publish_from_subject` membuat **semua** expert yang disetujui menjadi trainer aktif, apa pun peran yang dipilih. Expert yang hanya memilih "Reviewer" pun bisa mengajukan modul pelatihan.
+- `trainer_status_backfill_self` (dipanggil saat Portal Trainer dibuka) memberi status trainer aktif kepada expert mana pun yang belum punya status. Akibatnya jalur Kualifikasi Trainer (Slide 39) tidak pernah terpakai: 0 pengajuan di intern-update.
+
+**Perbaikan (migrasi `20261022050000`):**
+- `_expert_chose_trainer(payload)`: peran "Trainer" ada di `roles`, tanpa membedakan huruf besar/kecil.
+- `_expert_publish_from_subject`: status trainer pertama dibuat **hanya bila expert memilih Trainer**. Selebihnya sama persis dengan versi `20261015090000` (dicek baris per baris; hanya blok status trainer yang berbeda).
+- `trainer_status_backfill_self`: aturan yang sama.
+- Expert yang tidak memilih Trainer tetap tayang dengan role expert, melihat "Trainer qualification required" di portal, lalu mengajukan lewat `/experts/trainer-application` (alur yang sudah ada).
+- Status trainer yang sudah ada **tidak dicabut**. Pembaruan profil yang menambah peran Trainer dan disetujui verifikator membuat expert itu menjadi trainer.
+- 4 expert di intern-update semuanya memilih Trainer, jadi datanya tidak berubah.
+
+**Uji:**
+- PGlite 11/11: bug terbukti di fungsi lama; tidak memilih Trainer berarti tetap expert tanpa status trainer; memilih Trainer berarti aktif; huruf kecil/spasi dikenali; portal tidak memberi status ke non-Trainer; Trainer tanpa baris status dipulihkan; pembaruan menambah Trainer; status lama tidak dicabut; publikasi profil tetap; migrasi bisa diulang.
+- PGlite pembaruan profil expert (2w) tetap 47/47.
+- `tsc` dan `build` lulus.
+- Uji langsung baru `npm run test:trainer-choice` (5 cek). **Sebelum migrasi (intern-update, 22 Okt): 2/5**: expert yang memilih Reviewer dan Speaker menjadi trainer aktif dan tidak bisa mengajukan Kualifikasi Trainer. Data uji tersisa 0.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (53 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (54 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -700,6 +724,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261022020000_knowledge_resource_live_during_revision.sql` (publikasi Knowledge Hub tetap tayang selama revisi/pembaruan; kontributor membuka/membatalkan pembaruan; 1 publikasi yang tersembunyi karena permintaan revisi ditayangkan kembali). Lihat bagian 2v. Butuh kode branch ini untuk tombol pembaruan dan label konsol; setelah migrasi `test:kr-rpc` versi branch ini yang berlaku.
 - `20261022030000_expert_profile_update.sql` (expert memperbarui profilnya lewat review; profil, role, dan trainer tidak dicabut selama revisi/pembaruan). Lihat bagian 2w. Butuh kode branch ini untuk tombol pembaruan; setelah migrasi `test:expert-rpc` versi branch ini yang berlaku.
 - `20261022040000_content_version_history.sql` (riwayat versi modul/publikasi/profil expert, baca saja). Lihat bagian 2x. Tanpa migrasi ini panel "Riwayat Versi" menampilkan pesan migrasi; fitur lain tidak terpengaruh.
+- `20261022050000_trainer_role_from_expert_choice.sql` (expert jadi trainer otomatis hanya bila memilih peran Trainer). Lihat bagian 2y. Tidak mengubah data yang ada.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

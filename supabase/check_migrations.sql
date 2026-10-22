@@ -201,7 +201,11 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_expert_decide' AND prosrc LIKE '%expert_update_open%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_revision_resubmit' AND prosrc LIKE '%update_open%')),
   (53, '20261022040000_content_version_history',
-      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'content_version_history'))
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'content_version_history')),
+  (54, '20261022050000_trainer_role_from_expert_choice',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_chose_trainer')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_publish_from_subject' AND prosrc LIKE '%_expert_chose_trainer%')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_status_backfill_self' AND prosrc LIKE '%_expert_chose_trainer%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

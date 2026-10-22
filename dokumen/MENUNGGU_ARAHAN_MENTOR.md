@@ -8,8 +8,8 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 1. **Template dan isi sertifikat**: penandatangan, format nomor, JP, dan jenis sertifikat.
 2. **Syarat lulus pelatihan.** Sebagian DIPUTUSKAN pemilik proyek (21 Okt): kelulusan **modul** hanya dari kuis resmi (kuis trainer atau bank soal modul bawaan) yang dinilai dan dicatat server, dengan nilai batas dari modul; modul tanpa kuis resmi belum bisa lulus (CATATAN_PERBAIKAN 2r). Yang masih menunggu: syarat lulus **program/pelatihan** (pre/post-test, ujian akhir, kehadiran) dan apakah kuis wajib saat trainer mengajukan modul.
 3. ~~**Role participant**~~ **DIPUTUSKAN pemilik proyek (21 Okt): tetap otomatis** saat biodata disimpan, agar admin tidak perlu menyetujui satu per satu saat pendaftar banyak. Akses materi tetap lewat persetujuan admin per kursus; peran yang dicabut admin tidak diberikan lagi. Berbeda dari teks PB-ACA-03 (peran diberikan saat admin menyetujui); mohon mentor mengonfirmasi.
-4. **Expert yang disetujui**: otomatis jadi trainer atau tidak.
-5. **Publisher** terpisah dari **approver** atau tidak.
+4. ~~**Expert yang disetujui**: otomatis jadi trainer atau tidak.~~ **DIPUTUSKAN pemilik proyek (22 Okt): trainer otomatis HANYA bila expert memilih peran "Trainer" saat mendaftar** (pilihan itu diperiksa verifikator bersama CV dan dokumen). Expert yang tidak memilih Trainer tetap expert dan, bila ingin melatih, mengajukan **Kualifikasi Trainer** (Slide 39, `/experts/trainer-application`). Status trainer yang sudah ada tidak dicabut; 4 expert di intern-update semuanya memilih Trainer, jadi tidak berubah (CATATAN_PERBAIKAN 2y). Mohon mentor mengonfirmasi.
+5. **Publisher** terpisah dari **approver** atau tidak. Slide 16 mendefinisikan Publisher sebagai "menayangkan informasi yang sudah disetujui untuk audiensnya": akses **penuh** pada Events, Partnership, Community, dan About; **terbatas** pada Academy, Knowledge Hub, Experts, dan Fellowship; dengan izin `publish` di semua domain. Di aplikasi, "Setujui" langsung menayangkan, sehingga Publisher belum punya pekerjaan. Usul pemilik proyek: tetap "setujui = tayang" sampai mentor memutuskan. Pertanyaan: apakah Publisher menjadi langkah terpisah setelah Approver, dan apa tugasnya selain menayangkan (misalnya mengatur waktu tayang atau memeriksa format katalog)?
 6. **Profile Claim** dan fitur **Penugasan Expert**.
 7. **Nilai SLA per langkah** (Slide 13). Sudah ada di sistem dengan nilai **sementara** untuk Request a Training: penugasan reviewer 72 jam, review 120 jam, keputusan 72 jam, dihitung dalam jam kalender. Admin bisa mengubahnya di Konsol Kurasi → SLA Alur Kerja tanpa ubah kode (CATATAN_PERBAIKAN 2s). Pertanyaan untuk mentor: nilai resminya berapa, apakah dihitung hari kerja (tanpa akhir pekan/libur), dan apakah jenis lain (expert, modul, publikasi) juga perlu SLA.
 8. **Notifikasi email.** Saat ini notifikasi hanya di dalam BARUNA (lonceng/halaman Notifikasi). Mengirim email butuh layanan email (SMTP/penyedia) dan alamat pengirim resmi.
@@ -33,7 +33,7 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 
 ### Role dan alur
 - Role participant: PB-ACA-03 menyebut role diberikan saat admin menyetujui, tetapi kode memberikannya saat biodata disimpan. **Keputusan pemilik proyek 21 Okt: tetap otomatis** (lihat butir 3 di atas).
-- Expert disetujui otomatis jadi trainer aktif; Slide 39 menyiratkan persetujuan trainer terpisah.
+- ~~Expert disetujui otomatis jadi trainer aktif; Slide 39 menyiratkan persetujuan trainer terpisah.~~ Diputuskan 22 Okt: hanya bila memilih peran Trainer (butir 4).
 - Approve modul langsung menayangkan; apakah perlu langkah publisher terpisah.
 - Profile Claim (Slide 37) dan Penugasan Expert (fitur disembunyikan sementara).
 

@@ -864,6 +864,11 @@ function JoinExpertPage() {
                 <p className="mb-3 text-xs sm:text-sm text-muted-foreground">
                   {isId ? "Anda dapat memilih lebih dari satu peran kontribusi." : "You may select multiple roles."}
                 </p>
+                <p className="mb-3 rounded-lg border border-marine/20 bg-marine/5 px-3 py-2 text-xs text-navy">
+                  {isId
+                    ? "Memilih \"Trainer\" berarti setelah disetujui Anda langsung dapat mengajukan modul pelatihan. Tanpa memilih Trainer, Anda tetap terdaftar sebagai expert dan dapat mengajukan Kualifikasi Trainer kemudian."
+                    : "Choosing \"Trainer\" lets you submit training modules once approved. Without it you are still listed as an expert and may apply for trainer qualification later."}
+                </p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {EXPERT_ROLES.map((role) => {
                     const active = form.roles.includes(role);
