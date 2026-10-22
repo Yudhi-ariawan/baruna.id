@@ -122,12 +122,21 @@ function MyExpertProfilePage() {
             </p>
           </div>
           {hasApproved ? (
-            <Link
-              to="/experts/portal"
-              className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-white shadow-soft hover:bg-navy"
-            >
-              <CheckCircle2 className="h-4 w-4" /> Buka Portal Expert <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to="/experts/portal"
+                className="inline-flex items-center gap-2 rounded-xl bg-marine px-5 py-3 text-sm font-semibold text-white shadow-soft hover:bg-navy"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Buka Portal Expert <ArrowRight className="h-4 w-4" />
+              </Link>
+              {/* Update of the published profile goes through verification (/experts/join). */}
+              <Link
+                to="/experts/join"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-700 bg-white px-5 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50"
+              >
+                <FilePenLine className="h-4 w-4" /> Perbarui Profil
+              </Link>
+            </div>
           ) : hasPending ? (
             <div className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-semibold text-blue-800">
               <Clock3 className="h-4 w-4 text-blue-600" /> Pengajuan Sedang Ditinjau

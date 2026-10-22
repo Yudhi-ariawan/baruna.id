@@ -238,7 +238,9 @@ async function buildReviewNotifications(userId: string): Promise<{ raw: RawNotif
       title =
         kind === "knowledge_resource" && subject?.current_status === "approved"
           ? `Pembaruan Publikasi Ditolak (Versi Sebelumnya Tetap Tayang): "${subjectTitle}"`
-          : `Pengajuan Ditolak: ${subjectTitle}`;
+          : kind === "expert" && subject?.current_status === "approved"
+            ? `Pembaruan Profil Expert Ditolak (Profil Sebelumnya Tetap Tayang)`
+            : `Pengajuan Ditolak: ${subjectTitle}`;
       targetUrl =
         kind === "expert"
           ? `/experts/join`

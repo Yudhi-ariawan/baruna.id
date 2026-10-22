@@ -96,6 +96,16 @@ const RPC_ERROR_MESSAGES: Record<string, string> = {
   too_many_documents: "Terlalu banyak dokumen dilampirkan (maksimal 8).",
   payload_too_large: "Data pengajuan terlalu besar.",
   payload_invalid: "Data pengajuan tidak valid.",
+  // Profile update of a published expert (migration 20261022030000).
+  update_note_required: "Tuliskan ringkasan perubahan (minimal 5 karakter) agar verifikator tahu apa yang diperbarui.",
+  update_note_too_long: "Ringkasan perubahan terlalu panjang (maksimal 2.000 karakter).",
+  expert_subject_not_found: "Profil expert tidak ditemukan atau bukan milik Anda.",
+  published_profile_not_found: "Profil Anda tidak sedang tayang di direktori, jadi belum ada versi yang bisa diperbarui.",
+  profile_update_already_open: "Pembaruan profil sudah terbuka. Lanjutkan draf pembaruan yang ada.",
+  expert_review_in_progress: "Profil Anda sedang diverifikasi. Tunggu keputusannya sebelum membuka pembaruan baru.",
+  no_profile_update_open:
+    "Tidak ada pembaruan yang bisa dibatalkan. Pembaruan yang sudah dikirim atau diminta verifikator tidak bisa dibatalkan.",
+  authentication_required: "Sesi login berakhir. Silakan masuk kembali.",
 };
 
 /** Maps raw PostgreSQL RPC exception codes to user-facing messages. */

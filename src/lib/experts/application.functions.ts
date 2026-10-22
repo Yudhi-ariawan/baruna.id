@@ -162,6 +162,9 @@ async function readApplications(context: {
         updatedAt: draft.updated_at,
         payload: asPayload(draft.payload),
         latestDecision: latestDec,
+        updateOpen:
+          subjInfo?.current_status === "approved" && subjInfo.metadata.update_open === true && draft.status === "draft",
+        liveVersionKept: subjInfo?.metadata.live_version_kept === true,
       };
     },
   );
@@ -190,7 +193,7 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
         try {
           const { data } = await supabaseAdmin
             .from("experts")
-            .select("id, slug, display_name, current_status")
+            .select("id, slug, display_name, current_status, visibility, source_submission_id")
             .eq(EXPERT_OWNER_COLUMN, context.userId)
             .neq("current_status", "archived")
             .order("updated_at", { ascending: false })
@@ -253,8 +256,33 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
             application.reviewStatus === "revision_requested",
         ) ?? null
       : applications.find(
-          (application) => application.reviewStatus === "revision_requested",
+          (application) => application.reviewStatus === "revision_requested" || application.updateOpen,
         ) ?? null;
+
+    // Update of the published profile (migration 20261022030000): the profile stays
+    // in the directory while the update is prepared and reviewed.
+    let profileUpdate: ExpertApplicationBootstrap["profileUpdate"] = null;
+    const liveSubjectId =
+      existingExpert && (existingExpert.current_status as string) === "published" && existingExpert.visibility === "public"
+        ? existingExpert.source_submission_id
+        : null;
+    if (liveSubjectId) {
+      const current = applications.find((application) => application.subjectId === liveSubjectId);
+      const state: NonNullable<ExpertApplicationBootstrap["profileUpdate"]>["state"] = current?.updateOpen
+        ? "drafting"
+        : current?.reviewStatus === "revision_requested"
+          ? "revision_requested"
+          : current && current.reviewStatus !== "approved"
+            ? "in_review"
+            : "none";
+      const lastUpdateRejected = state === "none" && current?.latestDecision?.decision === "reject";
+      profileUpdate = {
+        subjectId: liveSubjectId,
+        state,
+        lastUpdateRejected,
+        rejectionNote: lastUpdateRejected ? (current?.latestDecision?.rationale ?? null) : null,
+      };
+    }
 
     return {
       userId: context.userId,
@@ -270,6 +298,7 @@ export const getExpertApplicationBootstrap = createServerFn({ method: "GET" })
       expertName: existingExpert?.display_name ?? profile.display_name ?? null,
       pendingApplication,
       editableDraft,
+      profileUpdate,
     };
   });
 

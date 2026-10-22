@@ -34,6 +34,12 @@ export type AdminExpertItem = {
   isArchived?: boolean;
   archivedAt?: string | null;
   archiveRationale?: string | null;
+  /** The expert is preparing an update of the published profile (not sent yet). */
+  updateDrafting?: boolean;
+  /** The published profile stays in the directory while this revision/update is reviewed. */
+  liveVersionKept?: boolean;
+  /** Summary the expert wrote when opening the update. */
+  updateNote?: string | null;
 };
 
 export type AdminExpertDetail = AdminExpertItem & {
@@ -349,7 +355,21 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
       .limit(1)
       .maybeSingle();
 
-    const payload = (draft?.payload as unknown as ExpertDraftPayload) ?? {};
+    // While the expert prepares an update (not sent), verifiers see the published
+    // version, not the unsent draft (migration 20261022030000).
+    const metaForDraft = (subj.metadata as Record<string, unknown>) ?? {};
+    const updateDrafting =
+      subj.current_status === "approved" && metaForDraft.update_open === true && draft?.status === "draft";
+    let shownDraft = draft;
+    if (updateDrafting && typeof metaForDraft.previous_draft_id === "string") {
+      const { data: previous } = await supabaseAdmin
+        .from("review_drafts")
+        .select("id, payload, status, updated_at")
+        .eq("id", metaForDraft.previous_draft_id)
+        .maybeSingle();
+      if (previous) shownDraft = previous;
+    }
+    const payload = (shownDraft?.payload as unknown as ExpertDraftPayload) ?? {};
 
     // Generate signed URLs for all documents attached
     const rawDocuments = Array.isArray(payload?.documents) ? payload.documents : [];
@@ -459,6 +479,9 @@ export const getAdminExpertDetail = createServerFn({ method: "GET" })
       isArchived,
       archivedAt: typeof subjMeta.archived_at === "string" ? subjMeta.archived_at : null,
       archiveRationale: typeof subjMeta.archive_rationale === "string" ? subjMeta.archive_rationale : null,
+      updateDrafting,
+      liveVersionKept: subjMeta.live_version_kept === true,
+      updateNote: typeof subjMeta.update_note === "string" ? subjMeta.update_note : null,
         decisionsHistory: (decisions ?? []).map((d) => ({
           id: d.id,
           decision: d.decision,
@@ -486,6 +509,8 @@ const EXPERT_DECISION_ERRORS: Record<string, string> = {
   rationale_too_long: "Alasan terlalu panjang.",
   forbidden: "forbidden: hanya Approver atau Administrator yang dapat memutuskan, mengarsipkan, atau memulihkan expert.",
   exactly_one_primary_role_required: "Role pengguna tidak konsisten (role primer). Hubungi super admin.",
+  expert_update_open: "Expert sedang menyiapkan pembaruan profil. Tunggu sampai pembaruan dikirim, lalu putuskan.",
+  nothing_to_decide: "Tidak ada pengajuan yang menunggu keputusan. Untuk menarik profil dari direktori, gunakan Arsipkan.",
 };
 
 function toFriendlyExpertDecisionError(message: string | undefined | null): string {

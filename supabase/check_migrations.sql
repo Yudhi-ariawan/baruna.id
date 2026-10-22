@@ -194,7 +194,12 @@ WITH checks(no, migration, ok) AS (
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'contributor_open_resource_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'contributor_cancel_resource_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_kr_decide' AND prosrc LIKE '%nothing_to_decide%')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review' AND prosrc LIKE '%update_open%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review' AND prosrc LIKE '%update_open%')),
+  (52, '20261022030000_expert_profile_update',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_open_profile_update')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_cancel_profile_update')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_expert_decide' AND prosrc LIKE '%expert_update_open%')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_revision_resubmit' AND prosrc LIKE '%update_open%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

@@ -77,7 +77,9 @@ export function ExpertDetailModal({
   const actionsLocked = submitting || !detail?.viewerCanDecide;
   // Same transition rules the server enforces, so blocked actions are disabled up front.
   const decisionBlocker = (decision: ExpertDecision) =>
-    detail ? getExpertDecisionBlocker(detail.status as ExpertEffectiveStatus, decision) : null;
+    detail
+      ? getExpertDecisionBlocker(detail.status as ExpertEffectiveStatus, decision, Boolean(detail.updateDrafting))
+      : null;
 
   const handleDecision = async (decision: ExpertDecision) => {
     if (submitting) return;
@@ -232,6 +234,20 @@ export function ExpertDetailModal({
               </div>
             )}
 
+            {(detail?.liveVersionKept || detail?.updateDrafting) && detail?.status !== "approved" && (
+              <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-900">
+                <strong>Pembaruan profil expert yang sudah tayang:</strong> profil, role expert, dan status trainer tetap
+                aktif selama ditinjau. Disetujui = profil diganti (versi naik); ditolak = profil lama tetap.
+                {detail.updateNote ? ` Ringkasan perubahan: "${detail.updateNote}"` : ""}
+              </div>
+            )}
+            {detail?.updateDrafting && (
+              <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-blue-900">
+                <strong>Expert sedang menyiapkan pembaruan profil</strong> (belum dikirim). Data di bawah adalah profil yang
+                tayang saat ini. Keputusan bisa dicatat setelah pembaruan dikirim.
+                {detail.updateNote ? ` Ringkasan perubahan: "${detail.updateNote}"` : ""}
+              </div>
+            )}
             {detail?.status === "approved" && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-900">
                 <div className="flex items-center gap-2">

@@ -590,12 +590,50 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 ---
 
+## 2w. Expert memperbarui profilnya sendiri lewat review; profil, role, dan trainer tidak dicabut selama revisi (22 Okt)
+
+**Acuan:** PB-EXP-01 (Slide 36: perbarui draf → review → versioning), Slide 13. Butir 2 antrean di MENUNGGU_ARAHAN_MENTOR.md.
+
+**Temuan (dibuktikan di PGlite dan di database intern-update):**
+- Setelah disetujui, expert tidak bisa mengajukan pembaruan profil. Pengajuan baru ditolak (`expert_profile_exists`), dan revisi hanya bisa dikirim bila verifikator memintanya. Yang ada hanya sunting langsung oleh admin/approver tanpa review (`20261015070000`, disengaja).
+- **Lebih serius:** `admin_expert_decide` dengan **Minta Revisi** atau **Tolak** pada expert yang sudah tayang menjalankan `_expert_deactivate_outputs`. Akibatnya **profil disembunyikan dari direktori, status trainer dinonaktifkan, dan role expert dicabut**, jadi expert kehilangan akses Portal Trainer hanya karena diminta melengkapi data. Terbukti langsung di intern-update: profil menjadi private sesaat setelah diminta revisi.
+
+**Perbaikan (migrasi `20261022030000`):**
+- `expert_open_profile_update` / `expert_cancel_profile_update`:
+  - Hanya pemilik, dengan ringkasan perubahan 5–2.000 karakter, dan hanya untuk profil yang tayang.
+  - Draf diambil dari versi yang **tayang** (revisi yang disetujui keputusan `experts.audit_ref`; cadangan: draf aktif terakhir. Satu profil di intern-update, "barry", tidak punya `audit_ref`).
+  - Status tetap "disetujui" sampai dikirim.
+  - Pengiriman lewat jalur revisi yang sudah ada (`expert_revision_resubmit`), dengan pemeriksaan kelengkapan dan kepemilikan dokumen yang sama.
+- **Selama pembaruan atau revisi profil yang tayang**, profil, role expert, dan status trainer **tetap**:
+  - **Disetujui:** profil diperbarui, versi naik (`expert_versions`), slug tetap.
+  - **Ditolak:** profil lama tetap, status kembali "disetujui", dan draf yang tayang dipulihkan, sehingga **Sinkronkan** tidak pernah menayangkan isi yang ditolak.
+- **Tolak** tanpa pengajuan yang menunggu ditolak (`nothing_to_decide`); untuk menarik profil gunakan **Arsipkan**. Selama pembaruan disiapkan, approver tidak bisa memutuskan atau menyinkronkan (`expert_update_open`), supaya draf yang belum dikirim tidak ikut tayang.
+- **Arsip dan pulihkan:** arsip saat pembaruan disiapkan membatalkan pembaruan itu. Pulihkan saat pembaruan menunggu menayangkan lagi profil yang disetujui (dengan role dan trainer), sementara pembaruan kembali ke antrean.
+- Pengajuan pertama (belum pernah tayang) tidak berubah.
+- **Aplikasi:**
+  - `/experts/join` untuk expert terdaftar menampilkan **Ajukan Pembaruan Profil** dan memakai form yang sama, dengan banner "profil tetap tayang" dan tombol **Batalkan Pembaruan**. Pemberitahuan juga muncul bila pembaruan sedang diverifikasi atau ditolak.
+  - `/experts/profile` mendapat tombol **Perbarui Profil**.
+  - Konsol: banner pembaruan, data profil yang tayang selama pembaruan belum dikirim, dan tombol yang dinonaktifkan sesuai aturan (Tolak pada profil disetujui, semua keputusan saat pembaruan disiapkan).
+  - Notifikasi "Pembaruan Profil Expert Ditolak (Profil Sebelumnya Tetap Tayang)".
+- `test:expert-rpc` langkah 7 disesuaikan. Dulu langkah itu mengecek "profil disembunyikan, trainer nonaktif, role dicabut" saat diminta revisi; sekarang mengecek bahwa ketiganya tetap.
+
+**Uji:** PGlite 47/47:
+- **Sebelum:** 2 bug terbukti.
+- **Membuka pembaruan:** izin, validasi, draf dari versi tayang, status tetap, tidak dua kali, approver tidak bisa memutuskan atau menyinkronkan, batal memulihkan draf.
+- **Kirim, tolak, setujui:** selama ditinjau profil/role/trainer tetap; ditolak tetap dan draf aktif kembali ke versi tayang; sinkron sesudah penolakan tetap menayangkan versi lama; Tolak tanpa antrean ditolak; disetujui naik versi.
+- **Verifikator minta revisi:** profil/role/trainer tetap; pemilik tidak bisa membatalkan; minta revisi atas kiriman membuka draf kiriman.
+- **Lainnya:** arsip/pulihkan (2 skenario), pengajuan pertama tidak berubah, migrasi bisa diulang.
+
+`tsc` dan `build` lulus. Uji langsung baru `npm run test:expert-profile-update` (19 cek). **Sebelum migrasi (intern-update, 22 Okt): 5/19**: profil menjadi private dan role/trainer dicabut saat diminta revisi, profil ditolak tetap hilang, dan fungsi pembaruan belum ada. Data uji tersisa 0.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (51 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (52 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -635,6 +673,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261021120000_trainer_module_update.sql` (trainer membuka/membatalkan pembaruan modul tayangnya sendiri). Lihat bagian 2t. Tanpa migrasi ini tombol "Ajukan Pembaruan" menampilkan error; fitur lain tidak terpengaruh.
 - `20261022010000_admin_module_revision_live_source.sql` ("Buka revisi modul tayang" oleh approver/admin mulai dari versi tayang; ditolak bila kiriman trainer menunggu keputusan). Lihat bagian 2u. Kode lama tetap jalan.
 - `20261022020000_knowledge_resource_live_during_revision.sql` (publikasi Knowledge Hub tetap tayang selama revisi/pembaruan; kontributor membuka/membatalkan pembaruan; 1 publikasi yang tersembunyi karena permintaan revisi ditayangkan kembali). Lihat bagian 2v. Butuh kode branch ini untuk tombol pembaruan dan label konsol; setelah migrasi `test:kr-rpc` versi branch ini yang berlaku.
+- `20261022030000_expert_profile_update.sql` (expert memperbarui profilnya lewat review; profil, role, dan trainer tidak dicabut selama revisi/pembaruan). Lihat bagian 2w. Butuh kode branch ini untuk tombol pembaruan; setelah migrasi `test:expert-rpc` versi branch ini yang berlaku.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

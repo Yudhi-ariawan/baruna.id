@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
 import { AlreadyExpertNotice } from "@/components/baruna/experts/AlreadyExpertNotice";
+import { CancelExpertProfileUpdate } from "@/components/baruna/experts/ExpertProfileUpdatePanel";
 import { ApplicationPendingNotice } from "@/components/baruna/experts/ApplicationPendingNotice";
 import { ProfessionalProfileSection } from "@/components/baruna/experts/ProfessionalProfileSection";
 import { ExpertDocumentUpload } from "@/components/baruna/experts/ExpertDocumentUpload";
@@ -176,6 +177,10 @@ function JoinExpertPage() {
   const [draftId, setDraftId] = useState<string | undefined>();
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [isRevision, setIsRevision] = useState(false);
+  // Update of a published profile: the profile stays in the directory meanwhile.
+  const [isProfileUpdate, setIsProfileUpdate] = useState(false);
+  // The owner opened the update (not a verifier's request), so they may cancel it.
+  const [isOwnUpdate, setIsOwnUpdate] = useState(false);
   const [latestDecision, setLatestDecision] = useState<{
     id?: string;
     decision?: string;
@@ -218,8 +223,11 @@ function JoinExpertPage() {
           const payload = draft.payload;
           setDraftId(draft.draftId);
           setSubjectId(draft.subjectId ?? null);
-          const revReq = draft.reviewStatus === "revision_requested";
+          // An update the owner opened is sent through the same revision path.
+          const revReq = draft.reviewStatus === "revision_requested" || Boolean(draft.updateOpen);
           setIsRevision(revReq);
+          setIsProfileUpdate(Boolean(draft.updateOpen || draft.liveVersionKept));
+          setIsOwnUpdate(Boolean(draft.updateOpen));
           setLatestDecision(draft.latestDecision ?? null);
           setDocuments(payload.documents ?? []);
 
@@ -249,7 +257,11 @@ function JoinExpertPage() {
               ? payload.structuredPublications
               : [],
           });
-          if (revReq) {
+          if (draft.updateOpen) {
+            setNotice(
+              "Draf pembaruan profil dimuat. Profil Anda saat ini tetap tampil di direktori sampai pembaruan disetujui verifikator.",
+            );
+          } else if (revReq) {
             setNotice(
               "Pengajuan ini membutuhkan revisi dokumen sesuai catatan verifikator admin. Silakan periksa berkas, unggah penggantinya, lalu kirim ulang.",
             );
@@ -441,13 +453,15 @@ function JoinExpertPage() {
     );
   }
 
-  if (bootstrapData?.isAlreadyExpert) {
+  // A published expert edits here only an update or a revision of their profile.
+  if (bootstrapData?.isAlreadyExpert && !bootstrapData.editableDraft) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
         <AlreadyExpertNotice
           expertName={bootstrapData.expertName}
           expertSlug={bootstrapData.expertSlug}
+          profileUpdate={bootstrapData.profileUpdate}
         />
       </div>
     );
@@ -477,6 +491,7 @@ function JoinExpertPage() {
             <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
               Dokumen perbaikan telah diteruskan ke tim kurasi dan verifikator BARUNA. Status
               pengajuan profil Anda kini kembali menjadi <strong>Menunggu Verifikasi (Pending)</strong>.
+              {isProfileUpdate && " Profil Anda saat ini tetap tampil di direktori sampai pembaruan disetujui."}
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Link
@@ -565,8 +580,21 @@ function JoinExpertPage() {
           ))}
         </div>
 
+        {isProfileUpdate && (
+          <div className="mt-6 flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-emerald-300 bg-emerald-50/90 p-4 text-xs text-emerald-900">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-sm font-bold text-navy">Pembaruan Profil Expert</p>
+              <p className="mt-1 leading-relaxed">
+                Profil Anda saat ini tetap tampil di direktori, dan role serta akses portal tidak berubah. Setelah
+                dikirim, pembaruan diverifikasi; disetujui = profil diganti (versi naik), ditolak = profil lama tetap.
+              </p>
+            </div>
+            {isOwnUpdate && subjectId && <CancelExpertProfileUpdate subjectId={subjectId} />}
+          </div>
+        )}
+
         {/* Banner Revisi jika ada permintaan perbaikan dari verifikator */}
-        {isRevision && (
+        {isRevision && !isOwnUpdate && (
           <div className="mt-6 rounded-2xl border-2 border-amber-400 bg-amber-50/95 p-5 shadow-sm">
             <div className="flex items-start gap-3.5">
               <span className="rounded-xl bg-amber-200 p-2.5 text-amber-900 shrink-0 mt-0.5">

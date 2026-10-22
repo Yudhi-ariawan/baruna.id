@@ -99,9 +99,18 @@ export const EXPERT_AWAITING_DECISION: ReadonlySet<ExpertEffectiveStatus> = new 
 export function getExpertDecisionBlocker(
   current: ExpertEffectiveStatus,
   decision: ExpertDecision,
+  /** The expert is preparing an update of the published profile (not sent yet). */
+  updateDrafting = false,
 ): string | null {
   if (current === "archived") {
     return "Pakar berstatus arsip. Pulihkan terlebih dahulu sebelum mencatat keputusan baru.";
+  }
+  if (updateDrafting) {
+    return "Expert sedang menyiapkan pembaruan profil. Tunggu sampai pembaruan dikirim, lalu putuskan.";
+  }
+  // Nothing waits for a decision on a published profile; taking it down is "Arsipkan".
+  if (decision === "reject" && current === "approved") {
+    return "Tidak ada pengajuan yang menunggu keputusan. Untuk menarik profil dari direktori, gunakan Arsipkan.";
   }
   // Approving now would publish the applicant's half-edited draft.
   if (decision === "approve" && current === "revision_requested") {

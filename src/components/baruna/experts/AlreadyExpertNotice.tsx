@@ -1,13 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { Award, ArrowRight, ShieldCheck, UserCheck, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import type { ExpertProfileUpdateState } from "@/lib/experts/application.types";
+import { ExpertProfileUpdatePanel } from "./ExpertProfileUpdatePanel";
 
 type AlreadyExpertNoticeProps = {
   expertName?: string | null;
   expertSlug?: string | null;
+  profileUpdate?: ExpertProfileUpdateState | null;
 };
 
-export function AlreadyExpertNotice({ expertName, expertSlug }: AlreadyExpertNoticeProps) {
+export function AlreadyExpertNotice({ expertName, expertSlug, profileUpdate }: AlreadyExpertNoticeProps) {
   const { language } = useLanguage();
   const isId = language === "id";
 
@@ -81,6 +84,8 @@ export function AlreadyExpertNotice({ expertName, expertSlug }: AlreadyExpertNot
           {isId ? "Jelajahi Direktori Pakar" : "Browse Expert Directory"}
         </Link>
       </div>
+
+      {profileUpdate && <ExpertProfileUpdatePanel update={profileUpdate} />}
     </div>
   );
 }

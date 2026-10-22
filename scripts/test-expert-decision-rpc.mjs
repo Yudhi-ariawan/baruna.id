@@ -198,13 +198,16 @@ async function run() {
   console.log("\n7. Minta revisi lalu kirim ulang");
   const rev = await decide(approverA.client, sid, "return_for_revision", "Lengkapi data");
   ok(!rev.error && rev.data?.status === "revision_requested", "revisi diminta");
-  ok((await expertOf(sid)).visibility === "private", "profil disembunyikan dari publik");
+  // Since 20261022030000 a revision of a published profile keeps the profile,
+  // the trainer status and the expert role until the revision is decided.
+  const exRev = await expertOf(sid);
+  ok(exRev.current_status === "published" && exRev.visibility === "public", "profil yang disetujui tetap tayang selama revisi");
   const t3 = await trainerLatest(expertId);
-  ok(t3.trainer_status === "inactive" && t3.version === 3 && /previous=suspended/.test(t3.rationale ?? ""), "trainer: versi baru, status sebelumnya diingat");
+  ok(t3.trainer_status === "suspended" && t3.version === 2, "status trainer tidak diubah oleh permintaan revisi");
   const { data: v1row } = await admin.from("expert_trainer_status").select("trainer_status").eq("expert_id", expertId).eq("version", 1).single();
   ok(v1row.trainer_status === "active", "riwayat versi 1 tidak tertimpa");
   const rr = await roleOf(applicant.id, "expert");
-  ok(rr?.status === "revoked" && rr.revoked_at, "role expert dicabut dengan revoked_at");
+  ok(rr?.status === "active", "role expert tetap aktif selama revisi");
   await rejects(decide(approverA.client, sid, "approve"), /awaiting_applicant_revision/, "approve saat pemohon masih merevisi ditolak");
   await rejects(decide(approverB.client, sid, "return_for_revision"), /already_awaiting_revision/, "minta revisi dua kali ditolak");
   const reopened = (await admin.from("review_drafts").select("id,status").eq("linked_subject_id", sid).eq("status", "draft")).data;
