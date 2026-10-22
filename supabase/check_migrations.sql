@@ -199,7 +199,9 @@ WITH checks(no, migration, ok) AS (
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_open_profile_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_cancel_profile_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_expert_decide' AND prosrc LIKE '%expert_update_open%')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_revision_resubmit' AND prosrc LIKE '%update_open%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_revision_resubmit' AND prosrc LIKE '%update_open%')),
+  (53, '20261022040000_content_version_history',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'content_version_history'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

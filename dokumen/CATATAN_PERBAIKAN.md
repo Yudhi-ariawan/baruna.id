@@ -628,12 +628,37 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 ---
 
+## 2x. Riwayat versi yang bisa dilihat; peserta yang sedang belajar diberi tahu saat modul diperbarui (22 Okt)
+
+**Acuan:** Slide 20/36/38 (versioning), Slide 13 (notifikasi otomatis di setiap perubahan status). Butir 3 antrean di MENUNGGU_ARAHAN_MENTOR.md.
+
+**Temuan:**
+- `module_registry_versions`, `knowledge_resource_versions`, dan `expert_versions` sudah terisi otomatis setiap kali konten naik versi, tetapi tidak ditampilkan di mana pun. Pemilik dan Konsol Kurasi tidak bisa melihat v1, v2, … beserta tanggal dan penyetujunya. Versi 1 sering tidak punya baris, karena trigger hanya berjalan saat UPDATE.
+- Peserta yang sedang belajar tidak diberi tahu saat modulnya naik versi.
+
+**Perbaikan:**
+- **Migrasi `20261022040000`, `content_version_history(subject)`:** daftar versi satu pengajuan (modul, publikasi, atau profil expert). Isinya hanya metadata: nomor versi, tanggal tayang, penyetuju, alasan keputusan, dan asal (disetujui / disinkronkan ulang admin / versi awal).
+  - Snapshot isi **tidak dibuka**, karena profil expert memuat kontak pribadi dan modul memuat kunci kuis.
+  - Akses sama dengan riwayat revisi: pemilik, reviewer yang ditugaskan, admin/approver. Orang lain mendapat "tidak ditemukan".
+  - Versi 1 tanpa baris riwayat diisi dari keputusan approve pertama.
+- **Komponen "Riwayat Versi"** di Konsol Kurasi (halaman pengajuan), Portal Trainer → Status Review (modul tayang), My Contributions (publikasi tayang), dan `/experts/join` (expert terdaftar).
+- **Notifikasi peserta** (`learning-notifications.server.ts`, tanpa migrasi): "Modul diperbarui ke versi N" ke peserta yang pendaftarannya disetujui sebelum versi itu tayang dan **belum lulus**. Tautannya menuju ruang belajar modul. Peserta yang sudah lulus sengaja tidak diberi tahu sampai mentor memutuskan apakah mereka wajib mengulang (butir 9).
+
+**Uji:**
+- PGlite 17/17: akses (pemilik, orang lain, approver, admin, reviewer sebelum/sesudah ditugaskan, tanpa login, anon tanpa EXECUTE), urutan versi, alasan dan penyetuju, v1 dari approve pertama, snapshot tidak terbuka (termasuk kontak expert), versi hasil sinkron ulang, belum tayang, jenis tanpa versi, migrasi bisa diulang. Satu bug saya sendiri ketemu di sini: `published` bernilai null untuk konten yang belum tayang; sudah diperbaiki.
+- `tsc` dan `build` lulus.
+- Uji langsung baru `npm run test:version-history` (16 cek; bagian notifikasi memanggil aplikasi yang berjalan, `npm run dev`). **Sebelum migrasi (intern-update, 22 Okt): 10/16.** Semua cek notifikasi lulus: peserta aktif diberi tahu v2 dengan tautan yang benar; yang sudah lulus, yang mendaftar setelah v2, dan orang luar tidak. Cek riwayat versi gagal karena fungsinya belum ada. Data uji tersisa 0.
+
+**Masih terbuka:** perlakuan bagi peserta yang sudah lulus saat modul naik versi (mentor, butir 9).
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (52 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (53 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -674,6 +699,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261022010000_admin_module_revision_live_source.sql` ("Buka revisi modul tayang" oleh approver/admin mulai dari versi tayang; ditolak bila kiriman trainer menunggu keputusan). Lihat bagian 2u. Kode lama tetap jalan.
 - `20261022020000_knowledge_resource_live_during_revision.sql` (publikasi Knowledge Hub tetap tayang selama revisi/pembaruan; kontributor membuka/membatalkan pembaruan; 1 publikasi yang tersembunyi karena permintaan revisi ditayangkan kembali). Lihat bagian 2v. Butuh kode branch ini untuk tombol pembaruan dan label konsol; setelah migrasi `test:kr-rpc` versi branch ini yang berlaku.
 - `20261022030000_expert_profile_update.sql` (expert memperbarui profilnya lewat review; profil, role, dan trainer tidak dicabut selama revisi/pembaruan). Lihat bagian 2w. Butuh kode branch ini untuk tombol pembaruan; setelah migrasi `test:expert-rpc` versi branch ini yang berlaku.
+- `20261022040000_content_version_history.sql` (riwayat versi modul/publikasi/profil expert, baca saja). Lihat bagian 2x. Tanpa migrasi ini panel "Riwayat Versi" menampilkan pesan migrasi; fitur lain tidak terpengaruh.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

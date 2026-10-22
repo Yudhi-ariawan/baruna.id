@@ -24,6 +24,7 @@
     "test:admin-module-revision": "node --env-file-if-exists=.env scripts/test-admin-module-revision.mjs",
     "test:knowledge-update": "node --env-file-if-exists=.env scripts/test-knowledge-update.mjs",
     "test:expert-profile-update": "node --env-file-if-exists=.env scripts/test-expert-profile-update.mjs",
+    "test:version-history": "node --env-file-if-exists=.env scripts/test-version-history.mjs",
     "audit:bom-waktu": "npx tsc --noEmit && npm run test:lifecycle && npm run test:kh-roles && npm run build",
     "lint": "eslint .",
     "format": "prettier --write .",

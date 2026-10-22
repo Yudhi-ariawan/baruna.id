@@ -3,6 +3,7 @@ import { Award, ArrowRight, ShieldCheck, UserCheck, ExternalLink } from "lucide-
 import { useLanguage } from "@/lib/i18n";
 import type { ExpertProfileUpdateState } from "@/lib/experts/application.types";
 import { ExpertProfileUpdatePanel } from "./ExpertProfileUpdatePanel";
+import { VersionHistory } from "@/components/governance/VersionHistory";
 
 type AlreadyExpertNoticeProps = {
   expertName?: string | null;
@@ -86,6 +87,11 @@ export function AlreadyExpertNotice({ expertName, expertSlug, profileUpdate }: A
       </div>
 
       {profileUpdate && <ExpertProfileUpdatePanel update={profileUpdate} />}
+      {profileUpdate && (
+        <div className="mx-auto mt-6 max-w-lg text-left">
+          <VersionHistory subjectId={profileUpdate.subjectId} />
+        </div>
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { AssignmentPanel } from "@/components/governance/AssignmentPanel";
 import { TrainingNeedDecisionPanel } from "@/components/governance/TrainingNeedDecisionPanel";
 import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
 import { StatusHistoryPanel } from "@/components/governance/WorkflowStatus";
+import { VersionHistory } from "@/components/governance/VersionHistory";
 
 export const Route = createFileRoute("/governance/subjects/$id")({
   component: SubjectDetail,
@@ -90,6 +91,12 @@ function SubjectDetail() {
       <Section title="Riwayat status">
         <StatusHistoryPanel subjectId={subject.id} />
       </Section>
+
+      {subject.kind === "module" || subject.kind === "knowledge_resource" || subject.kind === "expert" ? (
+        <Section title="Versi yang pernah tayang">
+          <VersionHistory subjectId={subject.id} defaultOpen />
+        </Section>
+      ) : null}
 
       <Section title={`Revisions (${revisions.length})`}>
         {revisions.length === 0 ? (

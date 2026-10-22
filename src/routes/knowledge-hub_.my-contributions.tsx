@@ -29,6 +29,7 @@ import {
   CancelResourceUpdate,
   RequestResourceUpdate,
 } from "@/components/baruna/knowledge-hub/ResourceUpdateControls";
+import { VersionHistory } from "@/components/governance/VersionHistory";
 
 export const Route = createFileRoute("/knowledge-hub_/my-contributions")({
   head: () => ({
@@ -150,6 +151,12 @@ function ContributionCard({ r }: { r: KnowledgeContributionItem }) {
       </div>
 
       {r.status !== "draft" && <Pipeline status={r.status} />}
+
+      {r.subjectId && (r.status === "approved" || r.status === "update_drafting" || r.liveVersionKept) && (
+        <div className="mt-3">
+          <VersionHistory subjectId={r.subjectId} />
+        </div>
+      )}
 
       {(isRevision || r.status === "rejected" || r.status === "archived") && (r.reviewNote || r.status === "archived") && (
         <div

@@ -29,6 +29,7 @@ import {
   CancelModuleUpdate,
   RequestModuleUpdate,
 } from "@/components/baruna/experts/module-update/ModuleUpdateControls";
+import { VersionHistory } from "@/components/governance/VersionHistory";
 
 export const Route = createFileRoute("/experts/portal/review-status")({
   head: () => ({
@@ -569,7 +570,7 @@ function ReviewStatusPage() {
 
                   {/* PROMINENT BANNER FOR APPROVED STATUS */}
                   {isApproved && (
-                    <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-4">
                       <div className="flex items-start gap-3">
                         <span className="rounded-lg bg-emerald-200 p-2 text-emerald-800 shrink-0 mt-0.5">
                           <BookOpenCheck className="h-5 w-5" />
@@ -592,6 +593,11 @@ function ReviewStatusPage() {
                         </Link>
                         {d.subjectId && !isArchived ? <RequestModuleUpdate subjectId={d.subjectId} /> : null}
                       </div>
+                      {d.subjectId ? (
+                        <div className="w-full border-t border-emerald-200 pt-2">
+                          <VersionHistory subjectId={d.subjectId} />
+                        </div>
+                      ) : null}
                     </div>
                   )}
 
