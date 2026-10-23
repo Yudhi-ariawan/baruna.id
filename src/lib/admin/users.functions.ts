@@ -67,6 +67,22 @@ export type AdminAuditEvent = {
   created_at: string;
 };
 
+/**
+ * Whether the caller may assign roles, as the database decides it. assign_rbac_role
+ * checks has_permission('users.assign_role') itself (only super_admin holds it);
+ * hasPermission() treats every admin as fully permitted, so it cannot answer this.
+ */
+async function canAssignRolesInDatabase(context: { supabase: unknown }): Promise<boolean> {
+  const client = context.supabase as {
+    rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+  };
+  const { data, error } = await client.rpc("current_user_has_permission", { _permission: "users.assign_role" });
+  return !error && data === true;
+}
+
+/** Granted to every new account by the signup trigger (handle_new_user_profile). */
+const DEFAULT_ROLE = "registered_user";
+
 async function loadAdmin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
@@ -104,7 +120,7 @@ export const getAdminAccess = createServerFn({ method: "GET" })
     canUpdateUsers: await hasPermission(context, "users.update"),
     canInviteUsers: await hasPermission(context, "users.invite"),
     canSuspendUsers: await hasPermission(context, "users.suspend"),
-    canAssignRoles: await hasPermission(context, "users.assign_role"),
+    canAssignRoles: await canAssignRolesInDatabase(context),
     canReadAudit: await hasPermission(context, "audit.read"),
   }));
 
@@ -251,6 +267,12 @@ export const createUser = createServerFn({ method: "POST" })
     await requirePermission(context, "users.invite");
     // Before the account exists: a refused role must not leave a half-created user.
     if (data.roles.some(isFlowManaged)) throw new Error("expert_role_managed_by_flow");
+    // Every role beyond the default needs users.assign_role in the database; the
+    // assignment RPC would refuse it after the account already exists.
+    const extraRoles = [...new Set(data.roles.filter((role) => role !== DEFAULT_ROLE))];
+    if (extraRoles.length > 0 && !(await canAssignRolesInDatabase(context))) {
+      throw new Error("role_assignment_forbidden");
+    }
     const admin = await loadAdmin();
     const db = admin as any;
 
@@ -277,7 +299,7 @@ export const createUser = createServerFn({ method: "POST" })
     const targetUserId = created.user.id;
 
     // Ensure profile reflects any supplied fields accurately
-    await db
+    const { error: profileError } = await db
       .from("profiles")
       .update({
         display_name: data.displayName,
@@ -288,8 +310,11 @@ export const createUser = createServerFn({ method: "POST" })
       })
       .eq("id", targetUserId);
 
-    // Assign all selected roles to the newly created user
-    for (const role of data.roles) {
+    // The default role comes from the signup trigger; assign the others and keep
+    // every failure: the admin is told, and the audit records what really happened.
+    const assigned: string[] = [DEFAULT_ROLE];
+    const failedRoles: Array<{ role: string; reason: string }> = [];
+    for (const role of extraRoles) {
       const { error: roleError } = await context.supabase.rpc(
         "assign_rbac_role" as never,
         {
@@ -299,16 +324,27 @@ export const createUser = createServerFn({ method: "POST" })
       );
       if (roleError) {
         console.error(`[createUser] Failed assigning role ${role} to ${targetUserId}:`, roleError);
+        failedRoles.push({ role, reason: roleError.message });
+      } else {
+        assigned.push(role);
       }
     }
 
     await writeAudit(context.userId, targetUserId, "user_created", null, {
       email: data.email,
       display_name: data.displayName,
-      roles: data.roles,
+      roles: assigned,
+      ...(failedRoles.length ? { failed_roles: failedRoles } : {}),
+      ...(profileError ? { profile_update_failed: profileError.message } : {}),
     });
 
-    return { id: targetUserId, email: created.user.email ?? data.email, roles: data.roles };
+    return {
+      id: targetUserId,
+      email: created.user.email ?? data.email,
+      roles: assigned,
+      failedRoles,
+      profileUpdateFailed: profileError ? profileError.message : null,
+    };
   });
 
 

@@ -66,6 +66,8 @@ function messageOf(error: unknown) {
     last_super_admin_protected: "The last active super-admin is protected.",
     expert_role_managed_by_flow:
       "Peran expert tidak bisa dicentang manual. Peran ini diberikan saat pendaftaran expert disetujui dan dicabut lewat Arsip di menu persetujuan expert.",
+    role_assignment_forbidden:
+      "Akun tidak dibuat: hanya Super Admin yang dapat memberi peran selain Registered User. Buat akun dengan peran Registered User saja, atau minta Super Admin.",
   };
   return translations[message] ?? message;
 }
@@ -488,10 +490,16 @@ function UsersPage() {
           availableRoles={((rolesQuery.data ?? []) as AdminRole[])
             .map((role) => role.code as AdminRoleCode)
             .filter((code) => !isFlowManagedRole(code))}
+          canAssignRoles={Boolean(accessQuery.data?.canAssignRoles)}
           onClose={() => setShowCreate(false)}
           onSuccess={(text) => {
             setShowCreate(false);
             refresh(text);
+          }}
+          onPartial={(text) => {
+            setShowCreate(false);
+            refresh(text);
+            setNotice({ type: "error", text });
           }}
           onError={(text) => setNotice({ type: "error", text })}
         />
@@ -550,13 +558,19 @@ function Modal({
 
 function CreateUserDialog({
   availableRoles,
+  canAssignRoles,
   onClose,
   onSuccess,
+  onPartial,
   onError,
 }: {
   availableRoles: AdminRoleCode[];
+  /** users.assign_role in the database (super admin): other roles than registered_user. */
+  canAssignRoles: boolean;
   onClose: () => void;
   onSuccess: (text: string) => void;
+  /** Account created but something (a role, the profile) could not be saved. */
+  onPartial: (text: string) => void;
   onError: (text: string) => void;
 }) {
   const fn = useServerFn(createUser);
@@ -591,8 +605,23 @@ function CreateUserDialog({
           emailConfirm,
         },
       }),
-    onSuccess: (result: any) =>
-      onSuccess(`User ${result?.email ?? email} created successfully with roles: ${(result?.roles ?? selectedRoles).join(", ")}.`),
+    onSuccess: (result: any) => {
+      const failed: Array<{ role: string; reason: string }> = result?.failedRoles ?? [];
+      const created = `Akun ${result?.email ?? email} dibuat dengan peran: ${(result?.roles ?? []).join(", ")}.`;
+      if (failed.length > 0 || result?.profileUpdateFailed) {
+        // The account exists: close the dialog (no duplicate attempt) and say what is missing.
+        const parts = [
+          created,
+          failed.length
+            ? `Peran gagal diberikan: ${failed.map((f) => `${f.role} (${messageOf(new Error(f.reason))})`).join(", ")}. Atur lewat tombol peran pada akun ini.`
+            : "",
+          result?.profileUpdateFailed ? `Data profil belum tersimpan: ${result.profileUpdateFailed}.` : "",
+        ];
+        onPartial(parts.filter(Boolean).join(" "));
+        return;
+      }
+      onSuccess(created);
+    },
     onError: (error) => onError(messageOf(error)),
   });
 
@@ -678,21 +707,31 @@ function CreateUserDialog({
           <p className="mt-0.5 text-xs text-muted-foreground">
             Select one or more roles to be assigned to this user immediately.
           </p>
+          {!canAssignRoles ? (
+            <p className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
+              Akun Anda hanya dapat membuat pengguna dengan peran Registered User. Peran lain diberikan oleh Super Admin.
+            </p>
+          ) : null}
           <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3 max-h-44 overflow-y-auto p-1 border border-border/60 rounded-lg">
             {availableRoles.map((role) => {
               const checked = selectedRoles.includes(role);
+              const locked = !canAssignRoles && role !== "registered_user";
               return (
                 <label
                   key={role}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
-                    checked
-                      ? "border-marine bg-blue-50/70 text-marine"
-                      : "border-border bg-white text-foreground hover:bg-slate-50"
+                  title={locked ? "Hanya Super Admin yang dapat memberi peran ini" : undefined}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                    locked
+                      ? "cursor-not-allowed border-border bg-slate-50 text-muted-foreground opacity-60"
+                      : checked
+                        ? "cursor-pointer border-marine bg-blue-50/70 text-marine"
+                        : "cursor-pointer border-border bg-white text-foreground hover:bg-slate-50"
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
+                    disabled={locked}
                     onChange={() => toggleRole(role)}
                     className="h-3.5 w-3.5 rounded border-slate-300 text-marine focus:ring-marine"
                   />
@@ -1108,6 +1147,14 @@ function UserDialog({
                 </div>
               </div>
             )}
+          </section>
+        ) : access ? (
+          <section className="space-y-2">
+            <SectionTitle icon={<Shield className="h-4 w-4" />} text="Roles & Hak Akses" />
+            <p className="text-xs text-muted-foreground">
+              Peran saat ini: <strong>{currentAssignedRoles.join(", ") || "—"}</strong>. Perubahan peran hanya dapat
+              dilakukan oleh Super Admin.
+            </p>
           </section>
         ) : null}
         {access?.canSuspendUsers ? (

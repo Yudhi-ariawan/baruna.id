@@ -455,7 +455,7 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 **Temuan lain, belum dikerjakan:**
 - Approver ikut bisa menulis daftar keahlian/peran expert/bahasa dan aturan level trainer (policy lama admin|management). Usul: khusus admin; menunggu keputusan.
 - ~~"My Training Requests" (`academy.training-requests.*`) membaca salinan di browser + contoh palsu; keputusan approver tidak terlihat peminta.~~ Diperbaiki di bagian 2s.
-- `createUser` (Tambah User) mengabaikan peran yang gagal diberikan tanpa pesan.
+- ~~`createUser` (Tambah User) mengabaikan peran yang gagal diberikan tanpa pesan.~~ Diperbaiki di bagian 2z.
 - Approver/admin bisa menyunting rincian profil expert langsung: sengaja (`20261015070000`).
 
 ---
@@ -535,7 +535,7 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 **Uji:** PGlite 28/28 (izin: bukan trainer, trainer lain, anon; validasi catatan; modul tidak tayang/diarsipkan/sedang diverifikasi; isi draf dari versi tayang + revisi yang disetujui, bukan pembaruan yang ditolak; draf lama withdrawn; status tetap approved; versi tayang tidak berubah; tidak ada keputusan; tidak dua kali; batal: orang lain ditolak, draf dipulihkan, metadata bersih, tidak dua kali, tidak setelah keputusan, tidak untuk revisi dari verifikator; migrasi bisa diulang). `tsc` dan `build` lulus. **Uji langsung (intern-update, 21 Okt, setelah migrasi dijalankan):** `npm run test:module-update` 24/24. Isinya: modul tayang → buka pembaruan (validasi dan izin) → versi tayang tetap → kuota tetap → admin tidak bisa membuka revisi kedua → batal → kirim → disetujui naik ke v2 dan tersimpan di riwayat versi → pembaruan ditolak, v2 tetap tayang → diminta revisi, trainer tidak bisa membatalkan → kirim ulang dan disetujui jadi v3 → kuota tetap. Data uji tersisa 0 (akun, profil expert, modul). Uji lain tetap lulus: lifecycle 14, kh-roles 20, expert-rpc 64, learning-progress 12, review-lockdown 13, training-requests 33, rbac 820.
 
-**Masih terbuka:** peserta yang sudah lulus versi lama tetap lulus dan belum diberi tahu saat ada versi baru (kebijakan, tanya mentor); halaman riwayat versi (v1, v2, …) untuk trainer/admin belum ada.
+**Masih terbuka:** peserta yang sudah lulus versi lama tetap lulus dan belum diberi tahu saat ada versi baru (kebijakan, tanya mentor). ~~Halaman riwayat versi (v1, v2, …) untuk trainer/admin belum ada.~~ Selesai di bagian 2x (22 Okt), termasuk notifikasi untuk peserta yang sedang belajar.
 
 ---
 
@@ -676,6 +676,40 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 - Uji langsung baru `npm run test:trainer-choice` (5 cek). **Sebelum migrasi (intern-update, 22 Okt): 2/5**: expert yang memilih Reviewer dan Speaker menjadi trainer aktif dan tidak bisa mengajukan Kualifikasi Trainer. Data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 22 Okt): 5/5**, dan 4 expert asli tetap trainer aktif.
 
 **Uji gabungan setelah migrasi 2w, 2x, 2y (intern-update, 22 Okt):** expert-profile-update 19, trainer-choice 5, version-history 16, expert-rpc 64 (versi baru), knowledge-update 19, kr-rpc 24, kh-roles 20, admin-module-revision 18, module-update 24, training-requests 33, lifecycle 14, participant-rpc 27, expert-role-lock 10, review-lockdown 13, learning-progress 12, console-roles dan console-decisions lulus, rbac 820. Akun uji tersisa 0, total akun 27.
+
+---
+
+## 2z. "Tambah User" tidak lagi diam-diam gagal memberi peran (23 Okt)
+
+**Acuan:** Slide 16 (Admin mengelola user dan role), temuan "createUser mengabaikan peran yang gagal" (bagian 2q) dan AUDIT_PERAN (admin vs super admin).
+
+**Temuan (dibuktikan langsung lewat aplikasi yang berjalan, kode lama):**
+- "Tambah User" butuh izin `users.invite`, tetapi pemberian peran (`assign_rbac_role`) butuh `users.assign_role`, yang di database **hanya dimiliki Super Admin**.
+- Bila admin biasa membuat akun dengan peran, misalnya reviewer:
+  - akun **tetap dibuat tanpa peran itu**;
+  - kegagalannya hanya tercatat di log server, tanpa pesan di layar;
+  - audit trail mencatat peran itu seolah berhasil diberikan.
+- Akar masalahnya: pemeriksa izin aplikasi (`hasPermission`) menganggap admin punya semua izin, sehingga layar menawarkan centang peran dan tombol "Simpan Perubahan Peran" kepada admin biasa, padahal database selalu menolaknya.
+- Pembaruan data profil setelah akun dibuat juga tidak dicek error-nya.
+
+**Perbaikan (tanpa migrasi):**
+- `canAssignRoles` dibaca dari database (`current_user_has_permission('users.assign_role')`), aturan yang sama dengan `assign_rbac_role`.
+- `createUser` menolak **sebelum akun dibuat** bila ada peran selain Registered User dan pembuat akun tidak berhak (`role_assignment_forbidden`, pesan berbahasa Indonesia). Akun tidak dibuat setengah jadi.
+- Registered User tidak diberikan ulang, karena peran itu sudah otomatis dari trigger pendaftaran.
+- Bila akun sudah dibuat tetapi ada peran atau data profil yang gagal disimpan:
+  - dialog ditutup, sehingga tidak terjadi percobaan ganda;
+  - layar menampilkan apa yang gagal dan alasannya;
+  - audit mencatat peran yang benar-benar diberikan beserta yang gagal.
+- **Dialog Tambah User:** untuk admin biasa, peran selain Registered User dinonaktifkan dengan penjelasan.
+- **Detail akun:** admin biasa melihat peran dalam mode baca saja dengan catatan "Perubahan peran hanya dapat dilakukan oleh Super Admin". Tombol yang sebelumnya selalu gagal tidak lagi ditampilkan.
+
+**Uji:**
+- `tsc` dan `build` lulus.
+- Uji langsung baru `npm run test:create-user` (9 cek, lewat aplikasi yang berjalan dengan akun admin dan super admin sementara).
+  - **Kode lama: 4/9.** Admin biasa diberi izin memberi peran di layar, dan permintaan peran reviewer menghasilkan akun tanpa peran itu dan tanpa pesan.
+  - **Kode baru: 9/9.** Admin biasa ditolak sebelum akun dibuat; Registered User saja berhasil; super admin memberi reviewer dan peran di database sesuai; audit mencatat peran yang benar.
+  - Akun uji tersisa 0.
+- Catatan uji: server dev baru mengenali server function setelah halaman pemakainya dimuat, jadi skrip membuka `/admin/users` dulu.
 
 ---
 
