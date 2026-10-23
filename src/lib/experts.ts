@@ -294,24 +294,9 @@ function seedRequests(): ExpertRequest[] {
 // ============================================================================
 // JOIN AS AN EXPERT
 // ============================================================================
-export const EXPERTISE_AREAS = [
-  "Aquaculture",
-  "Hatchery Management",
-  "Fish Health",
-  "Feed Development",
-  "Fish Processing",
-  "Quality Assurance",
-  "Fisheries Management",
-  "Marine Conservation",
-  "Blue Economy",
-  "Climate Change",
-  "Marine Spatial Planning",
-  "Monitoring, Control and Surveillance (MCS)",
-  "IUU Fishing",
-  "Ocean Literacy",
-  "Capacity Development",
-] as const;
-
+// Bidang keahlian live in Data Master (expertise_taxonomy, migration 20261023010000)
+// and are loaded by ExpertiseSelector; they are no longer listed here.
+// Roles stay fixed: they drive business rules (e.g. "Trainer" -> trainer status).
 export const EXPERT_ROLES = ["Speaker", "Trainer", "Reviewer", "Mentor", "Technical Expert"] as const;
 export type ExpertRole = (typeof EXPERT_ROLES)[number];
 

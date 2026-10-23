@@ -48,7 +48,7 @@ async function mkUser(tag, role) {
   return { id, client };
 }
 const payload = (name, roles) => ({ fullName: name, title: "Peneliti Madya", institution: "Lembaga Uji", country: "Indonesia",
-  email: `tdd.trchoice.contact.${stamp}@example.test`, expertise: ["Oseanografi"], roles, biography: "Biografi uji.",
+  email: `tdd.trchoice.contact.${stamp}@example.test`, expertise: ["Aquaculture"], roles, biography: "Biografi uji.",
   structuredLanguages: [{ language: "Bahasa Indonesia", proficiency: "native" }], documents: [] });
 async function applyAndApprove(applicant, approver, name, roles) {
   const draft = await applicant.client.rpc("expert_draft_create", { _display_name: name });

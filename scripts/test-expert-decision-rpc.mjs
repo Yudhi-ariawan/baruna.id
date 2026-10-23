@@ -68,7 +68,8 @@ async function mkUser(tag, role) {
 const payload = (name) => ({
   fullName: name, title: "Peneliti Madya", institution: "Lembaga Uji", country: "Indonesia",
   email: `tdd.exprpc.contact.${stamp}@example.test`, phone: "0800000000",
-  expertise: ["Oseanografi"], roles: ["trainer"], biography: "Biografi uji otomatis.",
+  // A bidang from Data Master (expertise_taxonomy; 20261023010000 refuses others).
+  expertise: ["Aquaculture"], roles: ["trainer"], biography: "Biografi uji otomatis.",
   structuredLanguages: [{ language: "Bahasa Indonesia", proficiency: "native" }, { language: "English", proficiency: "professional" }],
   structuredProjects: [{ name: "Proyek Uji", institution: "KKP", role: "Ketua", period: "2024" }],
   structuredPublications: [{ title: "Makalah Uji", venue: "Jurnal Uji", year: "2024" }],

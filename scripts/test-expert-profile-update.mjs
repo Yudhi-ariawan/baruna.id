@@ -60,7 +60,8 @@ async function mkUser(tag, role) {
 const payload = (name, headline) => ({
   fullName: name, title: headline, institution: "Lembaga Uji", country: "Indonesia",
   email: `tdd.expupd.contact.${stamp}@example.test`, phone: "0800000000",
-  expertise: ["Oseanografi"], roles: ["trainer"], biography: `Biografi ${headline}.`,
+  // A bidang from Data Master (expertise_taxonomy; 20261023010000 refuses others).
+  expertise: ["Aquaculture"], roles: ["trainer"], biography: `Biografi ${headline}.`,
   structuredLanguages: [{ language: "Bahasa Indonesia", proficiency: "native" }],
   documents: [],
 });

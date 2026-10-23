@@ -205,7 +205,15 @@ WITH checks(no, migration, ok) AS (
   (54, '20261022050000_trainer_role_from_expert_choice',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_chose_trainer')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_publish_from_subject' AND prosrc LIKE '%_expert_chose_trainer%')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_status_backfill_self' AND prosrc LIKE '%_expert_chose_trainer%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_status_backfill_self' AND prosrc LIKE '%_expert_chose_trainer%')),
+  (55, '20261023010000_master_data_expertise_trainer_levels',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_data_overview')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_expertise_save')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_trainer_levels_set')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_payload_problem' AND prosrc LIKE '%expertise_unknown%')
+      AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public'
+                        AND policyname IN ('expertise_taxonomy_admin_write', 'trainer_level_rules_admin_write'))
+      AND NOT has_table_privilege('authenticated', 'public.expertise_taxonomy', 'UPDATE'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

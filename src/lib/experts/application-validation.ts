@@ -106,6 +106,8 @@ const RPC_ERROR_MESSAGES: Record<string, string> = {
   no_profile_update_open:
     "Tidak ada pembaruan yang bisa dibatalkan. Pembaruan yang sudah dikirim atau diminta verifikator tidak bisa dibatalkan.",
   authentication_required: "Sesi login berakhir. Silakan masuk kembali.",
+  // Bidang keahlian from Data Master (migration 20261023010000).
+  too_many_expertise: "Maksimal 20 bidang keahlian.",
 };
 
 /** Maps raw PostgreSQL RPC exception codes to user-facing messages. */
@@ -113,6 +115,10 @@ export function toFriendlyExpertError(message: string | undefined | null): strin
   if (!message) return "Terjadi kesalahan saat memproses pengajuan expert.";
   const incomplete = message.match(/payload_incomplete:\s*(.+)$/);
   if (incomplete) return `Pengajuan belum lengkap. Lengkapi: ${incomplete[1].trim()}.`;
+  const unknownExpertise = message.match(/expertise_unknown:\s*(.+)$/);
+  if (unknownExpertise) {
+    return `Bidang keahlian "${unknownExpertise[1].trim()}" tidak ada di daftar BARUNA. Pilih bidang dari daftar yang tersedia.`;
+  }
   for (const [code, friendly] of Object.entries(RPC_ERROR_MESSAGES)) {
     if (message.includes(code)) return friendly;
   }

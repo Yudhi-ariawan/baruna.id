@@ -20,6 +20,7 @@ import {
 import { Navbar } from "@/components/baruna/Navbar";
 import { AlreadyExpertNotice } from "@/components/baruna/experts/AlreadyExpertNotice";
 import { CancelExpertProfileUpdate } from "@/components/baruna/experts/ExpertProfileUpdatePanel";
+import { ExpertiseSelector } from "@/components/baruna/experts/ExpertiseSelector";
 import { ApplicationPendingNotice } from "@/components/baruna/experts/ApplicationPendingNotice";
 import { ProfessionalProfileSection } from "@/components/baruna/experts/ProfessionalProfileSection";
 import { ExpertDocumentUpload } from "@/components/baruna/experts/ExpertDocumentUpload";
@@ -39,7 +40,6 @@ import {
 } from "@/lib/experts/application.types";
 import { resolveFileContentType } from "@/lib/storage/mime";
 import {
-  EXPERTISE_AREAS,
   EXPERT_ROLES,
   PROFESSIONAL_TITLE_OPTIONS,
   CUSTOM_PROFESSIONAL_TITLE_VALUE,
@@ -838,26 +838,7 @@ function JoinExpertPage() {
                 <p className="mb-3 text-xs sm:text-sm text-muted-foreground">
                   {isId ? "Pilih semua bidang yang sesuai dengan kompetensi Anda." : "Select all domains that apply to your background."}
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {EXPERTISE_AREAS.map((area) => {
-                    const active = form.expertise.includes(area);
-                    return (
-                      <button
-                        key={area}
-                        type="button"
-                        onClick={() => toggleExpertise(area)}
-                        className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                          active
-                            ? "bg-marine text-marine-foreground shadow-xs"
-                            : "bg-muted text-foreground/75 hover:bg-marine/15 hover:text-marine"
-                        }`}
-                      >
-                        {active && <Check className="mr-1 inline h-3 w-3" />}
-                        {area}
-                      </button>
-                    );
-                  })}
-                </div>
+                <ExpertiseSelector selected={form.expertise} onToggle={toggleExpertise} isId={isId} />
               </SectionCard>
 
               <SectionCard icon={ClipboardCheck} n={3} title={isId ? "Peran yang Diminati" : "Available Roles"}>

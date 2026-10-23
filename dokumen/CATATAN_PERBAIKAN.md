@@ -453,7 +453,7 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 **Uji:** PGlite 24/24 (celah direproduksi sebelum migrasi; sesudahnya ditolak untuk keempat jenis, admin juga; baca tetap; `assign_reviewer` dan pengamannya tetap jalan; RPC konflik). `npm run test:review-lockdown` (uji langsung, 13 pengecekan): sebelum migrasi dijalankan **0 lulus, 13 gagal** (celah terbukti di database asli); **sesudah migrasi dijalankan (21 Okt): 13/13**. Uji lain tetap lulus: rbac 820, expert-rpc 64, kr-rpc 24, participant-rpc 27, kh-roles 20, lifecycle 14, console-decisions 16, expert-role-lock 10. Akun `@example.test` dan pengajuan uji tersisa: 0.
 
 **Temuan lain, belum dikerjakan:**
-- Approver ikut bisa menulis daftar keahlian/peran expert/bahasa dan aturan level trainer (policy lama admin|management). Usul: khusus admin; menunggu keputusan.
+- ~~Approver ikut bisa menulis daftar keahlian/peran expert/bahasa dan aturan level trainer (policy lama admin|management). Usul: khusus admin; menunggu keputusan.~~ Slide 16 memberi Approver akses penuh pada Experts/Academy, jadi tetap boleh, tetapi kini lewat Data Master dengan validasi dan audit (bagian 2aa).
 - ~~"My Training Requests" (`academy.training-requests.*`) membaca salinan di browser + contoh palsu; keputusan approver tidak terlihat peminta.~~ Diperbaiki di bagian 2s.
 - ~~`createUser` (Tambah User) mengabaikan peran yang gagal diberikan tanpa pesan.~~ Diperbaiki di bagian 2z.
 - Approver/admin bisa menyunting rincian profil expert langsung: sengaja (`20261015070000`).
@@ -713,12 +713,54 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
 
 ---
 
+## 2aa. Data Master: bidang keahlian expert dan aturan level trainer (23 Okt)
+
+**Acuan:** Slide 16 (Approver dan Admin: akses penuh pada domain Experts dan Academy), ENGINEERING_STANDARDS (data master tidak ditulis tetap di kode), Slide 13 (konten tayang hanya berubah lewat review).
+
+**Temuan (dibuktikan di database intern-update):**
+- Daftar bidang keahlian di formulir *Become an Expert* ditulis tetap di kode (15 bidang). Tabel `expertise_taxonomy` berisi 9 bidang lain yang tidak pernah dipakai formulir, sehingga **9 bidang formulir tidak ada di database**. Tidak ada halaman untuk mengubah daftar.
+- Aturan level trainer (`trainer_level_rules`) hanya bisa diubah lewat SQL Editor. Selain itu, **approver bisa menulis tabel itu langsung lewat API tanpa audit trail** (kebijakan lama admin|management).
+- Isi bidang keahlian pada pengajuan expert tidak diperiksa: **bidang karangan diterima** saat dikirim dan bisa tayang di direktori.
+
+**Perbaikan (migrasi `20261023010000`):**
+- **Data:** 15 bidang formulir dimasukkan dengan urutan formulir dan aktif. Tiga bidang bawaan tabel yang tidak pernah tampil (Ocean Governance, Fisheries Surveillance, Fish Processing and Value Addition) dinonaktifkan bila tidak dipakai. Nilai yang sudah dipakai profil tetapi tidak ada di daftar ditambahkan sebagai nonaktif. **Tidak ada baris yang dihapus.** Bila Data Master sudah pernah dipakai, menjalankan ulang migrasi tidak menimpa perubahan.
+- **Tulis langsung ditutup** (kebijakan lama dihapus, izin tulis dicabut). Perubahan hanya lewat RPC yang memeriksa peran (Super Admin, Admin, Approver) dan selalu tercatat di audit trail.
+- **Bidang keahlian** (`master_expertise_save`, `master_expertise_set_active`):
+  - Nama 2–120 karakter, unik (huruf besar/kecil dan spasi tidak dibedakan).
+  - Bidang yang **sudah dipakai profil atau pengajuan tidak bisa diganti namanya**, karena profil yang tayang menyimpan nama itu dan mengubahnya tanpa review menyalahi Slide 13. Cara yang benar: nonaktifkan, lalu buat bidang baru.
+  - Bidang aktif terakhir tidak bisa dinonaktifkan. Menonaktifkan tidak mengubah profil yang ada.
+- **Aturan level trainer** (`master_trainer_levels_set`):
+  - Disimpan **berversi**: versi lama ditutup, versi baru berlaku, riwayat tetap ada. Semua pembaca (direktori, Portal Trainer) sudah memilih versi yang berlaku.
+  - Keempat level wajib, angka bulat 1–1.000.000 naik berurutan, alasan perubahan wajib. Simpan tanpa perubahan ditolak.
+- **Pengajuan expert:** saat dikirim, setiap bidang wajib ada di daftar (maksimal 20). Bidang nonaktif yang sudah dipakai tetap diterima, sehingga profil lama bisa diperbarui. Menyimpan draf tidak terpengaruh.
+- **Aplikasi:**
+  - Menu **Data Master** di Konsol Kurasi untuk Approver dan Admin: tambah, ubah, aktif/nonaktif bidang (dengan jumlah pemakaian), dan aturan level trainer dengan riwayat versi.
+  - Formulir *Become an Expert* membaca daftar dari Data Master. Bidang yang sudah dipilih tetapi nonaktif tetap terlihat (bertanda) supaya bisa dibiarkan atau dihapus.
+  - Daftar di kode (`EXPERTISE_AREAS`) dihapus. Daftar **peran** expert tetap di kode, karena dipakai aturan sistem (peran Trainer menentukan status trainer).
+- Skrip uji `test:expert-rpc`, `test:expert-profile-update`, dan `test:trainer-choice` memakai bidang "Aquaculture", karena "Oseanografi" tidak ada di daftar dan kini ditolak.
+
+**Uji:**
+- PGlite 45/45:
+  - **Penyelarasan data:** 15 bidang aktif sesuai urutan; bidang bawaan tak dipakai dinonaktifkan, yang dipakai tetap aktif; nilai lama ditambahkan nonaktif; tidak ada yang dihapus.
+  - **Hak akses:** pengguna biasa ditolak; tulis langsung ditolak di kedua tabel.
+  - **Bidang:** tambah, nama ganda, panjang, karakter kontrol, deskripsi, ganti nama saat belum/sudah dipakai, nonaktif/aktif, aktif terakhir, audit.
+  - **Level trainer:** jumlah level, level ganda, tidak naik, pecahan, nol, terlalu besar, alasan, tanpa perubahan, versi baru dan riwayat.
+  - **Pengajuan:** bidang dari daftar, di luar daftar, nonaktif yang dipakai, lebih dari 20, simpan draf.
+  - **Jalankan ulang** tidak menimpa perubahan.
+- PGlite pembaruan profil expert tetap 47/47.
+- `tsc` dan `build` lulus.
+- Uji langsung baru `npm run test:master-data`. **Sebelum migrasi (intern-update, 23 Okt): 2/15**: 9 bidang formulir tidak ada, approver bisa menulis aturan level langsung, bidang karangan diterima saat dikirim, dan RPC belum ada. Aturan level asli tidak berubah (penulisan uji memakai nilai yang sama), dan data uji tersisa 0.
+
+**Untuk mentor:** di Slide 16, Operator juga punya akses penuh pada Experts dan Academy. Apakah Operator juga boleh mengelola Data Master?
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (54 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (55 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -761,6 +803,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261022030000_expert_profile_update.sql` (expert memperbarui profilnya lewat review; profil, role, dan trainer tidak dicabut selama revisi/pembaruan). Lihat bagian 2w. Butuh kode branch ini untuk tombol pembaruan; setelah migrasi `test:expert-rpc` versi branch ini yang berlaku.
 - `20261022040000_content_version_history.sql` (riwayat versi modul/publikasi/profil expert, baca saja). Lihat bagian 2x. Tanpa migrasi ini panel "Riwayat Versi" menampilkan pesan migrasi; fitur lain tidak terpengaruh.
 - `20261022050000_trainer_role_from_expert_choice.sql` (expert jadi trainer otomatis hanya bila memilih peran Trainer). Lihat bagian 2y. Tidak mengubah data yang ada.
+- `20261023010000_master_data_expertise_trainer_levels.sql` (Data Master: bidang keahlian dan aturan level trainer; tulis langsung ditutup; bidang keahlian pengajuan expert diperiksa). Lihat bagian 2aa. **Butuh kode branch ini**: formulir Become an Expert membaca daftar dari database. Setelah migrasi, skrip uji expert versi branch ini yang berlaku.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
