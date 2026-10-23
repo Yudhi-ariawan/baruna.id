@@ -63,10 +63,11 @@ const FORM = ["Aquaculture", "Hatchery Management", "Fish Health", "Feed Develop
 
 async function cleanup() {
   console.log("\nMembersihkan data uji...");
-  // Trainer level rules: drop the test version, reopen the version that was in force.
-  if (newRuleVersion) {
-    await admin.from("trainer_level_rules").delete().eq("version", newRuleVersion);
-    if (rulesBefore?.length) await admin.from("trainer_level_rules").update({ effective_until: null }).eq("version", rulesBefore[0].version);
+  // Trainer level rules: drop every version a test account created (also one saved
+  // by a check that wrongly succeeded), then reopen exactly the rows in force before.
+  if (users.length) await admin.from("trainer_level_rules").delete().in("created_by", users);
+  if (rulesBefore?.length) {
+    await admin.from("trainer_level_rules").update({ effective_until: null }).in("id", rulesBefore.map((r) => r.id));
   }
   if (createdExpertise.length) await admin.from("expertise_taxonomy").delete().in("id", createdExpertise);
   await admin.from("governance_audit_log").delete().in("actor_id", users);
@@ -135,7 +136,9 @@ async function run() {
   const cur = Object.fromEntries(rulesBefore.map((r) => [r.trainer_level, r]));
   const rules = ["certified", "advanced", "senior", "master"].map((level, i) => ({
     level, minParticipants: (cur[level]?.min_unique_graduated_participants ?? (i + 1) * 100) + 1, evidence: cur[level]?.evidence_requirements ?? null }));
-  await rejects(approver.client.rpc("master_trainer_levels_set", { _rules: [...rules].reverse().map((r, i) => ({ ...r, minParticipants: 10 - i })), _note: "Uji urutan" }), /trainer_levels_not_increasing/, "angka tidak naik berurutan ditolak");
+  // Certified 50 > Advanced 40: not increasing in level order.
+  const decreasing = rules.map((r) => ({ ...r, minParticipants: { certified: 50, advanced: 40, senior: 1000, master: 2000 }[r.level] }));
+  await rejects(approver.client.rpc("master_trainer_levels_set", { _rules: decreasing, _note: "Uji urutan" }), /trainer_levels_not_increasing/, "angka tidak naik berurutan ditolak");
   await rejects(approver.client.rpc("master_trainer_levels_set", { _rules: rules, _note: "abc" }), /trainer_levels_note_required/, "alasan perubahan wajib");
   await rejects(user.client.rpc("master_trainer_levels_set", { _rules: rules, _note: "Uji oleh pengguna" }), /forbidden/, "pengguna biasa ditolak");
   const set = await approver.client.rpc("master_trainer_levels_set", { _rules: rules, _note: "Uji otomatis Data Master" });

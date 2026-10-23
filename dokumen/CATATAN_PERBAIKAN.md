@@ -749,7 +749,11 @@ Perbaikan: kelima policy dihapus dan izin tulis tabel dicabut dari `authenticate
   - **Jalankan ulang** tidak menimpa perubahan.
 - PGlite pembaruan profil expert tetap 47/47.
 - `tsc` dan `build` lulus.
-- Uji langsung baru `npm run test:master-data`. **Sebelum migrasi (intern-update, 23 Okt): 2/15**: 9 bidang formulir tidak ada, approver bisa menulis aturan level langsung, bidang karangan diterima saat dikirim, dan RPC belum ada. Aturan level asli tidak berubah (penulisan uji memakai nilai yang sama), dan data uji tersisa 0.
+- Uji langsung baru `npm run test:master-data`. **Sebelum migrasi (intern-update, 23 Okt): 2/15**: 9 bidang formulir tidak ada, approver bisa menulis aturan level langsung, bidang karangan diterima saat dikirim, dan RPC belum ada. Aturan level asli tidak berubah (penulisan uji memakai nilai yang sama), dan data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 23 Okt): 15/15.**
+
+Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang dimaksud "tidak naik" ternyata naik (7/8/9/10), sehingga fungsi dengan benar menyimpannya sebagai versi 2, dan pembersihan skrip tidak menghapusnya. Empat baris sisa itu dihapus berdasarkan ID-nya. Skrip kini memakai angka yang benar-benar turun, dan pembersihannya menghapus semua versi buatan akun uji lalu membuka kembali baris yang berlaku sebelum uji. Aturan level kembali tepat seperti semula (hanya versi 1: 30/100/1.000/10.001).
+
+**Uji gabungan setelah migrasi:** master-data 15, expert-rpc 64, expert-profile-update 19, trainer-choice 5, create-user 9, version-history 16, knowledge-update 19, kr-rpc 24, kh-roles 20, admin-module-revision 18, module-update 24, training-requests 33, lifecycle 14, participant-rpc 27, expert-role-lock 10, review-lockdown 13, learning-progress 12, console-roles dan console-decisions lulus, rbac 820. Akun uji tersisa 0 (3 akun dari satu uji yang terputus sudah dihapus), total akun 27, bidang aktif 15.
 
 **Untuk mentor:** di Slide 16, Operator juga punya akses penuh pada Experts dan Academy. Apakah Operator juga boleh mengelola Data Master?
 
