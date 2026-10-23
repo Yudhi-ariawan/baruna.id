@@ -790,7 +790,9 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
   - **Ringkasan:** trainer aktif dihitung dari status terbaru (yang ditangguhkan tidak dihitung); riwayat terbaru tampil di atas.
   - **Jalankan ulang** migrasi tidak menimpa kuota.
 - `tsc` dan `build` lulus.
-- Uji langsung baru `npm run test:module-limits`. **Sebelum migrasi (intern-update, 23 Okt): 2/18**, karena RPC belum ada. Kuota asli 2/5/10/999 tidak berubah, dan data uji tersisa 0. Uji ini juga mencakup dua penyimpanan bersamaan dari dua akun: tepat satu yang tersimpan.
+- Uji langsung baru `npm run test:module-limits`. **Sebelum migrasi (intern-update, 23 Okt): 2/18**, karena RPC belum ada. Kuota asli 2/5/10/999 tidak berubah, dan data uji tersisa 0. Uji ini juga mencakup dua penyimpanan bersamaan dari dua akun: tepat satu yang tersimpan. **Sesudah migrasi dijalankan (intern-update, 23 Okt): 18/18**, termasuk simpan bersamaan (satu tersimpan, satu ditolak `module_limits_stale`) dan kuota pembuatan modul langsung memakai nilai baru. Kuota dikembalikan ke 2/5/10/999 dan catatan audit uji dihapus.
+
+**Uji gabungan setelah migrasi:** module-limits 18, master-data 15, expert-rpc 64, expert-profile-update 19, trainer-choice 5, create-user 9, version-history 16, knowledge-update 19, kr-rpc 24, kh-roles 20, admin-module-revision 18, module-update 24, training-requests 33, lifecycle, participant-rpc 27, expert-role-lock 10, review-lockdown 13, learning-progress 12, console-roles, console-decisions, dan rbac lulus. Akun uji tersisa 0, total akun 27.
 
 ---
 
