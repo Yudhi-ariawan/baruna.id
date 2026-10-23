@@ -5,6 +5,7 @@ import { Database } from "lucide-react";
 import { getMasterData } from "@/lib/governance/master-data.functions";
 import { ExpertiseMasterPanel } from "@/components/governance/master-data/ExpertiseMasterPanel";
 import { TrainerLevelsPanel } from "@/components/governance/master-data/TrainerLevelsPanel";
+import { ModuleLimitsPanel } from "@/components/governance/master-data/ModuleLimitsPanel";
 
 // Slide 16: Approver and Admin have full access to the Experts and Academy domains.
 // The database checks the role on every read and write (migration 20261023010000).
@@ -35,6 +36,7 @@ function MasterDataPage() {
         <>
           <ExpertiseMasterPanel items={q.data.expertise} />
           <TrainerLevelsPanel key={q.data.trainerLevelVersions[0]?.version ?? 0} data={q.data} />
+          <ModuleLimitsPanel />
         </>
       ) : null}
     </div>

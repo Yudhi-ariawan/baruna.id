@@ -759,12 +759,47 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 
 ---
 
+## 2ab. Data Master: kuota modul per level trainer (23 Okt)
+
+**Acuan:** Slide 26 dan 39 (data dikelola lewat Admin Console, tidak hard-coded, setiap perubahan masuk audit trail), Slide 16 (Approver dan Admin: akses penuh pada Experts dan Academy).
+
+**Temuan (dibuktikan di database intern-update):**
+- Batas modul aktif per level trainer sudah disimpan di tabel `trainer_level_module_limits` (Certified 2, Advanced 5, Senior 10, Master 999) dan dipakai saat trainer membuat modul.
+- Komentar migrasi `20261015050000` menyebut nilainya "bisa diubah admin tanpa migrasi", tetapi **tidak ada RPC maupun halaman untuk mengubahnya**. Satu-satunya cara adalah SQL Editor, tanpa validasi dan tanpa audit trail.
+
+**Perbaikan (migrasi `20261023020000`):**
+- **Tulis langsung dicabut** dari anon/authenticated. RLS memang sudah tidak punya policy tulis; ini lapis kedua.
+- **Data:** baris keempat level dipastikan ada. Nilai yang sudah ada tidak diubah, dan menjalankan ulang migrasi tidak menimpa perubahan.
+- **`master_module_limits_set`** (Super Admin, Admin, Approver):
+  - Keempat level wajib diisi, berupa bilangan bulat 1–9.999.
+  - Level yang lebih tinggi tidak boleh mendapat kuota lebih kecil (boleh sama).
+  - Alasan perubahan wajib diisi. Simpan tanpa perubahan ditolak.
+  - Layar mengirim nilai yang dilihatnya. Bila nilai itu sudah diubah orang lain (perangkat atau kurator lain), simpan ditolak sehingga tidak ada yang tertimpa diam-diam. Layar lalu memuat nilai terbaru.
+  - Setiap perubahan tercatat di audit trail: pelaku, nilai sebelum, nilai sesudah, dan alasan.
+- **`master_module_limits_overview`:** kuota yang berlaku, jumlah trainer aktif per level, dan 20 perubahan terakhir.
+- Kuota trainer yang **belum punya level tetap 0** dan tidak bisa diubah di sini (aturan `20261015050000`).
+- **Menurunkan kuota tidak menarik modul yang sudah ada.** Trainer yang sudah melewati kuota baru hanya tidak bisa membuat modul baru. Layar menampilkan peringatan ini saat kuota diturunkan.
+- **Aplikasi:** panel **Kuota Modul per Level Trainer** di Konsol Kurasi → Data Master, dengan jumlah trainer aktif per level dan riwayat perubahan.
+
+**Uji:**
+- PGlite 29/29:
+  - **Sebelum migrasi:** tidak ada RPC untuk mengubah kuota.
+  - **Hak akses:** pengguna biasa dan tanpa login ditolak; tulis langsung ditolak.
+  - **Validasi:** level kurang, kunci di luar 4 level, kuota 0, lebih dari 9.999, pecahan, teks, negatif, level lebih tinggi lebih kecil, tanpa perubahan, nilai acuan berbeda atau kosong. Semua penolakan tidak mengubah data.
+  - **Simpan:** fungsi kuota pembuatan modul langsung memakai nilai baru; audit trail lengkap; admin dengan layar lama ditolak.
+  - **Ringkasan:** trainer aktif dihitung dari status terbaru (yang ditangguhkan tidak dihitung); riwayat terbaru tampil di atas.
+  - **Jalankan ulang** migrasi tidak menimpa kuota.
+- `tsc` dan `build` lulus.
+- Uji langsung baru `npm run test:module-limits`. **Sebelum migrasi (intern-update, 23 Okt): 2/18**, karena RPC belum ada. Kuota asli 2/5/10/999 tidak berubah, dan data uji tersisa 0. Uji ini juga mencakup dua penyimpanan bersamaan dari dua akun: tepat satu yang tersimpan.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (55 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (56 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -808,6 +843,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261022040000_content_version_history.sql` (riwayat versi modul/publikasi/profil expert, baca saja). Lihat bagian 2x. Tanpa migrasi ini panel "Riwayat Versi" menampilkan pesan migrasi; fitur lain tidak terpengaruh.
 - `20261022050000_trainer_role_from_expert_choice.sql` (expert jadi trainer otomatis hanya bila memilih peran Trainer). Lihat bagian 2y. Tidak mengubah data yang ada.
 - `20261023010000_master_data_expertise_trainer_levels.sql` (Data Master: bidang keahlian dan aturan level trainer; tulis langsung ditutup; bidang keahlian pengajuan expert diperiksa). Lihat bagian 2aa. **Butuh kode branch ini**: formulir Become an Expert membaca daftar dari database. Setelah migrasi, skrip uji expert versi branch ini yang berlaku.
+- `20261023020000_master_data_trainer_module_limits.sql` (Data Master: kuota modul per level trainer, dengan validasi, pencegahan saling timpa, dan audit trail; tulis langsung dicabut). Lihat bagian 2ab. Jalankan setelah `20261023010000`.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

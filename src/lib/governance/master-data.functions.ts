@@ -58,6 +58,13 @@ const ERRORS: Array<[RegExp, string]> = [
   [/trainer_levels_not_increasing/, "Jumlah lulusan harus naik berurutan: Certified < Advanced < Senior < Master."],
   [/trainer_levels_evidence_too_long/, "Syarat bukti maksimal 500 karakter per level."],
   [/trainer_levels_unchanged/, "Tidak ada perubahan dibanding aturan yang berlaku."],
+  [/module_limits_note_required/, "Tuliskan alasan perubahan (5–500 karakter)."],
+  [/module_limits_invalid/, "Keempat level (Certified, Advanced, Senior, Master) wajib diisi."],
+  [/module_limits_value_invalid/, "Kuota harus bilangan bulat 1–9.999."],
+  [/module_limits_decreasing/, "Level yang lebih tinggi tidak boleh mendapat kuota lebih kecil: Certified ≤ Advanced ≤ Senior ≤ Master."],
+  [/module_limits_unchanged/, "Tidak ada perubahan dibanding kuota yang berlaku."],
+  [/module_limits_stale/, "Kuota baru saja diubah orang lain. Nilai terbaru sudah dimuat; periksa lalu simpan lagi bila masih perlu."],
+  [/master_module_limits/, "Kuota modul membutuhkan migrasi database 20261023020000. Jalankan supabase/check_migrations.sql."],
   [/Could not find the function|schema cache/, "Data Master membutuhkan migrasi database 20261023010000. Jalankan supabase/check_migrations.sql."],
 ];
 
@@ -124,4 +131,38 @@ export const saveTrainerLevels = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) =>
     rpc<{ version: number }>(context, "master_trainer_levels_set", { _rules: data.rules, _note: data.note }),
+  );
+
+// ── Kuota modul per level trainer (migration 20261023020000) ─────────────────
+export type ModuleLimitMap = Record<TrainerLevelCode, number>;
+
+export type ModuleLimitsData = {
+  limits: Array<{ level: TrainerLevelCode; limit: number; updatedAt: string }>;
+  /** Active trainers per level (latest trainer status). */
+  trainers: Partial<Record<TrainerLevelCode, number>>;
+  history: Array<{ at: string; by: string | null; note: string | null; before: Partial<ModuleLimitMap>; after: ModuleLimitMap }>;
+};
+
+const limitValue = z.number().int().min(1).max(9999);
+const limitMap = z.object({ certified: limitValue, advanced: limitValue, senior: limitValue, master: limitValue }).strict();
+// What the screen loaded; may be any value the database holds (e.g. set by SQL).
+const seenValue = z.number().int().min(0).max(1000000);
+const seenMap = z.object({ certified: seenValue, advanced: seenValue, senior: seenValue, master: seenValue }).strict();
+export const MODULE_LIMITS_STALE = "Kuota baru saja diubah orang lain.";
+
+export const getModuleLimits = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => rpc<ModuleLimitsData>(context, "master_module_limits_overview"));
+
+export const saveModuleLimits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) =>
+    z.object({ limits: limitMap, expected: seenMap, note: z.string().trim().min(5).max(500) }).parse(d),
+  )
+  .handler(async ({ data, context }) =>
+    rpc<{ limits: ModuleLimitMap }>(context, "master_module_limits_set", {
+      _limits: data.limits,
+      _expected: data.expected,
+      _note: data.note,
+    }),
   );

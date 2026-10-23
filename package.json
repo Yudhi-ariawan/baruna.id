@@ -28,6 +28,7 @@
     "test:trainer-choice": "node --env-file-if-exists=.env scripts/test-trainer-choice.mjs",
     "test:create-user": "node --env-file-if-exists=.env scripts/test-create-user.mjs",
     "test:master-data": "node --env-file-if-exists=.env scripts/test-master-data.mjs",
+    "test:module-limits": "node --env-file-if-exists=.env scripts/test-module-limits.mjs",
     "audit:bom-waktu": "npx tsc --noEmit && npm run test:lifecycle && npm run test:kh-roles && npm run build",
     "lint": "eslint .",
     "format": "prettier --write .",

@@ -213,7 +213,11 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_payload_problem' AND prosrc LIKE '%expertise_unknown%')
       AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public'
                         AND policyname IN ('expertise_taxonomy_admin_write', 'trainer_level_rules_admin_write'))
-      AND NOT has_table_privilege('authenticated', 'public.expertise_taxonomy', 'UPDATE'))
+      AND NOT has_table_privilege('authenticated', 'public.expertise_taxonomy', 'UPDATE')),
+  (56, '20261023020000_master_data_trainer_module_limits',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_module_limits_overview')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_module_limits_set' AND prosrc LIKE '%module_limits_stale%')
+      AND NOT has_table_privilege('authenticated', 'public.trainer_level_module_limits', 'UPDATE'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
