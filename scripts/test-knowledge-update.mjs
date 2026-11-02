@@ -45,7 +45,7 @@ async function persona(label, role) {
 
 // Each version has its own title and link, so the catalog shows which one is live.
 const form = (tag) => ({ title: `TDD Laporan ${stamp} ${tag}`, resource_type: "technical_report", type: "Technical Report",
-  externalUrl: `https://example.org/tdd-${stamp}-${tag}`, description: `Isi versi ${tag}` });
+  externalUrl: `https://example.org/tdd-${stamp}-${tag}`, description: `Isi versi ${tag}`, topicCategory: "Fisheries Management" });
 const catalog = (tag) => ({ resource_type: "technical_report", title: `TDD Laporan ${stamp} ${tag}`, summary: `Isi versi ${tag}`,
   abstract: `Isi versi ${tag}`, language: "Indonesian", publication_year: "2026", publisher: "KKP",
   external_url: `https://example.org/tdd-${stamp}-${tag}`, thumbnail_url: null, topics: ["uji"], keywords: ["tdd"],

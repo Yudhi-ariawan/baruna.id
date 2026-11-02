@@ -19,12 +19,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { TopicSelector } from "@/components/baruna/knowledge-hub/TopicSelector";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import { supabase } from "@/integrations/supabase/client";
 import { createKnowledgeResourceUpload, getKnowledgeContributorBootstrap, getKnowledgeResourceDraft, saveKnowledgeResourceDraft } from "@/lib/knowledge-hub/contribution.functions";
 import {
   RESOURCE_TYPE_GROUPS,
-  TOPIC_CATEGORIES,
   LANGUAGES,
   ACCESS_LEVELS,
   ACCEPTED_FILE_TYPES,
@@ -762,23 +762,7 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
         </div>
         <div className="sm:col-span-2">
           <FieldLabel required>Topic Category</FieldLabel>
-          <div className="flex flex-wrap gap-2">
-            {TOPIC_CATEGORIES.map((t) => {
-              const active = form.topicCategory === t;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => set("topicCategory", t)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    active ? "bg-marine text-marine-foreground" : "bg-muted text-foreground/75 hover:bg-marine/15 hover:text-marine"
-                  }`}
-                >
-                  {t}
-                </button>
-              );
-            })}
-          </div>
+          <TopicSelector value={form.topicCategory} onChange={(t) => set("topicCategory", t)} />
         </div>
       </div>
 

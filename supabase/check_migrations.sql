@@ -223,7 +223,11 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_module_limits_set' AND prosrc LIKE '%module_limits_stale%')
       AND NOT has_table_privilege('authenticated', 'public.trainer_level_module_limits', 'UPDATE')),
   (58, '20261102010000_master_data_trainer_quota_list',
-      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_trainer_quota_list'))
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_trainer_quota_list')),
+  (59, '20261102020000_master_data_kh_topics',
+      to_regclass('public.kh_topic_taxonomy') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_kh_topic_save')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_kr_payload_problem' AND prosrc LIKE '%kr_topic_unknown%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

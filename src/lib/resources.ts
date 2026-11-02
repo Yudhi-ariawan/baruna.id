@@ -56,20 +56,8 @@ export function groupForType(type: string): string {
   return RESOURCE_TYPE_GROUPS.find((g) => g.types.includes(type))?.label ?? "";
 }
 
-export const TOPIC_CATEGORIES = [
-  "Aquaculture",
-  "Fisheries Management",
-  "Fish Health",
-  "Fish Processing",
-  "Marine Conservation",
-  "Blue Economy",
-  "Climate Change",
-  "Marine Spatial Planning",
-  "Monitoring, Control and Surveillance (MCS)",
-  "IUU Fishing",
-  "Ocean Literacy",
-  "Capacity Development",
-] as const;
+// Topic categories live in Data Master (kh_topic_taxonomy, migration 20261102020000);
+// the form reads them through getKhTopicOptions.
 
 export const LANGUAGES = [
   "English",
