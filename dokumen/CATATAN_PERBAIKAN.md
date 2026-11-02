@@ -847,6 +847,36 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 
 ---
 
+## 2ag. Data Master: satu daftar bahasa (2 Nov)
+
+**Acuan:** Slide 32 (Metadata Record: bahasa), Slide 39 (Language & Communication), Slide 26/39/41 (tidak hard-coded, dikelola Admin Console, audit trail).
+
+**Temuan (dibuktikan di database intern-update):**
+- Tabel `languages_taxonomy` (17 bahasa, kode ISO) ada di database dan dipakai profil expert, tetapi **tidak ada di file migrasi repo**: database lain tidak mendapatkannya.
+- **Approver bisa menulis tabel itu langsung lewat API** (uji memakai nilai yang sama, data tidak berubah).
+- Daftar bahasa di kode berbeda-beda: formulir Knowledge Hub 8 pilihan (termasuk Swahili yang tidak ada di tabel, dan "Other"), Request a Training 5, tombol cepat Expert 7.
+- Bahasa publikasi Knowledge Hub tidak diperiksa: **bahasa karangan dan tanpa bahasa diterima**. Datanya sudah tidak seragam ("Bahasa Indonesia", "Indonesian", "Bahasa Indonesia & Bahasa Inggris").
+- Pemetaan bahasa expert hanya mengenali bahasa aktif: menonaktifkan satu bahasa akan membuat pembaruan profil yang memakainya diam-diam kehilangan bahasa itu.
+
+**Perbaikan (migrasi `20261102030000`):**
+- `languages_taxonomy` dibuat bila belum ada (kolom sama dengan yang ada); 17 bahasa + **Swahili** diisi tanpa mengubah baris yang sudah ada. Tulis langsung dicabut; baca tetap terbuka.
+- `master_languages_overview`, `master_language_save`, `master_language_set_active` (Super Admin, Admin, Approver): kode ISO 639 unik dan **tidak bisa diubah** setelah dibuat (dipakai foreign key); nama unik; bahasa terpakai tidak bisa diganti nama (nama asli dan urutan tetap bisa); bahasa aktif terakhir dilindungi; audit trail.
+- `_expert_language_code`: bahasa nonaktif tetap dikenali (yang aktif didahulukan).
+- `_kr_payload_problem`: bahasa publikasi **wajib** dan **harus dikenali dari daftar** (nama, nama asli, kode, atau sebutan umum seperti "Bahasa Indonesia"/"Inggris"). "Other" tidak lagi diterima untuk publikasi.
+- **Aplikasi:**
+  - Panel **Bahasa** di Konsol Kurasi → Data Master.
+  - Formulir Knowledge Hub dan Request a Training memakai daftar dari database (`LanguageSelect`). Request a Training tetap punya pilihan "Other" (tidak diperiksa database, hanya untuk perencanaan). Nilai lama yang tidak ada di daftar tetap terlihat dengan tanda.
+  - Formulir Expert: tombol pilihan bahasa dari database (kemahiran mengikuti pilihan); ketik bebas tetap ada dengan saran dari daftar.
+  - Daftar `LANGUAGES` di `resources.ts` dan `trainingRequests.ts` dihapus. Filter bahasa di katalog program (`academy.programs.tsx`) tidak diubah: nilainya mengikuti data katalog program, bukan formulir.
+- Skrip uji `test:knowledge-update` dan `test:kh-topics` kini mengirim bahasa (`test:kh-roles` sudah).
+
+**Uji:**
+- PGlite 33/33: bukti celah; database seperti intern-update (17 tetap, Swahili ditambah, baris lama tidak diubah, izin tulis lama dicabut, pengguna tetap bisa membaca); pengajuan (di luar daftar, "Other", tanpa bahasa ditolak; English, Indonesian, Bahasa Indonesia, inggris, Swahili, Español, pt dikenali); kelola (pemakaian, kode varian, kode ganda, kode bukan ISO, nama ganda, ganti nama terpakai, kode tidak berubah, nonaktif tetap dikenali, aktif terakhir, audit, jalankan ulang); database baru (tabel dibuat, pemetaan bekerja).
+- `tsc` dan lint lulus.
+- Uji langsung baru `npm run test:languages` (12 cek). **Sebelum migrasi (intern-update, 2 Nov): 3/12**: Swahili belum ada; approver bisa menulis tabel langsung; RPC belum ada; **bahasa karangan dan tanpa bahasa diterima**. Data uji tersisa 0.
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.
@@ -903,7 +933,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (59 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (60 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -950,6 +980,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261023020000_master_data_trainer_module_limits.sql` (Data Master: kuota modul per level trainer, dengan validasi, pencegahan saling timpa, dan audit trail; tulis langsung dicabut). Lihat bagian 2ab. Jalankan setelah `20261023010000`.
 - `20261102010000_master_data_trainer_quota_list.sql` (Data Master: daftar trainer aktif per level dengan pemakaian kuota modul; baca saja). Lihat bagian 2ad. Jalankan setelah `20261023020000`. Tanpa migrasi ini daftar menampilkan pesan migrasi; panel lain tidak terpengaruh.
 - `20261102020000_master_data_kh_topics.sql` (Data Master: topik Knowledge Hub; pengajuan wajib memakai topik dari daftar). Lihat bagian 2af. Butuh `20261023010000`. **Butuh kode branch ini**: formulir kontribusi membaca topik dari database; setelah migrasi, skrip uji Knowledge Hub versi branch ini yang berlaku (payload uji memakai topik dari daftar).
+- `20261102030000_master_data_languages.sql` (Data Master: satu daftar bahasa; tabel `languages_taxonomy` masuk repo; bahasa publikasi Knowledge Hub diperiksa saat dikirim). Lihat bagian 2ag. Jalankan setelah `20261102020000`. **Butuh kode branch ini** (formulir membaca bahasa dari database; payload uji Knowledge Hub memakai bahasa dari daftar).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -977,6 +1008,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `training-requests` | 33 | 2s | `module-limits` | 18 | 2ab |
   | `console-roles`*, `console-decisions`* | lulus | 2o | `rbac` | lulus | matriks peran |
   | `trainer-quota-list` | 5 (setelah migrasi `20261102010000`) | 2ad | `kh-topics` | 12 (setelah migrasi `20261102020000`) | 2af |
+  | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

@@ -20,12 +20,12 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
 import { TopicSelector } from "@/components/baruna/knowledge-hub/TopicSelector";
+import { LanguageSelect } from "@/components/baruna/forms/LanguageSelect";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import { supabase } from "@/integrations/supabase/client";
 import { createKnowledgeResourceUpload, getKnowledgeContributorBootstrap, getKnowledgeResourceDraft, saveKnowledgeResourceDraft } from "@/lib/knowledge-hub/contribution.functions";
 import {
   RESOURCE_TYPE_GROUPS,
-  LANGUAGES,
   ACCESS_LEVELS,
   ACCEPTED_FILE_TYPES,
   emptyResourceDraft,
@@ -722,11 +722,7 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
         </div>
         <div>
           <FieldLabel required>Language</FieldLabel>
-          <select className={inputClass} value={form.language} onChange={(e) => set("language", e.target.value)}>
-            {LANGUAGES.map((l) => (
-              <option key={l} value={l}>{l}</option>
-            ))}
-          </select>
+          <LanguageSelect className={inputClass} value={form.language} onChange={(v) => set("language", v)} />
         </div>
         <div>
           <FieldLabel required>Resource Category</FieldLabel>

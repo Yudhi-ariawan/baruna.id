@@ -227,7 +227,12 @@ WITH checks(no, migration, ok) AS (
   (59, '20261102020000_master_data_kh_topics',
       to_regclass('public.kh_topic_taxonomy') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_kh_topic_save')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_kr_payload_problem' AND prosrc LIKE '%kr_topic_unknown%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_kr_payload_problem' AND prosrc LIKE '%kr_topic_unknown%')),
+  (60, '20261102030000_master_data_languages',
+      to_regclass('public.languages_taxonomy') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_language_save')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_kr_payload_problem' AND prosrc LIKE '%kr_language_unknown%')
+      AND NOT has_table_privilege('authenticated', 'public.languages_taxonomy', 'UPDATE'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

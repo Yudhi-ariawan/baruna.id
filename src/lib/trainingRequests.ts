@@ -126,13 +126,7 @@ export const DELIVERY_MODES = ["Online", "In-Person", "Blended"] as const;
 
 export const DURATIONS = ["1 Day", "2–3 Days", "1 Week", "2 Weeks", "Flexible"] as const;
 
-export const LANGUAGES = [
-  "English",
-  "Bahasa Indonesia",
-  "French",
-  "Spanish",
-  "Other",
-] as const;
+// Preferred language options come from Data Master (useLanguageOptions), plus "Other".
 
 // Public-facing Funding Preference options (facilitated training only).
 // Contains NO PNBP / tariff / billing / NTPN wording. Public → backend code

@@ -30,7 +30,6 @@ import {
   TARGET_AUDIENCES,
   PARTICIPANT_COUNTS,
   DURATIONS,
-  LANGUAGES,
   FUNDING_PREFERENCES,
   SUPPORT_OPTIONS,
   emptyTrainingDraft,
@@ -49,6 +48,7 @@ import {
 import { getMyTrainingRequest } from "@/lib/training-requests/my-requests.functions";
 import { trainingRequestReference } from "@/lib/training-requests/workflow";
 import { usePresentationMode } from "@/lib/demoMode";
+import { LanguageSelect } from "@/components/baruna/forms/LanguageSelect";
 
 const BARUNA_VENUE = "Denpasar, Bali, Indonesia";
 const DRAFT_STORAGE_KEY = "baruna:training-request-draft-v1";
@@ -1036,17 +1036,12 @@ function RequestTrainingPage() {
                       />
                     </Field>
                     <Field label="Preferred language">
-                      <select
+                      <LanguageSelect
                         className={inputClass}
                         value={draft.language}
-                        onChange={(e) => set("language", e.target.value)}
-                      >
-                        {LANGUAGES.map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(v) => set("language", v)}
+                        otherLabel="Other"
+                      />
                     </Field>
                     <Field label="Training Location" hint="Set automatically from the attendance format above.">
                       <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2.5 text-sm text-foreground/80">

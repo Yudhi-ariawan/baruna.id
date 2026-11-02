@@ -7,6 +7,7 @@ import { ExpertiseMasterPanel } from "@/components/governance/master-data/Expert
 import { TrainerLevelsPanel } from "@/components/governance/master-data/TrainerLevelsPanel";
 import { ModuleLimitsPanel } from "@/components/governance/master-data/ModuleLimitsPanel";
 import { KhTopicsPanel } from "@/components/governance/master-data/KhTopicsPanel";
+import { LanguagesPanel } from "@/components/governance/master-data/LanguagesPanel";
 
 // Slide 16: Approver and Admin have full access to the Experts and Academy domains.
 // The database checks the role on every read and write (migration 20261023010000).
@@ -37,6 +38,7 @@ function MasterDataPage() {
         <>
           <ExpertiseMasterPanel items={q.data.expertise} />
           <KhTopicsPanel />
+          <LanguagesPanel />
           <TrainerLevelsPanel key={q.data.trainerLevelVersions[0]?.version ?? 0} data={q.data} />
           <ModuleLimitsPanel />
         </>

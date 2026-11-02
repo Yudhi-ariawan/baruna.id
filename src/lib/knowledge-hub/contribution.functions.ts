@@ -28,6 +28,8 @@ const KR_SUBMIT_ERRORS: Record<string, string> = {
   kr_best_practice_incomplete:
     "Untuk tipe Best Practice, kolom Tantangan, Konteks Lokasi, Intervensi, Langkah Implementasi, Capaian Terukur, dan Pembelajaran Kunci wajib dilengkapi.",
   kr_topic_required: "Pilih satu Topic Category sebelum mengirim pengajuan.",
+  kr_language_required: "Pilih bahasa publikasi sebelum mengirim pengajuan.",
+  kr_language_unknown: "Bahasa publikasi tidak ada di daftar bahasa BARUNA. Pilih bahasa dari daftar.",
   kr_topic_unknown: "Topic Category tidak ada di daftar topik Knowledge Hub. Pilih salah satu topik yang tersedia.",
   not_awaiting_revision: "Pengajuan ini tidak sedang menunggu revisi, sehingga tidak dapat dikirim ulang.",
   revision_unchanged: "Belum ada perubahan dibanding pengiriman sebelumnya.",

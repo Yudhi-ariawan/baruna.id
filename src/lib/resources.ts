@@ -59,16 +59,8 @@ export function groupForType(type: string): string {
 // Topic categories live in Data Master (kh_topic_taxonomy, migration 20261102020000);
 // the form reads them through getKhTopicOptions.
 
-export const LANGUAGES = [
-  "English",
-  "French",
-  "Portuguese",
-  "Arabic",
-  "Swahili",
-  "Spanish",
-  "Indonesian",
-  "Other",
-] as const;
+// Languages live in Data Master (languages_taxonomy, migration 20261102030000);
+// forms read them through useLanguageOptions.
 
 export const ACCESS_LEVELS = ["Open Access", "BARUNA Members Only", "Restricted Access"] as const;
 export type AccessLevel = (typeof ACCESS_LEVELS)[number];

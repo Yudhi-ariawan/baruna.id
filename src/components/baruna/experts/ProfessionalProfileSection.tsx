@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { matchLanguage, useLanguageOptions } from "@/lib/master/useLanguageOptions";
 import {
   genId,
   type ExpertApplicationDraft,
@@ -71,6 +72,7 @@ export function ProfessionalProfileSection({
   // --- Languages State & Handlers (Aligned with public.expert_languages) ---
   const [customLanguage, setCustomLanguage] = useState("");
   const [customProficiency, setCustomProficiency] = useState<LanguageProficiency>("fluent");
+  const languageOptions = useLanguageOptions();
 
   const languagesList: ExpertLanguageItem[] = form.structuredLanguages ?? [];
 
@@ -245,17 +247,9 @@ export function ProfessionalProfileSection({
 
           {/* Quick Add Language Presets */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <span className="text-[11px] font-semibold text-muted-foreground mr-1">Rekomendasi Cepat:</span>
-            {[
-              { lang: "Bahasa Indonesia", prof: "native" as const },
-              { lang: "English", prof: "fluent" as const },
-              { lang: "French", prof: "intermediate" as const },
-              { lang: "Spanish", prof: "intermediate" as const },
-              { lang: "Mandarin", prof: "basic" as const },
-              { lang: "Arabic", prof: "basic" as const },
-              { lang: "Japanese", prof: "basic" as const },
-            ].map((p) => {
-              const already = languagesList.some((l) => l.language.toLowerCase() === p.lang.toLowerCase());
+            <span className="text-[11px] font-semibold text-muted-foreground mr-1">Pilih dari daftar (kemahiran mengikuti pilihan di bawah):</span>
+            {(languageOptions.data ?? []).filter((o) => o.active).map((o) => ({ lang: o.name, prof: customProficiency })).map((p) => {
+              const already = languagesList.some((l) => l.language.toLowerCase() === p.lang.toLowerCase() || matchLanguage(languageOptions.data ?? [], l.language)?.name === p.lang);
               return (
                 <button
                   key={p.lang}
@@ -275,10 +269,16 @@ export function ProfessionalProfileSection({
           </div>
 
           {/* Custom Add Language Form */}
+          <datalist id="baruna-language-options">
+            {(languageOptions.data ?? []).filter((o) => o.active).map((o) => (
+              <option key={o.code} value={o.name} />
+            ))}
+          </datalist>
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <input
               className={`${inputClass} flex-1 min-w-[160px] text-xs h-9`}
-              placeholder="Ketik bahasa lain (misal: German, Dutch)..."
+              placeholder="Ketik bahasa lain bila tidak ada di daftar..."
+              list="baruna-language-options"
               value={customLanguage}
               onChange={(e) => setCustomLanguage(e.target.value)}
               onKeyDown={(e) => {

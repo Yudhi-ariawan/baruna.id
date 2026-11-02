@@ -53,7 +53,7 @@ async function persona(label, role) {
 }
 
 const form = (tag, topic) => ({ title: `TDD Topik ${stamp} ${tag}`, resource_type: "technical_report", type: "Technical Report",
-  externalUrl: `https://example.org/tdd-topik-${stamp}-${tag}`, description: `Isi ${tag}`,
+  externalUrl: `https://example.org/tdd-topik-${stamp}-${tag}`, description: `Isi ${tag}`, language: "Indonesian",
   ...(topic === undefined ? {} : { topicCategory: topic }) });
 async function send(u, tag, topic) {
   const { data: draftId, error } = await u.c.rpc("kr_draft_create", { _title: form(tag).title, _resource_type: "technical_report", _source_type: "external_submission" });
