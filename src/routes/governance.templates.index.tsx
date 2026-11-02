@@ -20,7 +20,7 @@ function TemplatesIndex() {
   const qc = useQueryClient();
   const [kind, setKind] = useState<SubjectKind | "">("");
   const [name, setName] = useState("");
-  const [newKind, setNewKind] = useState<SubjectKind>("expert");
+  const [newKind, setNewKind] = useState<SubjectKind>("training_need");
 
   const q = useQuery({
     queryKey: ["gov", "templates", kind],
@@ -37,6 +37,20 @@ function TemplatesIndex() {
 
   return (
     <div className="space-y-6">
+      <section className="rounded border border-sky-200 bg-sky-50/60 p-4 text-xs text-sky-950">
+        <h2 className="text-sm font-semibold">Apa itu Template Review?</h2>
+        <p className="mt-1">
+          Daftar kriteria penilaian yang harus diisi reviewer, supaya semua pengajuan dinilai dengan standar yang sama
+          (Slide 13, langkah Review). Template bersifat opsional; tanpa template, reviewer cukup menulis alasan.
+        </p>
+        <ol className="mt-2 list-decimal space-y-0.5 pl-4">
+          <li>Buat template di bawah. Untuk <b>Permintaan Pelatihan</b>, pilih jenis <b>training_need</b>.</li>
+          <li>Buka template, tulis kriterianya, lalu <b>Add draft version</b>.</li>
+          <li><b>Publish</b> versinya, lalu <b>Set active</b>. Versi yang sudah dipublikasikan tidak bisa diubah.</li>
+          <li>Saat menugaskan reviewer di halaman pengajuan, pilih template itu di <b>Review template</b>.</li>
+          <li>Reviewer mengisi kriteria di halaman review; isian yang salah ditolak database.</li>
+        </ol>
+      </section>
       <section className="rounded border border-border p-4">
         <h2 className="text-sm font-semibold text-foreground">Create new template</h2>
         <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -58,7 +72,7 @@ function TemplatesIndex() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 block w-full rounded border border-border bg-background px-2 py-1 text-sm"
-              placeholder="e.g. Expert QA rubric v1"
+              placeholder="mis. Rubrik Permintaan Pelatihan v1"
             />
           </label>
           <button

@@ -23,7 +23,18 @@ function TemplateDetail() {
   const deprecate = useServerFn(deprecateReviewTemplate);
   const qc = useQueryClient();
   const [schemaText, setSchemaText] = useState(
-    '{\n  "criteria": [\n    { "id": "rigor", "label": "Rigor", "type": "rating", "min": 1, "max": 5 }\n  ]\n}',
+    JSON.stringify(
+      {
+        fields: {
+          relevansi: { type: "number", label: "Relevansi dengan kebutuhan (1-5)", required: true, min: 1, max: 5 },
+          sesuai_standar: { type: "boolean", label: "Sesuai standar BARUNA", required: true },
+          rekomendasi: { type: "enum", label: "Rekomendasi", required: true, values: ["setuju", "revisi", "tolak"] },
+          catatan: { type: "string", label: "Catatan tambahan" },
+        },
+      },
+      null,
+      2,
+    ),
   );
   const [err, setErr] = useState<string | null>(null);
 
@@ -104,6 +115,12 @@ function TemplateDetail() {
         <h3 className="text-sm font-semibold text-foreground">Add new version</h3>
         <p className="mt-1 text-xs text-muted-foreground">
           Draft criteria schema (JSON). Version is immutable once published.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Setiap kriteria ada di dalam <code>fields</code>. Tipe yang dikenali: <code>number</code> (boleh <code>min</code> dan{" "}
+          <code>max</code>), <code>string</code>, <code>boolean</code>, dan <code>enum</code> (wajib <code>values</code>).{" "}
+          <code>required: true</code> berarti reviewer wajib mengisi. Format lain tidak dibaca, sehingga reviewer akan
+          melihat "Template has no criteria fields".
         </p>
         <textarea
           value={schemaText}
