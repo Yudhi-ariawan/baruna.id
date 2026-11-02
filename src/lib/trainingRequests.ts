@@ -76,22 +76,8 @@ export const ORGANIZATION_TYPES = [
   "Other",
 ] as const;
 
-export const TRAINING_CATEGORIES = [
-  "Fisheries Management",
-  "Aquaculture",
-  "Marine Conservation",
-  "Blue Economy",
-  "Climate Change",
-  "Marine Spatial Planning",
-  "Fish Processing",
-  "Fish Health",
-  "Fisheries Technology",
-  "Ocean Literacy",
-  "Coastal Community Development",
-  "Monitoring, Control & Surveillance",
-  "Leadership & Capacity Development",
-  "Other",
-] as const;
+// Training categories live in Data Master (training_category_taxonomy, migration
+// 20261102040000); the form reads them through TrainingCategorySelect, plus "Other".
 
 export const COMPETENCY_LEVELS = [
   "None / Beginner",

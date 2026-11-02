@@ -232,7 +232,11 @@ WITH checks(no, migration, ok) AS (
       to_regclass('public.languages_taxonomy') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_language_save')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_kr_payload_problem' AND prosrc LIKE '%kr_language_unknown%')
-      AND NOT has_table_privilege('authenticated', 'public.languages_taxonomy', 'UPDATE'))
+      AND NOT has_table_privilege('authenticated', 'public.languages_taxonomy', 'UPDATE')),
+  (61, '20261102040000_master_data_training_categories',
+      to_regclass('public.training_category_taxonomy') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_training_category_save')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review' AND prosrc LIKE '%_training_need_payload_problem%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

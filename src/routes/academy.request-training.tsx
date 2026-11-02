@@ -25,7 +25,6 @@ import {
   ATTENDANCE_FORMATS,
   URGENCY_LEVELS,
   ORGANIZATION_TYPES,
-  TRAINING_CATEGORIES,
   COMPETENCY_LEVELS,
   TARGET_AUDIENCES,
   PARTICIPANT_COUNTS,
@@ -49,6 +48,7 @@ import { getMyTrainingRequest } from "@/lib/training-requests/my-requests.functi
 import { trainingRequestReference } from "@/lib/training-requests/workflow";
 import { usePresentationMode } from "@/lib/demoMode";
 import { LanguageSelect } from "@/components/baruna/forms/LanguageSelect";
+import { TrainingCategorySelect } from "@/components/baruna/forms/TrainingCategorySelect";
 
 const BARUNA_VENUE = "Denpasar, Bali, Indonesia";
 const DRAFT_STORAGE_KEY = "baruna:training-request-draft-v1";
@@ -723,18 +723,11 @@ function RequestTrainingPage() {
                   />
                 </Field>
                 <Field label="Training Category" required>
-                  <select
+                  <TrainingCategorySelect
                     className={inputClass}
                     value={draft.trainingCategory}
-                    onChange={(e) => set("trainingCategory", e.target.value)}
-                  >
-                    <option value="">Select category…</option>
-                    {TRAINING_CATEGORIES.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => set("trainingCategory", v)}
+                  />
                 </Field>
               </div>
               <div className="mt-4 grid gap-4">

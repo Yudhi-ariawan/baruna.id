@@ -877,6 +877,29 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 
 ---
 
+## 2ah. Data Master: kategori pelatihan (2 Nov)
+
+**Acuan:** Slide 12 (Request a Training: TNA, rekomendasi program), Slide 26/41 (tidak hard-coded). **Keputusan pemilik proyek (2 Nov):** daftar terpisah dari topik Knowledge Hub dan bidang keahlian.
+
+**Temuan (dibuktikan di database intern-update):**
+- 13 kategori (+ "Other") formulir Request a Training ditulis tetap di kode (`TRAINING_CATEGORIES`).
+- Database tidak memeriksa kategori: `submit_draft_for_review` tidak punya cabang `training_need`. **Kategori karangan dan permintaan tanpa kategori diterima.**
+- Data: 0 draf dan 0 permintaan pelatihan, jadi tidak ada data lama yang perlu diselaraskan.
+
+**Perbaikan (migrasi `20261102040000`):**
+- Tabel `training_category_taxonomy` (dibaca siapa saja, karena formulir bisa dibuka sebelum login; tulis hanya lewat RPC). 13 kategori diisi dengan urutan formulir. "Other" tidak masuk daftar, tetapi tetap diterima.
+- `master_training_categories_overview` / `_save` / `_set_active`: diturunkan dari RPC topik Knowledge Hub yang sudah teruji (2af), hanya nama yang berbeda.
+- `_training_need_payload_problem`: `proposed_topics` wajib 1–5 kategori; setiap kategori harus ada di daftar (aktif atau nonaktif) atau "Other".
+- `submit_draft_for_review`: **sama persis** dengan `20261022020000` (dicek dengan `diff`: hanya 3 baris cabang `training_need` yang bertambah).
+- **Aplikasi:** panel **Kategori Pelatihan** di Data Master (komponen `TaxonomyMasterPanel` yang sama); formulir Request a Training memakai `TrainingCategorySelect` (daftar dari database + "Other"; nilai lama yang tidak ditawarkan lagi tetap terlihat); `TRAINING_CATEGORIES` dihapus dari kode; pesan galat ramah untuk pengiriman baru dan kirim ulang.
+
+**Uji:**
+- PGlite 26/26: bukti celah; 13 kategori berurutan, kategori lama terpakai nonaktif, "Other" tidak masuk daftar; pengajuan (di luar daftar, tanpa kategori, daftar kosong, kosong, lebih dari 5, bukan teks ditolak; dari daftar, "Other", nonaktif lama diterima; jalur Knowledge Hub tetap memakai aturannya sendiri); kelola (hak akses, tulis langsung, pemakaian, tambah, ganti nama terpakai, nama ganda, nonaktif, audit, jalankan ulang); pengunjung bisa membaca.
+- `tsc` dan lint lulus.
+- Uji langsung baru `npm run test:training-categories` (12 cek). **Sebelum migrasi (intern-update, 2 Nov): 3/12**: tabel dan RPC belum ada; **kategori karangan dan tanpa kategori diterima**. Data uji tersisa 0.
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.
@@ -933,7 +956,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (60 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (61 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -981,6 +1004,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261102010000_master_data_trainer_quota_list.sql` (Data Master: daftar trainer aktif per level dengan pemakaian kuota modul; baca saja). Lihat bagian 2ad. Jalankan setelah `20261023020000`. Tanpa migrasi ini daftar menampilkan pesan migrasi; panel lain tidak terpengaruh.
 - `20261102020000_master_data_kh_topics.sql` (Data Master: topik Knowledge Hub; pengajuan wajib memakai topik dari daftar). Lihat bagian 2af. Butuh `20261023010000`. **Butuh kode branch ini**: formulir kontribusi membaca topik dari database; setelah migrasi, skrip uji Knowledge Hub versi branch ini yang berlaku (payload uji memakai topik dari daftar).
 - `20261102030000_master_data_languages.sql` (Data Master: satu daftar bahasa; tabel `languages_taxonomy` masuk repo; bahasa publikasi Knowledge Hub diperiksa saat dikirim). Lihat bagian 2ag. Jalankan setelah `20261102020000`. **Butuh kode branch ini** (formulir membaca bahasa dari database; payload uji Knowledge Hub memakai bahasa dari daftar).
+- `20261102040000_master_data_training_categories.sql` (Data Master: kategori pelatihan Request a Training; permintaan wajib memakai kategori dari daftar atau "Other"). Lihat bagian 2ah. Butuh `20261023010000`. **Butuh kode branch ini** (formulir membaca kategori dari database).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1008,7 +1032,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `training-requests` | 33 | 2s | `module-limits` | 18 | 2ab |
   | `console-roles`*, `console-decisions`* | lulus | 2o | `rbac` | lulus | matriks peran |
   | `trainer-quota-list` | 5 (setelah migrasi `20261102010000`) | 2ad | `kh-topics` | 12 (setelah migrasi `20261102020000`) | 2af |
-  | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | | | |
+  | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

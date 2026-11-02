@@ -49,15 +49,24 @@ export const submitTrainingNeedRequest = createServerFn({ method: "POST" })
       "training_need_draft_submit",
       { _draft_id: draftId },
     );
-    if (e3 || !subjectId) throw new Error(e3?.message ?? "Failed to submit draft");
+    if (e3 || !subjectId) throw new Error((e3 && CATEGORY_ERRORS[e3.message]) ?? e3?.message ?? "Failed to submit draft");
 
     return { draftId: draftId as string, subjectId: subjectId as string };
   });
+
+// Raised by _training_need_payload_problem (migration 20261102040000).
+const CATEGORY_ERRORS: Record<string, string> = {
+  training_category_required: "Choose a Training Category before submitting.",
+  training_category_unknown: "The Training Category is not in the BARUNA list. Choose one of the listed categories (or Other).",
+  training_category_too_many: "Choose at most 5 training categories.",
+  training_payload_invalid: "The request could not be read. Reload the page and try again.",
+};
 
 const RESUBMIT_ERRORS: Record<string, string> = {
   revision_unchanged: "Nothing has changed since the last submission. Update the request before resubmitting.",
   draft_already_submitted: "This revision has already been submitted.",
   draft_not_editable: "This revision has already been submitted.",
+  ...CATEGORY_ERRORS,
 };
 
 /**
