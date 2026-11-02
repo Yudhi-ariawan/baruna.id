@@ -1025,7 +1025,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
 - **Expert tidak bisa mundur setelah Accept** pada permintaan layanan; hanya admin yang bisa membatalkan.
 - Notifikasi dalam aplikasi sudah mencakup permintaan layanan dan kualifikasi trainer; notifikasi email/chat belum ada.
 - Kuota peserta yang disebut di flowchart belum dicek di kode.
-- Antrean Verifikasi Expert sudah aman untuk data besar (dibaca bertahap), tetapi tampilannya masih memuat semua baris sekaligus; paginasi tampilan bisa ditambahkan bila jumlah pengajuan sudah ribuan.
+- ~~Antrean Verifikasi Expert sudah aman untuk data besar (dibaca bertahap), tetapi tampilannya masih memuat semua baris sekaligus.~~ **Selesai (2 Nov):** antrean Verifikasi Expert, Verifikasi Modul, Verifikasi Publikasi, dan Persetujuan Peserta di Konsol Kurasi kini menampilkan 25 baris per halaman (`Pager`, `usePagedList`). Filter dan pencarian tetap berlaku untuk seluruh daftar; halaman kembali ke 1 saat filter berubah dan tetap dalam batas saat daftar menyusut setelah keputusan.
 - `src/integrations/supabase/types.ts` disinkronkan manual; sebaiknya dibuat ulang lewat Supabase CLI (`npx supabase login`, lalu `npx supabase gen types typescript --project-id <id> > src/integrations/supabase/types.ts`).
 - 58 akun sisa tes lama (`@example.test`) sudah dihapus dari database intern-update (17 Oktober 2026) bersama 350 baris log aktivitasnya; tersisa 24 akun pengguna asli.
 - ~~Kelulusan kuis dan sertifikat peserta masih dicatat di `localStorage` browser.~~ **Selesai (21 Okt, bagian 2r):** kelulusan modul dicatat server dari kuis resmi; sertifikat diterbitkan server.

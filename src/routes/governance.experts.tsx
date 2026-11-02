@@ -27,6 +27,8 @@ import {
   type AdminExpertDetail,
 } from "@/lib/admin/experts.functions";
 import { Button } from "@/components/ui/button";
+import { Pager } from "@/components/governance/Pager";
+import { usePagedList } from "@/lib/governance/usePagedList";
 import { ExpertDetailModal } from "@/components/admin/experts/ExpertDetailModal";
 import { formatDate, getStatusBadge } from "@/components/admin/experts/expertAdminUtils";
 
@@ -144,6 +146,7 @@ function AdminExpertsPage() {
 
     return list;
   }, [allApplications, statusFilter, search]);
+  const paged = usePagedList(applications, `${statusFilter}|${search}`);
 
   // Selected candidate detail query
   const { data: activeDetail, isLoading: isDetailLoading } = useQuery({
@@ -303,7 +306,7 @@ function AdminExpertsPage() {
           <>
             {/* 1. MOBILE CARD VIEW (Displayed on mobile & small tablets < md) */}
             <div className="block md:hidden divide-y divide-border/60">
-              {applications.map((item) => (
+              {paged.pageItems.map((item) => (
                 <div key={item.subjectId} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -440,7 +443,7 @@ function AdminExpertsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {applications.map((item) => (
+                  {paged.pageItems.map((item) => (
                     <tr key={item.subjectId} className="hover:bg-slate-50/60 transition">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-navy">{item.applicantName}</div>
@@ -570,6 +573,9 @@ function AdminExpertsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="px-4 pb-4">
+              <Pager {...paged} />
             </div>
           </>
         )}

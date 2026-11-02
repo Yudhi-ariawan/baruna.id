@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { Pager } from "@/components/governance/Pager";
+import { usePagedList } from "@/lib/governance/usePagedList";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -122,6 +124,8 @@ function AdminPublicationsPage() {
       return true;
     });
   }, [rawItems, activeTab, typeFilter, search]);
+
+  const paged = usePagedList(filteredItems, `${activeTab}|${typeFilter}|${search}`);
 
   const uniqueTypes = useMemo(() => {
     return Array.from(new Set(rawItems.map((i) => i.type))).filter(Boolean);
@@ -278,7 +282,7 @@ function AdminPublicationsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredItems.map((item) => (
+            {paged.pageItems.map((item) => (
               <section
                 key={item.subjectId}
                 className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs hover:shadow-xs transition"
@@ -398,6 +402,7 @@ function AdminPublicationsPage() {
                 </div>
               </section>
             ))}
+            <Pager {...paged} />
           </div>
         )}
       </div>

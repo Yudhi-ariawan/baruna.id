@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Pager } from "@/components/governance/Pager";
+import { usePagedList } from "@/lib/governance/usePagedList";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -82,6 +84,7 @@ function AdminEnrollmentsPage() {
   });
 
   const items = data?.items || [];
+  const paged = usePagedList(items, `${activeTab}|${search}`);
   const counts = data?.counts || { total: 0, pending: 0, approved: 0, rejected: 0 };
 
   return (
@@ -209,7 +212,7 @@ function AdminEnrollmentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {items.map((item) => (
+                {paged.pageItems.map((item) => (
                   <tr key={item.id} className="hover:bg-muted/20 transition">
                     <td className="px-4 py-3.5">
                       <div className="font-bold text-navy">{item.applicantName}</div>
@@ -294,6 +297,9 @@ function AdminEnrollmentsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="px-4 pb-4">
+              <Pager {...paged} />
+            </div>
           </div>
         )}
       </div>
