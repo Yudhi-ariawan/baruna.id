@@ -1,4 +1,4 @@
-# Kesiapan Rilis BARUNA (diperbarui 21 Oktober 2026, setelah Nomor 4-10 selesai)
+# Kesiapan Rilis BARUNA (diperbarui 2 November 2026, mencakup pekerjaan sampai 23 Oktober)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
 Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
@@ -10,7 +10,7 @@ Keputusan yang menunggu mentor: `dokumen/MENUNGGU_ARAHAN_MENTOR.md`.
 Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
 "Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
 
-Status pemeriksaan terakhir (20 Okt, PC): `supabase/check_migrations.sql` di intern-update = 37 baris OK; `tsc`, `build`, `test:lifecycle` 14/14, `test:kh-roles` 20/20 lulus; 0 akun uji tertinggal. Database `main` belum dicek.
+Status pemeriksaan terakhir (23 Okt, laptop): semua migrasi sampai `20261023020000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 57 baris. `tsc`, `build`, dan 21 uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
@@ -22,6 +22,12 @@ Status pemeriksaan terakhir (20 Okt, PC): `supabase/check_migrations.sql` di int
 - **Keamanan database (20 Okt):** audit RLS/view/grant (`supabase/audit_security.sql`); tulis lewat view `languages` dan fungsi internal yang terbuka ditutup; sistem peran lama dihentikan.
 - **Sertifikat:** ditandai "CONTOH / BELUM RESMI" sampai template dan aturan resmi siap.
 - **Kebersihan:** akun uji tidak lagi menumpuk; `academy.learn.$id.tsx` dipecah.
+- **Peran dan konsol (21 Okt):** Konsol Kurasi per peran; peran expert hanya lewat alur pendaftaran; status pengajuan dan penugasan reviewer tidak bisa ditulis langsung dari browser.
+- **Pembelajaran dan permintaan pelatihan (21 Okt):** kelulusan modul dicatat server dari kuis resmi; dashboard peserta; My Training Requests dari server dengan riwayat status, SLA, dan notifikasi.
+- **Versi konten (21–22 Okt):** modul, publikasi Knowledge Hub, dan profil expert yang tayang **tetap tayang selama revisi**; trainer, kontributor, dan expert bisa mengajukan pembaruan sendiri lewat review; riwayat versi terlihat; peserta yang sedang belajar diberi tahu saat modul diperbarui.
+- **Trainer (22 Okt):** expert menjadi trainer otomatis hanya bila memilih peran Trainer.
+- **Admin (23 Okt):** Tambah User tidak lagi diam-diam gagal memberi peran.
+- **Data Master (23 Okt):** bidang keahlian expert, aturan level trainer, dan kuota modul per level dikelola di Konsol Kurasi dengan validasi dan audit trail; tidak lagi ditulis tetap di kode atau hanya lewat SQL.
 
 ## B. Belum diperbaiki atau belum diputuskan
 
@@ -30,7 +36,7 @@ Status pemeriksaan terakhir (20 Okt, PC): `supabase/check_migrations.sql` di int
 - **Kelulusan kursus mandiri** (video/PDF/PPT/kuis modul bawaan) tetap laporan dari browser, karena isinya ada di kode. Tidak ada hak di server yang bergantung padanya (sertifikatnya berlabel CONTOH). Status ini sengaja dibiarkan.
 - **Modul bawaan** (Ocean Literacy, AZA, Africa Fisheries) isinya di kode aplikasi, jadi hanya digerbang di tampilan. 13 PDF Master masih aset publik Lovable.
 - **Full Training dan AZA** progresnya hanya di `localStorage` (tidak ikut berpindah perangkat). Program African Countries juga dihapus otomatis dari browser oleh halaman My Learning.
-- **Menunggu mentor:** template dan syarat sertifikat, format nomor resmi, syarat lulus, role participant (otomatis atau lewat admin), expert otomatis jadi trainer, publisher vs approver, Profile Claim (A1), nasib Full Training (P4), Penugasan Expert (disembunyikan), notifikasi email, kuota peserta.
+- **Menunggu mentor:** template dan syarat sertifikat, format nomor resmi, syarat lulus, publisher vs approver, Profile Claim (A1), nasib Full Training (P4), Penugasan Expert (disembunyikan), notifikasi email, kuota peserta, peserta yang sudah lulus saat modul diperbarui, Operator dan Data Master, email kontak expert di intern-update. (Role participant dan expert-jadi-trainer sudah diputuskan pemilik proyek, 21 dan 22 Okt.)
 - **Teknis:** `types.ts` disinkronkan manual; objek database tak tercatat di migrasi (`languages_taxonomy`); paginasi tampilan antrean admin.
 - **Operasional:** database `main` belum diperiksa dan belum menerima migrasi (ranah mentor).
 
@@ -39,7 +45,7 @@ Status pemeriksaan terakhir (20 Okt, PC): `supabase/check_migrations.sql` di int
 1. **Lintas device:** kursus mandiri sudah ikut berpindah perangkat (disinkronkan ke server). Full Training dan AZA tidak.
 2. **Banyak user bersamaan:** belum ada uji beban; pengaturan Supavisor (port 6543) belum diperiksa.
 3. **Berbagai perangkat dan browser:** tampilan di HP dan browser lain belum diuji.
-4. **Berbagai role:** diuji lewat skrip dan database, belum oleh orang lewat browser dengan akun nyata. Yang secara khusus belum diuji manual: P3 (modul dinamis), P5 (form biodata, halaman Akun, unggah foto), P6 (kursus mandiri di dua perangkat), keputusan Knowledge Hub.
+4. **Berbagai role:** diuji lewat skrip dan database, belum oleh orang lewat browser dengan akun nyata. Yang secara khusus belum diuji manual: P3 (modul dinamis), P5 (form biodata, halaman Akun, unggah foto), P6 (kursus mandiri di dua perangkat), keputusan Knowledge Hub, dan fitur 22–23 Okt (pembaruan profil expert, pembaruan publikasi, riwayat versi, Tambah User, Data Master).
 5. **Sertifikat** masih contoh; belum ada template, nomor, dan aturan resmi.
 6. **Operasional:** tidak terlihat pemantauan error, cadangan data, atau pipeline CI. Koneksi ke Supabase dari jaringan kantor sempat putus-putus.
 7. **Database `main`:** belum dicek; migrasi berurutan harus dijalankan dengan hati-hati (lihat catatan `20261020070000` dan `20261020030000` di bagian 2l).

@@ -297,7 +297,7 @@ Catatan rencana semula:
 ### Nomor 6: SELESAI (21 Okt, laptop) - izin tulis pengunjung dicabut (migrasi `20261021060000`)
 - Semua izin INSERT/UPDATE/DELETE/TRUNCATE role `anon` pada tabel dan view `public` dicabut (termasuk `review_records`). Izin baca tidak diubah.
 - Dicek dulu: tidak ada kode aplikasi yang menulis tabel sebagai pengunjung (semua lewat server function/RPC; unggahan berkas memakai skema storage) dan tidak ada policy tulis untuk anon.
-- Default privileges tidak diubah: tabel baru yang dibuat sesudahnya mendapat izin bawaan lagi; terlihat di `audit_security.sql` kategori 3 dan baris 43 pengecek (jalankan ulang migrasi ini).
+- Default privileges tidak diubah: tabel baru yang dibuat sesudahnya mendapat izin bawaan lagi; terlihat di `audit_security.sql` kategori 3 dan baris 44 pengecek (jalankan ulang migrasi ini).
 - Diuji: tes Postgres lokal 21 pengecekan. Setelah migrasi: `audit_security.sql` kategori 3 harus kosong; semua `npm run test:*`.
 
 ### (arsip) Nomor 6 semula: izin tulis pengunjung
@@ -796,12 +796,36 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 
 ---
 
+## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
+
+Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.
+
+**12–13 Okt (sebelum commit bertanda Claude):**
+- `089e107` Revisi modul setelah tayang tanpa batas jumlah, struktur isian Knowledge Hub per jenis sumber, dan lampiran revisi tidak hilang.
+- `4992578` Pencarian, item tersimpan (*saved*), kontribusi expert, karya di profil, dan analitik sumber membaca data asli.
+- `23c3f04` Kartu dashboard peserta dan registered user membaca data akun yang sebenarnya.
+- `19a92a7`, `6fb1c41` Notifikasi dengan tanda dibaca/belum dibaca; halaman Knowledge Hub memakai data asli; peringatan *schema cache* metrik dibungkam dengan cadangan metadata.
+- `815fb57`, `b0128ef`, `66c691d` (PC) Jumlah dilihat dan diunduh per sumber Knowledge Hub (migrasi `20261013010000_knowledge_resource_metrics_tracking`, `20261013020000_atomic_knowledge_resource_metrics`), termasuk unduhan modul yang sah, tanpa balapan data dan tanpa pencarian akun berulang.
+- `236813e` (PC) Statistik di footer dari data platform (migrasi `20261013010000_platform_partners_catalog`).
+
+**Sesudahnya:**
+- `9e14238` (20 Okt) Judul halaman Become an Expert tanpa huruf rusak (*mojibake*), label status arsip, dan statistik direktori expert tidak terpotong di 1.000 baris.
+- `11de259` (21 Okt) Menu akun di beranda lebih cepat: cache tidak lagi dihapus setiap halaman dibuka, query server dijalankan paralel.
+- `8d6a9a9` (22 Okt) 10 peringatan Tailwind di editor dirapikan, tanpa perubahan tampilan.
+
+**Temuan saat audit: migrasi `20261008030000_publish_expert_contact_email` belum berlaku di intern-update** (dicek 2 Nov: kolom `experts.contact_email` dan `profiles.email` tidak ada).
+- Migrasi ini dari PC (8 Okt), sebelum pengecek migrasi dibuat, dan sebelumnya tidak diperiksa pengecek. Sekarang diperiksa di baris 12.
+- Dampaknya kecil: kode tetap jalan, hanya email kontak expert tidak pernah tampil di direktori.
+- **Tidak dijalankan otomatis**, karena migrasi itu (dan `20261008040000` sesudahnya) mengisi email akun KKP tertentu. Perlu keputusan apakah dijalankan di intern-update. Bila ya: `030000` lalu `040000`. Definisi `experts_directory_v` di migrasi itu adalah yang terakhir di repo, dan pencabutan izin tulis view (`20261020050000`) tetap berlaku karena `CREATE OR REPLACE VIEW` tidak menghapus izin.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (56 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (57 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -858,9 +882,24 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
 ## 4. Pengujian
 
 - `npx tsc --noEmit` dan `npm run build`: lulus.
-- `npm run test:lifecycle` (Peserta 7/7, Trainer 7/7) dan `npm run test:kh-roles` (20/20): lulus, data uji dibersihkan otomatis.
-- Alur Expert, Peserta, dan Trainer diuji pada Postgres lokal (PGlite) dengan migrasi asli: 59, 33, dan 89 pengecekan lulus.
-- Belum diuji manual di browser dengan akun nyata: alur penugasan Expert (fitur disembunyikan sementara), pendaftaran Peserta, dan pipeline modul Trainer.
+- **Uji langsung ke database** (`npm run test:<nama>`, memakai `.env`; setiap uji membuat akun `@example.test` lalu membersihkannya sendiri). Hasil terakhir di intern-update (23 Okt), semua lulus:
+
+  | Uji | Cek | Bagian | Uji | Cek | Bagian |
+  |---|---|---|---|---|---|
+  | `lifecycle` | 14 | 2, 2b | `module-update` | 24 | 2t |
+  | `kh-roles` | 20 | 2k, 2l | `admin-module-revision` | 18 | 2u |
+  | `expert-rpc` | 64 | 2d–2g | `knowledge-update` | 19 | 2v |
+  | `participant-rpc` | 27 | 2h–2j | `expert-profile-update` | 19 | 2w |
+  | `kr-rpc` | 24 | 2k | `version-history`* | 16 | 2x |
+  | `expert-role-lock` | 10 | 2p | `trainer-choice` | 5 | 2y |
+  | `review-lockdown` | 13 | 2q | `create-user`* | 9 | 2z |
+  | `learning-progress` | 12 | 2r | `master-data` | 15 | 2aa |
+  | `training-requests` | 33 | 2s | `module-limits` | 18 | 2ab |
+  | `console-roles`*, `console-decisions`* | lulus | 2o | `rbac` | lulus | matriks peran |
+
+  \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
+- Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.
+- Belum diuji manual di browser dengan akun nyata: alur penugasan Expert (fitur disembunyikan sementara), pendaftaran Peserta, pipeline modul Trainer, dan fitur 22–23 Okt (pembaruan profil expert, pembaruan Knowledge Hub, riwayat versi, Tambah User, Data Master).
 
 ---
 
@@ -868,14 +907,17 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
 
 - **PDF 13 modul Master masih aset publik Lovable** (bagian 2i). Perlu file PDF aslinya untuk dipindah ke penyimpanan privat.
 - **My Learning menghapus aplikasi African Countries dari browser** setiap kali dibuka (bagian 2i). Perlu keputusan: apakah program ini memang sudah tidak dipakai?
-- **Role participant tanpa persetujuan admin.** Menyimpan biodata langsung memberi role participant, sedangkan flowchart PB-ACA-03 menyebut role diberikan saat admin menyetujui. Perlu keputusan.
-- **Expert yang disetujui otomatis menjadi trainer aktif.** Slide 39 menyiratkan persetujuan trainer terpisah. Perlu keputusan.
+- ~~**Role participant tanpa persetujuan admin.**~~ **Diputuskan pemilik proyek (21 Okt): tetap otomatis** saat biodata disimpan; akses materi tetap lewat persetujuan admin (MENUNGGU_ARAHAN_MENTOR butir 3).
+- ~~**Expert yang disetujui otomatis menjadi trainer aktif.**~~ **Selesai (22 Okt, bagian 2y):** trainer otomatis hanya bila expert memilih peran Trainer; yang lain lewat Kualifikasi Trainer.
 - **Expert tidak bisa mundur setelah Accept** pada permintaan layanan; hanya admin yang bisa membatalkan.
 - Notifikasi dalam aplikasi sudah mencakup permintaan layanan dan kualifikasi trainer; notifikasi email/chat belum ada.
 - Kuota peserta yang disebut di flowchart belum dicek di kode.
 - Antrean Verifikasi Expert sudah aman untuk data besar (dibaca bertahap), tetapi tampilannya masih memuat semua baris sekaligus; paginasi tampilan bisa ditambahkan bila jumlah pengajuan sudah ribuan.
 - `src/integrations/supabase/types.ts` disinkronkan manual; sebaiknya dibuat ulang lewat Supabase CLI (`npx supabase login`, lalu `npx supabase gen types typescript --project-id <id> > src/integrations/supabase/types.ts`).
 - 58 akun sisa tes lama (`@example.test`) sudah dihapus dari database intern-update (17 Oktober 2026) bersama 350 baris log aktivitasnya; tersisa 24 akun pengguna asli.
-- Kelulusan kuis dan sertifikat peserta masih dicatat di `localStorage` browser (Slide 15: tidak boleh penyimpanan lokal di frontend). Penilaian kuisnya sudah di server.
+- ~~Kelulusan kuis dan sertifikat peserta masih dicatat di `localStorage` browser.~~ **Selesai (21 Okt, bagian 2r):** kelulusan modul dicatat server dari kuis resmi; sertifikat diterbitkan server.
 - Pertanyaan untuk mentor: apakah "publisher" harus terpisah dari "approver"? Saat ini approve langsung menayangkan modul.
-- Belum diuji manual di browser: pengiriman modul trainer, keputusan modul oleh approver, dan kuis peserta setelah kunci jawaban dipindah.
+- Pertanyaan untuk mentor: apakah peserta yang sudah lulus wajib mengulang saat modul naik versi (bagian 2x)?
+- Pertanyaan untuk mentor: apakah Operator juga boleh mengelola Data Master (bagian 2aa, 2ab)?
+- Keputusan: migrasi email kontak expert `20261008030000`/`040000` belum berlaku di intern-update (bagian 2ac).
+- Belum diuji manual di browser: pengiriman modul trainer, keputusan modul oleh approver, kuis peserta setelah kunci jawaban dipindah, dan fitur 22–23 Okt (lihat bagian 4).

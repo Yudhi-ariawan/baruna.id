@@ -8,8 +8,9 @@
 -- Catatan: sebagian migrasi tidak diperiksa terpisah karena hanya mengisi data atau
 -- digantikan migrasi berikutnya (misalnya 20261014030000 digantikan 20261014040000;
 -- 20261003131500, 20260924020000, 20261008020000/040000,
--- 20261009020000 hanya mengubah data). Berkas ini perlu ditambah satu baris setiap
--- ada migrasi baru.
+-- 20261009020000 hanya mengubah data). 20261006110000 diperiksa bersama baris
+-- 20261015100000. 20261008040000 (mengisi email kontak expert) butuh 20261008030000.
+-- Berkas ini perlu ditambah satu baris setiap ada migrasi baru.
 
 WITH checks(no, migration, ok) AS (
   VALUES
@@ -37,145 +38,148 @@ WITH checks(no, migration, ok) AS (
       to_regclass('public.participant_biodata') IS NOT NULL),
   (11, '20261008010000_published_module_revision_branch',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'request_published_module_revision')),
-  (12, '20261009010000_self_paced_course_enrollments_sync',
+  (12, '20261008030000_publish_expert_contact_email',
+      EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+                AND table_name = 'experts' AND column_name = 'contact_email')),
+  (13, '20261009010000_self_paced_course_enrollments_sync',
       to_regclass('public.self_paced_enrollments') IS NOT NULL),
-  (13, '20261013010000_knowledge_resource_metrics_tracking',
+  (14, '20261013010000_knowledge_resource_metrics_tracking',
       to_regclass('public.knowledge_resource_metrics') IS NOT NULL),
-  (14, '20261013010000_platform_partners_catalog',
+  (15, '20261013010000_platform_partners_catalog',
       to_regclass('public.partners') IS NOT NULL),
-  (15, '20261013020000_atomic_knowledge_resource_metrics',
+  (16, '20261013020000_atomic_knowledge_resource_metrics',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'record_resource_metric')),
-  (16, '20261014010000_expert_lifecycle_hardening',
+  (17, '20261014010000_expert_lifecycle_hardening',
       EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public'
                 AND indexname = 'review_subjects_kind_submitter_status_idx')),
-  (17, '20261014020000_trainer_status_latest_semantics',
+  (18, '20261014020000_trainer_status_latest_semantics',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_active_trainer_expert_id'
                 AND prosrc LIKE '%ts.version DESC%')),
-  (18, '20261014040000_expert_service_assignment',
+  (19, '20261014040000_expert_service_assignment',
       to_regclass('public.expert_service_request_events') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_service_request_transition')),
-  (19, '20261014050000_trainer_qualification_applications',
+  (20, '20261014050000_trainer_qualification_applications',
       to_regclass('public.expert_trainer_applications') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_application_submit')),
-  (20, '20261014060000_fix_admin_lists_email_source',
+  (21, '20261014060000_fix_admin_lists_email_source',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_service_requests_list'
                 AND prosrc LIKE '%auth.users%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_trainer_applications_list'
                 AND prosrc LIKE '%auth.users%')),
-  (21, '20261015010000_participant_enrollment_integrity',
+  (22, '20261015010000_participant_enrollment_integrity',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'course_enrollment_apply')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_course_enrollment_decide')),
-  (22, '20261015020000_trainer_module_integrity',
+  (23, '20261015020000_trainer_module_integrity',
       to_regclass('public.module_quiz_answer_keys') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_module_decide')),
-  (23, '20261015030000_trainer_pipeline_hardening',
+  (24, '20261015030000_trainer_pipeline_hardening',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_module_save')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_trainer_module_quota')),
-  (24, '20261015040000_published_module_revision_roles',
+  (25, '20261015040000_published_module_revision_roles',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'request_published_module_revision'
                 AND prosrc LIKE '%_can_decide_review%')),
-  (25, '20261015050000_expert_config_notifications_duplicates',
+  (26, '20261015050000_expert_config_notifications_duplicates',
       to_regclass('public.trainer_level_module_limits') IS NOT NULL
       AND to_regclass('public.notification_reads') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_duplicate_candidates')),
-  (26, '20261015060000_expert_decision_atomic',
+  (27, '20261015060000_expert_decision_atomic',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_expert_decide')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_expert_archive')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_revision_resubmit')),
-  (27, '20261015070000_expert_direct_write_lockdown',
+  (28, '20261015070000_expert_direct_write_lockdown',
       EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'review_drafts_guard_client_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review'
                     AND prosrc LIKE '%_expert_payload_problem%')),
   -- Tetap BELUM setelah dijalankan = masih ada data ganda; lihat NOTICE migrasi itu.
-  (28, '20261015080000_expert_uniqueness_guards',
+  (29, '20261015080000_expert_uniqueness_guards',
       to_regclass('public.experts_one_active_profile_per_contributor') IS NOT NULL
       AND to_regclass('public.review_drafts_one_fresh_expert_draft_per_user') IS NOT NULL),
-  (29, '20261015090000_expert_language_taxonomy',
+  (30, '20261015090000_expert_language_taxonomy',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_language_code')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_sync_languages')),
-  (30, '20261015100000_review_subjects_archived_status (juga memeriksa 20261006110000)',
+  (31, '20261015100000_review_subjects_archived_status (juga memeriksa 20261006110000)',
       EXISTS (SELECT 1 FROM pg_constraint
                WHERE conname = 'review_subjects_current_status_check'
                  AND pg_get_constraintdef(oid) LIKE '%archived%')),
-  (31, '20261020010000_participant_learning_integrity',
+  (32, '20261020010000_participant_learning_integrity',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'learning_enrol')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'issue_my_certificate')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'verify_certificate')),
-  (32, '20261020030000_expert_profile_ownership',
+  (33, '20261020030000_expert_profile_ownership',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_is_owner'
                 AND prosrc LIKE '%original_contributor_id%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_portal_bootstrap'
                     AND prosrc NOT LIKE '%created_by=v_uid%')),
   -- Nomor urut 33 walau berkasnya 20261020020000: dibuat bersamaan dengan 030000 dan
   -- tidak saling bergantung, jadi boleh dijalankan sebelum atau sesudahnya.
-  (33, '20261020020000_module_content_access',
+  (34, '20261020020000_module_content_access',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'can_access_module_content'
                 AND prosrc LIKE '%original_contributor_id%')),
-  (34, '20261020040000_participant_biodata_selfpaced_integrity',
+  (35, '20261020040000_participant_biodata_selfpaced_integrity',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'participant_biodata_save')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'self_paced_sync')
       AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'participant_biodata'
                         AND policyname = 'participant_biodata_own_update')),
-  (35, '20261020050000_security_hardening_views_internal_functions',
+  (36, '20261020050000_security_hardening_views_internal_functions',
       (to_regprocedure('public._service_request_log(uuid, uuid, text, text, text, text, text)') IS NULL
        OR NOT has_function_privilege('anon', 'public._service_request_log(uuid, uuid, text, text, text, text, text)', 'EXECUTE'))
       AND (to_regclass('public.languages') IS NULL
            OR NOT has_table_privilege('anon', 'public.languages', 'UPDATE'))),
-  (36, '20261020060000_knowledge_resource_decision_atomic',
+  (37, '20261020060000_knowledge_resource_decision_atomic',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_kr_decide')),
-  (37, '20261020070000_retire_legacy_role_system',
+  (38, '20261020070000_retire_legacy_role_system',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'has_role' AND prosrc LIKE '%has_rbac_role%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'finalize_decision'
                     AND prosrc LIKE '%use_kind_specific_decision%')),
   -- BELUM juga bila migrasi batal karena pengamannya; lihat pesan error di SQL Editor.
-  (38, '20261021010000_module_material_metadata_privacy',
+  (39, '20261021010000_module_material_metadata_privacy',
       NOT has_column_privilege('anon', 'public.module_registry', 'metadata', 'SELECT')
       AND has_column_privilege('anon', 'public.module_registry', 'title', 'SELECT')
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'kr_module_metadata_guard')),
-  (39, '20261021020000_governance_role_alignment',
+  (40, '20261021020000_governance_role_alignment',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'has_role' AND prosrc LIKE '%''reviewer''%'
                 AND prosrc LIKE '%''approver''%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_assert_reviewer_assignable')),
   -- Jalankan SETELAH no. 39. BELUM juga bila migrasi batal karena pengamannya.
-  (40, '20261021030000_retire_legacy_governance_role_codes',
+  (41, '20261021030000_retire_legacy_governance_role_codes',
       NOT EXISTS (SELECT 1 FROM public.rbac_roles WHERE code IN ('qa_reviewer', 'management'))),
-  (41, '20261021040000_rbac_role_catalog_readable',
+  (42, '20261021040000_rbac_role_catalog_readable',
       EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'rbac_roles'
                 AND policyname = 'rbac_roles_catalog_read')),
-  (42, '20261021050000_knowledge_resource_submission_rules',
+  (43, '20261021050000_knowledge_resource_submission_rules',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_kr_payload_problem')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review'
                     AND prosrc LIKE '%_kr_payload_problem%')),
   -- BELUM lagi bila tabel baru dibuat sesudahnya dengan izin bawaan; jalankan ulang migrasinya.
-  (43, '20261021060000_revoke_anon_write_grants',
+  (44, '20261021060000_revoke_anon_write_grants',
       NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace
                    WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
                      AND (has_table_privilege('anon', c.oid, 'INSERT') OR has_table_privilege('anon', c.oid, 'UPDATE')
                           OR has_table_privilege('anon', c.oid, 'DELETE')))),
-  (44, '20261021070000_auth_user_fk_set_null',
+  (45, '20261021070000_auth_user_fk_set_null',
       NOT EXISTS (SELECT 1 FROM pg_constraint c JOIN pg_attribute a
                          ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
                    WHERE c.contype = 'f' AND c.confrelid = 'auth.users'::regclass AND c.confdeltype <> 'n'
                      AND (c.conrelid, a.attname) IN (('public.governance_audit_log'::regclass, 'actor_id'),
                                                      ('public.user_roles'::regclass, 'granted_by')))),
-  (45, '20261021080000_expert_role_flow_only',
+  (46, '20261021080000_expert_role_flow_only',
       (SELECT count(*) FROM pg_proc
         WHERE proname IN ('assign_rbac_role', 'revoke_rbac_role', 'request_rbac_role_change', 'decide_rbac_role_change')
           AND prosrc LIKE '%expert_role_managed_by_flow%') = 4),
-  (46, '20261021090000_review_direct_write_lockdown',
+  (47, '20261021090000_review_direct_write_lockdown',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'review_assignment_declare_conflict')
       AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public'
                         AND tablename IN ('review_subjects', 'review_assignments') AND cmd <> 'SELECT')
       AND NOT has_table_privilege('authenticated', 'public.review_subjects', 'UPDATE')
       AND NOT has_table_privilege('authenticated', 'public.review_assignments', 'INSERT')),
-  (47, '20261021100000_learning_progress_server_record',
+  (48, '20261021100000_learning_progress_server_record',
       to_regclass('public.module_quiz_attempts') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'learning_record_quiz_attempt')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_module_learning_summary')
       AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
                     AND table_name = 'self_paced_enrollments' AND column_name = 'completion_source')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'self_paced_sync' AND prosrc NOT LIKE '%v_score%')),
-  (48, '20261021110000_workflow_status_history_sla',
+  (49, '20261021110000_workflow_status_history_sla',
       to_regclass('public.review_subject_status_history') IS NOT NULL
       AND to_regclass('public.workflow_sla_policies') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'review_subject_status_history_trg')
@@ -183,30 +187,30 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'training_need_withdraw')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'return_for_revision'
                     AND prosrc LIKE '%already_awaiting_revision%')),
-  (49, '20261021120000_trainer_module_update',
+  (50, '20261021120000_trainer_module_update',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_open_module_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_cancel_module_update')),
-  (50, '20261022010000_admin_module_revision_live_source',
+  (51, '20261022010000_admin_module_revision_live_source',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'request_published_module_revision'
                 AND prosrc LIKE '%module_review_in_progress%'
                 AND prosrc LIKE '%audit_ref%')),
-  (51, '20261022020000_knowledge_resource_live_during_revision',
+  (52, '20261022020000_knowledge_resource_live_during_revision',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'contributor_open_resource_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'contributor_cancel_resource_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_kr_decide' AND prosrc LIKE '%nothing_to_decide%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review' AND prosrc LIKE '%update_open%')),
-  (52, '20261022030000_expert_profile_update',
+  (53, '20261022030000_expert_profile_update',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_open_profile_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_cancel_profile_update')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_expert_decide' AND prosrc LIKE '%expert_update_open%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'expert_revision_resubmit' AND prosrc LIKE '%update_open%')),
-  (53, '20261022040000_content_version_history',
+  (54, '20261022040000_content_version_history',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'content_version_history')),
-  (54, '20261022050000_trainer_role_from_expert_choice',
+  (55, '20261022050000_trainer_role_from_expert_choice',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_chose_trainer')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_expert_publish_from_subject' AND prosrc LIKE '%_expert_chose_trainer%')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_status_backfill_self' AND prosrc LIKE '%_expert_chose_trainer%')),
-  (55, '20261023010000_master_data_expertise_trainer_levels',
+  (56, '20261023010000_master_data_expertise_trainer_levels',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_data_overview')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_expertise_save')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_trainer_levels_set')
@@ -214,7 +218,7 @@ WITH checks(no, migration, ok) AS (
       AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public'
                         AND policyname IN ('expertise_taxonomy_admin_write', 'trainer_level_rules_admin_write'))
       AND NOT has_table_privilege('authenticated', 'public.expertise_taxonomy', 'UPDATE')),
-  (56, '20261023020000_master_data_trainer_module_limits',
+  (57, '20261023020000_master_data_trainer_module_limits',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_module_limits_overview')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_module_limits_set' AND prosrc LIKE '%module_limits_stale%')
       AND NOT has_table_privilege('authenticated', 'public.trainer_level_module_limits', 'UPDATE'))
