@@ -896,7 +896,7 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 **Uji:**
 - PGlite 26/26: bukti celah; 13 kategori berurutan, kategori lama terpakai nonaktif, "Other" tidak masuk daftar; pengajuan (di luar daftar, tanpa kategori, daftar kosong, kosong, lebih dari 5, bukan teks ditolak; dari daftar, "Other", nonaktif lama diterima; jalur Knowledge Hub tetap memakai aturannya sendiri); kelola (hak akses, tulis langsung, pemakaian, tambah, ganti nama terpakai, nama ganda, nonaktif, audit, jalankan ulang); pengunjung bisa membaca.
 - `tsc` dan lint lulus.
-- Uji langsung baru `npm run test:training-categories` (12 cek). **Sebelum migrasi (intern-update, 2 Nov): 3/12**: tabel dan RPC belum ada; **kategori karangan dan tanpa kategori diterima**. Data uji tersisa 0.
+- Uji langsung baru `npm run test:training-categories` (12 cek). **Sebelum migrasi (intern-update, 2 Nov): 3/12**: tabel dan RPC belum ada; **kategori karangan dan tanpa kategori diterima**. Data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 2 Nov): 12/12**: kategori karangan ditolak (`training_category_unknown`), tanpa kategori ditolak (`training_category_required`), kategori dari daftar dan "Other" diterima. Karena `submit_draft_for_review` dipakai semua jenis pengajuan, semua uji dijalankan ulang dan lulus: training-requests 33, review-lockdown 13, expert-rpc 64, expert-profile-update 19, trainer-choice 5, expert-role-lock 10, kh-topics 12, languages 12, kh-roles 20/20, knowledge-update 19, kr-rpc 24, master-data 15, module-update 24, admin-module-revision 18, lifecycle, participant-rpc 27, learning-progress 12, module-limits 18, trainer-quota-list 5, rbac. Akun uji tersisa 0, total akun 27.
 
 ---
 

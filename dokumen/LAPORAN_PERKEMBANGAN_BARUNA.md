@@ -180,13 +180,17 @@ Branch `intern-update`. Acuan: 51 slide proses bisnis. Rincian teknis per perbai
   - Sebelumnya ada tiga daftar berbeda di kode, tabel bahasa tidak tercatat di migrasi, **approver bisa mengubah tabel bahasa langsung**, dan bahasa publikasi tidak diperiksa sama sekali.
   - Sekarang bahasa publikasi wajib dan harus dikenali dari daftar; sebutan umum seperti "Bahasa Indonesia" tetap dikenali.
 
+- **Kategori pelatihan di Data Master** (daftar terpisah, sesuai keputusan): 13 kategori formulir *Request a Training* bisa ditambah, diubah, dan diaktifkan/dinonaktifkan.
+  - Sebelumnya kategori tertulis tetap di kode, dan database menerima **kategori karangan maupun permintaan tanpa kategori**. Sekarang kategori wajib dari daftar atau "Other".
+- **Paginasi antrean Konsol Kurasi:** Verifikasi Expert, Modul, Publikasi, dan Persetujuan Peserta menampilkan 25 baris per halaman, supaya halaman tetap ringan saat pengajuan sudah ratusan atau ribuan.
+
 **Yang diperbaiki / dihapus**
 - **Template Review dihapus** (keputusan pemilik proyek): hanya untuk Permintaan Pelatihan, opsional, belum pernah dipakai, dan kriterianya harus ditulis dalam format JSON yang membingungkan. Review tetap berjalan dengan rekomendasi dan alasan.
 
 **Keputusan**
 - Topik Knowledge Hub dan bidang keahlian Expert **tetap dua daftar terpisah**, karena isinya berbeda ("dokumen ini tentang apa" dan "orang ini ahli apa") dan dipakai formulir yang berbeda.
 
-**Pengujian:** setiap perubahan database dibuktikan dulu dengan uji langsung sebelum migrasi (daftar trainer 1/5, topik 3/12, bahasa 3/12), lalu diuji ulang sesudah migrasi (5/5, 12/12, 12/12). Semua uji lain tetap lulus dan data uji dibersihkan. Semuanya sudah di-push ke `intern-update`.
+**Pengujian:** setiap perubahan database dibuktikan dulu dengan uji langsung sebelum migrasi (daftar trainer 1/5, topik 3/12, bahasa 3/12, kategori pelatihan 3/12), lalu diuji ulang sesudah migrasi (5/5, 12/12, 12/12, 12/12). Semua uji lain tetap lulus dan data uji dibersihkan. Semuanya sudah di-push ke `intern-update`.
 
 **Menunggu keputusan mentor**
 - Apakah Operator boleh mengelola Data Master.
