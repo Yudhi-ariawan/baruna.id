@@ -14,6 +14,7 @@ import {
   type ModuleLimitsData,
   type TrainerLevelCode,
 } from "@/lib/governance/master-data.functions";
+import { TrainerQuotaList } from "./TrainerQuotaList";
 
 const LABEL: Record<TrainerLevelCode, string> = {
   certified: "Certified",
@@ -128,9 +129,13 @@ function ModuleLimitsForm({
       {lowered.length ? (
         <p className="text-xs text-amber-800">
           Kuota {lowered.map((l) => LABEL[l]).join(", ")} diturunkan. Trainer di level itu yang sudah mencapai kuota baru tidak
-          bisa membuat modul lagi.
+          bisa membuat modul lagi. Buka daftar trainer di bawah untuk melihat siapa yang terdampak.
         </p>
       ) : null}
+      <TrainerQuotaList
+        total={TRAINER_LEVEL_ORDER.reduce((n, l) => n + (data.trainers[l] ?? 0), 0)}
+        draft={intsOk ? (Object.fromEntries(TRAINER_LEVEL_ORDER.map((l) => [l, Number(values[l])])) as ModuleLimitMap) : {}}
+      />
       <label className="block text-xs font-semibold text-navy">
         Alasan perubahan (wajib)
         <input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)}

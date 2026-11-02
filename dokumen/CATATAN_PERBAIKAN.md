@@ -796,6 +796,24 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 
 ---
 
+## 2ad. Data Master: daftar trainer per level dan dampak perubahan kuota (2 Nov)
+
+**Asal:** uji manual pemilik proyek (2 Nov). Panel Kuota Modul per Level Trainer (2ab) hanya menampilkan jumlah ("4 trainer aktif"), sehingga kurator tidak tahu siapa yang terdampak saat mengubah kuota.
+
+**Perbaikan (migrasi `20261102010000`, baca saja, tidak mengubah data):**
+- `master_trainer_quota_list()` untuk Super Admin, Admin, Approver: satu baris per trainer aktif yang punya level, dengan nama tampil, slug, level, modul aktif (tayang + menunggu keputusan), dan kuota.
+- Angkanya diambil dari `_trainer_module_quota`, fungsi yang sama yang dipakai saat trainer membuat modul, jadi persis sama dengan yang dilihat trainer.
+- Trainer yang statusnya aktif tetapi profilnya tidak tayang atau role expert-nya tidak aktif ditandai **Portal tidak aktif** (tidak bisa membuat modul). Ditampilkan, tidak diubah diam-diam.
+- Tanpa email atau kontak.
+- **Aplikasi:** di panel kuota, **Lihat trainer per level** (dimuat saat dibuka). Status per trainer: sisa kuota, kuota penuh, melewati kuota, atau portal tidak aktif. Saat angka kuota diubah tetapi belum disimpan, kolom **Bila disimpan** menunjukkan dampaknya per trainer. Level trainer tetap hanya diubah lewat Kualifikasi Trainer.
+
+**Uji:**
+- PGlite 13/13: hak akses (pengguna biasa, tanpa login, anon tanpa EXECUTE); hanya trainer aktif berlevel (ditangguhkan dan belum berlevel tidak ikut); urutan; hitungan tayang + menunggu (draf tidak dihitung); role expert tidak aktif ditandai; angka sama dengan `_trainer_module_quota`; tanpa email; kuota baru langsung terlihat; migrasi bisa diulang.
+- `tsc` dan `build` lulus.
+- Uji langsung baru `npm run test:trainer-quota-list` (5 cek, membandingkan setiap baris dengan `_trainer_module_quota` dan jumlah per level dengan ringkasan panel). **Sebelum migrasi (intern-update, 2 Nov): 1/5**, karena fungsinya belum ada. Akun uji tersisa 0.
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.
@@ -825,7 +843,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (57 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (58 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -870,6 +888,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261022050000_trainer_role_from_expert_choice.sql` (expert jadi trainer otomatis hanya bila memilih peran Trainer). Lihat bagian 2y. Tidak mengubah data yang ada.
 - `20261023010000_master_data_expertise_trainer_levels.sql` (Data Master: bidang keahlian dan aturan level trainer; tulis langsung ditutup; bidang keahlian pengajuan expert diperiksa). Lihat bagian 2aa. **Butuh kode branch ini**: formulir Become an Expert membaca daftar dari database. Setelah migrasi, skrip uji expert versi branch ini yang berlaku.
 - `20261023020000_master_data_trainer_module_limits.sql` (Data Master: kuota modul per level trainer, dengan validasi, pencegahan saling timpa, dan audit trail; tulis langsung dicabut). Lihat bagian 2ab. Jalankan setelah `20261023010000`.
+- `20261102010000_master_data_trainer_quota_list.sql` (Data Master: daftar trainer aktif per level dengan pemakaian kuota modul; baca saja). Lihat bagian 2ad. Jalankan setelah `20261023020000`. Tanpa migrasi ini daftar menampilkan pesan migrasi; panel lain tidak terpengaruh.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -896,6 +915,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `learning-progress` | 12 | 2r | `master-data` | 15 | 2aa |
   | `training-requests` | 33 | 2s | `module-limits` | 18 | 2ab |
   | `console-roles`*, `console-decisions`* | lulus | 2o | `rbac` | lulus | matriks peran |
+  | `trainer-quota-list` | 5 (setelah migrasi `20261102010000`) | 2ad | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

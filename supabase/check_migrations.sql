@@ -221,7 +221,9 @@ WITH checks(no, migration, ok) AS (
   (57, '20261023020000_master_data_trainer_module_limits',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_module_limits_overview')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_module_limits_set' AND prosrc LIKE '%module_limits_stale%')
-      AND NOT has_table_privilege('authenticated', 'public.trainer_level_module_limits', 'UPDATE'))
+      AND NOT has_table_privilege('authenticated', 'public.trainer_level_module_limits', 'UPDATE')),
+  (58, '20261102010000_master_data_trainer_quota_list',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_trainer_quota_list'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

@@ -65,6 +65,7 @@ const ERRORS: Array<[RegExp, string]> = [
   [/module_limits_unchanged/, "Tidak ada perubahan dibanding kuota yang berlaku."],
   [/module_limits_stale/, "Kuota baru saja diubah orang lain. Nilai terbaru sudah dimuat; periksa lalu simpan lagi bila masih perlu."],
   [/master_module_limits/, "Kuota modul membutuhkan migrasi database 20261023020000. Jalankan supabase/check_migrations.sql."],
+  [/master_trainer_quota_list/, "Daftar trainer membutuhkan migrasi database 20261102010000. Jalankan supabase/check_migrations.sql."],
   [/Could not find the function|schema cache/, "Data Master membutuhkan migrasi database 20261023010000. Jalankan supabase/check_migrations.sql."],
 ];
 
@@ -149,6 +150,25 @@ const limitMap = z.object({ certified: limitValue, advanced: limitValue, senior:
 const seenValue = z.number().int().min(0).max(1000000);
 const seenMap = z.object({ certified: seenValue, advanced: seenValue, senior: seenValue, master: seenValue }).strict();
 export const MODULE_LIMITS_STALE = "Kuota baru saja diubah orang lain.";
+
+/** One active trainer with the same quota numbers module_draft_create uses (migration 20261102010000). */
+export type TrainerQuotaRow = {
+  expertId: string;
+  name: string;
+  slug: string | null;
+  level: TrainerLevelCode;
+  limit: number;
+  /** live + queued */
+  used: number;
+  live: number;
+  queued: number;
+  /** false: profile not public or expert role inactive, so the trainer cannot create modules. */
+  portalActive: boolean;
+};
+
+export const getTrainerQuotaList = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => rpc<TrainerQuotaRow[]>(context, "master_trainer_quota_list"));
 
 export const getModuleLimits = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
