@@ -810,7 +810,7 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 **Uji:**
 - PGlite 13/13: hak akses (pengguna biasa, tanpa login, anon tanpa EXECUTE); hanya trainer aktif berlevel (ditangguhkan dan belum berlevel tidak ikut); urutan; hitungan tayang + menunggu (draf tidak dihitung); role expert tidak aktif ditandai; angka sama dengan `_trainer_module_quota`; tanpa email; kuota baru langsung terlihat; migrasi bisa diulang.
 - `tsc` dan `build` lulus.
-- Uji langsung baru `npm run test:trainer-quota-list` (5 cek, membandingkan setiap baris dengan `_trainer_module_quota` dan jumlah per level dengan ringkasan panel). **Sebelum migrasi (intern-update, 2 Nov): 1/5**, karena fungsinya belum ada. Akun uji tersisa 0.
+- Uji langsung baru `npm run test:trainer-quota-list` (5 cek, membandingkan setiap baris dengan `_trainer_module_quota` dan jumlah per level dengan ringkasan panel). **Sebelum migrasi (intern-update, 2 Nov): 1/5**, karena fungsinya belum ada. Akun uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 2 Nov): 5/5.** Daftar berisi 4 trainer Certified, masing-masing 1/2 modul, dan setiap baris sama dengan `_trainer_module_quota`. Uji lain tetap lulus: module-limits 18, master-data 15, expert-rpc 64, expert-profile-update 19, trainer-choice 5, knowledge-update 19, kr-rpc 24, kh-roles 20, admin-module-revision 18, module-update 24, training-requests 33, lifecycle, participant-rpc 27, expert-role-lock 10, review-lockdown 13, learning-progress 12, rbac. Akun uji tersisa 0, total akun 27.
 
 ---
 
