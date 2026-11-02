@@ -9,7 +9,6 @@ import {
   withdrawReviewRecord,
   declareConflict,
 } from "@/lib/governance/governance.functions";
-import { ReviewCriteriaForm } from "@/components/governance/ReviewCriteriaForm";
 
 export const Route = createFileRoute("/governance/subject/$id")({
   component: SubjectPage,
@@ -33,7 +32,6 @@ function SubjectPage() {
 
   const [rec, setRec] = useState<Recommendation>("approve");
   const [rationale, setRationale] = useState("");
-  const [criteria, setCriteria] = useState<Record<string, unknown>>({});
   const [coiReason, setCoiReason] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -60,10 +58,8 @@ function SubjectPage() {
 
   const submitM = useMutation({
     mutationFn: async () => {
-      // Always persist current draft state (criteria + rationale + recommendation)
-      // so the server-side validator sees the latest edits before enforcing the
-      // template criteria schema.
-      const saved = await saveM.mutateAsync({ recommendation: rec, rationale, criteria });
+      // Always persist the current draft (rationale + recommendation) before submitting.
+      const saved = await saveM.mutateAsync({ recommendation: rec, rationale, criteria: {} });
       return submitFn({ data: { recordId: saved.id } });
     },
     onSuccess: () => {
@@ -157,17 +153,9 @@ function SubjectPage() {
                   className="w-full rounded border border-border bg-background p-2 text-sm"
                   rows={4}
                 />
-                <div className="rounded border border-border p-3">
-                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide">Criteria</h4>
-                  <ReviewCriteriaForm
-                    templateVersionId={assignment?.template_version_id ?? null}
-                    initial={(myRecord?.criteria as Record<string, unknown>) ?? {}}
-                    onChange={setCriteria}
-                  />
-                </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => saveM.mutate({ recommendation: rec, rationale, criteria })}
+                    onClick={() => saveM.mutate({ recommendation: rec, rationale, criteria: {} })}
                     className="rounded border border-border px-3 py-1.5 text-sm hover:bg-muted"
                     disabled={saveM.isPending}
                   >

@@ -299,7 +299,6 @@ export const assignReviewer = createServerFn({ method: "POST" })
         subjectId: z.string().uuid(),
         reviewerId: z.string().uuid(),
         dueAt: z.string().datetime().optional(),
-        templateVersionId: z.string().uuid().optional(),
       })
       .parse(d),
   )
@@ -310,7 +309,6 @@ export const assignReviewer = createServerFn({ method: "POST" })
       _reviewer_id: data.reviewerId,
     };
     if (data.dueAt) args._due_at = data.dueAt;
-    if (data.templateVersionId) args._template_version_id = data.templateVersionId;
     const { data: id, error } = await context.supabase.rpc(
       "assign_reviewer",
       args as never,
@@ -327,7 +325,6 @@ export const reassignReviewer = createServerFn({ method: "POST" })
         assignmentId: z.string().uuid(),
         newReviewerId: z.string().uuid(),
         dueAt: z.string().datetime().optional(),
-        templateVersionId: z.string().uuid().optional(),
       })
       .parse(d),
   )
@@ -338,7 +335,6 @@ export const reassignReviewer = createServerFn({ method: "POST" })
       _new_reviewer_id: data.newReviewerId,
     };
     if (data.dueAt) args._due_at = data.dueAt;
-    if (data.templateVersionId) args._template_version_id = data.templateVersionId;
     const { data: id, error } = await context.supabase.rpc(
       "reassign_reviewer",
       args as never,
@@ -408,148 +404,3 @@ export const listReviewers = createServerFn({ method: "GET" })
     return reviewers;
   });
 
-
-// ─── Reviewer: template criteria schema ────────────────────────────────────
-export const getTemplateVersionSchema = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ templateVersionId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
-      .from("review_template_versions")
-      .select("id, template_id, version, criteria_schema, published_at")
-      .eq("id", data.templateVersionId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return row;
-  });
-
-export const saveReviewCriteria = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) =>
-    z
-      .object({
-        recordId: z.string().uuid(),
-        criteria: z.record(z.unknown()),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    const { data: updated, error } = await context.supabase
-      .from("review_records")
-      .update({ criteria: data.criteria as never })
-      .eq("id", data.recordId)
-      .eq("reviewer_id", context.userId)
-      .eq("status", "draft")
-      .select("id, criteria")
-      .single();
-    if (error) throw new Error(error.message);
-    return updated;
-  });
-
-// ─── Admin/mgmt: template management ───────────────────────────────────────
-export const listReviewTemplates = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ kind: SubjectKind.optional() }).parse(d ?? {}))
-  .handler(async ({ data, context }) => {
-    await assertGovRole(context);
-    let q = context.supabase
-      .from("review_templates")
-      .select("id, subject_kind, name, active_version_id, deprecated_at, created_by, created_at, updated_at")
-      .order("updated_at", { ascending: false });
-    if (data.kind) q = q.eq("subject_kind", data.kind);
-    const { data: rows, error } = await q;
-    if (error) throw new Error(error.message);
-    return rows ?? [];
-  });
-
-export const getReviewTemplateFull = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await assertGovRole(context);
-    const { data: tpl, error } = await context.supabase
-      .from("review_templates")
-      .select("id, subject_kind, name, active_version_id, deprecated_at, created_by, created_at, updated_at")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!tpl) return null;
-    const { data: versions, error: vErr } = await context.supabase
-      .from("review_template_versions")
-      .select("id, version, criteria_schema, published_at, published_by, created_at")
-      .eq("template_id", data.id)
-      .order("version", { ascending: false });
-    if (vErr) throw new Error(vErr.message);
-    return { template: tpl, versions: versions ?? [] };
-  });
-
-export const createReviewTemplate = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) =>
-    z.object({ subjectKind: SubjectKind, name: z.string().min(1).max(200) }).parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    await assertGovRole(context);
-    const { data: id, error } = await context.supabase.rpc("create_template", {
-      _subject_kind: data.subjectKind,
-      _name: data.name,
-    });
-    if (error) throw new Error(error.message);
-    return { id: id as string };
-  });
-
-export const addTemplateVersion = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) =>
-    z
-      .object({ templateId: z.string().uuid(), criteriaSchema: z.record(z.unknown()) })
-      .parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    await assertGovRole(context);
-    const { data: id, error } = await context.supabase.rpc("add_template_version", {
-      _template_id: data.templateId,
-      _criteria_schema: data.criteriaSchema as never,
-    });
-    if (error) throw new Error(error.message);
-    return { id: id as string };
-  });
-
-export const publishTemplateVersion = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ versionId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await assertGovRole(context);
-    const { error } = await context.supabase.rpc("publish_template_version", {
-      _version_id: data.versionId,
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-export const setActiveTemplateVersion = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) =>
-    z.object({ templateId: z.string().uuid(), versionId: z.string().uuid() }).parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    await assertGovRole(context);
-    const { error } = await context.supabase.rpc("set_active_template_version", {
-      _template_id: data.templateId,
-      _version_id: data.versionId,
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-export const deprecateReviewTemplate = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ templateId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await assertGovRole(context);
-    const { error } = await context.supabase.rpc("deprecate_template", {
-      _template_id: data.templateId,
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });

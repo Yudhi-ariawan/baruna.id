@@ -838,6 +838,33 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 
 ---
 
+## 2ae. Template Review dihapus dari aplikasi (2 Nov)
+
+**Keputusan pemilik proyek (2 Nov)** setelah mencoba fitur ini: hapus.
+
+**Alasannya:**
+- Fitur ini hanya berlaku untuk penugasan reviewer **Permintaan Pelatihan** dan sifatnya opsional; Verifikasi Expert, Modul, dan Publikasi tidak memakainya.
+- Belum pernah dipakai di intern-update: 0 template sebelum 2 Nov, dan 0 penugasan yang memakai template.
+- Kriteria harus ditulis sebagai JSON. Contoh bawaannya pun salah format: memakai `criteria[]`, padahal sistem hanya membaca `fields{}`, sehingga template tersimpan tanpa error tetapi reviewer tidak melihat kriteria apa pun. Perbaikan contohnya sempat di-commit (`0fad422`), tetapi tampilan JSON tetap tidak layak untuk kurator.
+
+**Yang dihapus (tanpa migrasi):**
+- Menu **Template Review** di Konsol Kurasi, halaman `/governance/templates` dan `/governance/templates/$id`.
+- Pilihan "Review template" saat menugaskan atau memindahkan reviewer.
+- Form kriteria di halaman review (`ReviewCriteriaForm`); reviewer tetap memberi rekomendasi dan alasan seperti sebelumnya.
+- Server function pengelolaan template.
+
+**Yang tidak diubah:**
+- Tabel `review_templates`/`review_template_versions` dan RPC-nya di database tetap ada; tidak di-drop. RPC `assign_reviewer` tetap menerima template opsional (selalu kosong dari aplikasi).
+- Pengaman `trg_template_version_immutable` (versi yang sudah dipublikasikan tidak bisa diubah atau dihapus).
+
+**Data:** template uji pemilik proyek (2 Nov) dihapus: "expert" dan draf v2–v3 "Rubrik Permintaan Pelatihan v1". **Versi 1 template itu sudah dipublikasikan, sehingga pengaman database menolak penghapusannya**; template itu tidak lagi terlihat di aplikasi dan tidak dipakai penugasan mana pun. Penghapusan tuntasnya menunggu keputusan (perlu menonaktifkan pengaman sementara di SQL Editor).
+
+**Uji:** `tsc`, `build`, dan lint lulus; daftar rute tidak lagi memuat halaman template. `test:training-requests` 33/33 (penugasan reviewer tanpa template), `test:review-lockdown` 13/13, dan `test:lifecycle` lulus.
+
+**Bila nanti dibutuhkan lagi** (mis. mentor meminta lembar penilaian baku untuk reviewer): kodenya ada di riwayat git (sebelum commit penghapusan ini). Sebaiknya dibangun ulang sebagai formulir biasa, bukan JSON.
+
+---
+
 ## 3. Migrasi yang harus dijalankan
 
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:

@@ -7,7 +7,6 @@ import {
   GraduationCap,
   LayoutDashboard,
   LineChart,
-  ListChecks,
   Settings,
   ShieldAlert,
   Timer,
@@ -70,7 +69,6 @@ function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
     { group: "Verifikasi & Kurasi", items: curation },
   ];
   const settings = [
-    menus.trainingNeeds.decide && { label: "Template Review", to: "/governance/templates", icon: ListChecks },
     menus.trainingNeeds.read && { label: "SLA Alur Kerja", to: "/governance/sla", icon: Timer },
     // Slide 16: Approver/Admin manage the Experts and Academy reference data.
     menus.experts.decide && { label: "Data Master", to: "/governance/master-data", icon: Database },

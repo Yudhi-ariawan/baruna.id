@@ -118,7 +118,6 @@ function SubjectDetail() {
       <Section title={`Assignments (${assignments.length})`}>
         <AssignmentPanel
           subjectId={subject.id}
-          subjectKind={subject.kind as "expert" | "module" | "knowledge_resource" | "training_need"}
           requiredRecommendations={subject.required_recommendations}
           assignments={assignments}
           onChanged={refresh}

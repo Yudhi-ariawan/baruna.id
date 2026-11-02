@@ -4,9 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   assignReviewer,
   cancelAssignment,
-  getReviewTemplateFull,
   listReviewers,
-  listReviewTemplates,
   reassignReviewer,
   setRequiredRecommendations,
 } from "@/lib/governance/governance-ops.functions";
@@ -21,11 +19,8 @@ type Assignment = {
   template_version_id: string | null;
 };
 
-type SubjectKind = "expert" | "module" | "knowledge_resource" | "training_need";
-
 type Props = {
   subjectId: string;
-  subjectKind: SubjectKind;
   requiredRecommendations: number;
   assignments: Assignment[];
   onChanged: () => void;
@@ -33,7 +28,6 @@ type Props = {
 
 export function AssignmentPanel({
   subjectId,
-  subjectKind,
   requiredRecommendations,
   assignments,
   onChanged,
@@ -44,46 +38,22 @@ export function AssignmentPanel({
   const reassignFn = useServerFn(reassignReviewer);
   const cancelFn = useServerFn(cancelAssignment);
   const setReqFn = useServerFn(setRequiredRecommendations);
-  const listTemplatesFn = useServerFn(listReviewTemplates);
-  const getTemplateFn = useServerFn(getReviewTemplateFull);
 
   const reviewersQ = useQuery({
     queryKey: ["governance", "reviewers"],
     queryFn: () => listFn(),
   });
 
-  const templatesQ = useQuery({
-    queryKey: ["governance", "templates", subjectKind],
-    queryFn: () => listTemplatesFn({ data: { kind: subjectKind } }),
-  });
-
   const [reviewerId, setReviewerId] = useState("");
   const [dueAt, setDueAt] = useState("");
-  const [templateId, setTemplateId] = useState("");
   const [required, setRequired] = useState(requiredRecommendations);
   const [reassignFor, setReassignFor] = useState<string | null>(null);
   const [newReviewerId, setNewReviewerId] = useState("");
-  const [reassignTemplateId, setReassignTemplateId] = useState("");
-
-  const templateDetailQ = useQuery({
-    queryKey: ["governance", "template-detail", templateId],
-    queryFn: () => getTemplateFn({ data: { id: templateId } }),
-    enabled: !!templateId,
-  });
-  const reassignTemplateDetailQ = useQuery({
-    queryKey: ["governance", "template-detail", reassignTemplateId],
-    queryFn: () => getTemplateFn({ data: { id: reassignTemplateId } }),
-    enabled: !!reassignTemplateId,
-  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["governance", "subjects", "detail", subjectId] });
     onChanged();
   };
-
-  const activeVersionId = templateDetailQ.data?.template?.active_version_id ?? null;
-  const reassignVersionId =
-    reassignTemplateDetailQ.data?.template?.active_version_id ?? null;
 
   const mAssign = useMutation({
     mutationFn: () =>
@@ -92,13 +62,11 @@ export function AssignmentPanel({
           subjectId,
           reviewerId,
           dueAt: dueAt && !isNaN(Date.parse(dueAt)) ? new Date(dueAt).toISOString() : undefined,
-          templateVersionId: activeVersionId ?? undefined,
         },
       }),
     onSuccess: () => {
       setReviewerId("");
       setDueAt("");
-      setTemplateId("");
       invalidate();
     },
   });
@@ -109,13 +77,11 @@ export function AssignmentPanel({
         data: {
           assignmentId,
           newReviewerId,
-          templateVersionId: reassignVersionId ?? undefined,
         },
       }),
     onSuccess: () => {
       setReassignFor(null);
       setNewReviewerId("");
-      setReassignTemplateId("");
       invalidate();
     },
   });
@@ -131,7 +97,6 @@ export function AssignmentPanel({
   });
 
   const reviewerOptions = reviewersQ.data ?? [];
-  const templateOptions = (templatesQ.data ?? []).filter((t) => !t.deprecated_at);
 
   return (
     <div className="space-y-4">
@@ -182,22 +147,6 @@ export function AssignmentPanel({
             </select>
           </label>
           <label className="flex flex-col text-xs">
-            <span className="mb-1 text-muted-foreground">Review template (optional)</span>
-            <select
-              value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
-              className="w-64 rounded border border-border bg-background px-2 py-1 text-sm"
-            >
-              <option value="">None (rationale only)</option>
-              {templateOptions.map((t) => (
-                <option key={t.id} value={t.id} disabled={!t.active_version_id}>
-                  {t.name}
-                  {t.active_version_id ? "" : " (no active version)"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col text-xs">
             <span className="mb-1 text-muted-foreground">Due date (optional)</span>
             <input
               type="datetime-local"
@@ -208,11 +157,7 @@ export function AssignmentPanel({
           </label>
           <button
             onClick={() => mAssign.mutate()}
-            disabled={
-              !reviewerId ||
-              mAssign.isPending ||
-              (!!templateId && !activeVersionId)
-            }
+            disabled={!reviewerId || mAssign.isPending}
             className="rounded bg-primary px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
           >
             Assign
@@ -236,9 +181,6 @@ export function AssignmentPanel({
                     <span className="font-mono">{a.reviewer_id.slice(0, 8)}…</span> ·{" "}
                     <strong>{a.status}</strong>
                     {a.due_at ? ` · due ${new Date(a.due_at).toLocaleDateString()}` : ""}
-                    {a.template_version_id
-                      ? ` · template v${a.template_version_id.slice(0, 6)}…`
-                      : " · no template"}
                     {a.conflict_of_interest_declared
                       ? ` · COI: ${a.conflict_of_interest_reason ?? "declared"}`
                       : ""}
@@ -281,26 +223,9 @@ export function AssignmentPanel({
                           </option>
                         ))}
                     </select>
-                    <select
-                      value={reassignTemplateId}
-                      onChange={(e) => setReassignTemplateId(e.target.value)}
-                      className="w-64 rounded border border-border bg-background px-2 py-1"
-                    >
-                      <option value="">Keep / no template</option>
-                      {templateOptions.map((t) => (
-                        <option key={t.id} value={t.id} disabled={!t.active_version_id}>
-                          {t.name}
-                          {t.active_version_id ? "" : " (no active version)"}
-                        </option>
-                      ))}
-                    </select>
                     <button
                       onClick={() => mReassign.mutate(a.id)}
-                      disabled={
-                        !newReviewerId ||
-                        mReassign.isPending ||
-                        (!!reassignTemplateId && !reassignVersionId)
-                      }
+                      disabled={!newReviewerId || mReassign.isPending}
                       className="rounded bg-primary px-3 py-1 text-primary-foreground disabled:opacity-50"
                     >
                       Confirm reassign

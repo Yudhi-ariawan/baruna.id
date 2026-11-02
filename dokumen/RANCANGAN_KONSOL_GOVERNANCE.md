@@ -44,7 +44,7 @@ Catatan:
 |---|---|
 | All Subjects | Diganti menu per jenis di atas |
 | My Queue | Masuk ke "Permintaan Pelatihan" (penugasan reviewer) |
-| Templates | Dipertahankan di bawah menu Permintaan Pelatihan (kriteria review), hanya admin/approver |
+| Templates | ~~Dipertahankan di bawah menu Permintaan Pelatihan (kriteria review), hanya admin/approver~~ **Dihapus 2 Nov** (keputusan pemilik proyek; tidak pernah dipakai, kriteria berbentuk JSON). Lihat CATATAN_PERBAIKAN 2ae. |
 | Role Admin | Dihapus; pakai `/admin/users` |
 
 Alamat lama `/admin/experts`, `/admin/modules`, `/admin/publications`, `/admin/enrollments` dialihkan ke `/governance/...` supaya tautan lama tetap jalan.
