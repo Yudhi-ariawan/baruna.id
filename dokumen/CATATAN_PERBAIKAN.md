@@ -839,7 +839,11 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 - `tsc` dan lint lulus.
 - Uji langsung baru `npm run test:kh-topics` (12 cek). **Sebelum migrasi (intern-update, 2 Nov): 3/12**: tabel dan RPC belum ada; **topik karangan dan pengajuan tanpa topik diterima**. Data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 2 Nov): 12/12**: topik karangan ditolak (`kr_topic_unknown`), tanpa topik ditolak (`kr_topic_required`), topik dari daftar diterima. Daftar berisi 12 topik aktif dan 1 topik lama nonaktif. Uji lain tetap lulus: kh-roles 20/20 dan knowledge-update 19 (skrip versi baru), kr-rpc 24, master-data 15, expert-rpc 64, expert-profile-update 19, module-update 24, admin-module-revision 18, training-requests 33, lifecycle, participant-rpc 27, review-lockdown 13, learning-progress 12, module-limits 18, trainer-quota-list 5, rbac. Akun uji tersisa 0, total akun 27.
 
-**Untuk mentor:** apakah topik Knowledge Hub dan bidang keahlian Expert sebaiknya satu taksonomi? Sekarang dua daftar terpisah (isinya sebagian sama).
+**Diputuskan pemilik proyek (2 Nov): tetap dua daftar terpisah.** Alasannya:
+- Isinya berbeda: bidang keahlian menjawab "orang ini ahli apa" (mis. Hatchery Management, Feed Development, Quality Assurance), sedangkan topik menjawab "dokumen ini tentang apa" (mis. Ocean Literacy, Capacity Development). Hanya sebagian yang sama.
+- Satu perubahan tidak boleh tanpa sengaja mengubah dua formulir: bidang keahlian dipakai formulir Become an Expert, topik dipakai formulir Contribute Knowledge.
+- Slide memisahkannya: *Expertise* adalah objek Experts (Slide 39), *Taxonomy / Category* adalah objek Knowledge Hub (Slide 32).
+- Bila nanti dibutuhkan, keduanya bisa dihubungkan tanpa digabung (mis. menampilkan expert yang bidangnya sama dengan topik publikasi).
 
 ---
 
