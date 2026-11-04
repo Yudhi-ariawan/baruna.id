@@ -236,7 +236,12 @@ WITH checks(no, migration, ok) AS (
   (61, '20261102040000_master_data_training_categories',
       to_regclass('public.training_category_taxonomy') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_training_category_save')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review' AND prosrc LIKE '%_training_need_payload_problem%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'submit_draft_for_review' AND prosrc LIKE '%_training_need_payload_problem%')),
+  (62, '20261104010000_academy_program_admin',
+      to_regclass('public.academy_program_drafts') IS NOT NULL
+      AND to_regclass('public.master_course_versions') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'program_draft_decide')
+      AND NOT has_table_privilege('authenticated', 'public.course_offerings', 'UPDATE'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

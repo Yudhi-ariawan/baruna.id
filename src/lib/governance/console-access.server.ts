@@ -11,12 +11,15 @@
 //   Verifikasi Publikasi  assertAdminOrReviewer (publications.functions) + _can_decide_review
 //   Persetujuan Peserta   assertAdminAccess (enrollments.functions) = _is_enrollment_admin
 //   Permintaan Pelatihan  has_role(admin|management|qa_reviewer); decide = admin|management
+//   Program Academy       _program_can_manage (super_admin|admin|operator|approver); decide = _can_decide_review
 // ============================================================================
 import type { ConsoleAccess } from "./console-access.functions";
 import { getGovernanceRoles } from "./governance-roles";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Ctx = { supabase: any; userId: string };
+
+const PROGRAM_MANAGER_ROLES = ["super_admin", "admin", "operator", "approver"];
 
 export async function readConsoleAccess(context: Ctx): Promise<ConsoleAccess> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -67,6 +70,11 @@ export async function readConsoleAccess(context: Ctx): Promise<ConsoleAccess> {
       publications: { read: Boolean(publicationsRead), decide: Boolean(publicationsRead) && canDecideReview },
       enrollments: { read: Boolean(enrollments), decide: Boolean(enrollments) },
       trainingNeeds: { read: trainingRead, decide: trainingDecide },
+      // Same role list as public._program_can_manage (migration 20261104010000).
+      programs: {
+        read: roles.some((r) => PROGRAM_MANAGER_ROLES.includes(r)),
+        decide: roles.some((r) => PROGRAM_MANAGER_ROLES.includes(r)) && canDecideReview,
+      },
     },
   };
 }

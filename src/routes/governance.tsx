@@ -6,6 +6,7 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
+  Library,
   LineChart,
   Settings,
   ShieldAlert,
@@ -62,6 +63,8 @@ function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
     menus.enrollments.read && { label: "Persetujuan Peserta", to: "/governance/enrollments", icon: GraduationCap },
     menus.enrollments.read && { label: "Pemantauan Progres", to: "/governance/learning-progress", icon: LineChart },
     menus.trainingNeeds.read && { label: "Permintaan Pelatihan", to: "/governance/training-needs", icon: ClipboardList },
+    // Slide 20-21: Master Course and Course Offering are prepared and approved here.
+    menus.programs.read && { label: "Program Academy", to: "/governance/programs", icon: Library },
   ].filter(Boolean) as ConsoleNavGroup["items"];
 
   const groups: ConsoleNavGroup[] = [

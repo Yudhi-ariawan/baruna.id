@@ -134,6 +134,8 @@ import { Route as ExpertsPortalReviewStatusRouteImport } from './routes/experts.
 import { Route as ExpertsPortalServiceRequestsRouteImport } from './routes/experts.portal.service-requests'
 import { Route as ExpertsPortalSubmitModuleRouteImport } from './routes/experts.portal.submit-module'
 import { Route as GovernanceAuditSubjectIdRouteImport } from './routes/governance.audit.$subjectId'
+import { Route as GovernanceProgramsIndexRouteImport } from './routes/governance.programs.index'
+import { Route as GovernanceProgramsDraftIdRouteImport } from './routes/governance.programs.$draftId'
 import { Route as GovernanceSubjectIdRouteImport } from './routes/governance.subject.$id'
 import { Route as GovernanceSubjectsIdRouteImport } from './routes/governance.subjects.$id'
 import { Route as KnowledgeHubResourceIdRouteImport } from './routes/knowledge-hub_.resource.$id'
@@ -784,6 +786,17 @@ const GovernanceAuditSubjectIdRoute =
     path: '/audit/$subjectId',
     getParentRoute: () => GovernanceRoute,
   } as any)
+const GovernanceProgramsIndexRoute = GovernanceProgramsIndexRouteImport.update({
+  id: '/programs/',
+  path: '/programs/',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const GovernanceProgramsDraftIdRoute =
+  GovernanceProgramsDraftIdRouteImport.update({
+    id: '/programs/$draftId',
+    path: '/programs/$draftId',
+    getParentRoute: () => GovernanceRoute,
+  } as any)
 const GovernanceSubjectIdRoute = GovernanceSubjectIdRouteImport.update({
   id: '/subject/$id',
   path: '/subject/$id',
@@ -917,6 +930,7 @@ export interface FileRoutesByFullPath {
   '/experts/portal/service-requests': typeof ExpertsPortalServiceRequestsRoute
   '/experts/portal/submit-module': typeof ExpertsPortalSubmitModuleRoute
   '/governance/audit/$subjectId': typeof GovernanceAuditSubjectIdRoute
+  '/governance/programs/$draftId': typeof GovernanceProgramsDraftIdRoute
   '/governance/subject/$id': typeof GovernanceSubjectIdRoute
   '/governance/subjects/$id': typeof GovernanceSubjectsIdRoute
   '/knowledge-hub/resource/$id': typeof KnowledgeHubResourceIdRoute
@@ -929,6 +943,7 @@ export interface FileRoutesByFullPath {
   '/academy/training-requests/': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training/': typeof AcademyTrainingIndexRoute
   '/experts/portal/': typeof ExpertsPortalIndexRoute
+  '/governance/programs/': typeof GovernanceProgramsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -1038,6 +1053,7 @@ export interface FileRoutesByTo {
   '/experts/portal/service-requests': typeof ExpertsPortalServiceRequestsRoute
   '/experts/portal/submit-module': typeof ExpertsPortalSubmitModuleRoute
   '/governance/audit/$subjectId': typeof GovernanceAuditSubjectIdRoute
+  '/governance/programs/$draftId': typeof GovernanceProgramsDraftIdRoute
   '/governance/subject/$id': typeof GovernanceSubjectIdRoute
   '/governance/subjects/$id': typeof GovernanceSubjectsIdRoute
   '/knowledge-hub/resource/$id': typeof KnowledgeHubResourceIdRoute
@@ -1050,6 +1066,7 @@ export interface FileRoutesByTo {
   '/academy/training-requests': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training': typeof AcademyTrainingIndexRoute
   '/experts/portal': typeof ExpertsPortalIndexRoute
+  '/governance/programs': typeof GovernanceProgramsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1169,6 +1186,7 @@ export interface FileRoutesById {
   '/experts/portal/service-requests': typeof ExpertsPortalServiceRequestsRoute
   '/experts/portal/submit-module': typeof ExpertsPortalSubmitModuleRoute
   '/governance/audit/$subjectId': typeof GovernanceAuditSubjectIdRoute
+  '/governance/programs/$draftId': typeof GovernanceProgramsDraftIdRoute
   '/governance/subject/$id': typeof GovernanceSubjectIdRoute
   '/governance/subjects/$id': typeof GovernanceSubjectsIdRoute
   '/knowledge-hub_/resource/$id': typeof KnowledgeHubResourceIdRoute
@@ -1181,6 +1199,7 @@ export interface FileRoutesById {
   '/academy/training-requests/': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training/': typeof AcademyTrainingIndexRoute
   '/experts/portal/': typeof ExpertsPortalIndexRoute
+  '/governance/programs/': typeof GovernanceProgramsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1301,6 +1320,7 @@ export interface FileRouteTypes {
     | '/experts/portal/service-requests'
     | '/experts/portal/submit-module'
     | '/governance/audit/$subjectId'
+    | '/governance/programs/$draftId'
     | '/governance/subject/$id'
     | '/governance/subjects/$id'
     | '/knowledge-hub/resource/$id'
@@ -1313,6 +1333,7 @@ export interface FileRouteTypes {
     | '/academy/training-requests/'
     | '/academy/training/'
     | '/experts/portal/'
+    | '/governance/programs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1422,6 +1443,7 @@ export interface FileRouteTypes {
     | '/experts/portal/service-requests'
     | '/experts/portal/submit-module'
     | '/governance/audit/$subjectId'
+    | '/governance/programs/$draftId'
     | '/governance/subject/$id'
     | '/governance/subjects/$id'
     | '/knowledge-hub/resource/$id'
@@ -1434,6 +1456,7 @@ export interface FileRouteTypes {
     | '/academy/training-requests'
     | '/academy/training'
     | '/experts/portal'
+    | '/governance/programs'
   id:
     | '__root__'
     | '/'
@@ -1552,6 +1575,7 @@ export interface FileRouteTypes {
     | '/experts/portal/service-requests'
     | '/experts/portal/submit-module'
     | '/governance/audit/$subjectId'
+    | '/governance/programs/$draftId'
     | '/governance/subject/$id'
     | '/governance/subjects/$id'
     | '/knowledge-hub_/resource/$id'
@@ -1564,6 +1588,7 @@ export interface FileRouteTypes {
     | '/academy/training-requests/'
     | '/academy/training/'
     | '/experts/portal/'
+    | '/governance/programs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -2475,6 +2500,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GovernanceAuditSubjectIdRouteImport
       parentRoute: typeof GovernanceRoute
     }
+    '/governance/programs/': {
+      id: '/governance/programs/'
+      path: '/programs'
+      fullPath: '/governance/programs/'
+      preLoaderRoute: typeof GovernanceProgramsIndexRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/programs/$draftId': {
+      id: '/governance/programs/$draftId'
+      path: '/programs/$draftId'
+      fullPath: '/governance/programs/$draftId'
+      preLoaderRoute: typeof GovernanceProgramsDraftIdRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
     '/governance/subject/$id': {
       id: '/governance/subject/$id'
       path: '/subject/$id'
@@ -2753,8 +2792,10 @@ interface GovernanceRouteChildren {
   GovernanceTrainingNeedsRoute: typeof GovernanceTrainingNeedsRoute
   GovernanceIndexRoute: typeof GovernanceIndexRoute
   GovernanceAuditSubjectIdRoute: typeof GovernanceAuditSubjectIdRoute
+  GovernanceProgramsDraftIdRoute: typeof GovernanceProgramsDraftIdRoute
   GovernanceSubjectIdRoute: typeof GovernanceSubjectIdRoute
   GovernanceSubjectsIdRoute: typeof GovernanceSubjectsIdRoute
+  GovernanceProgramsIndexRoute: typeof GovernanceProgramsIndexRoute
 }
 
 const GovernanceRouteChildren: GovernanceRouteChildren = {
@@ -2769,8 +2810,10 @@ const GovernanceRouteChildren: GovernanceRouteChildren = {
   GovernanceTrainingNeedsRoute: GovernanceTrainingNeedsRoute,
   GovernanceIndexRoute: GovernanceIndexRoute,
   GovernanceAuditSubjectIdRoute: GovernanceAuditSubjectIdRoute,
+  GovernanceProgramsDraftIdRoute: GovernanceProgramsDraftIdRoute,
   GovernanceSubjectIdRoute: GovernanceSubjectIdRoute,
   GovernanceSubjectsIdRoute: GovernanceSubjectsIdRoute,
+  GovernanceProgramsIndexRoute: GovernanceProgramsIndexRoute,
 }
 
 const GovernanceRouteWithChildren = GovernanceRoute._addFileChildren(

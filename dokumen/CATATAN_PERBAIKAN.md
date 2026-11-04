@@ -900,6 +900,42 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 
 ---
 
+## 2ai. Program Academy: Master Course, Master Module, Course Offering (4 Nov)
+
+**Acuan:** PB-ACA-01 (Slide 20) dan PB-ACA-02 (Slide 21): draf dibuat Admin/Operator, divalidasi, direview, disetujui, baru aktif; wajib versioning; dikelola lewat Admin Console; data tidak hard-coded; audit trail. **Keputusan pemilik proyek (4 Nov):** cakupan Course + Modul + Offering; aktivasi wajib disetujui orang lain (bukan pembuatnya).
+
+**Temuan (dibuktikan di database intern-update):**
+- 3 Master Course, 4 modul, dan 4 offering hanya bisa dibaca aplikasi. **Tidak ada jalur tulis sama sekali** selain migrasi; layar admin belum ada.
+- **Izin `academy.create` dan `academy.update` dimiliki hampir semua peran, termasuk participant dan registered_user**, sehingga tidak bisa dipakai menjaga layar admin. Di sini dipakai pemeriksaan peran langsung. Matriks izin itu sendiri tidak diubah (perlu ditinjau terpisah).
+- **Kelulusan peserta menghitung semua modul course** (tanpa memandang status modul), dan kemajuan disimpan sebagai `module:<kode>`. Mengubah susunan modul course yang sudah dipakai akan mengubah kelulusan peserta.
+- Dua program lama (AZA, Africa Fisheries) isinya ada di kode (`learning_engine_version = legacy`).
+
+**Perbaikan (migrasi `20261104010000`):**
+- `academy_program_drafts`: setiap pembuatan atau perubahan course/offering adalah **draf**. Data tayang tidak berubah sampai draf disetujui. Satu draf terbuka per course/offering.
+- **Peran:** pembuat draf = Super Admin, Admin, **Operator**, Approver (Slide 16, 20). Pemutus = Super Admin, Admin, Approver, dan **bukan pembuat atau pengirim draf itu**.
+- **Alur:** Draf → Kirim (divalidasi) → Setujui / Minta revisi (wajib alasan) / Tolak (wajib alasan); pembuat bisa menarik drafnya. Saat disetujui, validasi dijalankan ulang dan versi tayang dicek belum berubah.
+- **Versioning:** `master_course_versions` dan `course_offering_versions` menyimpan snapshot setiap versi yang disetujui; `course_offerings.admin_version` baru.
+- **Validasi Master Course:** kode (tetap setelah dibuat), judul, deskripsi, bahasa dari Data Master, template pembelajaran, 1–60 modul (kode unik, judul, jam 0–500).
+- **Validasi Course Offering:** mengikuti batasan database yang sudah ada: self-paced hanya online dan wajib model akses; cohort wajib penanggung biaya (model biaya fee-based); delivery mode harus cocok dengan model belajar; urutan tanggal; evaluasi akhir wajib konteks. Kode offering dan Master Course tetap setelah dibuat.
+- **Kunci setelah dipakai:** course yang sudah punya pendaftar/peserta tidak bisa ditambah, dihapus, atau diganti kode modulnya (judul, jam, urutan tetap bisa). Offering yang sudah punya pendaftar tidak bisa diubah model belajar, delivery mode, aturan pendaftaran, dan model biayanya (judul, angkatan, tanggal tetap bisa).
+- **Program lama** (isi di kode) hanya bisa dilihat; offering baru tidak bisa dibuat di bawah course lama.
+- **Offering baru** memakai mesin belajar bersama (`shared_v1`), terbuka di `/academy/course/<kode>`, dengan feature flag yang sesuai.
+- **Status:** course aktif ↔ arsip (tidak bisa diarsipkan selama ada offering tayang atau draf terbuka); offering tayang ↔ selesai/ditutup (tidak bisa ditayangkan lagi bila course-nya diarsipkan). Hanya pemutus, wajib alasan.
+- Tulis langsung ke `master_courses`, `master_modules`, `course_offerings`, `learning_feature_flags` dicabut dari anon/authenticated. Semua langkah tercatat di audit trail.
+- **Aplikasi:** menu **Program Academy** di Konsol Kurasi (daftar draf dan antrean persetujuan, Master Course, Course Offering), editor draf course (dengan pengelola modul) dan offering, panel keputusan, riwayat versi. Uji peran konsol (`test:console-roles`) ikut memeriksa menu baru.
+
+**Belum termasuk (sengaja):**
+- Katalog publik *All Programs* masih membaca data contoh di kode; offering yang disetujui dibuka lewat alamatnya sendiri.
+- Isi materi per modul (`content_reference`), kapasitas peserta, dan penugasan template evaluasi akhir belum diatur dari layar ini.
+- Konversi Request a Training (TNA) menjadi draf Master Course (Slide 25).
+
+**Uji:**
+- PGlite 78/78: hak akses (registered user, participant walau punya izin academy.create, tanpa login), tulis langsung ditolak, tabel draf tertutup; validasi course (kode, kode ganda, judul, bahasa, template, tanpa modul, modul ganda, jam 0, jam teks); simpan dengan layar lama, orang lain mengubah draf; kirim, terkunci setelah dikirim, operator tidak bisa memutuskan, minta revisi wajib alasan, belum tayang selama revisi, kirim ulang, keputusan dari layar lama, setuju (v1, modul berurutan, version record), keputusan ganda; approver tidak bisa menyetujui drafnya sendiri, admin lain menolak; perubahan (dari versi tayang, draf kedua ditolak, tanpa perubahan ditolak, kode tetap, tayang tetap selama ditinjau, v2); offering (course lama, kode ganda, 12 kombinasi tidak valid, setuju, mesin bersama, batasan database, feature flag, offering self-paced); setelah ada peserta (modul tidak bisa ditambah/dihapus, judul/jam/urutan bisa, format offering terkunci, judul bisa, versi 2); **peserta mendaftar di antara pengiriman dan persetujuan: persetujuan menolak dan data tayang tidak berubah**; program lama hanya baca; status (operator tidak bisa, arsip ditolak selama ada offering tayang, selesai/tutup, arsip, tidak bisa tayang lagi, course arsip tidak bisa diubah); ringkasan; audit lengkap; migrasi bisa diulang.
+- `tsc`, lint, dan `build` lulus.
+- Uji langsung baru `npm run test:academy-programs` (21 cek). **Sebelum migrasi (intern-update, 4 Nov): 1/21**: RPC belum ada (tidak ada jalur tulis). Data uji tersisa 0.
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.
@@ -956,7 +992,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (61 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (62 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1005,6 +1041,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261102020000_master_data_kh_topics.sql` (Data Master: topik Knowledge Hub; pengajuan wajib memakai topik dari daftar). Lihat bagian 2af. Butuh `20261023010000`. **Butuh kode branch ini**: formulir kontribusi membaca topik dari database; setelah migrasi, skrip uji Knowledge Hub versi branch ini yang berlaku (payload uji memakai topik dari daftar).
 - `20261102030000_master_data_languages.sql` (Data Master: satu daftar bahasa; tabel `languages_taxonomy` masuk repo; bahasa publikasi Knowledge Hub diperiksa saat dikirim). Lihat bagian 2ag. Jalankan setelah `20261102020000`. **Butuh kode branch ini** (formulir membaca bahasa dari database; payload uji Knowledge Hub memakai bahasa dari daftar).
 - `20261102040000_master_data_training_categories.sql` (Data Master: kategori pelatihan Request a Training; permintaan wajib memakai kategori dari daftar atau "Other"). Lihat bagian 2ah. Butuh `20261023010000`. **Butuh kode branch ini** (formulir membaca kategori dari database).
+- `20261104010000_academy_program_admin.sql` (Program Academy: draf, persetujuan, dan versi untuk Master Course, Master Module, Course Offering; tulis langsung ke tabel program dicabut). Lihat bagian 2ai. Butuh `20261102030000` (daftar bahasa). **Butuh kode branch ini** (menu Program Academy di Konsol Kurasi).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1033,6 +1070,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `console-roles`*, `console-decisions`* | lulus | 2o | `rbac` | lulus | matriks peran |
   | `trainer-quota-list` | 5 (setelah migrasi `20261102010000`) | 2ad | `kh-topics` | 12 (setelah migrasi `20261102020000`) | 2af |
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
+  | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.
