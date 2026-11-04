@@ -94,7 +94,7 @@ try {
   console.log("4. Course Offering baru");
   const { data: o1 } = await operator.c.rpc("program_draft_open", { _kind: "course_offering", _target_id: null });
   const offering = { master_course_id: live?.id, offering_code: OFFERING_CODE, offering_title: `TDD Offering ${stamp}`, year: 2026,
-    delivery_mode_code: "blended_cohort", learning_model: "cohort_based", delivery_format: "blended", enrolment_access_rule: "approval_required",
+    delivery_mode_code: "blended_cohort", learning_model: "cohort_based", delivery_format: "blended", enrolment_access_rule: "registered",
     cohort_payment_responsibility: "government_or_public_funding", completion_evaluation_required: true, completion_evaluation_context: "training",
     opening_date: "2026-12-01", closing_date: "2026-12-20", enrolment_start_date: "2026-11-10", enrolment_end_date: "2026-11-30" };
   await save(operator, o1, { ...offering, delivery_mode_code: "open_self_paced" });
