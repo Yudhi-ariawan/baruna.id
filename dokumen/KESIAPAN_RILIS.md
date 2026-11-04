@@ -1,4 +1,4 @@
-# Kesiapan Rilis BARUNA (diperbarui 2 November 2026, mencakup pekerjaan sampai 23 Oktober)
+# Kesiapan Rilis BARUNA (diperbarui 4 November 2026, mencakup pekerjaan sampai 4 November)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
 Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
@@ -10,7 +10,7 @@ Keputusan yang menunggu mentor: `dokumen/MENUNGGU_ARAHAN_MENTOR.md`.
 Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
 "Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
 
-Status pemeriksaan terakhir (23 Okt, laptop): semua migrasi sampai `20261023020000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 57 baris. `tsc`, `build`, dan 21 uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
+Status pemeriksaan terakhir (4 Nov, laptop): semua migrasi sampai `20261104030000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 64 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
@@ -28,6 +28,8 @@ Status pemeriksaan terakhir (23 Okt, laptop): semua migrasi sampai `202610230200
 - **Trainer (22 Okt):** expert menjadi trainer otomatis hanya bila memilih peran Trainer.
 - **Admin (23 Okt):** Tambah User tidak lagi diam-diam gagal memberi peran.
 - **Data Master (23 Okt):** bidang keahlian expert, aturan level trainer, dan kuota modul per level dikelola di Konsol Kurasi dengan validasi dan audit trail; tidak lagi ditulis tetap di kode atau hanya lewat SQL.
+- **Data Master lanjutan (2 Nov):** daftar trainer per level, topik Knowledge Hub, bahasa, dan kategori pelatihan Request a Training dikelola di Data Master dan diperiksa database saat formulir dikirim; Template Review (yang tidak punya fungsi) dihapus; antrean Konsol Kurasi dipaginasi.
+- **Program Academy (4 Nov):** Master Course (dengan modul dan gambar sampul) dan Course Offering dibuat dan diubah lewat draf, disetujui Approver/Admin lain, dan berversi; course tayang tampil di katalog Training, Self-Paced, dan All Programs; jalur ubah lama yang melewati persetujuan ditutup (CATATAN_PERBAIKAN 2ai-2al).
 
 ## B. Belum diperbaiki atau belum diputuskan
 
@@ -37,7 +39,8 @@ Status pemeriksaan terakhir (23 Okt, laptop): semua migrasi sampai `202610230200
 - **Modul bawaan** (Ocean Literacy, AZA, Africa Fisheries) isinya di kode aplikasi, jadi hanya digerbang di tampilan. 13 PDF Master masih aset publik Lovable.
 - **Full Training dan AZA** progresnya hanya di `localStorage` (tidak ikut berpindah perangkat). Program African Countries juga dihapus otomatis dari browser oleh halaman My Learning.
 - **Menunggu mentor:** template dan syarat sertifikat, format nomor resmi, syarat lulus, publisher vs approver, Profile Claim (A1), nasib Full Training (P4), Penugasan Expert (disembunyikan), notifikasi email, kuota peserta, peserta yang sudah lulus saat modul diperbarui, Operator dan Data Master, email kontak expert di intern-update. (Role participant dan expert-jadi-trainer sudah diputuskan pemilik proyek, 21 dan 22 Okt.)
-- **Teknis:** `types.ts` disinkronkan manual; objek database tak tercatat di migrasi (`languages_taxonomy`); paginasi tampilan antrean admin.
+- **Program Academy, belum:** sertifikat untuk offering baru (syarat lama meminta catatan evaluasi yang tidak lagi diisi dari layar mana pun); alur pengajuan pendaftaran peserta untuk offering baru (sementara layar hanya menerima "Terbuka" dan "Wajib akun terdaftar"); layar pemasangan template evaluasi akhir; pembayaran hanya dicatat sebagai penanggung biaya, tanpa tarif atau tagihan; Webinar dan Workshop masih data contoh. Rencana di CATATAN_PERBAIKAN akhir 2al.
+- **Teknis:** `types.ts` disinkronkan manual (menunggu `npx supabase login`).
 - **Operasional:** database `main` belum diperiksa dan belum menerima migrasi (ranah mentor).
 
 ## C. Kenapa belum siap dirilis luas
