@@ -27,6 +27,13 @@ export const ACCESS_RULE = {
   approval_required: "Wajib disetujui admin",
   entitlement_required: "Wajib hak akses khusus",
 } as const;
+/**
+ * Rules an offering managed here may use (migration 20261104030000): participants
+ * cannot apply yet for approval/entitlement offerings, so those are not offered.
+ */
+export const SELECTABLE_ACCESS_RULE = { open: ACCESS_RULE.open, registered: ACCESS_RULE.registered } as const;
+/** "Approved Self-Paced" means approval is required: not available here yet. */
+export const UNSUPPORTED_DELIVERY_MODES = ["approved_self_paced"];
 export const SELF_PACED_ACCESS = { free: "Gratis", paid: "Berbayar", free_to_learn: "Gratis belajar" } as const;
 export const PAYMENT_RESPONSIBILITY = {
   participant: "Peserta",

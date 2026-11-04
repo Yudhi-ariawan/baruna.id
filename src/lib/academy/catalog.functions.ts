@@ -31,6 +31,8 @@ export type CatalogOffering = {
   totalHours: number;
   /** Approved Master Course cover (public URL), or null to use the page's default image. */
   coverUrl: string | null;
+  /** Enrolment window today (same rule as learning_enrol): upcoming, open, or closed. */
+  enrolmentState: "upcoming" | "open" | "closed";
 };
 
 type Row = {
@@ -101,6 +103,8 @@ export const listCatalogOfferings = createServerFn({ method: "GET" }).handler(
         .filter((f) => f.enabled && f.engine_version === "shared_v1")
         .map((f) => f.course_offering_id),
     );
+    // learning_enrol compares with the database's current_date (UTC on Supabase).
+    const today = new Date().toISOString().slice(0, 10);
     const langName = new Map((languages.data ?? []).map((l) => [String(l.code).toLowerCase(), l.name as string]));
 
     return ((offerings.data ?? []) as unknown as Row[])
@@ -139,6 +143,12 @@ export const listCatalogOfferings = createServerFn({ method: "GET" }).handler(
           coverUrl: c.cover_path
             ? supabase.storage.from(PROGRAM_COVER_BUCKET).getPublicUrl(c.cover_path).data.publicUrl
             : null,
+          enrolmentState:
+            o.enrolment_start_date && today < o.enrolment_start_date
+              ? "upcoming"
+              : o.enrolment_end_date && today > o.enrolment_end_date
+                ? "closed"
+                : "open",
         };
       });
   },

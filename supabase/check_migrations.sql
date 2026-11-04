@@ -245,7 +245,13 @@ WITH checks(no, migration, ok) AS (
   (63, '20261104020000_academy_course_cover',
       EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'master_courses' AND column_name = 'cover_path')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_cover_ok')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_apply_course' AND prosrc LIKE '%cover_path%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_apply_course' AND prosrc LIKE '%cover_path%')),
+  (64, '20261104030000_academy_program_guards',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_offering_problem' AND prosrc LIKE '%program_access_rule_unsupported%')
+      AND NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.proname IN ('set_offering_classification', 'set_cohort_payment_responsibility',
+                        'set_cohort_financial_model', 'set_self_paced_access_model', 'configure_completion_evaluation_requirement',
+                        'assign_completion_evaluation_template')
+                        AND has_function_privilege('authenticated', p.oid, 'EXECUTE')))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

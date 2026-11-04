@@ -968,6 +968,32 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 
 **Catatan:** berkas yang diunggah tetapi tidak jadi dipakai (diganti sebelum disimpan, atau drafnya ditarik) tetap tersimpan dengan nama acak yang tidak tertaut di mana pun. Pembersihan berkas yatim belum dibuat. Sebelum disetujui, gambar sudah ada di bucket publik, tetapi alamatnya hanya diketahui pembuat dan peninjau.
 
+**Hasil sesudah migrasi (intern-update, 4 Nov):** `test:course-cover` **14/14** (alamat palsu ditolak `program_cover_invalid`; course, riwayat versi, dan katalog publik menyimpan/membaca sampul; tulis langsung ditolak `permission denied`). Uji lain tetap lulus: academy-programs 21, console-roles, console-decisions, participant-rpc 27, learning-progress 12, lifecycle (Flow 1: 7, Flow 2: 7), module-update 24, admin-module-revision 18, expert-rpc 64, kr-rpc 24, kh-roles 20, knowledge-update 19, kh-topics 12, languages 12, training-categories 12, master-data 15, module-limits 18, trainer-quota-list 5.
+
+## 2al. Audit Program Academy: jalur ubah lama dan aturan pendaftaran buntu (4 Nov)
+
+Audit atas permintaan pengguna (banyak pengguna, banyak peran, banyak perangkat, konflik dengan fitur lain).
+
+**Sudah aman (diperiksa di kode):**
+- *Banyak perangkat / dua tab:* simpan draf dan keputusan memakai `_expected_updated_at`; layar lama ditolak `program_draft_stale`. Satu draf terbuka per course/offering (unique index).
+- *Balapan antarpengguna:* persetujuan course/offering yang sudah ada memakai advisory lock per target + `FOR UPDATE` + cek versi dasar (`program_stale`); persetujuan item baru diserialkan per jenis, jadi dua course baru berkode sama tidak bisa sama-sama lolos. Validasi dijalankan ulang saat disetujui (peserta yang mendaftar di antaranya, berkas sampul yang hilang). Arsip course ditolak selama ada offering tayang atau draf terbuka.
+- *Peran:* setiap RPC memeriksa peran saat dipanggil (peran dicabut langsung berlaku); pemutus tidak bisa memutuskan draf yang ia buat atau kirim.
+- *Pendaftaran peserta:* `learning_enrol` memeriksa status tayang dan masa pendaftaran di database, dengan kunci per peserta per offering.
+
+**Celah yang ditemukan (dibuktikan `npm run test:academy-guards`, sebelum migrasi: 7/14 gagal):**
+1. **Jalur ubah lama.** Enam RPC dari Phase 1.4 (`set_offering_classification`, `set_self_paced_access_model`, `set_cohort_financial_model`, `set_cohort_payment_responsibility`, `configure_completion_evaluation_requirement`, `assign_completion_evaluation_template`) bersifat SECURITY DEFINER dan hanya memeriksa "admin atau management" (approver termasuk). Uji membuktikan **satu approver** mengubah offering tayang menjadi tatap muka + wajib disetujui admin, dan satu admin mengganti penanggung biaya, tanpa draf, tanpa persetujuan orang lain, tanpa riwayat versi; `admin_version` tetap 1 sehingga draf yang sedang ditinjau akan menimpanya diam-diam. Aplikasi tidak memakai keenam fungsi ini.
+2. **Aturan pendaftaran buntu.** Offering dari layar admin dengan "Wajib disetujui admin" / "Wajib hak akses khusus" (atau delivery mode Approved Self-Paced) diterima, padahal `learning_enrol` meminta pengajuan yang disetujui dan formulir pengajuan (`/academy/apply/<slug>`) hanya mengenal program lama di kode. Tidak ada peserta yang bisa mengikutinya.
+
+**Perbaikan (migrasi `20261104030000`):** hak panggil keenam RPC dicabut dari anon/authenticated (service_role tetap, untuk SQL Editor); `_program_offering_problem` menolak `approval_required`, `entitlement_required`, dan `approved_self_paced` dengan `program_access_rule_unsupported` (berlaku saat dikirim dan saat disetujui). Formulir offering hanya menawarkan "Terbuka" dan "Wajib akun terdaftar", dengan keterangan alasannya; delivery mode Approved Self-Paced disembunyikan. Katalog kini memberi label **Enrolment closed** / **Enrolment opens <tanggal>** sesuai masa pendaftaran (aturan yang sama dengan `learning_enrol`), supaya kartu tidak terlihat bisa diikuti padahal ditolak.
+
+**Uji:** PGlite 22/22 (bukti celah sebelum migrasi; migrasi bisa diulang; keenam fungsi tidak bisa dipanggil authenticated/anon, service_role tetap; aturan wajib disetujui, hak akses khusus, Approved Self-Paced ditolak; aturan tidak dikenal dan pemeriksaan lain tetap; terdaftar dan mandiri terbuka diterima; draf yang sudah terkirim sebelum migrasi ditolak saat disetujui dan data tayang tidak berubah). Rangkaian Academy lama 77/78 dengan migrasi baru: satu-satunya beda adalah cek yang mengharapkan `access_mode = application-required`, turunan dari aturan `approval_required` yang memang tidak lagi dipakai. Sampul 31/31. `tsc`, lint berkas yang diubah, `build` lulus.
+
+**Belum (perlu keputusan/pekerjaan tersendiri):**
+- Alur pengajuan pendaftaran untuk offering (formulir pengajuan + antrean Persetujuan Peserta) supaya "Wajib disetujui admin" bisa dibuka lagi.
+- **Sertifikat untuk offering baru belum bisa didapat:** `check_certificate_eligibility` mensyaratkan baris di `evaluations`, yang hanya diisi `submitEvaluation`; fungsi itu sudah tidak dipanggil dari layar mana pun (lihat catatan di `useBackendEnrolment.ts`). Ini bagian topik Sertifikat yang ditunda pengguna.
+- Template evaluasi akhir hanya bisa dipasang lewat SQL Editor (`assign_completion_evaluation_template`, kini service_role saja).
+- Berkas sampul yatim belum dibersihkan otomatis (2ak).
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1026,7 +1052,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (63 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (64 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1077,6 +1103,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261102040000_master_data_training_categories.sql` (Data Master: kategori pelatihan Request a Training; permintaan wajib memakai kategori dari daftar atau "Other"). Lihat bagian 2ah. Butuh `20261023010000`. **Butuh kode branch ini** (formulir membaca kategori dari database).
 - `20261104010000_academy_program_admin.sql` (Program Academy: draf, persetujuan, dan versi untuk Master Course, Master Module, Course Offering; tulis langsung ke tabel program dicabut). Lihat bagian 2ai. Butuh `20261102030000` (daftar bahasa). **Butuh kode branch ini** (menu Program Academy di Konsol Kurasi).
 - `20261104020000_academy_course_cover.sql` (gambar sampul Master Course: kolom `cover_path`, diperiksa database saat dikirim dan disetujui, ikut riwayat versi). Lihat bagian 2ak. Jalankan setelah `20261104010000`. **Butuh kode branch ini** (isian unggah di formulir Master Course; katalog tetap berjalan tanpa sampul sebelum migrasi).
+- `20261104030000_academy_program_guards.sql` (hak panggil 6 RPC lama pengubah offering dicabut dari anon/authenticated; offering dari layar admin hanya boleh aturan pendaftaran Terbuka/Wajib akun terdaftar). Lihat bagian 2al. Jalankan setelah `20261104010000`. Tidak mematahkan kode lama (RPC itu tidak dipakai aplikasi).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1106,6 +1133,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `trainer-quota-list` | 5 (setelah migrasi `20261102010000`) | 2ad | `kh-topics` | 12 (setelah migrasi `20261102020000`) | 2af |
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
+  | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

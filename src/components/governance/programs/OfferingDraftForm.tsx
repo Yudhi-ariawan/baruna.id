@@ -9,7 +9,9 @@ import {
   EVALUATION_CONTEXT,
   LEARNING_MODEL,
   PAYMENT_RESPONSIBILITY,
+  SELECTABLE_ACCESS_RULE,
   SELF_PACED_ACCESS,
+  UNSUPPORTED_DELIVERY_MODES,
 } from "./programLabels";
 
 const input = "mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-sm disabled:bg-slate-50";
@@ -35,7 +37,14 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
   const set = (patch: Partial<OfferingPayload>) => onChange({ ...value, ...patch });
   const locked = disabled || inUse;
   const selfPaced = value.learning_model === "self_paced";
-  const modes = lookups.deliveryModes.filter((m) => !value.learning_model || SELF_PACED_MODES.includes(m.code) === selfPaced);
+  const modes = lookups.deliveryModes.filter(
+    (m) => !UNSUPPORTED_DELIVERY_MODES.includes(m.code) && (!value.learning_model || SELF_PACED_MODES.includes(m.code) === selfPaced),
+  );
+  // An older draft may still hold a rule that is no longer offered: show it so the form is honest.
+  const rules: Record<string, string> =
+    value.enrolment_access_rule && !(value.enrolment_access_rule in SELECTABLE_ACCESS_RULE)
+      ? { ...SELECTABLE_ACCESS_RULE, [value.enrolment_access_rule]: `${ACCESS_RULE[value.enrolment_access_rule]} (belum tersedia)` }
+      : SELECTABLE_ACCESS_RULE;
 
   // Switching the learning model clears the fields that no longer apply.
   const setModel = (model: OfferingPayload["learning_model"]) =>
@@ -119,8 +128,11 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
         <select className={input} value={value.enrolment_access_rule ?? ""} disabled={locked}
           onChange={(e) => set({ enrolment_access_rule: e.target.value as OfferingPayload["enrolment_access_rule"] })}>
           <option value="">Pilih…</option>
-          <Options map={ACCESS_RULE} />
+          <Options map={rules} />
         </select>
+        <span className="mt-1 block font-normal text-muted-foreground">
+          "Wajib disetujui admin" dan "Wajib hak akses khusus" belum tersedia: peserta belum punya formulir pengajuan untuk offering ini.
+        </span>
       </label>
       {selfPaced ? (
         <label className={label}>

@@ -90,6 +90,12 @@ function OfferingCard({ offering: o, image }: { offering: CatalogOffering; image
         <span className="absolute right-3 top-3 rounded-full bg-marine px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wide text-white shadow-sm">
           {LEARNING_MODEL_LABEL[o.learningModel]}
         </span>
+        {o.enrolmentState !== "open" ? (
+          <span className={`absolute bottom-3 left-3 rounded-full px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wide shadow-sm ${
+            o.enrolmentState === "closed" ? "bg-slate-700 text-white" : "bg-amber-500 text-white"}`}>
+            {o.enrolmentState === "closed" ? "Enrolment closed" : `Enrolment opens ${fmt(o.enrolmentStartDate)}`}
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col p-5">

@@ -31,6 +31,7 @@
     "test:module-limits": "node --env-file-if-exists=.env scripts/test-module-limits.mjs",
     "test:academy-programs": "node --env-file-if-exists=.env scripts/test-academy-programs.mjs",
     "test:course-cover": "node --env-file-if-exists=.env scripts/test-course-cover.mjs",
+    "test:academy-guards": "node --env-file-if-exists=.env scripts/test-academy-guards.mjs",
     "test:training-categories": "node --env-file-if-exists=.env scripts/test-training-categories.mjs",
     "test:languages": "node --env-file-if-exists=.env scripts/test-languages.mjs",
     "test:kh-topics": "node --env-file-if-exists=.env scripts/test-kh-topics.mjs",
