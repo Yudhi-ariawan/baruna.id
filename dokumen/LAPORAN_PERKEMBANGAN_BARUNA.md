@@ -198,3 +198,25 @@ Branch `intern-update`. Acuan: 51 slide proses bisnis. Rincian teknis per perbai
 - Perlakuan peserta yang sudah lulus saat modul naik versi.
 - Template sertifikat, syarat lulus, SLA, dan notifikasi email.
 - Apakah migrasi email kontak expert dijalankan di intern-update.
+
+---
+
+## 04/11/2026
+
+**Yang dibuat**
+- **Layar admin Program Academy** di Konsol Kurasi (Slide 20–21): Master Course beserta modulnya, dan Course Offering (jadwal, delivery mode, model belajar, aturan pendaftaran, biaya, evaluasi akhir).
+  - Setiap pembuatan atau perubahan dibuat sebagai **draf**, dikirim, lalu **disetujui Approver/Admin lain**; pembuat tidak bisa menyetujui drafnya sendiri. Data yang tayang tidak berubah sampai draf disetujui.
+  - Setiap persetujuan menyimpan **versi baru** dan tercatat di audit trail.
+  - Setelah course atau offering dipakai peserta, bagian yang memengaruhi kelulusan (susunan modul, model belajar, aturan pendaftaran, biaya) dikunci; judul, jam, urutan, dan tanggal tetap bisa diubah.
+  - Program lama yang isinya masih di kode (AZA, Africa Fisheries) hanya bisa dilihat.
+  - Sebelumnya tidak ada cara sama sekali untuk membuat atau mengubah program dari aplikasi.
+
+**Temuan**
+- Izin `academy.create` dan `academy.update` di matriks peran dimiliki hampir semua peran, termasuk peserta. Layar baru tidak memakai izin itu; matriksnya dicatat untuk ditinjau.
+- Katalog publik *All Programs* masih memakai data contoh, jadi program baru belum tampil di sana.
+
+**Yang diperbaiki**
+- Skrip uji peran konsol tidak lagi gagal karena jam laptop sedikit berbeda dari jam database.
+
+**Pengujian:** dibuktikan sebelum migrasi (1/21, karena belum ada jalur tulis) dan sesudah migrasi (21/21). Semua uji lain tetap lulus dan data uji dibersihkan. Sudah di-push ke `intern-update`.
+

@@ -77,6 +77,13 @@ try {
       const { error: e } = await admin.from("rbac_user_roles").insert({ user_id: u.user.id, role_id: roleId[code], is_primary: false, status: "active", reason: "tdd_console_test" });
       if (e) throw new Error(`grant ${code}: ${e.message}`);
     }
+    // The app reads roles with `valid_from <= its own clock`. valid_from comes from the
+    // database clock, so wait until this machine's clock has passed it (a clock that is
+    // a fraction of a second behind otherwise hides a role granted a moment ago).
+    const { data: grants } = await admin.from("rbac_user_roles").select("valid_from").eq("user_id", u.user.id);
+    const latest = Math.max(0, ...(grants ?? []).map((g) => new Date(g.valid_from).getTime()));
+    const wait = latest + 1500 - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     const anon = createClient(URL_, ANON, { auth: { persistSession: false } });
     const { data: s, error: se } = await anon.auth.signInWithPassword({ email, password: PASSWORD });
     if (se) throw new Error(`signIn ${persona}: ${se.message}`);
