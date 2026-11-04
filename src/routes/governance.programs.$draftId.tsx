@@ -108,7 +108,7 @@ function DraftEditor({ draft, overview }: { draft: ProgramDraft; overview: Progr
 
       <section className="rounded-2xl border border-border bg-white p-5">
         {draft.kind === "master_course" ? (
-          <CourseDraftForm value={payload} onChange={setPayload} lookups={overview.lookups} isNew={!draft.targetId}
+          <CourseDraftForm draftId={draft.id} value={payload} onChange={setPayload} lookups={overview.lookups} isNew={!draft.targetId}
             inUse={draft.inUse} disabled={!editable} />
         ) : (
           <OfferingDraftForm value={payload} onChange={setPayload} lookups={overview.lookups} isNew={!draft.targetId}

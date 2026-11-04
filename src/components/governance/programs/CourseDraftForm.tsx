@@ -4,11 +4,13 @@
 // order can change - the database refuses anything else.
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import type { CoursePayload, ModulePayload, ProgramOverview } from "@/lib/academy/programs.functions";
+import { CourseCoverField } from "@/components/governance/programs/CourseCoverField";
 
 const input = "mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-sm disabled:bg-slate-50";
 const label = "block text-xs font-semibold text-navy";
 
 type Props = {
+  draftId: string;
   value: CoursePayload;
   onChange: (next: CoursePayload) => void;
   lookups: ProgramOverview["lookups"];
@@ -18,7 +20,7 @@ type Props = {
   disabled: boolean;
 };
 
-export function CourseDraftForm({ value, onChange, lookups, isNew, inUse, disabled }: Props) {
+export function CourseDraftForm({ draftId, value, onChange, lookups, isNew, inUse, disabled }: Props) {
   const modules = value.modules ?? [];
   const set = (patch: Partial<CoursePayload>) => onChange({ ...value, ...patch });
   const setModule = (i: number, patch: Partial<ModulePayload>) =>
@@ -62,6 +64,8 @@ export function CourseDraftForm({ value, onChange, lookups, isNew, inUse, disabl
             {lookups.templates.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
           </select>
         </label>
+        <CourseCoverField draftId={draftId} value={value.cover_path} disabled={disabled}
+          onChange={(cover_path) => set({ cover_path })} />
       </div>
 
       <div className="space-y-2">

@@ -74,8 +74,11 @@ function OfferingCard({ offering: o, image }: { offering: CatalogOffering; image
     >
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
         <img
-          src={image}
+          src={o.coverUrl ?? image}
           alt=""
+          onError={(e) => {
+            if (e.currentTarget.src !== image) e.currentTarget.src = image;
+          }}
           loading="lazy"
           width={1280}
           height={720}

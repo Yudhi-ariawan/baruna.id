@@ -947,7 +947,26 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 
 **Uji:** `tsc` dan `build` lulus; lint tidak menambah peringatan (18 peringatan di `academy.programs.tsx` sudah ada sebelumnya). Dicek langsung di server dev 8080 terhadap data intern-update: `/academy/training` menampilkan *Uji Manual Budidaya Rumput Laut* (offering `of-uji-manual-2026`) dengan tautan benar, dan tidak ada kartu offering lama (AZA, Africa Fisheries, Ocean Literacy); `/academy/self-paced` tidak menampilkan bagian baru (belum ada offering mandiri dari layar admin, sesuai); `/academy/programs` tampil pada semua tipe, tipe Training, dan pencarian "rumput", serta tidak tampil pada tipe Webinar, Self-paced, dan pencarian "zzzz".
 
-**Belum:** filter di sisi kiri halaman Training masih angka contoh; belum diperiksa apakah halaman course menolak offering yang sudah selesai/ditutup bila dibuka lewat alamat langsung (`getOfferingByCode` tidak menyaring status). Gambar sampul masih gambar bawaan, karena Master Course belum punya kolom sampul.
+**Belum:** filter di sisi kiri halaman Training masih angka contoh; belum diperiksa apakah halaman course menolak offering yang sudah selesai/ditutup bila dibuka lewat alamat langsung (`getOfferingByCode` tidak menyaring status). Gambar sampul masih gambar bawaan, karena Master Course belum punya kolom sampul (dikerjakan di 2ak).
+
+## 2ak. Gambar sampul Master Course (4 Nov)
+
+**Masalah (ditemukan saat uji manual):** kartu katalog dari 2aj memakai satu gambar bawaan yang sama untuk semua course, padahal formulir Master Course tidak punya isian gambar. Pembuat course tidak bisa memilih gambarnya.
+
+**Keputusan pengguna:** unggah berkas, maksimal 2 MB, PNG/JPG/WebP (sesuai batas gambar di AGENTS.md).
+
+**Perbaikan (migrasi `20261104020000`):**
+- **Unggah lewat server** (`src/lib/academy/program-cover.functions.ts`): hanya **pembuat draf** Master Course yang masih bisa diubah (draf atau diminta revisi), dicek lewat RPC `program_draft_get` yang sama dengan editor. Ukuran maksimal 2 MB. Jenis berkas dibaca dari *byte* awal (PNG/JPEG/WebP), bukan dari nama berkas atau jenis yang dikirim browser. Berkas disimpan di bucket publik yang sudah ada, `knowledge-module-covers`, folder `academy-courses/` dengan nama acak; **tidak ada bucket baru**. Server hanya mengembalikan lokasinya.
+- **Database:** kolom `master_courses.cover_path` (CHECK: hanya `academy-courses/<32 hex>.png|jpg|webp`). `_program_cover_ok` memastikan berkas benar-benar ada di bucket itu, berjenis gambar, dan berukuran 1 byte–2 MB. Pemeriksaan berjalan saat draf **dikirim** dan sekali lagi saat **disetujui**: kalau berkas hilang di antaranya, persetujuan ditolak dan data tayang tidak berubah. Sampul ikut snapshot (draf perubahan terisi sampul yang tayang, perbandingan "belum ada perubahan" ikut sampul, riwayat versi mencatat sampul yang disetujui). Draf tanpa sampul menghapus sampul saat disetujui.
+- **Formulir:** isian "Gambar sampul (opsional)" dengan pratinjau, tombol Unggah/Ganti/Hapus, dan pesan dalam bahasa Indonesia; pemutus melihat pratinjau yang sama saat meninjau.
+- **Katalog:** kartu memakai sampul yang disetujui; tanpa sampul (atau gambar gagal dimuat) memakai gambar bawaan halaman. Sebelum migrasi dijalankan, katalog tetap tampil tanpa sampul (query diulang tanpa kolom itu).
+
+**Uji:**
+- PGlite 31/31: migrasi di atas 20261104010000 dan bisa diulang; course lama tetap tanpa sampul; CHECK menolak alamat di luar folder; berkas tidak ada, bucket lain, lebih dari 2 MB, bukan gambar, di luar folder, `../`, alamat web luar, angka, GIF ditolak; tepat 2 MB WebP diterima; belum tayang sebelum disetujui; v1 bersampul dan tercatat di riwayat versi; draf perubahan terisi sampul; tanpa perubahan ditolak; sampul lama tayang selama ditinjau; **berkas hilang sebelum disetujui: persetujuan menolak**, lalu berhasil setelah berkas ada; v2 sampul baru; hapus sampul (v3); kolom dan fungsi pemeriksa tidak bisa diakses langsung. Rangkaian Academy lama 78/78 tetap lulus dengan migrasi baru.
+- `tsc` dan `build` lulus; lint bersih untuk berkas baru (galat lint lama di `participant-biodata.functions.ts` bukan dari perubahan ini).
+- Uji langsung baru `npm run test:course-cover` (14 cek; memanggil aplikasi yang berjalan). **Sebelum migrasi (intern-update, 4 Nov): 10/14.** Unggah sudah benar: pengguna biasa dan approver yang bukan pembuat ditolak ("tidak berwenang"); PDF yang menyamar ditolak; lebih dari 2 MB ditolak; PNG sah tersimpan dan bisa dibuka publik sebagai `image/png`. Gagal 4, yaitu celah yang ditutup migrasi: alamat sampul palsu **diterima** saat dikirim, dan course yang disetujui tidak menyimpan sampul (`column master_courses.cover_path does not exist`), sehingga riwayat versi dan katalog juga tidak punya sampul. Data uji dan berkas uji bersih.
+
+**Catatan:** berkas yang diunggah tetapi tidak jadi dipakai (diganti sebelum disimpan, atau drafnya ditarik) tetap tersimpan dengan nama acak yang tidak tertaut di mana pun. Pembersihan berkas yatim belum dibuat. Sebelum disetujui, gambar sudah ada di bucket publik, tetapi alamatnya hanya diketahui pembuat dan peninjau.
 
 ---
 
@@ -1007,7 +1026,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (62 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (63 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1057,6 +1076,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261102030000_master_data_languages.sql` (Data Master: satu daftar bahasa; tabel `languages_taxonomy` masuk repo; bahasa publikasi Knowledge Hub diperiksa saat dikirim). Lihat bagian 2ag. Jalankan setelah `20261102020000`. **Butuh kode branch ini** (formulir membaca bahasa dari database; payload uji Knowledge Hub memakai bahasa dari daftar).
 - `20261102040000_master_data_training_categories.sql` (Data Master: kategori pelatihan Request a Training; permintaan wajib memakai kategori dari daftar atau "Other"). Lihat bagian 2ah. Butuh `20261023010000`. **Butuh kode branch ini** (formulir membaca kategori dari database).
 - `20261104010000_academy_program_admin.sql` (Program Academy: draf, persetujuan, dan versi untuk Master Course, Master Module, Course Offering; tulis langsung ke tabel program dicabut). Lihat bagian 2ai. Butuh `20261102030000` (daftar bahasa). **Butuh kode branch ini** (menu Program Academy di Konsol Kurasi).
+- `20261104020000_academy_course_cover.sql` (gambar sampul Master Course: kolom `cover_path`, diperiksa database saat dikirim dan disetujui, ikut riwayat versi). Lihat bagian 2ak. Jalankan setelah `20261104010000`. **Butuh kode branch ini** (isian unggah di formulir Master Course; katalog tetap berjalan tanpa sampul sebelum migrasi).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1085,7 +1105,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `console-roles`*, `console-decisions`* | lulus | 2o | `rbac` | lulus | matriks peran |
   | `trainer-quota-list` | 5 (setelah migrasi `20261102010000`) | 2ad | `kh-topics` | 12 (setelah migrasi `20261102020000`) | 2af |
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
-  | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | | | |
+  | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

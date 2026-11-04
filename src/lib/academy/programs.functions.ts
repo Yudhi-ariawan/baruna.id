@@ -22,6 +22,8 @@ export type CoursePayload = {
   description?: string | null;
   language?: string;
   learning_template_code?: string;
+  /** Uploaded cover in the public cover bucket (academy-courses/…), or null. */
+  cover_path?: string | null;
   modules?: ModulePayload[];
 };
 export type OfferingPayload = {
@@ -99,6 +101,7 @@ const ERRORS: Record<string, string> = {
   program_description_too_long: "Deskripsi maksimal 4.000 karakter.",
   program_language_unknown: "Pilih bahasa dari Data Master.",
   program_template_unknown: "Pilih template pembelajaran.",
+  program_cover_invalid: "Gambar sampul tidak ditemukan atau tidak valid (PNG/JPG/WebP, maksimal 2 MB). Unggah ulang gambarnya.",
   program_modules_required: "Course wajib punya minimal satu modul.",
   program_modules_too_many: "Maksimal 60 modul per course.",
   program_module_code_invalid: "Kode modul: 2–30 huruf besar, angka, dan tanda hubung (mis. SW-01).",

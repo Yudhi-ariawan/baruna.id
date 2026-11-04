@@ -241,7 +241,11 @@ WITH checks(no, migration, ok) AS (
       to_regclass('public.academy_program_drafts') IS NOT NULL
       AND to_regclass('public.master_course_versions') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'program_draft_decide')
-      AND NOT has_table_privilege('authenticated', 'public.course_offerings', 'UPDATE'))
+      AND NOT has_table_privilege('authenticated', 'public.course_offerings', 'UPDATE')),
+  (63, '20261104020000_academy_course_cover',
+      EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'master_courses' AND column_name = 'cover_path')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_cover_ok')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_apply_course' AND prosrc LIKE '%cover_path%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

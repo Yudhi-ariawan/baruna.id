@@ -3,6 +3,7 @@
 // Only offerings that the admin screen manages are listed (legacy programs whose
 // content lives in code already have their own static cards).
 import { createServerFn } from "@tanstack/react-start";
+import { PROGRAM_COVER_BUCKET } from "@/lib/academy/program-cover";
 import type {
   DeliveryFormat,
   EnrolmentAccessRule,
@@ -28,6 +29,8 @@ export type CatalogOffering = {
   enrolmentEndDate: string | null;
   moduleCount: number;
   totalHours: number;
+  /** Approved Master Course cover (public URL), or null to use the page's default image. */
+  coverUrl: string | null;
 };
 
 type Row = {
@@ -52,6 +55,7 @@ type Row = {
     language: string | null;
     status: string;
     legacy_course_id: string | null;
+    cover_path?: string | null;
     master_modules: { learning_hours: number | string | null }[] | null;
   } | null;
 };
@@ -75,16 +79,20 @@ async function publicClient() {
 export const listCatalogOfferings = createServerFn({ method: "GET" }).handler(
   async (): Promise<CatalogOffering[]> => {
     const supabase = await publicClient();
-    const [offerings, flags, languages] = await Promise.all([
+    const selectOfferings = (withCover: boolean) =>
       supabase
         .from("course_offerings")
         .select(
-          "id, offering_code, offering_title, cohort_name, year, status, learning_model, delivery_format, enrolment_access_rule, self_paced_access_model, opening_date, closing_date, enrolment_start_date, enrolment_end_date, created_at, master_courses(title, description, language, status, legacy_course_id, master_modules(learning_hours))",
+          `id, offering_code, offering_title, cohort_name, year, status, learning_model, delivery_format, enrolment_access_rule, self_paced_access_model, opening_date, closing_date, enrolment_start_date, enrolment_end_date, created_at, master_courses(title, description, language, status, legacy_course_id,${withCover ? " cover_path," : ""} master_modules(learning_hours))`,
         )
-        .eq("status", "published"),
+        .eq("status", "published");
+    const [first, flags, languages] = await Promise.all([
+      selectOfferings(true),
       supabase.from("learning_feature_flags").select("course_offering_id, engine_version, enabled"),
       supabase.from("languages_taxonomy").select("code, name"),
     ]);
+    // Before migration 20261104020000 the cover column does not exist yet: list without covers.
+    const offerings = first.error && /cover_path/.test(first.error.message) ? await selectOfferings(false) : first;
     if (offerings.error) throw new Error(offerings.error.message);
 
     // Only offerings that run on the shared learning engine have a working course page.
@@ -128,6 +136,9 @@ export const listCatalogOfferings = createServerFn({ method: "GET" }).handler(
           enrolmentEndDate: o.enrolment_end_date,
           moduleCount: modules.length,
           totalHours: Math.round(totalHours * 10) / 10,
+          coverUrl: c.cover_path
+            ? supabase.storage.from(PROGRAM_COVER_BUCKET).getPublicUrl(c.cover_path).data.publicUrl
+            : null,
         };
       });
   },
