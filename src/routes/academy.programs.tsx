@@ -36,6 +36,8 @@ import {
 } from "@/data/programs";
 import type { AcademyActive } from "@/components/baruna/academy/AcademySidebar";
 import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
+import { listCatalogOfferings } from "@/lib/academy/catalog.functions";
+import { PublishedOfferingsSection } from "@/components/baruna/academy/PublishedOfferings";
 import defaultCover from "@/assets/self-paced/m01.jpg";
 
 /* ============================================================
@@ -320,13 +322,17 @@ const EMPTY_SEARCH: ProgramsSearch = {
 export const Route = createFileRoute("/academy/programs")({
   validateSearch: zodValidator(searchSchema),
   loader: async () => {
-    try {
-      const dbModules = await getPublishedModulesCatalog();
-      return { dbModules: dbModules ?? [] };
-    } catch (err) {
-      console.warn("Could not load published modules catalog:", err);
-      return { dbModules: [] };
-    }
+    const [dbModules, offerings] = await Promise.all([
+      getPublishedModulesCatalog().catch((err) => {
+        console.warn("Could not load published modules catalog:", err);
+        return [];
+      }),
+      listCatalogOfferings().catch((err) => {
+        console.warn("Could not load published course offerings:", err);
+        return [];
+      }),
+    ]);
+    return { dbModules: dbModules ?? [], offerings };
   },
   head: () => ({
     meta: [
@@ -513,7 +519,7 @@ const GROUP_LABEL: Record<GroupKey, string> = {
 };
 
 function ProgramsPage() {
-  const { dbModules } = Route.useLoaderData();
+  const { dbModules, offerings } = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/academy/programs" });
 
@@ -979,6 +985,18 @@ function ProgramsPage() {
             </button>
           </div>
         )}
+
+        <PublishedOfferingsSection
+          items={offerings.filter(
+            (o) =>
+              (sel.types.length === 0 ||
+                sel.types.includes(o.learningModel === "self_paced" ? "self-paced" : "training")) &&
+              (!q || `${o.courseTitle} ${o.offeringTitle} ${o.description ?? ""}`.toLowerCase().includes(q)),
+          )}
+          image={academyImages.aquaculture}
+          title="Open on BARUNA Academy"
+          description="Courses and training cohorts currently open for enrolment on the BARUNA learning platform."
+        />
 
         {/* Result count */}
         <p className="text-sm text-muted-foreground" role="status" aria-live="polite">

@@ -925,7 +925,7 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 - **Aplikasi:** menu **Program Academy** di Konsol Kurasi (daftar draf dan antrean persetujuan, Master Course, Course Offering), editor draf course (dengan pengelola modul) dan offering, panel keputusan, riwayat versi. Uji peran konsol (`test:console-roles`) ikut memeriksa menu baru.
 
 **Belum termasuk (sengaja):**
-- Katalog publik *All Programs* masih membaca data contoh di kode; offering yang disetujui dibuka lewat alamatnya sendiri.
+- ~~Katalog publik *All Programs* masih membaca data contoh di kode; offering yang disetujui dibuka lewat alamatnya sendiri.~~ Sudah dikerjakan di 2aj.
 - Isi materi per modul (`content_reference`), kapasitas peserta, dan penugasan template evaluasi akhir belum diatur dari layar ini.
 - Konversi Request a Training (TNA) menjadi draf Master Course (Slide 25).
 
@@ -935,6 +935,19 @@ Pada percobaan pertama sesudah migrasi, satu cek di skrip uji keliru. Angka yang
 - Uji langsung baru `npm run test:academy-programs` (21 cek). **Sebelum migrasi (intern-update, 4 Nov): 1/21**: RPC belum ada (tidak ada jalur tulis). Data uji tersisa 0. **Sesudah migrasi dijalankan (intern-update, 4 Nov): 21/21**: pengguna biasa ditolak; approver tidak bisa menulis `master_courses` langsung (*permission denied*); offering lama hanya baca; course baru v1 dengan modul berurutan; approver tidak bisa menyetujui drafnya sendiri; v2 oleh admin lain; offering tayang di mesin belajar bersama dan lolos semua batasan database; modul terkunci setelah ada pendaftar; course dengan offering tayang tidak bisa diarsipkan; audit tercatat. Uji lain tetap lulus: participant-rpc 27, learning-progress 12, lifecycle, training-requests 33, console-roles, console-decisions, create-user 9, version-history 16, module-update 24, admin-module-revision 18, review-lockdown 13, expert-rpc 64, expert-profile-update 19, trainer-choice 5, expert-role-lock 10, kh-topics 12, languages 12, training-categories 12, kh-roles 20/20, knowledge-update 19, kr-rpc 24, master-data 15, module-limits 18, trainer-quota-list 5, rbac. Akun uji tersisa 0; course, offering, dan draf kembali 3/4/0.
 
 **Catatan uji `test:console-roles`:** sempat gagal 17 cek, juga di server dev yang baru dijalankan. Penyebabnya waktu di skrip uji, bukan kode: aplikasi membaca peran dengan `valid_from <= jam server aplikasi`, sedangkan `valid_from` diisi jam database. Jam laptop sedikit di belakang (di bawah satu detik), dan skrip memanggil aplikasi sesaat setelah memberi peran, sehingga peran baru belum dianggap berlaku. Skrip kini menunggu sampai jam laptop melewati `valid_from` peran yang baru diberikan; setelah itu lulus di kedua server. Di produksi efeknya paling lama sepersekian detik setelah peran diberikan.
+
+## 2aj. Offering yang tayang muncul di katalog publik (4 Nov)
+
+**Masalah (ditemukan saat uji manual):** offering yang disetujui di Program Academy tidak bisa ditemukan peserta. Tidak ada menu atau kartu yang menautkannya; satu-satunya jalan adalah mengetik `/academy/course/<kode>`. Halaman *Training* seluruhnya data contoh di kode, sedangkan *Self-Paced Courses* dan *All Programs* hanya membaca modul yang dipublikasikan.
+
+**Perbaikan (tanpa migrasi):**
+- Server function publik `listCatalogOfferings` (`src/lib/academy/catalog.functions.ts`) membaca dengan kunci publik (sama dengan halaman course). Yang tampil hanya offering yang **tayang** (`published`), course-nya **aktif**, **bukan program lama** (program lama sudah punya kartu sendiri, jadi tidak dobel), dan berjalan di mesin belajar bersama `shared_v1` (yang halaman course-nya memang berfungsi). Offering yang ditandai selesai/ditutup, atau course-nya diarsipkan, otomatis hilang dari katalog.
+- Kartu bersama `PublishedOfferings.tsx`: judul course, judul offering/angkatan, deskripsi, jumlah modul dan total jam (dihitung dari Master Module), bahasa (dari daftar bahasa Data Master), aturan pendaftaran, jadwal dan masa pendaftaran. **Tidak ada rating atau jumlah peserta buatan.** Kartu menuju `/academy/course/<kode>`.
+- Ditampilkan di: **Training** (offering berbasis angkatan), **Self-Paced Courses** (offering mandiri, ikut dihitung di "Courses Available"), dan **All Programs** (mengikuti filter tipe Training/Self-paced dan kotak pencarian; tidak tampil pada filter Webinar/Workshop/Certification).
+
+**Uji:** `tsc` dan `build` lulus; lint tidak menambah peringatan (18 peringatan di `academy.programs.tsx` sudah ada sebelumnya). Dicek langsung di server dev 8080 terhadap data intern-update: `/academy/training` menampilkan *Uji Manual Budidaya Rumput Laut* (offering `of-uji-manual-2026`) dengan tautan benar, dan tidak ada kartu offering lama (AZA, Africa Fisheries, Ocean Literacy); `/academy/self-paced` tidak menampilkan bagian baru (belum ada offering mandiri dari layar admin, sesuai); `/academy/programs` tampil pada semua tipe, tipe Training, dan pencarian "rumput", serta tidak tampil pada tipe Webinar, Self-paced, dan pencarian "zzzz".
+
+**Belum:** filter di sisi kiri halaman Training masih angka contoh; belum diperiksa apakah halaman course menolak offering yang sudah selesai/ditutup bila dibuka lewat alamat langsung (`getOfferingByCode` tidak menyaring status). Gambar sampul masih gambar bawaan, karena Master Course belum punya kolom sampul.
 
 ---
 

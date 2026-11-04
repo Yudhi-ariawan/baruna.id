@@ -31,8 +31,17 @@ import {
 import { academyImages } from "@/data/academy";
 import { expertImages } from "@/data/pages";
 import { featuredTrainingCard } from "@/data/training";
+import { listCatalogOfferings } from "@/lib/academy/catalog.functions";
+import { PublishedOfferingsSection } from "@/components/baruna/academy/PublishedOfferings";
 
 export const Route = createFileRoute("/academy/training/")({
+  loader: async () => {
+    const offerings = await listCatalogOfferings().catch((err) => {
+      console.warn("Could not load published course offerings:", err);
+      return [];
+    });
+    return { offerings: offerings.filter((o) => o.learningModel === "cohort_based") };
+  },
   head: () => ({
     meta: [
       { title: "Training — Academy — BARUNA" },
@@ -203,6 +212,7 @@ function TrainingCard({ t }: { t: TrainingItem }) {
 }
 
 function TrainingPage() {
+  const { offerings } = Route.useLoaderData();
   return (
     <AcademyShell
       active="training"
@@ -266,6 +276,12 @@ function TrainingPage() {
           description="Instructor-led training programs designed to build practical skills and strengthen your capacity in marine and fisheries."
           searchPlaceholder="Search training programs, topics, or instructors..."
           sort
+        />
+        <PublishedOfferingsSection
+          items={offerings}
+          image={academyImages.aquaculture}
+          title="Open Training Cohorts"
+          description="Cohort-based training currently open on the BARUNA learning platform."
         />
         <TabBar tabs={tabs} />
         <p className="text-sm text-muted-foreground">Showing 1–12 of 156 programs</p>

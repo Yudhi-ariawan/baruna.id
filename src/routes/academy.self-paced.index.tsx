@@ -18,17 +18,26 @@ import { programsByType, type Program } from "@/data/programs";
 import { MINUTES_PER_JP, masterByCode } from "@/data/masterModules";
 import { useShortCourses } from "@/lib/shortCourses";
 import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
+import { listCatalogOfferings } from "@/lib/academy/catalog.functions";
+import { PublishedOfferingsSection } from "@/components/baruna/academy/PublishedOfferings";
 import defaultCover from "@/assets/self-paced/m01.jpg";
 
 export const Route = createFileRoute("/academy/self-paced/")({
   loader: async () => {
-    try {
-      const dbModules = await getPublishedModulesCatalog();
-      return { dbModules: dbModules ?? [] };
-    } catch (err) {
-      console.warn("Could not load published modules:", err);
-      return { dbModules: [] };
-    }
+    const [dbModules, offerings] = await Promise.all([
+      getPublishedModulesCatalog().catch((err) => {
+        console.warn("Could not load published modules:", err);
+        return [];
+      }),
+      listCatalogOfferings().catch((err) => {
+        console.warn("Could not load published course offerings:", err);
+        return [];
+      }),
+    ]);
+    return {
+      dbModules: dbModules ?? [],
+      offerings: offerings.filter((o) => o.learningModel === "self_paced"),
+    };
   },
   head: () => ({
     meta: [
@@ -59,7 +68,7 @@ function masterCodeFor(p: Program): string | undefined {
 }
 
 function SelfPacedIndex() {
-  const { dbModules } = Route.useLoaderData();
+  const { dbModules, offerings } = Route.useLoaderData();
   const staticCatalog = programsByType("self-paced");
   const { isCompleted, get } = useShortCourses();
 
@@ -128,7 +137,7 @@ function SelfPacedIndex() {
           </p>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <Stat label="Courses Available" value={String(catalog.length)} icon={Layers} />
+            <Stat label="Courses Available" value={String(catalog.length + offerings.length)} icon={Layers} />
             <Stat label="Enrolled" value={String(enrichedCount.enrolled)} icon={BookOpen} />
             <Stat label="Completed" value={String(enrichedCount.completed)} icon={CheckCircle2} />
           </div>
@@ -156,6 +165,13 @@ function SelfPacedIndex() {
             </div>
           </div>
         </div>
+
+        <PublishedOfferingsSection
+          items={offerings}
+          image={defaultCover}
+          title="Open Self-Paced Courses"
+          description="Self-paced courses currently open on the BARUNA learning platform."
+        />
 
         {/* Grid */}
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
