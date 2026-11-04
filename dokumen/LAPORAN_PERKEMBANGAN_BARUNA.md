@@ -1,6 +1,7 @@
-# Laporan Perkembangan BARUNA (14 Oktober – 2 November 2026)
+# Laporan Perkembangan BARUNA (14 Oktober – 4 November 2026)
 
 Branch `intern-update`. Acuan: 51 slide proses bisnis. Rincian teknis per perbaikan ada di `CATATAN_PERBAIKAN.md`.
+Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 2026; di Windows tertulis 11/4/2026).
 
 ---
 
@@ -201,7 +202,7 @@ Branch `intern-update`. Acuan: 51 slide proses bisnis. Rincian teknis per perbai
 
 ---
 
-## 04/11/2026
+## 04/11/2026 (Rabu, 4 November 2026)
 
 **Yang dibuat**
 - **Layar admin Program Academy** di Konsol Kurasi (Slide 20–21): Master Course beserta modulnya, dan Course Offering (jadwal, delivery mode, model belajar, aturan pendaftaran, biaya, evaluasi akhir).
@@ -224,6 +225,17 @@ Branch `intern-update`. Acuan: 51 slide proses bisnis. Rincian teknis per perbai
 - Skrip uji peran konsol tidak lagi gagal karena jam laptop sedikit berbeda dari jam database.
 
 **Pengujian:** setiap perubahan dibuktikan sebelum migrasi lalu diuji ulang sesudahnya: Program Academy 1/21 menjadi 21/21, gambar sampul 10/14 menjadi 14/14, penutupan jalur ubah lama dan aturan pendaftaran 7/14 menjadi 14/14. Semua uji lain tetap lulus dan data uji dibersihkan. Sudah di-push ke `intern-update`.
+
+**Pelajaran yang didapat**
+- Lulus uji otomatis belum berarti fitur siap dipakai: uji manual menemukan program yang sudah disetujui tidak muncul di katalog, dan semua kartu memakai gambar yang sama.
+- Aturan keamanan harus dijaga di database: ada fungsi lama yang masih bisa dipakai untuk melewati proses persetujuan.
+- Setiap perbaikan database dibuktikan dulu dengan uji sebelum dan sesudah migrasi, supaya jelas celah yang diperbaiki benar-benar ada.
+
+**Kendala**
+- Program yang disetujui belum tampil di katalog publik, sehingga perlu menambah tampilan katalog.
+- Ditemukan fungsi database lama yang mengubah program tanpa persetujuan orang kedua, dan aturan pendaftaran yang membuat peserta tidak bisa mendaftar; keduanya ditutup lewat migrasi.
+- Sertifikat untuk program baru belum bisa diterbitkan (syarat lama bergantung pada langkah evaluasi yang tidak lagi ada di layar mana pun).
+- Syarat lulus, persetujuan pendaftaran, dan pembayaran masih menunggu keputusan mentor, sehingga pengerjaannya ditunda.
 
 **Dikerjakan berikutnya (dicatat 04/11)**
 - Sertifikat untuk offering baru (syarat lulus dan evaluasi akhir).
