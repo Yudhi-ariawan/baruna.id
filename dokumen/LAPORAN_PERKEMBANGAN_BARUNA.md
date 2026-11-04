@@ -211,12 +211,23 @@ Branch `intern-update`. Acuan: 51 slide proses bisnis. Rincian teknis per perbai
   - Program lama yang isinya masih di kode (AZA, Africa Fisheries) hanya bisa dilihat.
   - Sebelumnya tidak ada cara sama sekali untuk membuat atau mengubah program dari aplikasi.
 
+- **Katalog publik:** course yang sudah disetujui dan tayang kini muncul sebagai kartu di halaman Training, Self-Paced Courses, dan All Programs (modul, jam, bahasa, aturan pendaftaran, jadwal, label masa pendaftaran). Sebelumnya hanya bisa dibuka dengan mengetik alamatnya.
+- **Gambar sampul Master Course:** unggah PNG/JPG/WebP maksimal 2 MB di formulir course; jenis berkas diperiksa dari isinya; gambar ikut persetujuan dan riwayat versi, lalu dipakai kartu katalog.
+
 **Temuan**
 - Izin `academy.create` dan `academy.update` di matriks peran dimiliki hampir semua peran, termasuk peserta. Layar baru tidak memakai izin itu; matriksnya dicatat untuk ditinjau.
-- Katalog publik *All Programs* masih memakai data contoh, jadi program baru belum tampil di sana.
+- **Jalur ubah lama:** enam fungsi database dari Juli memungkinkan satu admin/approver mengubah offering tayang tanpa draf dan tanpa persetujuan orang lain. Dibuktikan lewat uji (7 dari 14 cek gagal), lalu ditutup.
+- **Aturan pendaftaran buntu:** "Wajib disetujui admin" dan "Wajib hak akses khusus" membuat offering baru tidak bisa diikuti siapa pun karena peserta belum punya formulir pengajuan. Untuk sementara layar hanya menawarkan "Terbuka" dan "Wajib akun terdaftar".
+- **Sertifikat untuk offering baru belum bisa didapat peserta** (syarat lama meminta catatan evaluasi yang tidak lagi diisi dari layar mana pun). Termasuk topik Sertifikat yang ditunda.
 
 **Yang diperbaiki**
 - Skrip uji peran konsol tidak lagi gagal karena jam laptop sedikit berbeda dari jam database.
 
-**Pengujian:** dibuktikan sebelum migrasi (1/21, karena belum ada jalur tulis) dan sesudah migrasi (21/21). Semua uji lain tetap lulus dan data uji dibersihkan. Sudah di-push ke `intern-update`.
+**Pengujian:** setiap perubahan dibuktikan sebelum migrasi lalu diuji ulang sesudahnya: Program Academy 1/21 menjadi 21/21, gambar sampul 10/14 menjadi 14/14, penutupan jalur ubah lama dan aturan pendaftaran 7/14 menjadi 14/14. Semua uji lain tetap lulus dan data uji dibersihkan. Sudah di-push ke `intern-update`.
+
+**Dikerjakan berikutnya (dicatat 04/11)**
+- Sertifikat untuk offering baru (syarat lulus dan evaluasi akhir).
+- Alur pengajuan pendaftaran peserta untuk offering baru, supaya "Wajib disetujui admin" bisa dibuka lagi.
+- Layar pemasangan template evaluasi akhir.
+- Webinar dan Workshop.
 

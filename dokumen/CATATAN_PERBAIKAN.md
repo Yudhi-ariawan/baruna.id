@@ -994,6 +994,13 @@ Audit atas permintaan pengguna (banyak pengguna, banyak peran, banyak perangkat,
 - Template evaluasi akhir hanya bisa dipasang lewat SQL Editor (`assign_completion_evaluation_template`, kini service_role saja).
 - Berkas sampul yatim belum dibersihkan otomatis (2ak).
 
+**Antrean kerja berikutnya (dicatat 4 Nov, dikerjakan besok):**
+1. **Sertifikat untuk offering baru.** Mulai dengan pemeriksaan kecil tanpa mengubah apa pun: apakah layar evaluasi akhir baru (`CompletionEvaluationSection`, `completion_evaluation_*`) cukup menggantikan syarat lama `evaluations` di `check_certificate_eligibility` (migrasi `20261020010000`). Syarat lulus resmi menunggu mentor (MENUNGGU_ARAHAN_MENTOR butir 12). Template sertifikat (STTP di `public/`) memuat data pribadi; usul versi kosong.
+2. **Alur pengajuan pendaftaran untuk offering baru** (formulir pengajuan peserta + antrean Persetujuan Peserta), lalu buka lagi "Wajib disetujui admin" di formulir offering dan di `_program_offering_problem`. Butuh keputusan mentor (butir 12b).
+3. **Layar pemasangan template evaluasi akhir** (sekarang hanya lewat SQL Editor, service_role).
+4. Pembersihan berkas sampul yatim (prioritas rendah).
+5. Webinar dan Workshop (ditunda atas permintaan pengguna; delivery mode `live_webinar_workshop`).
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
