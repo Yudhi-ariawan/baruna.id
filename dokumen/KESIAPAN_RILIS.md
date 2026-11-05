@@ -1,4 +1,4 @@
-# Kesiapan Rilis BARUNA (diperbarui 4 November 2026, mencakup pekerjaan sampai 4 November)
+# Kesiapan Rilis BARUNA (diperbarui 5 November 2026, mencakup pekerjaan sampai 5 November)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
 Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
@@ -10,7 +10,7 @@ Keputusan yang menunggu mentor: `dokumen/MENUNGGU_ARAHAN_MENTOR.md`.
 Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
 "Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
 
-Status pemeriksaan terakhir (4 Nov, laptop): semua migrasi sampai `20261104030000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 64 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
+Status pemeriksaan terakhir (5 Nov, laptop): semua migrasi sampai `20261105030000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 67 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
@@ -30,6 +30,7 @@ Status pemeriksaan terakhir (4 Nov, laptop): semua migrasi sampai `2026110403000
 - **Data Master (23 Okt):** bidang keahlian expert, aturan level trainer, dan kuota modul per level dikelola di Konsol Kurasi dengan validasi dan audit trail; tidak lagi ditulis tetap di kode atau hanya lewat SQL.
 - **Data Master lanjutan (2 Nov):** daftar trainer per level, topik Knowledge Hub, bahasa, dan kategori pelatihan Request a Training dikelola di Data Master dan diperiksa database saat formulir dikirim; Template Review (yang tidak punya fungsi) dihapus; antrean Konsol Kurasi dipaginasi.
 - **Program Academy (4 Nov):** Master Course (dengan modul dan gambar sampul) dan Course Offering dibuat dan diubah lewat draf, disetujui Approver/Admin lain, dan berversi; course tayang tampil di katalog Training, Self-Paced, dan All Programs; jalur ubah lama yang melewati persetujuan ditutup (CATATAN_PERBAIKAN 2ai-2al).
+- **Sertifikat (5 Nov):** sertifikat kelulusan kini bisa terbit lewat tampilan (semua modul selesai + evaluasi akhir terkirim bila diwajibkan); evaluasi kosong, jenis sertifikat pilihan sendiri (mis. kompetensi), dan sertifikat gratis untuk course berbayar ditutup di database; template evaluasi dipilih di formulir offering dan tidak bisa diubah satu orang; gambar sampul yang tidak terpakai bisa dibersihkan (CATATAN_PERBAIKAN 2am-2ao).
 
 ## B. Belum diperbaiki atau belum diputuskan
 
@@ -39,7 +40,7 @@ Status pemeriksaan terakhir (4 Nov, laptop): semua migrasi sampai `2026110403000
 - **Modul bawaan** (Ocean Literacy, AZA, Africa Fisheries) isinya di kode aplikasi, jadi hanya digerbang di tampilan. 13 PDF Master masih aset publik Lovable.
 - **Full Training dan AZA** progresnya hanya di `localStorage` (tidak ikut berpindah perangkat). Program African Countries juga dihapus otomatis dari browser oleh halaman My Learning.
 - **Menunggu mentor:** template dan syarat sertifikat, format nomor resmi, syarat lulus, publisher vs approver, Profile Claim (A1), nasib Full Training (P4), Penugasan Expert (disembunyikan), notifikasi email, kuota peserta, peserta yang sudah lulus saat modul diperbarui, Operator dan Data Master, email kontak expert di intern-update. (Role participant dan expert-jadi-trainer sudah diputuskan pemilik proyek, 21 dan 22 Okt.)
-- **Program Academy, belum:** sertifikat untuk offering baru (syarat lama meminta catatan evaluasi yang tidak lagi diisi dari layar mana pun); alur pengajuan pendaftaran peserta untuk offering baru (sementara layar hanya menerima "Terbuka" dan "Wajib akun terdaftar"); layar pemasangan template evaluasi akhir; pembayaran hanya dicatat sebagai penanggung biaya, tanpa tarif atau tagihan; Webinar dan Workshop masih data contoh. Rencana di CATATAN_PERBAIKAN akhir 2al.
+- **Program Academy, belum:** modul masih ditandai selesai oleh peserta sendiri, belum wajib lulus kuis/penilaian (Slide 24), jadi sertifikat tetap berlabel "CONTOH / BELUM RESMI"; hanya sertifikat kelulusan yang tersedia (jenis lain menunggu aturan); alur pengajuan pendaftaran peserta untuk offering baru (sementara layar hanya menerima "Terbuka" dan "Wajib akun terdaftar"); pembayaran belum ada (course mandiri hanya "Gratis"; course angkatan mencatat penanggung biaya tanpa tarif atau tagihan); isi pertanyaan template evaluasi dikelola lewat SQL; pembersihan sampul dijalankan manual; Webinar dan Workshop masih data contoh. Rencana di CATATAN_PERBAIKAN akhir 2al dan 2ao.
 - **Teknis:** `types.ts` disinkronkan manual (menunggu `npx supabase login`).
 - **Operasional:** database `main` belum diperiksa dan belum menerima migrasi (ranah mentor).
 

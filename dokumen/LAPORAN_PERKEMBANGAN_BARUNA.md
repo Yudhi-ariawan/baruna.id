@@ -1,4 +1,4 @@
-# Laporan Perkembangan BARUNA (14 Oktober – 4 November 2026)
+# Laporan Perkembangan BARUNA (14 Oktober – 5 November 2026)
 
 Branch `intern-update`. Acuan: 51 slide proses bisnis. Rincian teknis per perbaikan ada di `CATATAN_PERBAIKAN.md`.
 Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 2026; di Windows tertulis 11/4/2026).
@@ -242,4 +242,26 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 - Alur pengajuan pendaftaran peserta untuk offering baru, supaya "Wajib disetujui admin" bisa dibuka lagi.
 - Layar pemasangan template evaluasi akhir.
 - Webinar dan Workshop.
+
+---
+
+## 05/11/2026 (Kamis, 5 November 2026)
+
+**Yang dibuat**
+- **Pembersihan gambar sampul course** yang tidak terpakai (`npm run cleanup:course-covers`). Bawaannya hanya menampilkan daftar; menghapus dengan `--apply`. Gambar yang dipakai course, draf terbuka, atau riwayat versi, dan gambar yang berumur kurang dari 24 jam, tidak pernah dihapus. Sampul Knowledge Hub tidak disentuh.
+- **Pilihan template evaluasi akhir** di formulir Course Offering (End-of-Course atau End-of-Training), ikut persetujuan dan riwayat versi, dan dikunci setelah ada peserta. Sebelumnya template hanya bisa dipasang lewat SQL.
+
+**Yang diperbaiki**
+- **Jalur sertifikat.** Peserta yang menyelesaikan course lewat tampilan tidak pernah bisa mendapat sertifikat, karena syaratnya masih meminta catatan evaluasi lama yang tidak lagi diisi halaman course. Sebaliknya, peserta bisa menerbitkan sertifikat sendiri dengan mengirim evaluasi kosong lewat jalur lama. Sekarang syaratnya semua modul selesai, ditambah evaluasi akhir yang terkirim bila offering mewajibkannya, dan jalur lama ditutup. Halaman course menampilkan alasan yang bisa dipahami peserta.
+- **Audit sesudahnya** menemukan tiga celah yang ikut terbuka setelah sertifikat bisa terbit, lalu ditutup: peserta bisa memilih sendiri sertifikat "kompetensi" (kini hanya sertifikat kelulusan); course berbayar menerbitkan sertifikat gratis (kini ditolak, dan formulir hanya menawarkan "Gratis"); template evaluasi bisa diubah oleh satu orang (kini ditutup).
+
+**Pelajaran yang didapat**
+- Memperbaiki jalan yang buntu bisa membuka celah baru yang sebelumnya tertutup tanpa sengaja, jadi setiap perbaikan perlu diaudit lagi dari sudut pandang pengguna yang mencoba curang.
+- Pemeriksaan sebaiknya dilakukan dengan menjalankan alur pengguna sungguhan, bukan hanya membaca kode.
+
+**Kendala**
+- Syarat lulus resmi (apakah modul wajib lulus kuis), isi pertanyaan evaluasi, jenis sertifikat lain, dan pembayaran masih menunggu keputusan mentor, sehingga sertifikat tetap berlabel "CONTOH / BELUM RESMI".
+- Dua skrip uji lama harus disesuaikan karena masih memakai aturan lama.
+
+**Pengujian:** setiap perubahan dibuktikan sebelum migrasi lalu diuji ulang sesudahnya: jalur sertifikat 7/17 menjadi 17/17, lalu setelah audit 17/25 menjadi 25/25; pembersihan sampul 12/12. Semua uji lain tetap lulus dan data uji dibersihkan. Sudah di-push ke `intern-update`.
 
