@@ -96,6 +96,8 @@ try {
   const offering = { master_course_id: live?.id, offering_code: OFFERING_CODE, offering_title: `TDD Offering ${stamp}`, year: 2026,
     delivery_mode_code: "blended_cohort", learning_model: "cohort_based", delivery_format: "blended", enrolment_access_rule: "registered",
     cohort_payment_responsibility: "government_or_public_funding", completion_evaluation_required: true, completion_evaluation_context: "training",
+    // Since 20261105020000 a required evaluation names an active template of the same context.
+    completion_evaluation_template_id: (await svc.from("completion_evaluation_templates").select("id").eq("status", "active").eq("context", "training").limit(1).maybeSingle()).data?.id ?? null,
     opening_date: "2026-12-01", closing_date: "2026-12-20", enrolment_start_date: "2026-11-10", enrolment_end_date: "2026-11-30" };
   await save(operator, o1, { ...offering, delivery_mode_code: "open_self_paced" });
   check(/program_delivery_mode_mismatch/.test(errOf(await operator.c.rpc("program_draft_submit", { _draft_id: o1 }))), "delivery mode tidak cocok ditolak");

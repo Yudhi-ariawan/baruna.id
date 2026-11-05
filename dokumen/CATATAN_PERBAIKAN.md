@@ -1037,6 +1037,8 @@ Rujukan dibaca ulang tepat sebelum menghapus (draf bisa baru disimpan di antaran
 - `tsc`, lint berkas yang diubah, `build` lulus.
 - Uji langsung baru `npm run test:certificate-path` (17 cek, sebagai peserta + operator + approver). **Sebelum migrasi (intern-update, 5 Nov): 7/17.** Gagal 10: semua modul selesai tetap `evaluation_missing`; tombol sertifikat ditolak; evaluasi kosong `{}` **diterima**; offering wajib evaluasi: **setelah evaluasi akhir benar-benar dikirim tetap ditolak** `evaluation_missing`; offering tanpa template dan dengan template konteks lain **diterima**; template tidak pernah terpasang. Lulus 7, termasuk: peserta tidak bisa mengubah status evaluasi langsung (sudah aman). Data uji bersih.
 
+**Hasil sesudah migrasi (intern-update, 5 Nov):** `test:certificate-path` **17/17**: offering tanpa evaluasi memenuhi syarat setelah semua modul dan sertifikat terbit; evaluasi kosong ditolak `permission denied`; offering wajib evaluasi ditolak `completion_evaluation_missing` sampai evaluasi akhir dikirim, lalu terbit; offering tanpa template ditolak `program_evaluation_template_required`, template konteks lain `program_evaluation_template_invalid`, template cocok terpasang setelah disetujui. Dua skrip uji lama disesuaikan dengan aturan baru: `test:participant-rpc` (salinan Ocean Literacy yang mewajibkan evaluasi: kini mengirim evaluasi akhir lewat tab Evaluation, dan memeriksa jalur lama ditutup) menjadi **28/28**; `test:academy-programs` (offering wajib evaluasi kini menyebut template) **21/21**. Uji lain tetap lulus: academy-guards 14, course-cover 14, course-cover-cleanup 12, learning-progress 12, lifecycle (Flow 1 dan 2), console-roles, console-decisions, module-update 24, admin-module-revision 18, expert-rpc 64, kr-rpc 24, kh-roles 20, knowledge-update 19, kh-topics 12, languages 12, training-categories 12, master-data 15, module-limits 18, trainer-quota-list 5, training-requests 33. Data uji bersih; nomor seri sertifikat 000030 dan 000031 terpakai oleh uji.
+
 **Belum (menunggu mentor):** modul masih ditandai selesai oleh peserta sendiri (`learning_progress_mark`), belum wajib lulus kuis/penilaian (Slide 24); isi pertanyaan resmi template; jenis sertifikat selain *completion*. Sertifikat tetap berlabel "CONTOH / BELUM RESMI". Server function lama `submitEvaluation` kini selalu gagal (tidak dipanggil dari layar mana pun).
 
 ---
@@ -1170,7 +1172,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `lifecycle` | 14 | 2, 2b | `module-update` | 24 | 2t |
   | `kh-roles` | 20 | 2k, 2l | `admin-module-revision` | 18 | 2u |
   | `expert-rpc` | 64 | 2d–2g | `knowledge-update` | 19 | 2v |
-  | `participant-rpc` | 27 | 2h–2j | `expert-profile-update` | 19 | 2w |
+  | `participant-rpc` | 28 | 2h–2j, 2an | `expert-profile-update` | 19 | 2w |
   | `kr-rpc` | 24 | 2k | `version-history`* | 16 | 2x |
   | `expert-role-lock` | 10 | 2p | `trainer-choice` | 5 | 2y |
   | `review-lockdown` | 13 | 2q | `create-user`* | 9 | 2z |

@@ -84,6 +84,12 @@ async function cleanup() {
     if (enrIds.length) {
       await admin.from("progress_records").delete().in("enrolment_id", enrIds);
       await admin.from("evaluations").delete().in("enrolment_id", enrIds);
+      const { data: subs } = await admin.from("completion_evaluation_submissions").select("id").in("enrolment_id", enrIds);
+      const subIds = (subs ?? []).map((x) => x.id);
+      if (subIds.length) {
+        await admin.from("completion_evaluation_responses").delete().in("submission_id", subIds);
+        await admin.from("completion_evaluation_submissions").delete().in("id", subIds);
+      }
       await admin.from("enrolments").delete().in("id", enrIds);
     }
     await admin.from("course_offerings").delete().in("id", created.offeringIds);
@@ -140,9 +146,24 @@ async function run() {
   console.log("\n4. Sertifikat");
   await rejects(budi.client.rpc("issue_my_certificate", { _enrolment_id: enrolmentId }), /not_eligible:modules_incomplete/, "belum layak (1 dari 2 modul)");
   await budi.client.rpc("learning_progress_mark", { _enrolment_id: enrolmentId, _activity_id: "module:TDD-02" });
-  await rejects(budi.client.rpc("issue_my_certificate", { _enrolment_id: enrolmentId }), /not_eligible:evaluation_missing/, "evaluasi masih wajib");
-  const ev = await budi.client.rpc("learning_evaluation_submit", { _enrolment_id: enrolmentId, _evaluation_type: "course_feedback", _response: { rating: 5 } });
-  ok(!ev.error, "evaluasi lewat RPC");
+  // Offering ini (salinan Ocean Literacy) mewajibkan evaluasi akhir: sejak 20261105010000 yang dihitung
+  // adalah evaluasi akhir yang dikirim di tab Evaluation; jalur evaluasi lama ditutup.
+  await rejects(budi.client.rpc("issue_my_certificate", { _enrolment_id: enrolmentId }), /not_eligible:completion_evaluation_missing/, "evaluasi akhir masih wajib");
+  const evOld = await budi.client.rpc("learning_evaluation_submit", { _enrolment_id: enrolmentId, _evaluation_type: "course_feedback", _response: { rating: 5 } });
+  ok(/permission denied/.test(evOld.error?.message ?? ""), "jalur evaluasi lama ditutup");
+  const st = await budi.client.rpc("start_completion_evaluation", { _enrolment_id: enrolmentId });
+  const tplId = (await admin.from("completion_evaluation_submissions").select("template_id").eq("id", st.data?.submission_id ?? "00000000-0000-0000-0000-000000000000").maybeSingle()).data?.template_id;
+  const { data: qs } = await admin.from("completion_evaluation_questions").select("id, question_type, is_required, choices, rating_max").eq("template_id", tplId ?? "00000000-0000-0000-0000-000000000000").eq("active", true);
+  const answers = {};
+  for (const q of qs ?? []) {
+    if (!q.is_required) continue;
+    const first = Array.isArray(q.choices) && q.choices.length ? (typeof q.choices[0] === "object" ? q.choices[0].value ?? q.choices[0].label : q.choices[0]) : "ok";
+    answers[q.id] = q.question_type === "rating_scale" ? (q.rating_max ?? 5) : q.question_type === "yes_no" ? true
+      : q.question_type === "multiple_choice" ? [first] : q.question_type === "single_choice" ? first : "Uji otomatis";
+  }
+  const sv = await budi.client.rpc("save_completion_evaluation_draft", { _submission_id: st.data?.submission_id, _expected_version: st.data?.draft_version ?? 0, _answers: answers });
+  const sb = await budi.client.rpc("submit_completion_evaluation", { _submission_id: st.data?.submission_id, _expected_version: sv.data?.draft_version ?? null });
+  ok(!st.error && !sv.error && !sb.error, `evaluasi akhir dikirim lewat tab Evaluation ${st.error?.message ?? sv.error?.message ?? sb.error?.message ?? ""}`);
   const [c1, c2] = await Promise.all([
     budi.client.rpc("issue_my_certificate", { _enrolment_id: enrolmentId }),
     budi.client.rpc("issue_my_certificate", { _enrolment_id: enrolmentId }),
