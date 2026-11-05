@@ -249,6 +249,7 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 
 **Yang dibuat**
 - **Pembersihan gambar sampul course** yang tidak terpakai (`npm run cleanup:course-covers`). Bawaannya hanya menampilkan daftar; menghapus dengan `--apply`. Gambar yang dipakai course, draf terbuka, atau riwayat versi, dan gambar yang berumur kurang dari 24 jam, tidak pernah dihapus. Sampul Knowledge Hub tidak disentuh.
+- **Lembar sertifikat sementara**: tombol *Lihat sertifikat* dan *Unduh PDF* di tab Certificate. Isinya diambil dari database (nama peserta, course, modul, jam, tanggal, nomor) dengan QR ke halaman verifikasi; tanpa stempel, tanda tangan, atau nama pejabat, dan bertanda SEMENTARA / CONTOH. Peserta lain tidak bisa mengambil sertifikat orang lain.
 - **Pilihan template evaluasi akhir** di formulir Course Offering (End-of-Course atau End-of-Training), ikut persetujuan dan riwayat versi, dan dikunci setelah ada peserta. Sebelumnya template hanya bisa dipasang lewat SQL.
 
 **Yang diperbaiki**
@@ -263,5 +264,5 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 - Syarat lulus resmi (apakah modul wajib lulus kuis), isi pertanyaan evaluasi, jenis sertifikat lain, dan pembayaran masih menunggu keputusan mentor, sehingga sertifikat tetap berlabel "CONTOH / BELUM RESMI".
 - Dua skrip uji lama harus disesuaikan karena masih memakai aturan lama.
 
-**Pengujian:** setiap perubahan dibuktikan sebelum migrasi lalu diuji ulang sesudahnya: jalur sertifikat 7/17 menjadi 17/17, lalu setelah audit 17/25 menjadi 25/25; pembersihan sampul 12/12. Semua uji lain tetap lulus dan data uji dibersihkan. Sudah di-push ke `intern-update`.
+**Pengujian:** setiap perubahan dibuktikan sebelum migrasi lalu diuji ulang sesudahnya: jalur sertifikat 7/17 menjadi 17/17, lalu setelah audit 17/25 menjadi 25/25; pembersihan sampul 12/12; lembar sertifikat 9/9. Jalur sertifikat juga diuji manual dengan akun peserta (course tanpa dan dengan evaluasi akhir). Semua uji lain tetap lulus dan data uji dibersihkan. Sudah di-push ke `intern-update`.
 
