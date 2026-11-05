@@ -1061,6 +1061,18 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 **Uji:** PGlite 24/24 (bukti keempat celah sebelum migrasi; migrasi bisa diulang; lima jenis selain completion ditolak, jenis tak dikenal tetap ditolak; completion tetap terbit; satu pendaftaran satu sertifikat; free_to_learn dan paid `certificate_payment_required` dan penerbitan ditolak; template pensiun `completion_evaluation_not_configured`; ketiga RPC template ditolak untuk peserta, service_role tetap; formulir menolak paid dan free_to_learn, gratis tetap diterima). Rangkaian Academy lama 77/78 dan peserta lama 42/42 tetap sama dengan migrasi ini. `tsc` dan `build` lulus. Uji langsung `test:certificate-path` sebelum migrasi: 17/25 (gagal 8, di atas). Pembuktian template memakai id yang tidak ada, jadi tidak ada template sungguhan yang tersentuh. Nomor seri 000033–000037 terpakai oleh uji.
 
 **Hasil sesudah migrasi (intern-update, 5 Nov):** `test:certificate-path` **25/25**: sertifikat kompetensi ditolak `certificate_type_not_available` dan satu pendaftaran tetap satu sertifikat; offering `free_to_learn` dan `paid` ditolak `certificate_payment_required`; approver tidak bisa memanggil `set_completion_evaluation_template_status` (`permission denied`); formulir admin menolak "sertifikat berbayar" (`program_access_model_unsupported`). Uji lain tetap lulus: participant-rpc 28, academy-programs 21, academy-guards 14, course-cover 14, course-cover-cleanup 12, learning-progress 12, lifecycle (Flow 1: 7, Flow 2: 7), console-roles, console-decisions, module-update 24, admin-module-revision 18, expert-rpc 64, kr-rpc 24, kh-roles 20, knowledge-update 19, kh-topics 12, languages 12, training-categories 12, master-data 15, module-limits 18, trainer-quota-list 5, training-requests 33. Data uji bersih.
+## 2ap. Lembar sertifikat sementara untuk Course Offering (5 Nov)
+
+**Masalah (ditemukan saat uji manual):** sertifikat course baru tercatat dan bisa diverifikasi, tetapi tidak ada lembar yang bisa dilihat atau diunduh. Pembuat PDF lama (`src/lib/certificate.ts`, dipakai course mandiri lama) tidak bisa dipakai: ia memakai `public/template-sttp-sementara.jpeg` (berisi data pribadi dan stempel), dan versi cadangannya menuliskan nama pejabat, nama lembaga, dan kalimat dasar hukum STTP.
+
+**Perbaikan (tanpa migrasi):**
+- Server function `getMyCertificateSheet` (`src/lib/learning/certificate-sheet.functions.ts`): membaca sertifikat **milik peserta yang login** (RLS + `learner_id = userId`), nama dari profilnya, judul course/offering, jumlah modul, dan total jam dari database.
+- Pembuat lembar baru `src/lib/learning/certificateSheet.ts`: digambar di canvas tanpa gambar latar; berisi BARUNA Academy, "Sertifikat Penyelesaian", nomor, nama peserta, course dan offering, jumlah modul dan jam, tanggal terbit, QR + alamat halaman verifikasi. **Tanpa stempel, tanda tangan, nama pejabat, atau kalimat hukum**; kotak tanda tangan sengaja kosong ("belum ditetapkan"), tanda air SEMENTARA / CONTOH BELUM RESMI, dan catatan merah bahwa lembar belum berlaku sebagai STTP. Diekspor sebagai PDF A4 landscape.
+- Tab Certificate di halaman course: tombol **Lihat sertifikat** (tab baru dibuka langsung saat klik supaya tidak diblokir browser; bila tidak bisa, PDF diunduh) dan **Unduh PDF**.
+
+**Uji:** `tsc`, lint, `build` lulus. Lembar dirender di Chrome headless dan diperiksa (nama panjang, judul, QR, tanda air). Uji langsung baru `npm run test:certificate-sheet` (9 cek, memanggil aplikasi): sertifikat terbit; pemilik mendapat nama dari profil, judul course dan offering, nomor, 2 modul dan 3,5 jam, tautan verifikasi sesuai database; peserta lain "Sertifikat tidak ditemukan"; tanpa login ditolak; nomor yang tidak ada ditolak. Data uji bersih.
+
+**Belum:** desain dan isi resmi STTP (tanda tangan, stempel, format nomor) menunggu mentor; sertifikat course baru belum tampil di halaman My Learning.
 
 ---
 
@@ -1205,7 +1217,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
   | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | `course-cover-cleanup` | 12 | 2am |
-  | `certificate-path` | 25 (setelah migrasi `20261105010000`, `020000`, `030000`) | 2an, 2ao | | | |
+  | `certificate-path` | 25 (setelah migrasi `20261105010000`, `020000`, `030000`) | 2an, 2ao | `certificate-sheet`* | 9 | 2ap |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

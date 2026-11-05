@@ -44,6 +44,7 @@ import {
 import { barunaToast } from "@/lib/downloads";
 import { CompletionEvaluationSection } from "@/components/baruna/learning/CompletionEvaluationSection";
 import { eligibilityReasonText } from "@/lib/learning/learning.functions";
+import { CertificateSheetActions } from "@/components/baruna/learning/CertificateSheetActions";
 
 const MENU_ICONS: Partial<Record<MenuItemId, LucideIcon>> = {
   overview: Compass,
@@ -347,6 +348,7 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
                     >
                       {certificates[0].verification_reference}
                     </a>
+                    <CertificateSheetActions certificateNumber={certificates[0].certificate_number} />
                   </div>
                 ) : (
                   <>
