@@ -40,6 +40,7 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
   const modes = lookups.deliveryModes.filter(
     (m) => !UNSUPPORTED_DELIVERY_MODES.includes(m.code) && (!value.learning_model || SELF_PACED_MODES.includes(m.code) === selfPaced),
   );
+  const templates = (lookups.evaluationTemplates ?? []).filter((t) => t.context === value.completion_evaluation_context);
   // An older draft may still hold a rule that is no longer offered: show it so the form is honest.
   const rules: Record<string, string> =
     value.enrolment_access_rule && !(value.enrolment_access_rule in SELECTABLE_ACCESS_RULE)
@@ -96,7 +97,7 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
 
       {inUse ? (
         <p className="text-xs text-amber-800 sm:col-span-2">
-          Offering ini sudah punya pendaftar: model belajar, delivery mode, aturan pendaftaran, dan model biaya tidak bisa diubah.
+          Offering ini sudah punya pendaftar: model belajar, delivery mode, aturan pendaftaran, model biaya, dan evaluasi akhir tidak bisa diubah.
         </p>
       ) : null}
       <label className={label}>
@@ -168,19 +169,43 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
       ))}
 
       <label className={`${label} flex items-center gap-2 sm:col-span-2`}>
-        <input type="checkbox" checked={Boolean(value.completion_evaluation_required)} disabled={disabled}
-          onChange={(e) => set({ completion_evaluation_required: e.target.checked, completion_evaluation_context: e.target.checked ? value.completion_evaluation_context ?? null : null })} />
+        <input type="checkbox" checked={Boolean(value.completion_evaluation_required)} disabled={locked}
+          onChange={(e) => set({
+            completion_evaluation_required: e.target.checked,
+            completion_evaluation_context: e.target.checked ? value.completion_evaluation_context ?? null : null,
+            completion_evaluation_template_id: e.target.checked ? value.completion_evaluation_template_id ?? null : null,
+          })} />
         Peserta wajib mengisi evaluasi akhir sebelum sertifikat
       </label>
       {value.completion_evaluation_required ? (
-        <label className={label}>
-          Konteks evaluasi
-          <select className={input} value={value.completion_evaluation_context ?? ""} disabled={disabled}
-            onChange={(e) => set({ completion_evaluation_context: e.target.value || null })}>
-            <option value="">Pilih…</option>
-            <Options map={EVALUATION_CONTEXT} />
-          </select>
-        </label>
+        <>
+          <label className={label}>
+            Konteks evaluasi
+            <select className={input} value={value.completion_evaluation_context ?? ""} disabled={locked}
+              // A template belongs to one context: changing the context clears it.
+              onChange={(e) => set({ completion_evaluation_context: e.target.value || null, completion_evaluation_template_id: null })}>
+              <option value="">Pilih…</option>
+              <Options map={EVALUATION_CONTEXT} />
+            </select>
+          </label>
+          <label className={label}>
+            Template evaluasi
+            <select className={input} value={value.completion_evaluation_template_id ?? ""} disabled={locked || !value.completion_evaluation_context}
+              onChange={(e) => set({ completion_evaluation_template_id: e.target.value || null })}>
+              <option value="">{value.completion_evaluation_context ? "Pilih template…" : "Pilih konteks dulu"}</option>
+              {templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+            </select>
+            {value.completion_evaluation_context && templates.length === 0 ? (
+              <span className="mt-1 block font-normal text-amber-800">
+                Belum ada template aktif untuk konteks ini. Pilih konteks lain atau matikan evaluasi akhir.
+              </span>
+            ) : (
+              <span className="mt-1 block font-normal text-muted-foreground">
+                Kuesioner yang diisi peserta di tab Evaluation; sertifikat baru bisa terbit setelah peserta mengirimnya.
+              </span>
+            )}
+          </label>
+        </>
       ) : null}
     </div>
   );

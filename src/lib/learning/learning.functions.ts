@@ -182,12 +182,23 @@ const LEARNING_ERRORS: Record<string, string> = {
   response_too_large: "Jawaban evaluasi terlalu besar.",
   invalid_certificate_type: "Jenis sertifikat tidak valid.",
 };
-const ELIGIBILITY_REASONS: Record<string, string> = {
+/** Reasons returned by check_certificate_eligibility (migration 20261105010000). */
+export const ELIGIBILITY_REASONS: Record<string, string> = {
   modules_incomplete: "Selesaikan semua modul terlebih dahulu.",
+  completion_evaluation_missing: "Kirim evaluasi akhir di tab Evaluation terlebih dahulu.",
+  completion_evaluation_not_configured:
+    "Evaluasi akhir kursus ini belum disiapkan oleh admin. Hubungi admin BARUNA.",
+  // Before migration 20261105010000 (old evaluation table).
   evaluation_missing: "Isi evaluasi kursus terlebih dahulu.",
   no_modules_configured: "Kursus ini belum memiliki modul.",
   enrolment_not_active: "Pendaftaran kursus ini sudah tidak aktif.",
+  enrolment_not_found: "Pendaftaran tidak ditemukan.",
 };
+
+export function eligibilityReasonText(reason: string | undefined | null): string {
+  if (!reason) return "Belum memenuhi syarat sertifikat.";
+  return ELIGIBILITY_REASONS[reason] ?? reason;
+}
 
 /** Learning writes go through SECURITY DEFINER RPCs (migration 20261020010000). */
 function toFriendlyLearningError(message: string | undefined | null): string {

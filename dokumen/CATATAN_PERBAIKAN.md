@@ -995,9 +995,9 @@ Audit atas permintaan pengguna (banyak pengguna, banyak peran, banyak perangkat,
 - Berkas sampul yatim belum dibersihkan otomatis (2ak).
 
 **Antrean kerja berikutnya (dicatat 4 Nov, dikerjakan besok):**
-1. **Sertifikat untuk offering baru.** Mulai dengan pemeriksaan kecil tanpa mengubah apa pun: apakah layar evaluasi akhir baru (`CompletionEvaluationSection`, `completion_evaluation_*`) cukup menggantikan syarat lama `evaluations` di `check_certificate_eligibility` (migrasi `20261020010000`). Syarat lulus resmi menunggu mentor (MENUNGGU_ARAHAN_MENTOR butir 12). Template sertifikat (STTP di `public/`) memuat data pribadi; usul versi kosong.
+1. ~~**Sertifikat untuk offering baru.**~~ Tahap 1 selesai 5 Nov (2an); syarat lulus resmi (kuis/penilaian) tetap menunggu mentor. Mulai dengan pemeriksaan kecil tanpa mengubah apa pun: apakah layar evaluasi akhir baru (`CompletionEvaluationSection`, `completion_evaluation_*`) cukup menggantikan syarat lama `evaluations` di `check_certificate_eligibility` (migrasi `20261020010000`). Syarat lulus resmi menunggu mentor (MENUNGGU_ARAHAN_MENTOR butir 12). Template sertifikat (STTP di `public/`) memuat data pribadi; usul versi kosong.
 2. **Alur pengajuan pendaftaran untuk offering baru** (formulir pengajuan peserta + antrean Persetujuan Peserta), lalu buka lagi "Wajib disetujui admin" di formulir offering dan di `_program_offering_problem`. Butuh keputusan mentor (butir 12b).
-3. **Layar pemasangan template evaluasi akhir** (sekarang hanya lewat SQL Editor, service_role).
+3. ~~**Layar pemasangan template evaluasi akhir**~~ Selesai 5 Nov sebagai pilihan template di formulir offering (2an). Mengubah isi pertanyaan template belum (menunggu pertanyaan resmi dari mentor).
 4. ~~Pembersihan berkas sampul yatim (prioritas rendah).~~ Selesai 5 Nov (2am).
 5. Webinar dan Workshop (ditunda atas permintaan pengguna; delivery mode `live_webinar_workshop`).
 
@@ -1017,6 +1017,27 @@ Rujukan dibaca ulang tepat sebelum menghapus (draf bisa baru disimpan di antaran
 **Uji:** uji langsung baru `npm run test:course-cover-cleanup` (12 cek; mengunggah berkas uji sendiri dan membatasi pembersih hanya pada berkas itu): dengan batas 24 jam tidak ada yang dihapus; dry run tidak menghapus apa pun; kandidat hanya berkas yatim dan berkas dari draf ditolak; berkas yang dipakai course tayang, draf terbuka, dan riwayat versi disimpan; nama di luar pola disimpan; `--apply` menghapus tepat 2 berkas; sampul modul Knowledge Hub tidak tersentuh. Data dan berkas uji bersih. Dry run di intern-update (5 Nov): 0 berkas (belum ada sampul diunggah). `--min-age-hours=0` ditolak.
 
 **Catatan:** belum dijadwalkan otomatis; jalankan berkala oleh admin (mis. seminggu sekali) atau dijadwalkan di server bila sudah ada penjadwal.
+
+## 2an. Jalur sertifikat: syarat memakai evaluasi akhir, jalur evaluasi kosong ditutup, template dipilih di offering (5 Nov)
+
+**Masalah (diperiksa 5 Nov di intern-update dengan course uji, sebagai peserta):**
+1. **Buntu lewat tampilan.** `check_certificate_eligibility` (20261020010000) mensyaratkan baris di tabel lama `evaluations`, sedangkan halaman course memakai evaluasi akhir yang baru (`completion_evaluation_*`), yang tidak pernah mengisi tabel itu. Peserta yang menyelesaikan semua modul, **bahkan setelah mengirim evaluasi akhir di tab Evaluation**, selalu ditolak `evaluation_missing`.
+2. **Celah.** `learning_evaluation_submit` bisa dipanggil peserta langsung dengan isian kosong `{}`; setelah itu sertifikat langsung terbit. Satu sertifikat uji sempat terbit lewat jalur ini (`BARUNA-COMPLETION-2026-000029`, lalu dihapus; nomornya tidak dipakai ulang). Terkait temuan audit peserta 20 Okt (P1).
+3. **Template.** Formulir offering hanya punya "wajib evaluasi akhir" + konteks, tanpa template. Offering baru yang mewajibkan evaluasi tidak punya kuesioner (`start_completion_evaluation`: "no completion evaluation template assigned"). Template hanya bisa dipasang lewat SQL.
+4. Halaman course menampilkan kode mentah (`Not yet eligible — evaluation_missing`), dan tombol "Issue certificate" tetap aktif walau belum memenuhi syarat.
+
+**Perbaikan:**
+- Migrasi `20261105010000`: syarat sertifikat = pendaftaran aktif, semua modul selesai, dan **bila offering mewajibkan evaluasi akhir**: offering punya template (`completion_evaluation_not_configured` bila tidak, urusan admin) dan peserta sudah **mengirim** evaluasinya (`completion_evaluation_missing`). Offering tanpa evaluasi akhir: cukup semua modul selesai. Tabel lama `evaluations` tidak lagi dipakai. Bentuk hasil tetap sama. `learning_evaluation_submit` dicabut dari anon/authenticated (service_role tetap).
+- Migrasi `20261105020000`: payload offering punya `completion_evaluation_template_id`; wajib (template **aktif** dengan **konteks sama**) bila evaluasi diwajibkan, harus kosong bila tidak (`program_evaluation_template_required` / `_invalid` / `_not_applicable`), diperiksa saat dikirim dan disetujui. Template ikut snapshot dan riwayat versi dan diterapkan saat disetujui. Setelah offering punya pendaftar, wajib/tidaknya evaluasi, konteks, dan template ikut dikunci, supaya syarat sertifikat tidak berubah di tengah jalan. `program_overview` mengirim daftar template aktif.
+- Aplikasi: formulir offering punya pilihan **Template evaluasi** (hanya template aktif dengan konteks yang dipilih; berganti konteks mengosongkan pilihan; terkunci setelah ada pendaftar). Halaman course menampilkan alasan dalam bahasa Indonesia (mis. "Kirim evaluasi akhir di tab Evaluation terlebih dahulu", "(1 dari 2 modul)") dan tombol sertifikat nonaktif sampai server menyatakan memenuhi syarat.
+
+**Uji:**
+- PGlite sertifikat 21/21: bukti celah sebelum migrasi (lewat tampilan ditolak; evaluasi kosong diterima lalu sertifikat terbit); migrasi bisa diulang; `learning_evaluation_submit` ditolak untuk peserta, service_role tetap; tanpa evaluasi: modul belum lengkap 1/2, lengkap memenuhi syarat tanpa tabel lama, sertifikat terbit; wajib evaluasi tanpa template: `completion_evaluation_not_configured` dan penerbitan ditolak; dengan template: belum kirim dan masih draf ditolak, peserta tidak bisa mengubah status evaluasi langsung, terkirim memenuhi syarat dan terbit; ditarik, tanpa modul, tidak ada, milik orang lain (RLS). Rangkaian peserta lama 42 cek tetap lulus (dua cek perilaku lama disesuaikan).
+- PGlite template 21/21: bukti celah sebelum migrasi; daftar template aktif saja di formulir; tanpa template, konteks lain, tidak aktif, id rusak, tidak ada, template tanpa evaluasi ditolak; konteks tetap wajib; template cocok diterima, disetujui, tayang v1, tercatat di riwayat versi; offering tanpa evaluasi tetap bisa; draf perubahan terisi template; tanpa perubahan ditolak; evaluasi dimatikan sebelum ada peserta boleh (v2); setelah ada peserta syarat evaluasi terkunci, judul tetap bisa. Rangkaian Academy lama 77/78 (cek `access_mode` dari 2al).
+- `tsc`, lint berkas yang diubah, `build` lulus.
+- Uji langsung baru `npm run test:certificate-path` (17 cek, sebagai peserta + operator + approver). **Sebelum migrasi (intern-update, 5 Nov): 7/17.** Gagal 10: semua modul selesai tetap `evaluation_missing`; tombol sertifikat ditolak; evaluasi kosong `{}` **diterima**; offering wajib evaluasi: **setelah evaluasi akhir benar-benar dikirim tetap ditolak** `evaluation_missing`; offering tanpa template dan dengan template konteks lain **diterima**; template tidak pernah terpasang. Lulus 7, termasuk: peserta tidak bisa mengubah status evaluasi langsung (sudah aman). Data uji bersih.
+
+**Belum (menunggu mentor):** modul masih ditandai selesai oleh peserta sendiri (`learning_progress_mark`), belum wajib lulus kuis/penilaian (Slide 24); isi pertanyaan resmi template; jenis sertifikat selain *completion*. Sertifikat tetap berlabel "CONTOH / BELUM RESMI". Server function lama `submitEvaluation` kini selalu gagal (tidak dipanggil dari layar mana pun).
 
 ---
 
@@ -1076,7 +1097,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (64 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (66 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1128,6 +1149,8 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261104010000_academy_program_admin.sql` (Program Academy: draf, persetujuan, dan versi untuk Master Course, Master Module, Course Offering; tulis langsung ke tabel program dicabut). Lihat bagian 2ai. Butuh `20261102030000` (daftar bahasa). **Butuh kode branch ini** (menu Program Academy di Konsol Kurasi).
 - `20261104020000_academy_course_cover.sql` (gambar sampul Master Course: kolom `cover_path`, diperiksa database saat dikirim dan disetujui, ikut riwayat versi). Lihat bagian 2ak. Jalankan setelah `20261104010000`. **Butuh kode branch ini** (isian unggah di formulir Master Course; katalog tetap berjalan tanpa sampul sebelum migrasi).
 - `20261104030000_academy_program_guards.sql` (hak panggil 6 RPC lama pengubah offering dicabut dari anon/authenticated; offering dari layar admin hanya boleh aturan pendaftaran Terbuka/Wajib akun terdaftar). Lihat bagian 2al. Jalankan setelah `20261104010000`. Tidak mematahkan kode lama (RPC itu tidak dipakai aplikasi).
+- `20261105010000_certificate_eligibility.sql` (syarat sertifikat memakai evaluasi akhir yang dipakai halaman course; jalur evaluasi lama `learning_evaluation_submit` ditutup untuk peserta). Lihat bagian 2an. **Butuh kode branch ini** (pesan syarat sertifikat di halaman course).
+- `20261105020000_offering_evaluation_template.sql` (template evaluasi akhir dipilih di draf Course Offering, diperiksa database, ikut versi, dikunci setelah ada peserta). Lihat bagian 2an. Jalankan setelah `20261104030000`. **Butuh kode branch ini** (pilihan template di formulir offering).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1158,6 +1181,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
   | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | `course-cover-cleanup` | 12 | 2am |
+  | `certificate-path` | 17 (setelah migrasi `20261105010000` + `020000`) | 2an | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

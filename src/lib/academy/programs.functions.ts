@@ -45,6 +45,8 @@ export type OfferingPayload = {
   cohort_payment_responsibility?: string | null;
   completion_evaluation_required?: boolean;
   completion_evaluation_context?: string | null;
+  /** Active completion evaluation template of the same context (required with the evaluation). */
+  completion_evaluation_template_id?: string | null;
 };
 
 export type ProgramOverview = {
@@ -66,6 +68,8 @@ export type ProgramOverview = {
     deliveryModes: Array<{ code: string; name: string }>;
     templates: Array<{ code: string; name: string }>;
     languages: Array<{ code: string; name: string }>;
+    /** Active completion evaluation templates (migration 20261105020000; missing before it). */
+    evaluationTemplates?: Array<{ id: string; title: string; context: string }>;
     activeCourses: Array<{ id: string; title: string }>;
   };
 };
@@ -132,11 +136,14 @@ const ERRORS: Record<string, string> = {
   program_payment_not_applicable: "Penanggung biaya hanya untuk pelatihan berbasis angkatan.",
   program_evaluation_invalid: "Tentukan apakah evaluasi akhir wajib.",
   program_evaluation_context_required: "Evaluasi akhir wajib memilih konteks evaluasi.",
+  program_evaluation_template_required: "Evaluasi akhir wajib memilih template evaluasi.",
+  program_evaluation_template_invalid: "Template evaluasi tidak ditemukan, tidak aktif, atau konteksnya berbeda. Pilih ulang template.",
+  program_evaluation_template_not_applicable: "Template evaluasi hanya dipakai bila evaluasi akhir diwajibkan.",
   program_date_invalid: "Tanggal tidak valid.",
   program_dates_order:
     "Urutan tanggal salah: penutupan tidak boleh sebelum pembukaan, dan pendaftaran harus selesai sebelum program ditutup.",
   program_offering_locked_in_use:
-    "Offering ini sudah punya pendaftar, jadi delivery mode, model belajar, aturan pendaftaran, dan model biaya tidak bisa diubah. Judul, angkatan, dan tanggal tetap bisa diubah.",
+    "Offering ini sudah punya pendaftar, jadi delivery mode, model belajar, aturan pendaftaran, model biaya, dan evaluasi akhir tidak bisa diubah. Judul, angkatan, dan tanggal tetap bisa diubah.",
   program_decision_invalid: "Keputusan tidak dikenal.",
   program_note_required: "Tuliskan alasan (minimal 5 karakter).",
   program_note_too_long: "Alasan maksimal 2.000 karakter.",

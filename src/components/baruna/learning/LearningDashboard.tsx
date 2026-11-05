@@ -43,6 +43,7 @@ import {
 } from "@/lib/learning/useBackendEnrolment";
 import { barunaToast } from "@/lib/downloads";
 import { CompletionEvaluationSection } from "@/components/baruna/learning/CompletionEvaluationSection";
+import { eligibilityReasonText } from "@/lib/learning/learning.functions";
 
 const MENU_ICONS: Partial<Record<MenuItemId, LucideIcon>> = {
   overview: Compass,
@@ -356,7 +357,10 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
                           <div className="mt-1 text-eco-community">✓ Eligible</div>
                         ) : (
                           <div className="mt-1 text-muted-foreground">
-                            Not yet eligible — {eligibilityQ.data.reason}
+                            Belum memenuhi syarat: {eligibilityReasonText(eligibilityQ.data.reason)}
+                            {eligibilityQ.data.reason === "modules_incomplete" && eligibilityQ.data.required
+                              ? ` (${eligibilityQ.data.completed ?? 0} dari ${eligibilityQ.data.required} modul)`
+                              : ""}
                           </div>
                         )
                       ) : (
@@ -365,7 +369,8 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
                     </div>
                     <button
                       onClick={handleIssueCertificate}
-                      disabled={certMut.isPending}
+                      // The server decides; the button only mirrors its answer.
+                      disabled={certMut.isPending || eligibilityQ.data?.eligible !== true}
                       className="rounded-xl bg-marine px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-marine/90 disabled:opacity-60"
                     >
                       {certMut.isPending ? "Issuing…" : "Issue certificate"}

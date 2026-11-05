@@ -33,6 +33,7 @@
     "test:course-cover": "node --env-file-if-exists=.env scripts/test-course-cover.mjs",
     "test:academy-guards": "node --env-file-if-exists=.env scripts/test-academy-guards.mjs",
     "test:course-cover-cleanup": "node --env-file-if-exists=.env scripts/test-course-cover-cleanup.mjs",
+    "test:certificate-path": "node --env-file-if-exists=.env scripts/test-certificate-path.mjs",
     "cleanup:course-covers": "node --env-file-if-exists=.env scripts/cleanup-course-covers.mjs",
     "test:training-categories": "node --env-file-if-exists=.env scripts/test-training-categories.mjs",
     "test:languages": "node --env-file-if-exists=.env scripts/test-languages.mjs",
