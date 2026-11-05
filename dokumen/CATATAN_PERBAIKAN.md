@@ -998,8 +998,25 @@ Audit atas permintaan pengguna (banyak pengguna, banyak peran, banyak perangkat,
 1. **Sertifikat untuk offering baru.** Mulai dengan pemeriksaan kecil tanpa mengubah apa pun: apakah layar evaluasi akhir baru (`CompletionEvaluationSection`, `completion_evaluation_*`) cukup menggantikan syarat lama `evaluations` di `check_certificate_eligibility` (migrasi `20261020010000`). Syarat lulus resmi menunggu mentor (MENUNGGU_ARAHAN_MENTOR butir 12). Template sertifikat (STTP di `public/`) memuat data pribadi; usul versi kosong.
 2. **Alur pengajuan pendaftaran untuk offering baru** (formulir pengajuan peserta + antrean Persetujuan Peserta), lalu buka lagi "Wajib disetujui admin" di formulir offering dan di `_program_offering_problem`. Butuh keputusan mentor (butir 12b).
 3. **Layar pemasangan template evaluasi akhir** (sekarang hanya lewat SQL Editor, service_role).
-4. Pembersihan berkas sampul yatim (prioritas rendah).
+4. ~~Pembersihan berkas sampul yatim (prioritas rendah).~~ Selesai 5 Nov (2am).
 5. Webinar dan Workshop (ditunda atas permintaan pengguna; delivery mode `live_webinar_workshop`).
+
+## 2am. Pembersihan gambar sampul course yang tidak terpakai (5 Nov)
+
+**Masalah (catatan 2ak):** gambar sampul yang diunggah lalu diganti atau dihapus sebelum disimpan, atau yang drafnya ditarik/ditolak, tetap tersimpan di bucket publik `knowledge-module-covers/academy-courses/` tanpa dipakai apa pun.
+
+**Perbaikan (tanpa migrasi):** skrip pemeliharaan `npm run cleanup:course-covers` (`scripts/cleanup-course-covers.mjs`, kunci service role dari `.env`). Bawaannya **dry run** (hanya menampilkan daftar); menghapus dengan `-- --apply`. Sebuah berkas dihapus hanya bila semua syarat terpenuhi:
+- berada di `academy-courses/` dan bernama seperti unggahan (`<32 hex>.png|jpg|webp`); sampul modul Knowledge Hub di folder `modules/` pada bucket yang sama tidak pernah disentuh;
+- tidak dipakai Master Course mana pun (`master_courses.cover_path`);
+- tidak dipakai draf yang masih terbuka (draf, dikirim, diminta revisi);
+- tidak tercatat di riwayat versi (`master_course_versions`), supaya gambar versi lama tetap bisa dilihat;
+- berumur lebih dari 24 jam (bisa dinaikkan dengan `--min-age-hours=`, minimal 1), supaya gambar yang baru diunggah di perangkat mana pun tetapi belum disimpan tidak ikut terhapus.
+
+Rujukan dibaca ulang tepat sebelum menghapus (draf bisa baru disimpan di antaranya). Gambar dari draf yang ditolak atau ditarik dianggap tidak terpakai. Bila seseorang menyimpan draf dengan gambar yang sudah lebih dari 24 jam belum disimpan dan sudah dihapus, pengiriman ditolak `program_cover_invalid` ("unggah ulang gambarnya"), jadi tidak ada data rusak.
+
+**Uji:** uji langsung baru `npm run test:course-cover-cleanup` (12 cek; mengunggah berkas uji sendiri dan membatasi pembersih hanya pada berkas itu): dengan batas 24 jam tidak ada yang dihapus; dry run tidak menghapus apa pun; kandidat hanya berkas yatim dan berkas dari draf ditolak; berkas yang dipakai course tayang, draf terbuka, dan riwayat versi disimpan; nama di luar pola disimpan; `--apply` menghapus tepat 2 berkas; sampul modul Knowledge Hub tidak tersentuh. Data dan berkas uji bersih. Dry run di intern-update (5 Nov): 0 berkas (belum ada sampul diunggah). `--min-age-hours=0` ditolak.
+
+**Catatan:** belum dijadwalkan otomatis; jalankan berkala oleh admin (mis. seminggu sekali) atau dijadwalkan di server bila sudah ada penjadwal.
 
 ---
 
@@ -1140,7 +1157,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `trainer-quota-list` | 5 (setelah migrasi `20261102010000`) | 2ad | `kh-topics` | 12 (setelah migrasi `20261102020000`) | 2af |
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
-  | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | | | |
+  | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | `course-cover-cleanup` | 12 | 2am |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.
