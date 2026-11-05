@@ -41,6 +41,11 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
     (m) => !UNSUPPORTED_DELIVERY_MODES.includes(m.code) && (!value.learning_model || SELF_PACED_MODES.includes(m.code) === selfPaced),
   );
   const templates = (lookups.evaluationTemplates ?? []).filter((t) => t.context === value.completion_evaluation_context);
+  // Paid access models need a payment that does not exist yet (migration 20261105030000).
+  const accessModels: Record<string, string> =
+    value.self_paced_access_model && value.self_paced_access_model !== "free"
+      ? { free: SELF_PACED_ACCESS.free, [value.self_paced_access_model]: `${SELF_PACED_ACCESS[value.self_paced_access_model]} (belum tersedia)` }
+      : { free: SELF_PACED_ACCESS.free };
   // An older draft may still hold a rule that is no longer offered: show it so the form is honest.
   const rules: Record<string, string> =
     value.enrolment_access_rule && !(value.enrolment_access_rule in SELECTABLE_ACCESS_RULE)
@@ -141,8 +146,11 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
           <select className={input} value={value.self_paced_access_model ?? ""} disabled={locked}
             onChange={(e) => set({ self_paced_access_model: (e.target.value || null) as OfferingPayload["self_paced_access_model"] })}>
             <option value="">Pilih…</option>
-            <Options map={SELF_PACED_ACCESS} />
+            <Options map={accessModels} />
           </select>
+          <span className="mt-1 block font-normal text-muted-foreground">
+            "Berbayar" dan "Gratis belajar" (sertifikat berbayar) belum tersedia: sistem belum punya pembayaran.
+          </span>
         </label>
       ) : value.learning_model === "cohort_based" ? (
         <label className={label}>

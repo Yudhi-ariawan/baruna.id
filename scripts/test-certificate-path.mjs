@@ -131,6 +131,31 @@ try {
   iss = await p.c.rpc("issue_my_certificate", { _enrolment_id: e2, _certificate_type: "completion" });
   check(Boolean(iss.data?.certificate_number), `sertifikat terbit (${errOf(iss) || iss.data?.certificate_number})`);
 
+  console.log("5. Jenis sertifikat (20261105030000)");
+  iss = await p.c.rpc("issue_my_certificate", { _enrolment_id: e1, _certificate_type: "competency" });
+  check(/certificate_type_not_available/.test(errOf(iss)), `peserta tidak bisa memilih sertifikat kompetensi sendiri (${errOf(iss).slice(0, 50) || "TERBIT " + iss.data?.certificate_number})`);
+  const { count: certCount } = await svc.from("certificates").select("id", { count: "exact", head: true }).eq("enrolment_id", e1);
+  check(certCount === 1, `satu pendaftaran hanya punya satu sertifikat (${certCount})`);
+
+  console.log("6. Offering mandiri dengan sertifikat berbayar (20261105030000)");
+  const spMode = (await svc.from("delivery_modes").select("id").eq("code", "open_self_paced").single()).data.id;
+  for (const model of ["free_to_learn", "paid"]) {
+    const code = `of-tdd-certpath-${model}-${stamp}`;
+    const o = await svc.from("course_offerings").insert({ master_course_id: courseId, offering_code: code, offering_title: code, year: 2026, delivery_mode_id: spMode,
+      access_mode: "open", status: "published", learning_engine_version: "shared_v1", shared_learn_path: `/academy/course/${code}`, learning_model: "self_paced",
+      delivery_format: "fully_online", enrolment_access_rule: "open", classification_source: "operator", self_paced_access_model: model,
+      self_paced_access_model_source: "operator", completion_evaluation_required: false }).select("id").single();
+    if (o.error) throw new Error(`offering ${model}: ${o.error.message}`);
+    offeringIds.push(o.data.id);
+    await svc.from("learning_feature_flags").insert({ course_offering_id: o.data.id, engine_version: "shared_v1", enabled: true });
+    const e = (await p.c.rpc("learning_enrol", { _offering_code: code })).data?.id;
+    await finish(e);
+    r = await elig(p, e);
+    check(r.reason === "certificate_payment_required", `${model}: sertifikat tidak terbit gratis selama pembayaran belum ada (${r.reason ?? "eligible"})`);
+    iss = await p.c.rpc("issue_my_certificate", { _enrolment_id: e, _certificate_type: "completion" });
+    check(Boolean(iss.error), `${model}: tombol sertifikat ditolak (${errOf(iss).slice(0, 50) || "TERBIT"})`);
+  }
+
   console.log("4. Template evaluasi di draf offering");
   const operator = await persona("operator", "operator");
   const approver = await persona("approver", "approver");
@@ -155,9 +180,21 @@ try {
   const live = (await svc.from("course_offerings").select("id, completion_evaluation_template_id").eq("offering_code", OFF_DRAFT).maybeSingle()).data;
   if (live) offeringIds.push(live.id);
   check(live?.completion_evaluation_template_id === tplTraining, `offering tayang memakai template itu (${live?.completion_evaluation_template_id ?? "kosong"})`);
+
+  console.log("7. Jalur ubah template lama dan model akses berbayar (20261105030000)");
+  // A template id that does not exist: before the fix the call reaches "template not found" (callable),
+  // after it the database refuses the call itself. No real template is ever touched.
+  r = await approver.c.rpc("set_completion_evaluation_template_status", { _template_id: "00000000-0000-0000-0000-0000000000aa", _status: "retired", _reason: "uji" });
+  check(/permission denied/.test(errOf(r)), `approver tidak bisa menonaktifkan template langsung (${errOf(r).slice(0, 50) || "BERHASIL"})`);
+  const ds = (await operator.c.rpc("program_draft_open", { _kind: "course_offering", _target_id: null })).data;
+  await save(operator, ds, off({ offering_code: `${OFF_DRAFT}-sp`, delivery_mode_code: "open_self_paced", learning_model: "self_paced", delivery_format: "fully_online",
+    cohort_payment_responsibility: null, self_paced_access_model: "free_to_learn", completion_evaluation_required: false, completion_evaluation_context: null }));
+  r = await operator.c.rpc("program_draft_submit", { _draft_id: ds });
+  check(/program_access_model_unsupported/.test(errOf(r)), `offering mandiri "sertifikat berbayar" ditolak di layar admin (${errOf(r).slice(0, 50) || "DITERIMA"})`);
+  if (!r.error) await operator.c.rpc("program_draft_withdraw", { _draft_id: ds });
 } finally {
   console.log("\nMembersihkan data uji...");
-  const { data: offs } = await svc.from("course_offerings").select("id").in("offering_code", [OFF_PLAIN, OFF_EVAL, OFF_DRAFT]);
+  const { data: offs } = await svc.from("course_offerings").select("id").like("offering_code", `of-tdd-certpath-%${stamp}%`);
   const ids = [...new Set([...offeringIds, ...(offs ?? []).map((x) => x.id)])];
   if (ids.length) {
     await svc.from("certificates").delete().in("course_offering_id", ids);

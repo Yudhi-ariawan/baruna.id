@@ -173,6 +173,7 @@ const LEARNING_ERRORS: Record<string, string> = {
   approval_required:
     "Kursus ini memerlukan persetujuan admin. Ajukan pendaftaran terlebih dahulu dan tunggu persetujuan.",
   offering_not_found: "Kursus tidak ditemukan.",
+  certificate_type_not_available: "Jenis sertifikat ini belum tersedia. Saat ini hanya sertifikat kelulusan yang bisa diterbitkan.",
   offering_closed: "Pendaftaran kursus ini sudah ditutup.",
   enrolment_window_closed: "Saat ini di luar periode pendaftaran kursus ini.",
   enrolment_not_found: "Data pendaftaran kursus tidak ditemukan.",
@@ -188,6 +189,8 @@ export const ELIGIBILITY_REASONS: Record<string, string> = {
   completion_evaluation_missing: "Kirim evaluasi akhir di tab Evaluation terlebih dahulu.",
   completion_evaluation_not_configured:
     "Evaluasi akhir kursus ini belum disiapkan oleh admin. Hubungi admin BARUNA.",
+  certificate_payment_required:
+    "Sertifikat kursus ini berbayar, dan pembayaran belum tersedia di BARUNA. Hubungi admin BARUNA.",
   // Before migration 20261105010000 (old evaluation table).
   evaluation_missing: "Isi evaluasi kursus terlebih dahulu.",
   no_modules_configured: "Kursus ini belum memiliki modul.",

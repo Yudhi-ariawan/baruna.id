@@ -1041,6 +1041,25 @@ Rujukan dibaca ulang tepat sebelum menghapus (draf bisa baru disimpan di antaran
 
 **Belum (menunggu mentor):** modul masih ditandai selesai oleh peserta sendiri (`learning_progress_mark`), belum wajib lulus kuis/penilaian (Slide 24); isi pertanyaan resmi template; jenis sertifikat selain *completion*. Sertifikat tetap berlabel "CONTOH / BELUM RESMI". Server function lama `submitEvaluation` kini selalu gagal (tidak dipanggil dari layar mana pun).
 
+## 2ao. Audit jalur sertifikat: jenis sertifikat, sertifikat berbayar, template evaluasi (5 Nov)
+
+Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya temuan. Untuk 2an, setelah sertifikat benar-benar bisa terbit, tiga celah yang sebelumnya tertutup karena jalur itu buntu menjadi terjangkau. Semua dibuktikan dengan `npm run test:certificate-path` yang diperluas. **Sebelum migrasi (intern-update, 5 Nov): 17/25, gagal 8.**
+
+**Celah:**
+1. **Jenis sertifikat dipilih peserta.** `issue_my_certificate` dan server function `issueCertificate` menerima enam jenis (completion, participation, program, applied-achievement, competency, statement-of-result) dengan syarat yang sama, dan satu sertifikat per jenis. Uji membuktikan peserta menerbitkan sendiri **sertifikat kompetensi** (`BARUNA-COMPETENCY-2026-000035`) tanpa asesmen, sehingga satu pendaftaran punya 2 sertifikat (bisa sampai 6).
+2. **Sertifikat berbayar terbit gratis.** Offering mandiri dengan model akses "Berbayar" (`paid`) atau "Gratis belajar" (`free_to_learn`, artinya sertifikat berbayar) menerbitkan sertifikat setelah modul selesai, karena pembayaran belum ada. Formulir admin juga menerima kedua model itu. Offering AZA (`free_to_learn`) aman karena tidak punya modul di database.
+3. **Template evaluasi bisa diubah satu orang.** `set_completion_evaluation_template_status`, `add_completion_evaluation_question`, dan `create_completion_evaluation_template` bisa dipanggil langsung oleh satu admin/approver (aplikasi tidak memakainya). Template yang sedang dipakai offering tayang bisa dinonaktifkan atau ditambah pertanyaan wajib; peserta lalu tidak bisa memulai evaluasi dan sertifikatnya tertahan dengan pesan "kirim evaluasi" yang tidak mungkin dipenuhi.
+
+**Perbaikan (migrasi `20261105030000`):**
+- `issue_my_certificate`: hanya `completion` yang bisa terbit; jenis lain ditolak `certificate_type_not_available` (jenis tak dikenal tetap `invalid_certificate_type`) sampai aturannya diputuskan.
+- `check_certificate_eligibility`: offering mandiri `paid` / `free_to_learn` ditolak `certificate_payment_required` (sesudah pemeriksaan modul dan evaluasi, supaya peserta tetap melihat kemajuannya); template yang tidak aktif dibaca `completion_evaluation_not_configured` (urusan admin, bukan peserta).
+- `_program_offering_problem`: model akses `paid` dan `free_to_learn` ditolak `program_access_model_unsupported`. Formulir offering hanya menawarkan "Gratis" dengan keterangan alasannya.
+- Hak panggil ketiga RPC template dicabut dari anon/authenticated (service_role tetap). Template dikelola lewat SQL sampai isi resminya diputuskan.
+- Pesan baru di aplikasi: "Sertifikat kursus ini berbayar, dan pembayaran belum tersedia di BARUNA" dan "Jenis sertifikat ini belum tersedia".
+- Offering berbasis angkatan tidak diubah: selalu `fee_based`, dan penanggung biaya hanya dicatat. Apakah peserta harus membayar dulu termasuk pertanyaan mentor (butir 12c).
+
+**Uji:** PGlite 24/24 (bukti keempat celah sebelum migrasi; migrasi bisa diulang; lima jenis selain completion ditolak, jenis tak dikenal tetap ditolak; completion tetap terbit; satu pendaftaran satu sertifikat; free_to_learn dan paid `certificate_payment_required` dan penerbitan ditolak; template pensiun `completion_evaluation_not_configured`; ketiga RPC template ditolak untuk peserta, service_role tetap; formulir menolak paid dan free_to_learn, gratis tetap diterima). Rangkaian Academy lama 77/78 dan peserta lama 42/42 tetap sama dengan migrasi ini. `tsc` dan `build` lulus. Uji langsung `test:certificate-path` sebelum migrasi: 17/25 (gagal 8, di atas). Pembuktian template memakai id yang tidak ada, jadi tidak ada template sungguhan yang tersentuh. Nomor seri 000033–000037 terpakai oleh uji.
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1099,7 +1118,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (66 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (67 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1153,6 +1172,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261104030000_academy_program_guards.sql` (hak panggil 6 RPC lama pengubah offering dicabut dari anon/authenticated; offering dari layar admin hanya boleh aturan pendaftaran Terbuka/Wajib akun terdaftar). Lihat bagian 2al. Jalankan setelah `20261104010000`. Tidak mematahkan kode lama (RPC itu tidak dipakai aplikasi).
 - `20261105010000_certificate_eligibility.sql` (syarat sertifikat memakai evaluasi akhir yang dipakai halaman course; jalur evaluasi lama `learning_evaluation_submit` ditutup untuk peserta). Lihat bagian 2an. **Butuh kode branch ini** (pesan syarat sertifikat di halaman course).
 - `20261105020000_offering_evaluation_template.sql` (template evaluasi akhir dipilih di draf Course Offering, diperiksa database, ikut versi, dikunci setelah ada peserta). Lihat bagian 2an. Jalankan setelah `20261104030000`. **Butuh kode branch ini** (pilihan template di formulir offering).
+- `20261105030000_certificate_guards.sql` (hanya sertifikat kelulusan yang bisa terbit; sertifikat course berbayar tidak terbit gratis; RPC ubah template evaluasi ditutup untuk pengguna biasa). Lihat bagian 2ao. Jalankan setelah `20261105010000` dan `020000`. **Butuh kode branch ini** (pilihan model akses di formulir offering, pesan syarat sertifikat).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1183,7 +1203,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
   | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | `course-cover-cleanup` | 12 | 2am |
-  | `certificate-path` | 17 (setelah migrasi `20261105010000` + `020000`) | 2an | | | |
+  | `certificate-path` | 25 (setelah migrasi `20261105010000`, `020000`, `030000`) | 2an, 2ao | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

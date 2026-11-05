@@ -131,7 +131,9 @@ const ERRORS: Record<string, string> = {
   program_self_paced_online_only: "Pelatihan mandiri (self-paced) hanya bisa sepenuhnya online.",
   program_delivery_mode_mismatch: "Delivery mode tidak cocok dengan model belajar (mandiri atau berbasis angkatan).",
   program_self_paced_access_required: "Pelatihan mandiri wajib memilih model akses (gratis, berbayar, atau gratis belajar).",
-  program_self_paced_access_not_applicable: "Model akses mandiri hanya untuk pelatihan self-paced.",
+  program_access_model_unsupported:
+    "Model akses \"Berbayar\" dan \"Gratis belajar\" (sertifikat berbayar) belum tersedia karena sistem belum punya pembayaran. Pilih \"Gratis\".",
+  program_self_paced_access_not_applicable:"Model akses mandiri hanya untuk pelatihan self-paced.",
   program_payment_required: "Pelatihan berbasis angkatan wajib memilih penanggung biaya.",
   program_payment_not_applicable: "Penanggung biaya hanya untuk pelatihan berbasis angkatan.",
   program_evaluation_invalid: "Tentukan apakah evaluasi akhir wajib.",

@@ -258,7 +258,13 @@ WITH checks(no, migration, ok) AS (
                         AND has_function_privilege('authenticated', p.oid, 'EXECUTE'))),
   (66, '20261105020000_offering_evaluation_template',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_offering_problem' AND prosrc LIKE '%program_evaluation_template_required%')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'program_overview' AND prosrc LIKE '%evaluationTemplates%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'program_overview' AND prosrc LIKE '%evaluationTemplates%')),
+  (67, '20261105030000_certificate_guards',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'issue_my_certificate' AND prosrc LIKE '%certificate_type_not_available%')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'check_certificate_eligibility' AND prosrc LIKE '%certificate_payment_required%')
+      AND NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.proname IN ('set_completion_evaluation_template_status',
+                        'add_completion_evaluation_question', 'create_completion_evaluation_template')
+                        AND has_function_privilege('authenticated', p.oid, 'EXECUTE')))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status
