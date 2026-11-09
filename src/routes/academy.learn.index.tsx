@@ -38,6 +38,9 @@ import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.funct
 import { useQuery } from "@tanstack/react-query";
 import { barunaToast } from "@/lib/downloads";
 import { masterByCode } from "@/data/masterModules";
+import { useMyCertificates, useMyEnrolments } from "@/lib/learning/useBackendEnrolment";
+import { MyCourseOfferings } from "@/components/baruna/learning/MyCourseOfferings";
+import { sharedEnrolments, type MyCertificate, type MyEnrolment } from "@/lib/learning/myOfferings";
 
 export const Route = createFileRoute("/academy/learn/")({
   head: () => ({
@@ -122,7 +125,18 @@ function MyLearning() {
     AZA_MODULES.filter((m) => m.no > 0).find(
       (m) => (aza.quizzes[m.no]?.percent ?? 0) < AZA_PASS_MARK,
     ) ?? null;
-  const hasAny = enrolled.length > 0 || azaEnrolled || shortCourses.length > 0;
+  // Courses and certificates from Course Offerings (database), CATATAN_PERBAIKAN 2aq.
+  const myEnrolmentsQ = useMyEnrolments();
+  const myCertificatesQ = useMyCertificates();
+  const offeringEnrolments = sharedEnrolments(myEnrolmentsQ.data as MyEnrolment[] | undefined);
+  const offeringCertificates = (myCertificatesQ.data ?? []) as MyCertificate[];
+
+  const hasAny =
+    enrolled.length > 0 ||
+    azaEnrolled ||
+    shortCourses.length > 0 ||
+    offeringEnrolments.length > 0 ||
+    offeringCertificates.length > 0;
 
   const { data: myBioRes } = useQuery({
     queryKey: ["my-participant-biodata"],
@@ -214,6 +228,7 @@ function MyLearning() {
           </div>
         ) : (
           <div className="space-y-6">
+            <MyCourseOfferings enrolments={offeringEnrolments} certificates={offeringCertificates} />
             {/* 1. Prioritas Utama: Modul Mandiri & Modul Expert yang Diikuti */}
             {shortCourses.length > 0 && (
               <section className="space-y-4">

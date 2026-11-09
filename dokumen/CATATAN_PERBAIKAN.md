@@ -1072,7 +1072,18 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Uji:** `tsc`, lint, `build` lulus. Lembar dirender di Chrome headless dan diperiksa (nama panjang, judul, QR, tanda air). Uji langsung baru `npm run test:certificate-sheet` (9 cek, memanggil aplikasi): sertifikat terbit; pemilik mendapat nama dari profil, judul course dan offering, nomor, 2 modul dan 3,5 jam, tautan verifikasi sesuai database; peserta lain "Sertifikat tidak ditemukan"; tanpa login ditolak; nomor yang tidak ada ditolak. Data uji bersih.
 
-**Belum:** desain dan isi resmi STTP (tanda tangan, stempel, format nomor) menunggu mentor; sertifikat course baru belum tampil di halaman My Learning.
+**Belum:** desain dan isi resmi STTP (tanda tangan, stempel, format nomor) menunggu mentor; ~~sertifikat course baru belum tampil di halaman My Learning~~ (selesai di 2aq).
+
+## 2aq. My Learning menampilkan course dan sertifikat dari Course Offering (9 Nov)
+
+**Masalah:** halaman My Learning hanya membaca data lama (modul mandiri di browser, pendaftaran program lama, AZA). Peserta yang mengikuti course dari Course Offering (mesin belajar bersama) melihat "No Training Programs Yet", dan sertifikatnya hanya terlihat dari halaman course masing-masing. Server function `listMyEnrolments` dan `listMyCertificates` sudah ada tetapi tidak dipakai.
+
+**Perbaikan (tanpa migrasi):**
+- My Learning memanggil `listMyEnrolments` dan `listMyCertificates`; kehadiran course atau sertifikat ini ikut menentukan apakah halaman kosong.
+- Bagian baru `MyCourseOfferings.tsx` (helper di `src/lib/learning/myOfferings.ts`): **BARUNA Academy Courses** (course yang diikuti, tanggal daftar, status *In progress* / *Completed*, tombol ke halaman course; hanya offering mesin bersama yang belum ditarik, program lama tetap di bagiannya sendiri) dan **My Certificates** (judul course dan offering, nomor, tanggal terbit, tautan verifikasi, tombol *Lihat sertifikat* / *Unduh PDF* dari 2ap).
+- `listMyCertificates` kini membawa judul Master Course, hanya sertifikat berstatus `issued`, dan dibatasi `learner_id` pemanggil selain RLS.
+
+**Uji:** `tsc`, lint berkas yang diubah (tanpa peringatan baru), `build` lulus. `test:certificate-sheet` diperluas menjadi **13 cek**: daftar sertifikat pemilik memuat sertifikatnya dengan judul course, daftar peserta lain tidak; daftar course pemilik memuat course yang selesai di mesin bersama, daftar peserta lain tidak. Dijalankan terhadap server dev uji di port 8081. Data uji bersih.
 
 ---
 
@@ -1217,7 +1228,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
   | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | `course-cover-cleanup` | 12 | 2am |
-  | `certificate-path` | 25 (setelah migrasi `20261105010000`, `020000`, `030000`) | 2an, 2ao | `certificate-sheet`* | 9 | 2ap |
+  | `certificate-path` | 25 (setelah migrasi `20261105010000`, `020000`, `030000`) | 2an, 2ao | `certificate-sheet`* | 13 | 2ap, 2aq |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

@@ -403,8 +403,10 @@ export const listMyCertificates = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("certificates")
       .select(
-        "id, certificate_type, certificate_number, issue_date, verification_reference, course_offerings(offering_code, offering_title)",
+        "id, certificate_type, certificate_number, issue_date, verification_reference, certificate_status, course_offerings(offering_code, offering_title, master_courses(title))",
       )
+      .eq("learner_id", context.userId)
+      .eq("certificate_status", "issued")
       .order("issue_date", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];

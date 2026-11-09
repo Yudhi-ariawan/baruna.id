@@ -44,6 +44,12 @@ async function sheet(token, certificateNumber) {
     return { error: m ? JSON.parse(`"${m[1]}"`) : text.slice(0, 160) };
   }
 }
+const LEARN = "/src/lib/learning/learning.functions.ts";
+async function callGet(token, exp) {
+  const id = Buffer.from(JSON.stringify({ file: `${LEARN}?tss-serverfn-split`, export: `${exp}_createServerFn_handler` })).toString("base64url");
+  const text = await (await fetch(`${APP}/_serverFn/${id}`, { headers: { "x-tsr-serverFn": "true", accept: "application/json", authorization: `Bearer ${token}` } })).text();
+  try { const v = fromCrossJSON(JSON.parse(text), { refs: new Map(), plugins: [] }); return v?.result ?? null; } catch { return null; }
+}
 async function persona(label, name) {
   const email = `tdd-sheet-${label}-${stamp}@example.test`;
   const { data: u, error } = await svc.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true,
@@ -57,6 +63,7 @@ async function persona(label, name) {
 }
 
 await fetch(APP + FILE); // dev mode registers the server function once its module is loaded
+await fetch(APP + LEARN);
 try {
   const tpl = (await svc.from("learning_templates").select("id").eq("code", "knowledge_course").single()).data.id;
   courseId = (await svc.from("master_courses").insert({ course_code: COURSE, title: "TDD Lembar Sertifikat", language: "en", learning_template_id: tpl, status: "active", version: 1 }).select("id").single()).data.id;
@@ -92,6 +99,21 @@ try {
   check(Boolean(r3.error) && !r3.data, `tanpa login ditolak (${(r3.error ?? "DAPAT DATA").slice(0, 50)})`);
   const r4 = await sheet(owner.token, "BARUNA-COMPLETION-2026-999999-XXXXXX");
   check(/tidak ditemukan/i.test(r4.error ?? ""), "nomor yang tidak ada: tidak ditemukan");
+
+  console.log("My Learning (2aq)");
+  const myCerts = (await callGet(owner.token, "listMyCertificates")) ?? [];
+  const mine = myCerts.find((c) => c.certificate_number === number);
+  const off = Array.isArray(mine?.course_offerings) ? mine.course_offerings[0] : mine?.course_offerings;
+  const mc = Array.isArray(off?.master_courses) ? off.master_courses[0] : off?.master_courses;
+  check(Boolean(mine) && mc?.title === "TDD Lembar Sertifikat", `daftar sertifikat pemilik memuat sertifikat ini dengan judul course (${mc?.title ?? "tidak ada"})`);
+  const otherCerts = (await callGet(other.token, "listMyCertificates")) ?? [];
+  check(!otherCerts.some((c) => c.certificate_number === number), "daftar sertifikat peserta lain tidak memuatnya");
+  const myEnr = (await callGet(owner.token, "listMyEnrolments")) ?? [];
+  const e = myEnr.find((x) => (Array.isArray(x.course_offerings) ? x.course_offerings[0] : x.course_offerings)?.offering_code === OFF);
+  const eo = Array.isArray(e?.course_offerings) ? e.course_offerings[0] : e?.course_offerings;
+  check(e?.completion_status === "completed" && eo?.learning_engine_version === "shared_v1", `daftar course memuat course ini, selesai, mesin bersama (${e?.completion_status ?? "tidak ada"})`);
+  const otherEnr = (await callGet(other.token, "listMyEnrolments")) ?? [];
+  check(!otherEnr.some((x) => (Array.isArray(x.course_offerings) ? x.course_offerings[0] : x.course_offerings)?.offering_code === OFF), "daftar course peserta lain tidak memuatnya");
 } finally {
   console.log("\nMembersihkan data uji...");
   if (offeringId) {
