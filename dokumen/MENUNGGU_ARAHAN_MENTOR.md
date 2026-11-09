@@ -18,6 +18,16 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 11. **Email kontak expert di direktori.** Migrasi PC `20261008030000` dan `20261008040000` (menampilkan email kontak resmi expert) belum berlaku di intern-update dan mengisi email akun KKP tertentu (CATATAN_PERBAIKAN 2ac). Apakah dijalankan di intern-update, atau hanya di main?
 12. **Sertifikat dan pendaftaran untuk offering dari layar Program Academy** (dicatat 4 Nov, CATATAN_PERBAIKAN 2al). (a) Syarat lulus resmi apa? Sekarang sertifikat butuh semua modul selesai plus satu catatan evaluasi lama yang tidak lagi diisi dari layar mana pun, jadi offering baru belum bisa menghasilkan sertifikat. Apakah evaluasi akhir (template evaluasi) menggantikannya? (b) Offering dengan "Wajib disetujui admin" atau "hak akses khusus" butuh formulir pengajuan peserta dan antrean persetujuan untuk offering baru; layar admin sementara hanya menerima "Terbuka" dan "Wajib akun terdaftar". Siapa yang menyetujui pendaftaran dan apa batas waktunya? (c) Pembayaran: sistem hanya mencatat penanggung biaya (peserta, instansi, sponsor, dst.), tanpa tarif, tagihan, atau status bayar. Apakah itu cukup, atau perlu mekanisme pembayaran?
 
+## Daftar kerja berikutnya (dicatat 9 Nov, dikerjakan satu per satu)
+
+1. **Jenis sertifikat lain.** Sekarang hanya *completion* yang bisa terbit (migrasi `20261105030000`). Temuan dari slide: Slide 24 (PB-ACA-05) mewajibkan *Review Completion* dan *Approval Completion* sebelum *Certificate Record*, dan kelulusan dihitung dari learning record, assessment result, kehadiran, dan evaluasi akhir; Slide 26 menaruh **completion rule** di Master Course, **certificate model** di Course Offering, dan objek **Completion** terpisah dari **Certificate**; Slide 27: tahap Completion & Certificate dikerjakan Admin + Reviewer, peserta hanya mengunduh. Daftar enam jenis tidak ada di slide (berasal dari `src/lib/learning/types.ts` dan `registry.ts`). Saat ini peserta menerbitkan sendiri tanpa persetujuan.
+2. **Pembayaran.** Tidak ada mekanisme bayar; course mandiri hanya "Gratis", course angkatan hanya mencatat penanggung biaya. Slide 22 dan 24: *payment (jika ada) terpisah dan tidak menentukan kelulusan*. Perlu ditinjau: `certificate_payment_required` (migrasi `20261105030000`) menahan sertifikat, dan karena status selesai baru ditetapkan saat sertifikat terbit, kelulusan ikut tertahan.
+3. **Alur persetujuan pendaftaran.** Offering baru belum punya formulir pengajuan. Slide 22 (PB-ACA-03) sudah merinci alurnya: form dan dokumen, cek kelengkapan dan kelayakan, cek duplikat, seleksi/skor bila perlu, Approval Enrollment, notifikasi, waitlist.
+4. **Operator dan Data Master.** Apakah Operator boleh mengubah Data Master (langsung atau lewat persetujuan)? Lihat juga butir 10.
+5. **Publisher vs Approver.** Apakah tayang adalah langkah terpisah setelah disetujui?
+6. **Peserta yang sudah lulus saat modul diperbarui.** Wajib mengulang, cukup diberi tahu, atau dibiarkan? Apakah sertifikat mencatat versi modul? Lihat juga butir 9.
+7. **Email kontak expert.** Perlu tampil di direktori publik? Email siapa? Dijalankan di intern-update atau hanya main? Lihat juga butir 11.
+
 ## Detail pertanyaan untuk mentor
 
 ### Sertifikat dan kelulusan
