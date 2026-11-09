@@ -1100,6 +1100,8 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Uji:** PGlite 57/57 (bukti sebelum migrasi; migrasi bisa diulang; data lama; record otomatis termasuk wajib evaluasi; akses tabel; peran; layar usang; remedial; keputusan ganda; audit; pemisahan wewenang; massal; pembayaran; kondisi berubah sebelum disetujui; antrean). `tsc`, lint, lulus. Uji langsung baru `npm run test:completion-approval` (26 cek, termasuk **dua modul ditandai bersamaan** dan **dua pemutus bersamaan**). **Sebelum migrasi (intern-update, 9 Nov): 3/26**: peserta menerbitkan sertifikat sendiri (`000045`, dihapus), belum ada Completion Record. Tiga skrip lama disesuaikan dengan alur persetujuan: `test:certificate-path`, `test:certificate-sheet`, `test:participant-rpc`.
 
+**Hasil sesudah migrasi (intern-update, 9 Nov):** `test:completion-approval` **26/26**, termasuk dua modul ditandai bersamaan (tepat satu record) dan dua pemutus bersamaan (satu berhasil, satu sertifikat). Uji lain lulus: certificate-path 27, certificate-sheet 13, participant-rpc 30, console-roles (menu baru), console-decisions, academy-programs 21, academy-guards 14, course-cover 14, course-cover-cleanup 12, learning-progress 12, lifecycle (Flow 1: 7, Flow 2: 7), module-update 24, admin-module-revision 18, expert-rpc 64, kr-rpc 24, kh-roles 20, knowledge-update 19, kh-topics 12, languages 12, training-categories 12, master-data 15, module-limits 18, trainer-quota-list 5, training-requests 33. Data uji bersih. Diuji manual oleh pemilik proyek (9 Nov).
+
 **Belum:** Tahap B (*certificate model* di Course Offering, Slide 26) dan Tahap C (jenis sertifikat lain, butuh kehadiran dan asesmen, Slide 23).
 
 ---
@@ -1246,7 +1248,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
   | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | `course-cover-cleanup` | 12 | 2am |
-  | `certificate-path` | 26 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
+  | `certificate-path` | 27 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
   | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
