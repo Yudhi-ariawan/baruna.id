@@ -85,6 +85,7 @@ import { Route as ExpertsRequestRouteImport } from './routes/experts.request'
 import { Route as ExpertsServicesRouteImport } from './routes/experts.services'
 import { Route as ExpertsTrainerApplicationRouteImport } from './routes/experts.trainer-application'
 import { Route as GovernanceIndexRouteImport } from './routes/governance.index'
+import { Route as GovernanceCompletionsRouteImport } from './routes/governance.completions'
 import { Route as GovernanceEnrollmentsRouteImport } from './routes/governance.enrollments'
 import { Route as GovernanceExpertsRouteImport } from './routes/governance.experts'
 import { Route as GovernanceLearningProgressRouteImport } from './routes/governance.learning-progress'
@@ -522,6 +523,11 @@ const GovernanceIndexRoute = GovernanceIndexRouteImport.update({
   path: '/',
   getParentRoute: () => GovernanceRoute,
 } as any)
+const GovernanceCompletionsRoute = GovernanceCompletionsRouteImport.update({
+  id: '/completions',
+  path: '/completions',
+  getParentRoute: () => GovernanceRoute,
+} as any)
 const GovernanceEnrollmentsRoute = GovernanceEnrollmentsRouteImport.update({
   id: '/enrollments',
   path: '/enrollments',
@@ -885,6 +891,7 @@ export interface FileRoutesByFullPath {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
+  '/governance/completions': typeof GovernanceCompletionsRoute
   '/governance/enrollments': typeof GovernanceEnrollmentsRoute
   '/governance/experts': typeof GovernanceExpertsRoute
   '/governance/learning-progress': typeof GovernanceLearningProgressRoute
@@ -1008,6 +1015,7 @@ export interface FileRoutesByTo {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
+  '/governance/completions': typeof GovernanceCompletionsRoute
   '/governance/enrollments': typeof GovernanceEnrollmentsRoute
   '/governance/experts': typeof GovernanceExpertsRoute
   '/governance/learning-progress': typeof GovernanceLearningProgressRoute
@@ -1141,6 +1149,7 @@ export interface FileRoutesById {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
+  '/governance/completions': typeof GovernanceCompletionsRoute
   '/governance/enrollments': typeof GovernanceEnrollmentsRoute
   '/governance/experts': typeof GovernanceExpertsRoute
   '/governance/learning-progress': typeof GovernanceLearningProgressRoute
@@ -1275,6 +1284,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/experts/trainer-application'
+    | '/governance/completions'
     | '/governance/enrollments'
     | '/governance/experts'
     | '/governance/learning-progress'
@@ -1398,6 +1408,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/experts/trainer-application'
+    | '/governance/completions'
     | '/governance/enrollments'
     | '/governance/experts'
     | '/governance/learning-progress'
@@ -1530,6 +1541,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/experts/trainer-application'
+    | '/governance/completions'
     | '/governance/enrollments'
     | '/governance/experts'
     | '/governance/learning-progress'
@@ -2157,6 +2169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GovernanceIndexRouteImport
       parentRoute: typeof GovernanceRoute
     }
+    '/governance/completions': {
+      id: '/governance/completions'
+      path: '/completions'
+      fullPath: '/governance/completions'
+      preLoaderRoute: typeof GovernanceCompletionsRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
     '/governance/enrollments': {
       id: '/governance/enrollments'
       path: '/enrollments'
@@ -2781,6 +2800,7 @@ const ExpertsRouteWithChildren =
   ExpertsRoute._addFileChildren(ExpertsRouteChildren)
 
 interface GovernanceRouteChildren {
+  GovernanceCompletionsRoute: typeof GovernanceCompletionsRoute
   GovernanceEnrollmentsRoute: typeof GovernanceEnrollmentsRoute
   GovernanceExpertsRoute: typeof GovernanceExpertsRoute
   GovernanceLearningProgressRoute: typeof GovernanceLearningProgressRoute
@@ -2799,6 +2819,7 @@ interface GovernanceRouteChildren {
 }
 
 const GovernanceRouteChildren: GovernanceRouteChildren = {
+  GovernanceCompletionsRoute: GovernanceCompletionsRoute,
   GovernanceEnrollmentsRoute: GovernanceEnrollmentsRoute,
   GovernanceExpertsRoute: GovernanceExpertsRoute,
   GovernanceLearningProgressRoute: GovernanceLearningProgressRoute,

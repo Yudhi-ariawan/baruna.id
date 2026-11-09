@@ -94,6 +94,12 @@ try {
   }
 
   const p = await persona("peserta");
+  const approver = await persona("approver", "approver");
+  // Since 20261109010000 a certificate is issued when a different decider approves the completion.
+  const approve = async (eid) => {
+    const c = (await svc.from("course_completions").select("id, updated_at").eq("enrolment_id", eid).maybeSingle()).data;
+    return approver.c.rpc("completion_decide", { _id: c?.id, _decision: "approve", _note: null, _expected_updated_at: c?.updated_at });
+  };
   const finish = async (eid) => { for (const m of ["CP-01", "CP-02"]) await p.c.rpc("learning_progress_mark", { _enrolment_id: eid, _activity_id: `module:${m}`, _status: "completed", _progress: null }); };
 
   console.log("1. Offering tanpa evaluasi akhir");
@@ -103,7 +109,11 @@ try {
   let r = await elig(p, e1);
   check(r.eligible === true, `semua modul selesai: memenuhi syarat (${r.reason ?? "eligible"})`);
   let iss = await p.c.rpc("issue_my_certificate", { _enrolment_id: e1, _certificate_type: "completion" });
-  check(Boolean(iss.data?.certificate_number), `sertifikat terbit lewat tombol (${errOf(iss) || iss.data?.certificate_number})`);
+  check(/certificate_requires_approval/.test(errOf(iss)), `peserta tidak bisa menerbitkan sendiri (${errOf(iss).slice(0, 40) || "TERBIT"})`);
+  const a1 = await approve(e1);
+  check(!a1.error, `kelulusan disetujui orang lain ${errOf(a1)}`);
+  iss = await p.c.rpc("issue_my_certificate", { _enrolment_id: e1, _certificate_type: "completion" });
+  check(Boolean(iss.data?.certificate_number), `sertifikat terbit setelah disetujui (${errOf(iss) || iss.data?.certificate_number})`);
 
   console.log("2. Jalur evaluasi lama ditutup");
   const ev = await p.c.rpc("learning_evaluation_submit", { _enrolment_id: e1, _evaluation_type: "course", _response: {} });
@@ -128,8 +138,9 @@ try {
   check(!sb.error, `evaluasi dikirim ${errOf(sb)}`);
   r = await elig(p, e2);
   check(r.eligible === true && r.completion_evaluation_submitted === true, `setelah evaluasi dikirim: memenuhi syarat (${r.reason ?? "eligible"})`);
+  const a2 = await approve(e2);
   iss = await p.c.rpc("issue_my_certificate", { _enrolment_id: e2, _certificate_type: "completion" });
-  check(Boolean(iss.data?.certificate_number), `sertifikat terbit (${errOf(iss) || iss.data?.certificate_number})`);
+  check(!a2.error && Boolean(iss.data?.certificate_number), `sertifikat terbit setelah disetujui (${errOf(a2) || errOf(iss) || iss.data?.certificate_number})`);
 
   console.log("5. Jenis sertifikat (20261105030000)");
   iss = await p.c.rpc("issue_my_certificate", { _enrolment_id: e1, _certificate_type: "competency" });
@@ -151,14 +162,15 @@ try {
     const e = (await p.c.rpc("learning_enrol", { _offering_code: code })).data?.id;
     await finish(e);
     r = await elig(p, e);
-    check(r.reason === "certificate_payment_required", `${model}: sertifikat tidak terbit gratis selama pembayaran belum ada (${r.reason ?? "eligible"})`);
-    iss = await p.c.rpc("issue_my_certificate", { _enrolment_id: e, _certificate_type: "completion" });
-    check(Boolean(iss.error), `${model}: tombol sertifikat ditolak (${errOf(iss).slice(0, 50) || "TERBIT"})`);
+    check(r.eligible === true && r.payment_required === true, `${model}: pembayaran tidak menentukan kelulusan (${r.reason ?? "eligible"})`);
+    const ap = await approve(e);
+    const held = (await svc.from("course_completions").select("status, certificate_held_reason").eq("enrolment_id", e).maybeSingle()).data;
+    const { count: nCert } = await svc.from("certificates").select("id", { count: "exact", head: true }).eq("enrolment_id", e);
+    check(!ap.error && held?.certificate_held_reason === "certificate_payment_required" && nCert === 0, `${model}: lulus, sertifikat tidak terbit gratis (${errOf(ap).slice(0, 40) || nCert})`);
   }
 
   console.log("4. Template evaluasi di draf offering");
   const operator = await persona("operator", "operator");
-  const approver = await persona("approver", "approver");
   const d = (await operator.c.rpc("program_draft_open", { _kind: "course_offering", _target_id: null })).data;
   const off = (o = {}) => ({ master_course_id: courseId, offering_code: OFF_DRAFT, offering_title: "TDD Draft", year: 2026, delivery_mode_code: "blended_cohort",
     learning_model: "cohort_based", delivery_format: "blended", enrolment_access_rule: "open", cohort_payment_responsibility: "participant",

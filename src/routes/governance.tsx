@@ -7,6 +7,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Library,
+  Award,
   LineChart,
   Settings,
   ShieldAlert,
@@ -62,6 +63,8 @@ function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
     menus.publications.read && { label: "Verifikasi Publikasi", to: "/governance/publications", icon: FileText },
     menus.enrollments.read && { label: "Persetujuan Peserta", to: "/governance/enrollments", icon: GraduationCap },
     menus.enrollments.read && { label: "Pemantauan Progres", to: "/governance/learning-progress", icon: LineChart },
+    // Slide 24 (PB-ACA-05): Review and Approval Completion before the certificate.
+    menus.completions.read && { label: "Persetujuan Kelulusan", to: "/governance/completions", icon: Award },
     menus.trainingNeeds.read && { label: "Permintaan Pelatihan", to: "/governance/training-needs", icon: ClipboardList },
     // Slide 20-21: Master Course and Course Offering are prepared and approved here.
     menus.programs.read && { label: "Program Academy", to: "/governance/programs", icon: Library },

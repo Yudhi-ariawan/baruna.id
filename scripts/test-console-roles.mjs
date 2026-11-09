@@ -50,13 +50,13 @@ const PERSONAS = {
 // Expected from Slide 16 + the existing server rules (rancangan konsol).
 const R = (read, decide) => ({ read, decide });
 const EXPECT = {
-  participant: { experts: R(false, false), modules: R(false, false), publications: R(false, false), enrollments: R(false, false), trainingNeeds: R(false, false), programs: R(false, false), console: false },
-  reviewer: { experts: R(true, false), modules: R(true, false), publications: R(true, false), enrollments: R(false, false), trainingNeeds: R(true, false), programs: R(false, false), console: true },
-  verifier: { experts: R(true, false), modules: R(true, false), publications: R(true, false), enrollments: R(false, false), trainingNeeds: R(false, false), programs: R(false, false), console: true },
-  approver: { experts: R(true, true), modules: R(true, true), publications: R(true, true), enrollments: R(true, true), trainingNeeds: R(true, true), programs: R(true, true), console: true },
-  operator: { experts: R(false, false), modules: R(false, false), publications: R(false, false), enrollments: R(true, true), trainingNeeds: R(false, false), programs: R(true, false), console: true },
-  publisher: { experts: R(false, false), modules: R(false, false), publications: R(false, false), enrollments: R(false, false), trainingNeeds: R(false, false), programs: R(false, false), console: true },
-  admin: { experts: R(true, true), modules: R(true, true), publications: R(true, true), enrollments: R(true, true), trainingNeeds: R(true, true), programs: R(true, true), console: true },
+  participant: { experts: R(false, false), modules: R(false, false), publications: R(false, false), enrollments: R(false, false), trainingNeeds: R(false, false), programs: R(false, false), completions: R(false, false), console: false },
+  reviewer: { experts: R(true, false), modules: R(true, false), publications: R(true, false), enrollments: R(false, false), trainingNeeds: R(true, false), programs: R(false, false), completions: R(true, false), console: true },
+  verifier: { experts: R(true, false), modules: R(true, false), publications: R(true, false), enrollments: R(false, false), trainingNeeds: R(false, false), programs: R(false, false), completions: R(false, false), console: true },
+  approver: { experts: R(true, true), modules: R(true, true), publications: R(true, true), enrollments: R(true, true), trainingNeeds: R(true, true), programs: R(true, true), completions: R(true, true), console: true },
+  operator: { experts: R(false, false), modules: R(false, false), publications: R(false, false), enrollments: R(true, true), trainingNeeds: R(false, false), programs: R(true, false), completions: R(true, false), console: true },
+  publisher: { experts: R(false, false), modules: R(false, false), publications: R(false, false), enrollments: R(false, false), trainingNeeds: R(false, false), programs: R(false, false), completions: R(false, false), console: true },
+  admin: { experts: R(true, true), modules: R(true, true), publications: R(true, true), enrollments: R(true, true), trainingNeeds: R(true, true), programs: R(true, true), completions: R(true, true), console: true },
 };
 
 // Dev mode registers a server function once its module was loaded by the client graph.
@@ -93,10 +93,10 @@ try {
     const got = decodeAccess(res.text);
     const exp = EXPECT[persona];
     const accessError = got.error; if (accessError) console.log("   error:", accessError);
-    const anyRead = ["experts", "modules", "publications", "enrollments", "trainingNeeds", "programs"].some((k) => got[k]?.read);
+    const anyRead = ["experts", "modules", "publications", "enrollments", "trainingNeeds", "programs", "completions"].some((k) => got[k]?.read);
     const consoleOpen = anyRead || (got.roles ?? []).includes("publisher");
     console.log(`\n== ${persona} (${roles.join(",")}) HTTP ${res.status}${got.experts ? "" : " raw=" + got.raw}`);
-    for (const k of ["experts", "modules", "publications", "enrollments", "trainingNeeds", "programs"]) {
+    for (const k of ["experts", "modules", "publications", "enrollments", "trainingNeeds", "programs", "completions"]) {
       check(`${persona} ${k}: read=${exp[k].read} decide=${exp[k].decide}`, got[k] && got[k].read === exp[k].read && got[k].decide === exp[k].decide, JSON.stringify(got[k]));
     }
     check(`${persona} konsol terbuka=${exp.console}`, consoleOpen === exp.console);

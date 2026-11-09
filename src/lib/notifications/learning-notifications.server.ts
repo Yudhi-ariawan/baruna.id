@@ -11,6 +11,46 @@ type RawNotif = InAppNotification & { subjectId: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Completion decisions (Slide 27: every stage produces a notification). */
+export async function buildCompletionNotifications(userId: string): Promise<RawNotif[]> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabaseAdmin as any;
+  const { data, error } = await db
+    .from("course_completions")
+    .select("id, status, decided_at, decided_by, decision_note, certificate_held_reason, course_offerings(offering_code, offering_title, master_courses(title))")
+    .eq("user_id", userId)
+    .in("status", ["approved", "remedial"])
+    .not("decided_by", "is", null)
+    .order("decided_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  type Row = {
+    id: string; status: string; decided_at: string; decision_note: string | null; certificate_held_reason: string | null;
+    course_offerings: { offering_code: string; offering_title: string; master_courses: { title: string } | null } | null;
+  };
+  return ((data ?? []) as Row[]).map((c) => {
+    const title = c.course_offerings?.master_courses?.title ?? c.course_offerings?.offering_title ?? "Course";
+    const approved = c.status === "approved";
+    return {
+      id: `completion-${c.id}-${c.status}-${c.decided_at}`,
+      subjectId: `completion-${c.id}`,
+      type: approved ? ("approved" as const) : ("revision_requested" as const),
+      title: approved ? `Anda lulus: "${title}"` : `Perlu tindak lanjut: "${title}"`,
+      body: approved
+        ? c.certificate_held_reason
+          ? "Kelulusan Anda telah disetujui. Sertifikat course ini berbayar, dan pembayaran belum tersedia."
+          : "Kelulusan Anda telah disetujui. Sertifikat sudah tersedia di halaman course dan My Learning."
+        : c.decision_note ?? "Reviewer meminta tindak lanjut sebelum kelulusan Anda disetujui.",
+      subjectKind: "other" as const,
+      subjectTitle: title,
+      targetUrl: c.course_offerings ? `/academy/course/${c.course_offerings.offering_code}` : "/academy/learn",
+      createdAt: c.decided_at,
+      actorName: "BARUNA Academy",
+    };
+  });
+}
+
 export async function buildModuleUpdateNotifications(userId: string): Promise<RawNotif[]> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

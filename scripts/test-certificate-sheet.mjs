@@ -82,6 +82,13 @@ try {
   const other = await persona("other", "Peserta Lain");
   const eid = (await owner.c.rpc("learning_enrol", { _offering_code: OFF })).data?.id;
   for (const m of ["SH-01", "SH-02"]) await owner.c.rpc("learning_progress_mark", { _enrolment_id: eid, _activity_id: `module:${m}`, _status: "completed", _progress: null });
+  // Since 20261109010000 the certificate is issued when a different decider approves the completion.
+  const approver = await persona("approver", "Approver Uji");
+  const { data: roles } = await svc.from("rbac_roles").select("id").eq("code", "approver").single();
+  await svc.from("rbac_user_roles").insert({ user_id: approver.id, role_id: roles.id, is_primary: false, status: "active", reason: "tdd_sheet_test" });
+  const comp = (await svc.from("course_completions").select("id, updated_at").eq("enrolment_id", eid).maybeSingle()).data;
+  const decided = await approver.c.rpc("completion_decide", { _id: comp?.id, _decision: "approve", _note: null, _expected_updated_at: comp?.updated_at });
+  if (decided.error) console.log("  (persetujuan:", decided.error.message, ")");
   const iss = await owner.c.rpc("issue_my_certificate", { _enrolment_id: eid, _certificate_type: "completion" });
   const number = iss.data?.certificate_number;
   check(Boolean(number), `sertifikat terbit ${number ?? iss.error?.message}`);
@@ -124,7 +131,11 @@ try {
     await svc.from("course_offerings").delete().eq("id", offeringId);
   }
   if (courseId) await svc.from("master_courses").delete().eq("id", courseId);
-  if (created.length) await svc.from("learning_audit_log").delete().in("actor_id", created);
+  if (created.length) {
+    await svc.from("learning_audit_log").delete().in("actor_id", created);
+    await svc.from("governance_audit_log").delete().in("actor_id", created);
+    await svc.from("rbac_user_roles").delete().in("user_id", created);
+  }
   let left = 0;
   for (const id of created) { const { error } = await svc.auth.admin.deleteUser(id); if (error) { left++; console.log("  gagal hapus user", id, error.message); } }
   const rest = (await svc.from("master_courses").select("id", { count: "exact", head: true }).ilike("course_code", "tdd-sheet-%")).count;

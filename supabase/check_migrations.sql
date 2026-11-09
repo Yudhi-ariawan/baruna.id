@@ -264,7 +264,12 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'check_certificate_eligibility' AND prosrc LIKE '%certificate_payment_required%')
       AND NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.proname IN ('set_completion_evaluation_template_status',
                         'add_completion_evaluation_question', 'create_completion_evaluation_template')
-                        AND has_function_privilege('authenticated', p.oid, 'EXECUTE')))
+                        AND has_function_privilege('authenticated', p.oid, 'EXECUTE'))),
+  (68, '20261109010000_completion_approval',
+      to_regclass('public.course_completions') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'completion_decide')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'issue_my_certificate' AND prosrc LIKE '%certificate_requires_approval%')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_completion_sync_progress'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

@@ -37,13 +37,12 @@ import {
   useEnrol,
   useEnrolmentDetail,
   useEligibility,
-  useIssueCertificate,
   useMarkActivity,
   useRollback,
 } from "@/lib/learning/useBackendEnrolment";
 import { barunaToast } from "@/lib/downloads";
 import { CompletionEvaluationSection } from "@/components/baruna/learning/CompletionEvaluationSection";
-import { eligibilityReasonText } from "@/lib/learning/learning.functions";
+import { CompletionStatusPanel } from "@/components/baruna/learning/CompletionStatusPanel";
 import { CertificateSheetActions } from "@/components/baruna/learning/CertificateSheetActions";
 
 const MENU_ICONS: Partial<Record<MenuItemId, LucideIcon>> = {
@@ -100,7 +99,6 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
   const detailQ = useEnrolmentDetail(offering.offering_code);
   const enrolMut = useEnrol(offering.offering_code);
   const markMut = useMarkActivity(offering.offering_code);
-  const certMut = useIssueCertificate();
   const rollbackMut = useRollback();
 
   const enrolment = detailQ.data?.enrolment ?? null;
@@ -148,19 +146,6 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
       });
     } catch (e) {
       barunaToast(e instanceof Error ? e.message : "Save failed");
-    }
-  }
-
-  async function handleIssueCertificate() {
-    if (!enrolment) return;
-    try {
-      const rec = await certMut.mutateAsync({
-        enrolmentId: enrolment.id,
-        certificateType: "completion",
-      });
-      barunaToast(`Certificate issued — ${rec.certificate_number}`);
-    } catch (e) {
-      barunaToast(e instanceof Error ? e.message : "Not eligible");
     }
   }
 
@@ -351,33 +336,7 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
                     <CertificateSheetActions certificateNumber={certificates[0].certificate_number} />
                   </div>
                 ) : (
-                  <>
-                    <div className="rounded-xl border border-border bg-background p-3 text-sm">
-                      <div className="font-semibold text-navy">Eligibility check (server-side)</div>
-                      {eligibilityQ.data ? (
-                        eligibilityQ.data.eligible ? (
-                          <div className="mt-1 text-eco-community">✓ Eligible</div>
-                        ) : (
-                          <div className="mt-1 text-muted-foreground">
-                            Belum memenuhi syarat: {eligibilityReasonText(eligibilityQ.data.reason)}
-                            {eligibilityQ.data.reason === "modules_incomplete" && eligibilityQ.data.required
-                              ? ` (${eligibilityQ.data.completed ?? 0} dari ${eligibilityQ.data.required} modul)`
-                              : ""}
-                          </div>
-                        )
-                      ) : (
-                        <div className="mt-1 text-muted-foreground">Checking…</div>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleIssueCertificate}
-                      // The server decides; the button only mirrors its answer.
-                      disabled={certMut.isPending || eligibilityQ.data?.eligible !== true}
-                      className="rounded-xl bg-marine px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-marine/90 disabled:opacity-60"
-                    >
-                      {certMut.isPending ? "Issuing…" : "Issue certificate"}
-                    </button>
-                  </>
+                  <CompletionStatusPanel data={eligibilityQ.data} />
                 )}
               </div>
             ) : (

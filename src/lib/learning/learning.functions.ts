@@ -166,13 +166,18 @@ export const listMyEnrolments = createServerFn({ method: "GET" })
       )
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    // Review state of each enrolment (My Learning). Empty until migration 20261109010000 ran.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: reviews } = await (context.supabase as any).from("course_completions").select("enrolment_id, status");
+    const reviewOf = new Map(((reviews ?? []) as Array<{ enrolment_id: string; status: string }>).map((r) => [r.enrolment_id, r.status]));
+    return (data ?? []).map((row) => ({ ...row, review_status: reviewOf.get(row.id) ?? null }));
   });
 
 const LEARNING_ERRORS: Record<string, string> = {
   approval_required:
     "Kursus ini memerlukan persetujuan admin. Ajukan pendaftaran terlebih dahulu dan tunggu persetujuan.",
   offering_not_found: "Kursus tidak ditemukan.",
+  certificate_requires_approval: "Sertifikat diterbitkan setelah kelulusan disetujui Reviewer/Admin BARUNA.",
   certificate_type_not_available: "Jenis sertifikat ini belum tersedia. Saat ini hanya sertifikat kelulusan yang bisa diterbitkan.",
   offering_closed: "Pendaftaran kursus ini sudah ditutup.",
   enrolment_window_closed: "Saat ini di luar periode pendaftaran kursus ini.",
@@ -329,49 +334,14 @@ export const checkEligibility = createServerFn({ method: "GET" })
       _enrolment_id: data.enrolmentId,
     });
     if (error) throw new Error(error.message);
-    return result as { eligible: boolean; reason?: string; completed?: number; required?: number };
-  });
-
-type IssuedCertificate = {
-  id: string;
-  certificate_number: string;
-  verification_reference: string;
-  certificate_type: string;
-  issue_date: string;
-};
-
-/**
- * Eligibility, the unique server-generated number and the insert happen in one
- * transaction locked on the enrolment, so a double click returns the same certificate.
- */
-export const issueCertificate = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) =>
-    z
-      .object({
-        enrolmentId: z.string().uuid(),
-        certificateType: z.enum([
-          "completion",
-          "participation",
-          "program",
-          "applied-achievement",
-          "competency",
-          "statement-of-result",
-        ]).default("completion"),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data, context }) => {
-    const cert = await callLearningRpc<IssuedCertificate & { created: boolean }>(context, "issue_my_certificate", {
-      _enrolment_id: data.enrolmentId,
-      _certificate_type: data.certificateType,
-    });
-    return {
-      id: cert.id,
-      certificate_number: cert.certificate_number,
-      verification_reference: cert.verification_reference,
-      certificate_type: cert.certificate_type,
-      issue_date: cert.issue_date,
+    return result as {
+      eligible: boolean;
+      reason?: string;
+      completed?: number;
+      required?: number;
+      completion_status?: "pending_review" | "remedial" | "approved" | null;
+      decision_note?: string | null;
+      certificate_held_reason?: string | null;
     };
   });
 

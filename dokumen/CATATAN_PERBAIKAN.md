@@ -1085,6 +1085,23 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Uji:** `tsc`, lint berkas yang diubah (tanpa peringatan baru), `build` lulus. `test:certificate-sheet` diperluas menjadi **13 cek**: daftar sertifikat pemilik memuat sertifikatnya dengan judul course, daftar peserta lain tidak; daftar course pemilik memuat course yang selesai di mesin bersama, daftar peserta lain tidak. Dijalankan terhadap server dev uji di port 8081. Data uji bersih.
 
+## 2ar. Completion Record dan persetujuan kelulusan (9 Nov)
+
+**Masalah (dibandingkan dengan panduan):** Slide 24 (PB-ACA-05) mewajibkan *Review Completion* dan *Approval Completion* sebelum *Certificate Record*, Slide 26 memisahkan objek Completion dari Certificate, dan Slide 27 menempatkan tahap ini pada Admin + Reviewer dengan peserta hanya mengunduh. Di aplikasi, peserta menerbitkan sertifikatnya sendiri lewat tombol *Issue certificate* tanpa review. Status selesai baru tertulis saat sertifikat terbit, sehingga penahanan sertifikat course berbayar (2ao) ikut menahan kelulusan, padahal Slide 22 dan 24 menyatakan pembayaran tidak menentukan kelulusan.
+
+**Perbaikan (migrasi `20261109010000`):**
+- Tabel `course_completions` (satu per pendaftaran): dibentuk **otomatis** oleh trigger pada progres dan evaluasi akhir begitu syarat terpenuhi, berstatus `pending_review`. Trigger mengunci pendaftaran, jadi modul terakhir dan evaluasi yang dikirim bersamaan dari dua perangkat tidak saling terlewat.
+- `completion_decide` / `completion_decide_many`: hanya pemutus (`_can_decide_review`), bukan pesertanya sendiri, dengan pemeriksaan layar usang (`_expected_updated_at`). **Setuju:** pendaftaran menjadi selesai dan sertifikat terbit. **Remedial:** wajib alasan, peserta melihat alasannya, dan bisa disetujui kemudian. Syarat diperiksa ulang saat disetujui. Massal: tiap baris berdiri sendiri, baris yang gagal dilaporkan.
+- `completion_overview`: antrean untuk pemutus, Operator, dan Reviewer (baca saja).
+- `issue_my_certificate` tidak lagi menerbitkan: mengembalikan sertifikat yang sudah ada, atau `certificate_requires_approval`.
+- `check_certificate_eligibility`: pembayaran bukan syarat lagi. Course berbayar: lulus setelah disetujui, sertifikat ditahan (`certificate_held_reason`). Evaluasi yang sudah terkirim tetap dihitung walau templatenya dinonaktifkan kemudian.
+- Data lama: sertifikat yang sudah terbit tetap berlaku dan dicatat `approved`; peserta yang sudah memenuhi syarat langsung masuk antrean.
+- Aplikasi: menu **Persetujuan Kelulusan** di Konsol Kurasi (`governance.completions.tsx`, tab Menunggu / Perlu tindak lanjut / Disetujui, setujui terpilih, minta remedial); tombol *Issue certificate* diganti panel status (`CompletionStatusPanel`); notifikasi lulus dan remedial; My Learning menampilkan *Awaiting approval* / *Follow-up needed*. Server function `issueCertificate` dan hook-nya dihapus.
+
+**Uji:** PGlite 57/57 (bukti sebelum migrasi; migrasi bisa diulang; data lama; record otomatis termasuk wajib evaluasi; akses tabel; peran; layar usang; remedial; keputusan ganda; audit; pemisahan wewenang; massal; pembayaran; kondisi berubah sebelum disetujui; antrean). `tsc`, lint, lulus. Uji langsung baru `npm run test:completion-approval` (26 cek, termasuk **dua modul ditandai bersamaan** dan **dua pemutus bersamaan**). **Sebelum migrasi (intern-update, 9 Nov): 3/26**: peserta menerbitkan sertifikat sendiri (`000045`, dihapus), belum ada Completion Record. Tiga skrip lama disesuaikan dengan alur persetujuan: `test:certificate-path`, `test:certificate-sheet`, `test:participant-rpc`.
+
+**Belum:** Tahap B (*certificate model* di Course Offering, Slide 26) dan Tahap C (jenis sertifikat lain, butuh kehadiran dan asesmen, Slide 23).
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1143,7 +1160,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (67 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (68 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1198,6 +1215,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261105010000_certificate_eligibility.sql` (syarat sertifikat memakai evaluasi akhir yang dipakai halaman course; jalur evaluasi lama `learning_evaluation_submit` ditutup untuk peserta). Lihat bagian 2an. **Butuh kode branch ini** (pesan syarat sertifikat di halaman course).
 - `20261105020000_offering_evaluation_template.sql` (template evaluasi akhir dipilih di draf Course Offering, diperiksa database, ikut versi, dikunci setelah ada peserta). Lihat bagian 2an. Jalankan setelah `20261104030000`. **Butuh kode branch ini** (pilihan template di formulir offering).
 - `20261105030000_certificate_guards.sql` (hanya sertifikat kelulusan yang bisa terbit; sertifikat course berbayar tidak terbit gratis; RPC ubah template evaluasi ditutup untuk pengguna biasa). Lihat bagian 2ao. Jalankan setelah `20261105010000` dan `020000`. **Butuh kode branch ini** (pilihan model akses di formulir offering, pesan syarat sertifikat).
+- `20261109010000_completion_approval.sql` (Completion Record dan persetujuan kelulusan; peserta tidak lagi menerbitkan sertifikat sendiri; pembayaran tidak menahan kelulusan). Lihat bagian 2ar. Jalankan setelah `20261105030000`. **Butuh kode branch ini** (menu Persetujuan Kelulusan, status di tab Certificate).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1217,7 +1235,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `lifecycle` | 14 | 2, 2b | `module-update` | 24 | 2t |
   | `kh-roles` | 20 | 2k, 2l | `admin-module-revision` | 18 | 2u |
   | `expert-rpc` | 64 | 2d–2g | `knowledge-update` | 19 | 2v |
-  | `participant-rpc` | 28 | 2h–2j, 2an | `expert-profile-update` | 19 | 2w |
+  | `participant-rpc` | 30 | 2h–2j, 2an, 2ar | `expert-profile-update` | 19 | 2w |
   | `kr-rpc` | 24 | 2k | `version-history`* | 16 | 2x |
   | `expert-role-lock` | 10 | 2p | `trainer-choice` | 5 | 2y |
   | `review-lockdown` | 13 | 2q | `create-user`* | 9 | 2z |
@@ -1228,7 +1246,8 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
   | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | `course-cover-cleanup` | 12 | 2am |
-  | `certificate-path` | 25 (setelah migrasi `20261105010000`, `020000`, `030000`) | 2an, 2ao | `certificate-sheet`* | 13 | 2ap, 2aq |
+  | `certificate-path` | 26 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
+  | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

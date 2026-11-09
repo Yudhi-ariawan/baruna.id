@@ -21,7 +21,7 @@ export const CURATION_CONSOLE_ROLE_CODES = [
 /** Roles of the system administration portal (/admin, gate users.read). */
 export const ADMIN_PORTAL_ROLE_CODES = ["super_admin", "admin"] as const;
 
-export type ConsoleMenuKey = "experts" | "modules" | "publications" | "enrollments" | "trainingNeeds" | "programs";
+export type ConsoleMenuKey = "experts" | "modules" | "publications" | "enrollments" | "trainingNeeds" | "programs" | "completions";
 
 export type ConsoleMenuAccess = {
   /** May open the queue and read the submissions. */

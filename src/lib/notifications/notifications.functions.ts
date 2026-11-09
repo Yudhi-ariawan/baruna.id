@@ -9,7 +9,7 @@ import {
   buildTrainingNeedStaffNotifications,
   submitterUrl,
 } from "./workflow-notifications.server";
-import { buildModuleUpdateNotifications } from "./learning-notifications.server";
+import { buildCompletionNotifications, buildModuleUpdateNotifications } from "./learning-notifications.server";
 
 export type InAppNotification = {
   id: string;
@@ -428,7 +428,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       (await hasGovernanceRole(context.supabase, context.userId, "management"));
 
     // A failure in one source must not hide the others.
-    const [review, services, trainerApps, statusSteps, assignments, staff, moduleUpdates, reads] = await Promise.all([
+    const [review, services, trainerApps, statusSteps, assignments, staff, moduleUpdates, completions, reads] = await Promise.all([
       buildReviewNotifications(context.userId).catch(() => ({ raw: [] as RawNotif[], legacyReadIds: [] as string[] })),
       buildServiceRequestNotifications(context.userId).catch(() => [] as RawNotif[]),
       buildTrainerApplicationNotifications(context.userId).catch(() => [] as RawNotif[]),
@@ -438,6 +438,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
         .then((yes) => (yes ? buildTrainingNeedStaffNotifications(context.userId) : []))
         .catch(() => [] as RawNotif[]),
       buildModuleUpdateNotifications(context.userId).catch(() => [] as RawNotif[]),
+      buildCompletionNotifications(context.userId).catch(() => [] as RawNotif[]),
       supabaseAdmin
         .from("notification_reads")
         .select("notification_id")
@@ -458,6 +459,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       ...assignments,
       ...staff,
       ...moduleUpdates,
+      ...completions,
     ];
     rawNotifications.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),

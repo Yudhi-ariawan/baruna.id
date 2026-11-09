@@ -12,7 +12,6 @@ import {
   getEnrolmentDetail,
   markActivityComplete,
   
-  issueCertificate,
   checkEligibility,
   listMyCertificates,
   rollbackOwnEnrolment,
@@ -86,16 +85,6 @@ export function useMarkActivity(offeringCode: string) {
 // reachable from any UI; its controlled decommissioning is deferred work.
 
 
-
-export function useIssueCertificate() {
-  const qc = useQueryClient();
-  const fn = useServerFn(issueCertificate);
-  return useMutation({
-    mutationFn: (v: { enrolmentId: string; certificateType?: "completion" | "participation" | "program" | "applied-achievement" | "competency" | "statement-of-result" }) =>
-      fn({ data: { enrolmentId: v.enrolmentId, certificateType: v.certificateType ?? "completion" } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["learning"] }),
-  });
-}
 
 export function useEligibility(enrolmentId: string | undefined) {
   const fn = useServerFn(checkEligibility);

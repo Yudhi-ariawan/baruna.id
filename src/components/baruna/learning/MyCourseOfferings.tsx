@@ -38,7 +38,7 @@ export function MyCourseOfferings({ enrolments, certificates }: { enrolments: My
                   <div className="mt-4 flex items-center justify-between gap-2">
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide ${
                       done ? "bg-success/15 text-success" : "bg-amber-100 text-amber-800"}`}>
-                      {done ? <><CheckCircle2 className="h-3 w-3" /> Completed</> : "In progress"}
+                      {done ? <><CheckCircle2 className="h-3 w-3" /> Completed</> : e.review_status === "pending_review" ? "Awaiting approval" : e.review_status === "remedial" ? "Follow-up needed" : "In progress"}
                     </span>
                     <Link to="/academy/course/$offeringId" params={{ offeringId: o.offering_code }}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-marine px-3 py-1.5 text-xs font-semibold text-white hover:bg-marine/90">

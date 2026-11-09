@@ -103,6 +103,7 @@ async function cleanup() {
     await admin.from("course_enrollment_applications").delete().in("user_id", users);
     await admin.from("admin_audit_log").delete().in("actor_id", users);
     await admin.from("admin_audit_log").delete().in("target_user_id", users);
+    await admin.from("governance_audit_log").delete().in("actor_id", users);
     await admin.from("rbac_user_roles").delete().in("user_id", users);
   }
   let left = 0;
@@ -164,6 +165,14 @@ async function run() {
   const sv = await budi.client.rpc("save_completion_evaluation_draft", { _submission_id: st.data?.submission_id, _expected_version: st.data?.draft_version ?? 0, _answers: answers });
   const sb = await budi.client.rpc("submit_completion_evaluation", { _submission_id: st.data?.submission_id, _expected_version: sv.data?.draft_version ?? null });
   ok(!st.error && !sv.error && !sb.error, `evaluasi akhir dikirim lewat tab Evaluation ${st.error?.message ?? sv.error?.message ?? sb.error?.message ?? ""}`);
+  // Since 20261109010000 the certificate is issued when a different decider approves the completion.
+  await rejects(budi.client.rpc("issue_my_certificate", { _enrolment_id: enrolmentId }), /certificate_requires_approval/, "peserta tidak bisa menerbitkan sendiri");
+  const approver = await mkUser("approver");
+  const { data: approverRole } = await admin.from("rbac_roles").select("id").eq("code", "approver").single();
+  await admin.from("rbac_user_roles").insert({ user_id: approver.id, role_id: approverRole.id, is_primary: false, status: "active", reason: "tdd_participant_rpc" });
+  const comp = (await admin.from("course_completions").select("id, updated_at").eq("enrolment_id", enrolmentId).maybeSingle()).data;
+  const decided = await approver.client.rpc("completion_decide", { _id: comp?.id, _decision: "approve", _note: null, _expected_updated_at: comp?.updated_at });
+  ok(!decided.error, `kelulusan disetujui orang lain ${decided.error?.message ?? ""}`);
   const [c1, c2] = await Promise.all([
     budi.client.rpc("issue_my_certificate", { _enrolment_id: enrolmentId }),
     budi.client.rpc("issue_my_certificate", { _enrolment_id: enrolmentId }),

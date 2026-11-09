@@ -12,6 +12,8 @@ export type MyEnrolment = {
   enrolment_status: string;
   completion_status: string;
   enrolment_date: string;
+  /** Completion review (pending_review, remedial, approved), or null before the requirements are met. */
+  review_status?: string | null;
   course_offerings: Offering | Offering[];
 };
 export type MyCertificate = {
