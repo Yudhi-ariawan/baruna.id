@@ -1,4 +1,4 @@
-# Kesiapan Rilis BARUNA (diperbarui 5 November 2026, mencakup pekerjaan sampai 5 November)
+# Kesiapan Rilis BARUNA (diperbarui 9 November 2026, mencakup pekerjaan sampai 9 November)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
 Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
@@ -30,7 +30,8 @@ Status pemeriksaan terakhir (5 Nov, laptop): semua migrasi sampai `2026110503000
 - **Data Master (23 Okt):** bidang keahlian expert, aturan level trainer, dan kuota modul per level dikelola di Konsol Kurasi dengan validasi dan audit trail; tidak lagi ditulis tetap di kode atau hanya lewat SQL.
 - **Data Master lanjutan (2 Nov):** daftar trainer per level, topik Knowledge Hub, bahasa, dan kategori pelatihan Request a Training dikelola di Data Master dan diperiksa database saat formulir dikirim; Template Review (yang tidak punya fungsi) dihapus; antrean Konsol Kurasi dipaginasi.
 - **Program Academy (4 Nov):** Master Course (dengan modul dan gambar sampul) dan Course Offering dibuat dan diubah lewat draf, disetujui Approver/Admin lain, dan berversi; course tayang tampil di katalog Training, Self-Paced, dan All Programs; jalur ubah lama yang melewati persetujuan ditutup (CATATAN_PERBAIKAN 2ai-2al).
-- **Sertifikat (5 Nov):** sertifikat kelulusan kini bisa terbit lewat tampilan (semua modul selesai + evaluasi akhir terkirim bila diwajibkan); evaluasi kosong, jenis sertifikat pilihan sendiri (mis. kompetensi), dan sertifikat gratis untuk course berbayar ditutup di database; template evaluasi dipilih di formulir offering dan tidak bisa diubah satu orang; gambar sampul yang tidak terpakai bisa dibersihkan (CATATAN_PERBAIKAN 2am-2ao). Peserta bisa melihat dan mengunduh **lembar sertifikat sementara** (PDF bertanda SEMENTARA/CONTOH, tanpa stempel atau tanda tangan pejabat, dengan QR ke halaman verifikasi; 2ap). Halaman My Learning menampilkan course dari Course Offering beserta sertifikatnya (2aq).
+- **Sertifikat (5 Nov):** sertifikat kelulusan kini bisa terbit lewat tampilan (semua modul selesai + evaluasi akhir terkirim bila diwajibkan); evaluasi kosong, jenis sertifikat pilihan sendiri (mis. kompetensi), dan sertifikat gratis untuk course berbayar ditutup di database; template evaluasi dipilih di formulir offering dan tidak bisa diubah satu orang; gambar sampul yang tidak terpakai bisa dibersihkan (CATATAN_PERBAIKAN 2am-2ao). Peserta bisa melihat dan mengunduh **lembar sertifikat sementara** (PDF bertanda SEMENTARA/CONTOH, tanpa stempel atau tanda tangan pejabat, dengan QR ke halaman verifikasi; 2ap). Halaman My Learning menampilkan course dari Course Offering beserta sertifikatnya (2aq, 9 Nov).
+- **Lintas perangkat untuk Course Offering (9 Nov):** pendaftaran, modul yang ditandai selesai, evaluasi akhir, dan sertifikat course dari Course Offering tersimpan di database dan dibaca dengan identitas akun, sehingga muncul sama di perangkat atau browser mana pun dengan akun yang sama (My Learning dan tab Certificate). Lembar PDF sementara dibuat ulang di perangkat itu dari data database, jadi isinya sama. Dibuktikan oleh `test:certificate-sheet` (data diambil lewat server dengan token akun; peserta lain tidak mendapatkannya). Uji manual dengan dua perangkat nyata belum dilakukan.
 
 ## B. Belum diperbaiki atau belum diputuskan
 
@@ -46,7 +47,7 @@ Status pemeriksaan terakhir (5 Nov, laptop): semua migrasi sampai `2026110503000
 
 ## C. Kenapa belum siap dirilis luas
 
-1. **Lintas device:** kursus mandiri sudah ikut berpindah perangkat (disinkronkan ke server). Full Training dan AZA tidak.
+1. **Lintas device:** course dari Course Offering (pendaftaran, progres, evaluasi akhir, sertifikat) ikut berpindah perangkat karena seluruhnya di database (9 Nov). Kursus mandiri lama ikut berpindah lewat sinkronisasi ke server (tombol "Sinkronkan dari Akun Cloud"). Full Training dan AZA **tidak**: progres dan sertifikatnya hanya di browser tempat belajar (menunggu keputusan nasib program lama, P4).
 2. **Banyak user bersamaan:** belum ada uji beban; pengaturan Supavisor (port 6543) belum diperiksa.
 3. **Berbagai perangkat dan browser:** tampilan di HP dan browser lain belum diuji.
 4. **Berbagai role:** diuji lewat skrip dan database, belum oleh orang lewat browser dengan akun nyata. Yang secara khusus belum diuji manual: P3 (modul dinamis), P5 (form biodata, halaman Akun, unggah foto), P6 (kursus mandiri di dua perangkat), keputusan Knowledge Hub, dan fitur 22–23 Okt (pembaruan profil expert, pembaruan publikasi, riwayat versi, Tambah User, Data Master).
