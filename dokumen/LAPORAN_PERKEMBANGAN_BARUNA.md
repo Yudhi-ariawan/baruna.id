@@ -266,3 +266,47 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 
 **Pengujian:** setiap perubahan dibuktikan sebelum migrasi lalu diuji ulang sesudahnya: jalur sertifikat 7/17 menjadi 17/17, lalu setelah audit 17/25 menjadi 25/25; pembersihan sampul 12/12; lembar sertifikat 9/9. Jalur sertifikat juga diuji manual dengan akun peserta (course tanpa dan dengan evaluasi akhir). Semua uji lain tetap lulus dan data uji dibersihkan. Sudah di-push ke `intern-update`.
 
+---
+
+## 09/11/2026 (Senin, 9 November 2026)
+
+**Yang dibuat**
+- **Course Offering di My Learning:** course yang diikuti lewat Course Offering dan sertifikatnya tampil di halaman My Learning. Datanya dibaca dari database dengan identitas akun, jadi sama di perangkat atau browser mana pun.
+- **Persetujuan kelulusan sebelum sertifikat terbit** (Slide 24, PB-ACA-05). Peserta yang menyelesaikan modul dan evaluasi masuk antrean **Persetujuan Kelulusan** di Konsol Kurasi. Approver atau Admin lain memilih *Setujui* (sertifikat terbit) atau *Minta remedial* (dengan alasan yang bisa dibaca peserta). Peserta menerima notifikasi. Tersedia *Setujui terpilih*, dan tidak ada orang yang bisa menyetujui kelulusannya sendiri.
+
+**Yang diperbaiki**
+- Sebelumnya sertifikat langsung terbit ketika peserta menekan tombol, tanpa persetujuan siapa pun, padahal panduan meminta kelulusan disetujui dulu. Sekarang sertifikat hanya terbit setelah disetujui.
+- Pembayaran tidak lagi menahan kelulusan: course berbayar tetap bisa lulus, hanya sertifikatnya yang ditahan.
+
+**Pelajaran yang didapat**
+- Satu tombol yang terlihat praktis bisa melompati langkah persetujuan yang diwajibkan proses bisnis, jadi alurnya perlu dicocokkan dengan slide panduan, bukan dengan tampilan.
+- Data yang disimpan di database (bukan di browser) otomatis sama di semua perangkat.
+
+**Kendala**
+- Syarat lulus resmi, jenis sertifikat lain, dan STTP resmi masih menunggu arahan mentor. Tujuh hal yang perlu ditanyakan dicatat di `MENUNGGU_ARAHAN_MENTOR.md`.
+
+**Pengujian:** persetujuan kelulusan 3/26 sebelum migrasi menjadi 26/26 sesudahnya, termasuk dua modul ditandai bersamaan dan dua pemutus bersamaan. Jalur sertifikat dan uji peran konsol disesuaikan dan lulus. Diuji manual oleh saya dengan akun peserta dan approver.
+
+---
+
+## 10/11/2026 (Selasa, 10 November 2026)
+
+**Yang dibuat**
+- **Pendaftaran dengan persetujuan untuk Course Offering** (Slide 22, PB-ACA-03). Offering bisa memakai aturan "Wajib disetujui admin". Peserta menekan *Ajukan pendaftaran* di halaman course (bila biodata belum ada, diarahkan mengisinya dulu). Admin, Operator, atau Approver memutuskan di **Persetujuan Peserta**, dan peserta yang disetujui otomatis terdaftar.
+- **Dokumen persyaratan dan Minta Perbaikan.** Admin menulis daftar dokumen per offering (satu baris satu dokumen). Peserta mengunggah PDF (maks 10 MB) ke penyimpanan privat. Admin membuka dokumen lewat tautan sementara, lalu bisa memilih *Minta Perbaikan* dengan catatan. Peserta mengganti dokumen dan mengirim ulang.
+- **Notifikasi keputusan pendaftaran.** Peserta menerima notifikasi saat pendaftarannya disetujui, ditolak (dengan alasan), atau diminta perbaikan (dengan catatan), lengkap dengan tautan ke halaman course atau modul. Riwayatnya tetap utuh.
+
+**Yang diperbaiki**
+- **Dashboard peserta.** Sebelumnya pengajuan yang diminta perbaikan tidak tampil sama sekali. Course Offering juga dihitung seperti modul: progresnya selalu 0%, tertulis "kuis belum dikerjakan", dan tombol *Lanjutkan* membuka halaman yang salah. Sekarang dashboard menampilkan catatan perbaikan dengan tombol *Perbaiki dan kirim ulang*, serta progres course ("x dari y modul selesai") dan status kelulusannya. Tombolnya membuka halaman course yang benar.
+- Halaman modul kini menampilkan status *Admin Meminta Perbaikan* beserta catatannya.
+
+**Pelajaran yang didapat**
+- Uji manual dari sisi peserta menemukan hal yang tidak terlihat dari sisi admin: keputusan sudah tersimpan di database, tetapi peserta tidak tahu karena notifikasi dan dashboard belum membacanya.
+- Satu fitur baru (status "perlu perbaikan") harus diikuti ke semua tempat yang membaca status itu: halaman course, dashboard, notifikasi, dan halaman modul.
+
+**Kendala**
+- Dokumen apa yang wajib per offering, seleksi/skor, dan waitlist masih menunggu arahan mentor.
+- Berkas yang diunggah tetapi tidak jadi diajukan belum dibersihkan otomatis.
+
+**Pengujian:** pengajuan offering 11/18 sebelum migrasi menjadi 18/18 sesudahnya. Dokumen dan minta perbaikan 3/16 sebelum migrasi menjadi 16/16 sesudahnya. Notifikasi dan dashboard 9/21 dengan kode lama menjadi 21/21. Semua uji lain lulus, `build` lulus, dan data uji dibersihkan. Diuji manual oleh saya: membuat offering dengan dua dokumen, mengajukan sebagai peserta, lalu meminta perbaikan sebagai admin.
+

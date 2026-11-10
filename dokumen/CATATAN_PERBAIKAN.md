@@ -1131,9 +1131,30 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 - `course_enrollment_documents` (baca hanya milik sendiri) dan `enrollment_document_path`: berkas hanya bisa dibuka pemiliknya dan pengelola pendaftaran (Admin/Operator/Approver), lewat tautan bertanda 10 menit (`getEnrollmentDocumentUrl`).
 - Aplikasi: halaman course menampilkan daftar dokumen dengan tombol Unggah/Ganti, status *Admin meminta perbaikan* beserta catatan dan tombol *Kirim ulang*; Persetujuan Peserta punya tab *Perlu Perbaikan*, daftar dokumen dengan tombol *Buka* (`EnrollmentDocumentsList`), dan tombol *Minta Perbaikan*; formulir offering punya isian dokumen persyaratan (satu per baris) saat aturan "Wajib disetujui admin". Halaman course tetap terbuka sebelum migrasi (kolom dibaca dengan cadangan).
 
-**Uji:** PGlite 38/38 (bukti sebelum migrasi; migrasi bisa diulang; bucket privat; satu versi fungsi pengajuan; validasi daftar dokumen di draf, tersimpan rapi, riwayat versi, draf perubahan; pengajuan tanpa dokumen, berkas belum terunggah, bukan PDF, lebih dari 10 MB, milik orang lain, bucket lain, dokumen tak diminta ditolak tanpa sisa; lengkap tercatat; dokumen untuk modul ditolak, pengajuan modul 3 argumen tetap jalan; minta perbaikan, catatan wajib, tidak bisa disetujui/ditolak selagi menunggu, kirim ulang hanya CV, audit, disetujui lalu terdaftar; akses dokumen pemilik/operator/orang lain; tabel tidak bisa diubah langsung). `tsc`, lint (tanpa masalah baru), `build` lulus. Uji langsung baru `npm run test:enrollment-revision` (16 cek, memanggil aplikasi untuk unggah dan buka dokumen). **Sebelum migrasi (intern-update, 10 Nov): 3/16** (penjagaan dari aplikasi saja, misalnya bukan PDF ditolak server); kolom dokumen, bucket, dan keputusan minta perbaikan belum ada. Data dan berkas uji bersih.
+**Uji:** PGlite 38/38 (bukti sebelum migrasi; migrasi bisa diulang; bucket privat; satu versi fungsi pengajuan; validasi daftar dokumen di draf, tersimpan rapi, riwayat versi, draf perubahan; pengajuan tanpa dokumen, berkas belum terunggah, bukan PDF, lebih dari 10 MB, milik orang lain, bucket lain, dokumen tak diminta ditolak tanpa sisa; lengkap tercatat; dokumen untuk modul ditolak, pengajuan modul 3 argumen tetap jalan; minta perbaikan, catatan wajib, tidak bisa disetujui/ditolak selagi menunggu, kirim ulang hanya CV, audit, disetujui lalu terdaftar; akses dokumen pemilik/operator/orang lain; tabel tidak bisa diubah langsung). `tsc`, lint (tanpa masalah baru), `build` lulus. Uji langsung baru `npm run test:enrollment-revision` (16 cek, memanggil aplikasi untuk unggah dan buka dokumen). **Sebelum migrasi (intern-update, 10 Nov): 3/16** (penjagaan dari aplikasi saja, misalnya bukan PDF ditolak server); kolom dokumen, bucket, dan keputusan minta perbaikan belum ada. **Sesudah migrasi (intern-update, 10 Nov): 16/16**, semua uji lain lulus. Diuji manual oleh pemilik proyek (offering dengan dua dokumen, pengajuan, minta perbaikan). Data dan berkas uji bersih.
 
 **Catatan:** berkas yang diunggah tetapi tidak jadi diajukan tetap tersimpan privat (belum dibersihkan otomatis). Dokumen apa yang wajib per offering diisi admin, menunggu arahan mentor.
+
+## 2au. Notifikasi keputusan pendaftaran dan dashboard peserta (10 Nov)
+
+**Ditemukan saat uji manual 2at:** setelah admin menekan *Minta Perbaikan*, peserta tidak menerima notifikasi, dan dashboard (`/dashboard`) menunjukkan "Menunggu persetujuan 0" tanpa menyebut pengajuan itu.
+
+**Panduan:** Slide 13 dan 27 (setiap perubahan status menghasilkan notifikasi); Slide 22 (peserta diminta memperbaiki lalu mengirim ulang); Slide 15 (data belajar hanya dari sistem resmi).
+
+**Masalah yang ditemukan:**
+1. Keputusan di Persetujuan Peserta (setujui, tolak, minta perbaikan) tidak pernah menjadi notifikasi, baik untuk modul maupun Course Offering.
+2. Dashboard hanya membaca status *pending/approved/rejected*. Pengajuan yang diminta perbaikan dibuang, sehingga tidak tampil di mana pun.
+3. Course Offering yang disetujui lewat pengajuan dihitung sebagai modul. Progresnya diambil dari langkah video/PDF/PPT sehingga selalu 0%, tertulis "kuis belum dikerjakan", dan tombol *Lanjutkan* membuka `/academy/learn/<kode>` (halaman Full Training, bukan halaman course).
+4. Course Offering yang didaftari langsung (aturan Terbuka/Wajib akun) tidak tampil di dashboard, dan kelulusannya tidak dihitung.
+5. Halaman modul (`CourseEnrollmentAction`) tidak mengenal status *revision_requested*, sehingga catatan admin tidak terlihat.
+
+**Perbaikan (tanpa migrasi, kode aplikasi saja):**
+- `buildEnrollmentDecisionNotifications`: notifikasi *Pendaftaran disetujui*, *belum disetujui* (dengan alasan), dan *Admin meminta perbaikan* (dengan catatan), dibaca dari jejak audit `admin_audit_log` milik peserta itu. Karena itu riwayatnya utuh, misalnya permintaan perbaikan tetap tercatat setelah disetujui. Tautannya ke halaman course (offering), halaman modul, atau Pendaftaran (Full Training). Penentunya `src/lib/learning/enrollment-target.ts`.
+- `getMyLearningOverview`: status *revision_requested* ikut dibaca (hitungan `revisionRequested`). Pengajuan diberi jenis (offering/modul/program). Course Offering dibaca dari `enrolments`, dengan progres dihitung sama seperti halaman course (modul master yang ditandai selesai), status persetujuan kelulusan, dan lulus = kelulusan disetujui. Offering tidak lagi masuk daftar modul. Semua dibaca dengan identitas peserta (RLS).
+- Dashboard: kartu "Menunggu persetujuan" menyebut jumlah yang perlu perbaikan. *Status Pendaftaran* menampilkan catatan admin dengan tombol **Perbaiki dan kirim ulang** (atau **Lihat dan ajukan lagi** bila ditolak) ke halaman yang tepat. Baris Course Offering menampilkan "x dari y modul selesai" serta status persetujuan kelulusan, dan tombolnya ke `/academy/course/<kode>`.
+- Halaman modul: status *Admin Meminta Perbaikan* tampil dengan catatan dan tombol **Perbaiki & Kirim Ulang**.
+
+**Uji:** `npm run test:participant-dashboard` (21 cek, memanggil aplikasi). Isinya: menunggu, minta perbaikan beserta catatan dan hitungannya, notifikasi dengan tautan ke halaman course, kirim ulang lalu disetujui, satu baris course (bukan modul) dengan 0 dari 2 modul, riwayat notifikasi lengkap, progres 50% setelah satu modul ditandai, penolakan dengan alasan, data dan notifikasi peserta lain tidak terlihat, tanpa login ditolak. **Kode lama: 9/21. Kode baru: 21/21.** Data uji bersih. `tsc` dan lint lulus (tanpa masalah baru).
 
 ---
 
@@ -1283,7 +1304,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `academy-guards` | 13 (setelah migrasi `20261110010000`) | 2al, 2as | `course-cover-cleanup` | 12 | 2am |
   | `certificate-path` | 27 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
   | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | `offering-application` | 18 (setelah migrasi `20261110010000`) | 2as |
-  | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | | | |
+  | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 21 | 2au |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

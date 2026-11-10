@@ -6,10 +6,86 @@
 // 'server_quiz'). Whether learners who already passed must retake the quiz is a
 // mentor decision (MENUNGGU_ARAHAN_MENTOR item 9), so they are not notified yet.
 import type { InAppNotification } from "./notifications.functions";
+import { enrollmentKind, enrollmentLearnUrl, enrollmentPageUrl } from "@/lib/learning/enrollment-target";
 
 type RawNotif = InAppNotification & { subjectId: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const ENROLLMENT_EVENTS = {
+  course_enrollment_approved: "approved",
+  course_enrollment_rejected: "rejected",
+  course_enrollment_revision_requested: "revision_requested",
+} as const;
+
+/**
+ * Decisions on the user's enrolment applications (PB-ACA-03, Slide 22; Slide 13:
+ * every status change notifies). Read from the audit trail, so every decision stays
+ * in the history: a revision request is still listed after the later approval.
+ */
+export async function buildEnrollmentDecisionNotifications(userId: string): Promise<RawNotif[]> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabaseAdmin as any;
+  const { data, error } = await db
+    .from("admin_audit_log")
+    .select("id, event_type, entity_id, after_data, created_at")
+    .eq("target_user_id", userId)
+    .eq("entity_type", "course_enrollment")
+    .in("event_type", Object.keys(ENROLLMENT_EVENTS))
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  type Row = { id: string; event_type: keyof typeof ENROLLMENT_EVENTS; entity_id: string | null; after_data: Record<string, unknown> | null; created_at: string };
+  const rows = ((data ?? []) as Row[]).filter((r) => r.entity_id);
+
+  const candidates = [...new Set(rows.map((r) => r.entity_id as string).filter((id) => !UUID.test(id)))];
+  const offeringCodes = new Set<string>();
+  if (candidates.length > 0) {
+    const { data: offs, error: offErr } = await db.from("course_offerings").select("offering_code").in("offering_code", candidates);
+    if (offErr) throw new Error(offErr.message);
+    for (const o of (offs ?? []) as Array<{ offering_code: string }>) offeringCodes.add(o.offering_code);
+  }
+
+  return rows.map((r) => {
+    const courseId = r.entity_id as string;
+    const status = ENROLLMENT_EVENTS[r.event_type];
+    const kind = enrollmentKind(courseId, offeringCodes);
+    const title = String(r.after_data?.course_title ?? "").trim() || "Pelatihan BARUNA";
+    const note = String(r.after_data?.decision_notes ?? "").trim();
+    const what = kind === "offering" ? "course" : kind === "program" ? "program" : "modul";
+    const content =
+      status === "approved"
+        ? {
+            title: `Pendaftaran disetujui: "${title}"`,
+            body: `${note ? `${note} ` : ""}Anda sudah terdaftar. Silakan mulai belajar di halaman ${what}.`,
+            url: enrollmentLearnUrl(courseId, kind),
+          }
+        : status === "revision_requested"
+          ? {
+              title: `Admin meminta perbaikan pendaftaran: "${title}"`,
+              body: `${note || "Pendaftaran Anda perlu diperbaiki."} Perbaiki lalu kirim ulang di halaman ${what}.`,
+              url: enrollmentPageUrl(courseId, kind),
+            }
+          : {
+              title: `Pendaftaran belum disetujui: "${title}"`,
+              body: note || "Admin belum menyetujui pendaftaran Anda. Anda dapat mengajukan lagi.",
+              url: enrollmentPageUrl(courseId, kind),
+            };
+    return {
+      id: `enrollment-${r.id}`,
+      subjectId: `enrollment-${courseId}`,
+      type: status,
+      title: content.title,
+      body: content.body,
+      subjectKind: kind === "module" ? ("module" as const) : ("other" as const),
+      subjectTitle: title,
+      targetUrl: content.url,
+      createdAt: r.created_at,
+      actorName: "BARUNA Academy",
+    };
+  });
+}
 
 /** Completion decisions (Slide 27: every stage produces a notification). */
 export async function buildCompletionNotifications(userId: string): Promise<RawNotif[]> {

@@ -102,7 +102,9 @@ export function CourseEnrollmentAction({
   const status = serverStatus?.status || "none";
   const isApproved = status === "approved" || done;
   const isPending = status === "pending";
-  const isRejected = status === "rejected";
+  // "Minta Perbaikan" (PB-ACA-03): shown with the admin's note and resubmitted like a rejection.
+  const isRevision = status === "revision_requested";
+  const isRejected = status === "rejected" || isRevision;
 
   // Sync to local shortCourses if approved on server
   useEffect(() => {
@@ -188,7 +190,10 @@ export function CourseEnrollmentAction({
             onClick={handleStartApply}
             className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition"
           >
-            <RotateCcw className="h-3.5 w-3.5" /> {isId ? "Ajukan Ulang Pendaftaran" : "Reapply for Enrollment"}
+            <RotateCcw className="h-3.5 w-3.5" />{" "}
+            {isRevision
+              ? (isId ? "Perbaiki & Kirim Ulang" : "Fix & Resubmit")
+              : (isId ? "Ajukan Ulang Pendaftaran" : "Reapply for Enrollment")}
           </button>
         </div>
       );
@@ -256,7 +261,11 @@ export function CourseEnrollmentAction({
         <div className="rounded-xl border border-red-200 bg-red-50/70 p-3.5 text-xs text-red-900 space-y-2">
           <div className="flex items-center gap-2 font-bold text-red-800">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
-            <span>{isId ? "Pendaftaran Belum Disetujui" : "Enrollment Not Approved"}</span>
+            <span>
+              {isRevision
+                ? (isId ? "Admin Meminta Perbaikan" : "Administrator Requested a Revision")
+                : (isId ? "Pendaftaran Belum Disetujui" : "Enrollment Not Approved")}
+            </span>
           </div>
           {serverStatus?.decisionNotes && (
             <p className="text-[0.75rem] text-red-700 bg-white/80 rounded-lg p-2 border border-red-200 italic">
@@ -302,7 +311,10 @@ export function CourseEnrollmentAction({
           onClick={handleStartApply}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700 transition cursor-pointer"
         >
-          <RotateCcw className="h-4 w-4" /> {isId ? "Ajukan Ulang Pendaftaran" : "Reapply for Enrollment"}
+          <RotateCcw className="h-4 w-4" />{" "}
+          {isRevision
+            ? (isId ? "Perbaiki & Kirim Ulang" : "Fix & Resubmit")
+            : (isId ? "Ajukan Ulang Pendaftaran" : "Reapply for Enrollment")}
         </button>
       ) : (
         <div className="space-y-2">

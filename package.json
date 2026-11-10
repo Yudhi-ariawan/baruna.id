@@ -38,6 +38,7 @@
     "test:completion-approval": "node --env-file-if-exists=.env scripts/test-completion-approval.mjs",
     "test:offering-application": "node --env-file-if-exists=.env scripts/test-offering-application.mjs",
     "test:enrollment-revision": "node --env-file-if-exists=.env scripts/test-enrollment-revision.mjs",
+    "test:participant-dashboard": "node --env-file-if-exists=.env scripts/test-participant-dashboard.mjs",
     "cleanup:course-covers": "node --env-file-if-exists=.env scripts/cleanup-course-covers.mjs",
     "test:training-categories": "node --env-file-if-exists=.env scripts/test-training-categories.mjs",
     "test:languages": "node --env-file-if-exists=.env scripts/test-languages.mjs",
