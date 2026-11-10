@@ -140,6 +140,18 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
           "Wajib disetujui admin": peserta mengajukan dari halaman course, lalu disetujui di Persetujuan Peserta. "Wajib hak akses khusus" belum tersedia.
         </span>
       </label>
+      {value.enrolment_access_rule === "approval_required" ? (
+        <label className={`${label} sm:col-span-2`}>
+          Dokumen persyaratan (opsional, satu per baris, maks 10)
+          <textarea className={`${input} min-h-[70px]`} disabled={disabled} maxLength={1400}
+            value={(value.required_documents ?? []).join("\n")}
+            onChange={(e) => set({ required_documents: e.target.value.split("\n") })}
+            placeholder={"mis. Surat tugas dari instansi\nCV terbaru"} />
+          <span className="mt-1 block font-normal text-muted-foreground">
+            Peserta mengunggah tiap dokumen sebagai PDF (maks 10 MB) saat mengajukan. Kosongkan bila tidak ada.
+          </span>
+        </label>
+      ) : null}
       {selfPaced ? (
         <label className={label}>
           Model akses mandiri

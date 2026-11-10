@@ -1118,7 +1118,22 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Hasil sesudah migrasi (intern-update, 10 Nov):** `test:offering-application` **18/18**. Uji lain lulus: academy-guards 13, academy-programs 21, completion-approval 26, certificate-path 27, certificate-sheet 13, participant-rpc 30, console-roles, console-decisions, course-cover 14, course-cover-cleanup 12, learning-progress 12, lifecycle (Flow 1: 7, Flow 2: 7), module-update 24, admin-module-revision 18, expert-rpc 64, kr-rpc 24, kh-roles 20, knowledge-update 19, kh-topics 12, languages 12, training-categories 12, master-data 15, module-limits 18, trainer-quota-list 5, training-requests 33. Data uji bersih. Diuji manual oleh pemilik proyek sampai persetujuan (10 Nov).
 
-**Belum (Slide 22):** unggah dokumen persyaratan, *minta perbaikan* ke peserta (sekarang tolak lalu ajukan lagi), seleksi/skor, waitlist.
+**Belum (Slide 22):** ~~unggah dokumen persyaratan, *minta perbaikan* ke peserta~~ (dikerjakan di 2at), seleksi/skor, waitlist.
+
+## 2at. Pendaftaran: Minta Perbaikan dan dokumen persyaratan (10 Nov)
+
+**Panduan (Slide 22, PB-ACA-03):** peserta *Isi Form Application* dan *Unggah Dokumen Persyaratan*; operator *Cek Kelengkapan Dokumen*, bila tidak lengkap *Minta Perbaikan / Klarifikasi ke Pengguna*; reviewer menyetujui atau *Tolak & Beri Alasan*. Sebelumnya keputusan hanya setuju atau tolak, tanpa dokumen.
+
+**Perbaikan (migrasi `20261110020000`):**
+- Status pengajuan baru `revision_requested`. `admin_course_enrollment_decide` punya keputusan `request_revision` (catatan wajib minimal 5 karakter, hanya dari `pending`). Pengajuan yang menunggu perbaikan tidak bisa langsung disetujui atau ditolak (`application_awaiting_revision`). Peserta mengirim ulang lewat `course_enrollment_apply`; riwayat tercatat di audit (`course_enrollment_revision_requested`).
+- `course_offerings.required_documents`: daftar nama dokumen per offering (maks 10, 2–120 karakter, tidak ganda, baris kosong diabaikan), lewat draf, persetujuan, dan riwayat versi Program Academy; hanya untuk "Wajib disetujui admin" (`program_documents_*`).
+- Bucket privat `enrollment-documents` (PDF saja, maks 10 MB). Peserta mengunggah lewat URL bertanda dari server (`createEnrollmentDocumentUpload`, hanya offering tayang yang meminta pengajuan). `course_enrollment_apply(..., _documents)` memeriksa tiap berkas: dokumen memang diminta, lokasi milik peserta itu, ada di bucket, PDF, 1 byte–10 MB; menolak bila ada dokumen wajib yang kurang (`documents_required:<nama>`), tanpa menyimpan pengajuan setengah. Saat kirim ulang, dokumen lama tetap dihitung dan yang dikirim baru menggantikan. Versi 3 argumen dihapus; pemanggil lama (modul) tetap jalan lewat nilai bawaan.
+- `course_enrollment_documents` (baca hanya milik sendiri) dan `enrollment_document_path`: berkas hanya bisa dibuka pemiliknya dan pengelola pendaftaran (Admin/Operator/Approver), lewat tautan bertanda 10 menit (`getEnrollmentDocumentUrl`).
+- Aplikasi: halaman course menampilkan daftar dokumen dengan tombol Unggah/Ganti, status *Admin meminta perbaikan* beserta catatan dan tombol *Kirim ulang*; Persetujuan Peserta punya tab *Perlu Perbaikan*, daftar dokumen dengan tombol *Buka* (`EnrollmentDocumentsList`), dan tombol *Minta Perbaikan*; formulir offering punya isian dokumen persyaratan (satu per baris) saat aturan "Wajib disetujui admin". Halaman course tetap terbuka sebelum migrasi (kolom dibaca dengan cadangan).
+
+**Uji:** PGlite 38/38 (bukti sebelum migrasi; migrasi bisa diulang; bucket privat; satu versi fungsi pengajuan; validasi daftar dokumen di draf, tersimpan rapi, riwayat versi, draf perubahan; pengajuan tanpa dokumen, berkas belum terunggah, bukan PDF, lebih dari 10 MB, milik orang lain, bucket lain, dokumen tak diminta ditolak tanpa sisa; lengkap tercatat; dokumen untuk modul ditolak, pengajuan modul 3 argumen tetap jalan; minta perbaikan, catatan wajib, tidak bisa disetujui/ditolak selagi menunggu, kirim ulang hanya CV, audit, disetujui lalu terdaftar; akses dokumen pemilik/operator/orang lain; tabel tidak bisa diubah langsung). `tsc`, lint (tanpa masalah baru), `build` lulus. Uji langsung baru `npm run test:enrollment-revision` (16 cek, memanggil aplikasi untuk unggah dan buka dokumen). **Sebelum migrasi (intern-update, 10 Nov): 3/16** (penjagaan dari aplikasi saja, misalnya bukan PDF ditolak server); kolom dokumen, bucket, dan keputusan minta perbaikan belum ada. Data dan berkas uji bersih.
+
+**Catatan:** berkas yang diunggah tetapi tidak jadi diajukan tetap tersimpan privat (belum dibersihkan otomatis). Dokumen apa yang wajib per offering diisi admin, menunggu arahan mentor.
 
 ---
 
@@ -1178,7 +1193,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (69 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (70 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1235,6 +1250,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261105030000_certificate_guards.sql` (hanya sertifikat kelulusan yang bisa terbit; sertifikat course berbayar tidak terbit gratis; RPC ubah template evaluasi ditutup untuk pengguna biasa). Lihat bagian 2ao. Jalankan setelah `20261105010000` dan `020000`. **Butuh kode branch ini** (pilihan model akses di formulir offering, pesan syarat sertifikat).
 - `20261109010000_completion_approval.sql` (Completion Record dan persetujuan kelulusan; peserta tidak lagi menerbitkan sertifikat sendiri; pembayaran tidak menahan kelulusan). Lihat bagian 2ar. Jalankan setelah `20261105030000`. **Butuh kode branch ini** (menu Persetujuan Kelulusan, status di tab Certificate).
 - `20261110010000_offering_application.sql` (Course Offering "Wajib disetujui admin" dibuka lagi lewat jalur pengajuan peserta; pengajuan ke offering diperiksa: harus meminta pengajuan, tayang, masa pendaftaran buka, judul dari database). Lihat bagian 2as. Jalankan setelah `20261104030000`. **Butuh kode branch ini** (tombol Ajukan pendaftaran di halaman course).
+- `20261110020000_enrollment_revision_documents.sql` (pendaftaran: keputusan *Minta Perbaikan*, dokumen persyaratan per offering, bucket privat dokumen). Lihat bagian 2at. Jalankan setelah `20261110010000`. **Butuh kode branch ini** (unggah dokumen di halaman course, tombol Minta Perbaikan dan daftar dokumen di Persetujuan Peserta, isian dokumen di formulir offering).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1267,6 +1283,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `academy-guards` | 13 (setelah migrasi `20261110010000`) | 2al, 2as | `course-cover-cleanup` | 12 | 2am |
   | `certificate-path` | 27 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
   | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | `offering-application` | 18 (setelah migrasi `20261110010000`) | 2as |
+  | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

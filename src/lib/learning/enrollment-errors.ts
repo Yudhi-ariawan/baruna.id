@@ -3,6 +3,12 @@
 const MESSAGES: Array<[RegExp, string]> = [
   [/biodata_required/, "Anda wajib melengkapi Formulir Biodata Peserta terlebih dahulu sebelum mendaftar pelatihan ini. Silakan buka menu Daftar Peserta."],
   [/authentication_required/, "Sesi login berakhir. Silakan masuk kembali."],
+  [/documents_required:(.+)/, "Dokumen persyaratan belum lengkap. Unggah semua dokumen yang diminta, lalu kirim lagi."],
+  [/document_file_invalid/, "Ada dokumen yang tidak valid (harus PDF milik Anda, maksimal 10 MB). Unggah ulang dokumennya."],
+  [/document_requirement_unknown|documents_invalid|documents_not_applicable/, "Daftar dokumen tidak sesuai dengan yang diminta course ini. Muat ulang halaman."],
+  [/document_not_found/, "Dokumen tidak ditemukan atau Anda tidak berwenang membukanya."],
+  [/revision_note_required/, "Tuliskan catatan perbaikan untuk peserta (minimal 5 karakter)."],
+  [/application_awaiting_revision/, "Pengajuan ini sedang menunggu perbaikan dari peserta. Keputusan bisa diambil setelah peserta mengirim ulang."],
   [/offering_no_application/, "Course ini tidak memerlukan pengajuan. Silakan langsung mendaftar dari halaman course."],
   [/offering_closed/, "Course ini sudah tidak menerima pendaftaran."],
   [/enrolment_window_closed/, "Masa pendaftaran course ini belum dibuka atau sudah ditutup."],

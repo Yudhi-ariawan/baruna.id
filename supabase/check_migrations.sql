@@ -272,7 +272,12 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_completion_sync_progress')),
   (69, '20261110010000_offering_application',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'course_enrollment_apply' AND prosrc LIKE '%offering_no_application%')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_offering_problem' AND prosrc LIKE '%program_access_rule_mode_mismatch%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_offering_problem' AND prosrc LIKE '%program_access_rule_mode_mismatch%')),
+  (70, '20261110020000_enrollment_revision_documents',
+      to_regclass('public.course_enrollment_documents') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'course_offerings' AND column_name = 'required_documents')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_course_enrollment_decide' AND prosrc LIKE '%request_revision%')
+      AND EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'enrollment-documents' AND NOT public))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

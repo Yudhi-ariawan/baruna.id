@@ -11,8 +11,10 @@ export type AdminCourseEnrollmentItem = {
   applicantName: string;
   applicantEmail: string;
   applicantOrganization: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "revision_requested";
   notes: string | null;
+  documents: Array<{ id: string; requirement: string; fileName: string; uploadedAt: string }>;
+  requiredDocuments: string[];
   decisionBy: string | null;
   decisionAt: string | null;
   decisionNotes: string | null;
@@ -27,6 +29,7 @@ export type AdminEnrollmentsResponse = {
     pending: number;
     approved: number;
     rejected: number;
+    revision_requested: number;
   };
 };
 
@@ -60,7 +63,7 @@ export const listAdminCourseEnrollments = createServerFn({ method: "GET" })
   .validator((input) =>
     z
       .object({
-        status: z.enum(["all", "pending", "approved", "rejected"]).default("all"),
+        status: z.enum(["all", "pending", "approved", "rejected", "revision_requested"]).default("all"),
         search: z.string().trim().max(120).default(""),
       })
       .parse(input ?? {}),
@@ -93,7 +96,27 @@ export const listAdminCourseEnrollments = createServerFn({ method: "GET" })
       decisionNotes: r.decision_notes,
       createdAt: r.created_at,
       userCurrentRoles: [],
+      documents: [],
+      requiredDocuments: [],
     }));
+
+    // Documents and the offering's required list (empty until migration 20261110020000 ran).
+    const ids = allItems.map((i) => i.id);
+    if (ids.length) {
+      const [{ data: docs }, { data: offs }] = await Promise.all([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabaseAdmin as any).from("course_enrollment_documents").select("id, application_id, requirement, file_name, uploaded_at").in("application_id", ids),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabaseAdmin as any).from("course_offerings").select("offering_code, required_documents").in("offering_code", [...new Set(allItems.map((i) => i.courseId))]),
+      ]);
+      const required = new Map(((offs ?? []) as Array<{ offering_code: string; required_documents: string[] | null }>).map((o) => [o.offering_code, o.required_documents ?? []]));
+      for (const item of allItems) {
+        item.requiredDocuments = required.get(item.courseId) ?? [];
+        item.documents = ((docs ?? []) as Array<{ id: string; application_id: string; requirement: string; file_name: string; uploaded_at: string }>)
+          .filter((d) => d.application_id === item.id)
+          .map((d) => ({ id: d.id, requirement: d.requirement, fileName: d.file_name, uploadedAt: d.uploaded_at }));
+      }
+    }
 
     // Compute totals from the complete collection before tab filtering
     const counts = {
@@ -101,6 +124,7 @@ export const listAdminCourseEnrollments = createServerFn({ method: "GET" })
       pending: allItems.filter((i) => i.status === "pending").length,
       approved: allItems.filter((i) => i.status === "approved").length,
       rejected: allItems.filter((i) => i.status === "rejected").length,
+      revision_requested: allItems.filter((i) => i.status === "revision_requested").length,
     };
 
     // Filter by tab status
@@ -159,7 +183,7 @@ export const decideAdminCourseEnrollment = createServerFn({ method: "POST" })
         id: z.string().optional(),
         userId: z.string().uuid(),
         courseId: z.string().min(1).max(200),
-        decision: z.enum(["approve", "reject"]),
+        decision: z.enum(["approve", "reject", "request_revision"]),
         decisionNotes: z.string().trim().max(1000).optional(),
       })
       .parse(input),
@@ -177,12 +201,14 @@ export const decideAdminCourseEnrollment = createServerFn({ method: "POST" })
     if (error) throw new Error(toFriendlyEnrollmentError(error.message));
 
     const { status, changed, offeringLinked } = result as {
-      status: "approved" | "rejected";
+      status: "approved" | "rejected" | "revision_requested";
       changed: boolean;
       offeringLinked: boolean;
     };
     const message =
-      input.decision === "approve"
+      input.decision === "request_revision"
+        ? "Permintaan perbaikan dikirim ke peserta."
+        : input.decision === "approve"
         ? changed
           ? `Pendaftaran peserta berhasil disetujui. Peran Participant telah aktif di akun pengguna${
               offeringLinked ? " dan kelas telah ditautkan." : "."

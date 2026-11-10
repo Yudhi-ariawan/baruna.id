@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pager } from "@/components/governance/Pager";
+import { EnrollmentDocumentsList } from "@/components/governance/EnrollmentDocumentsList";
 import { usePagedList } from "@/lib/governance/usePagedList";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/governance/enrollments")({
 
 function AdminEnrollmentsPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "rejected" | "revision_requested">("pending");
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<AdminCourseEnrollmentItem | null>(null);
   const [decisionNotes, setDecisionNotes] = useState("");
@@ -60,7 +61,7 @@ function AdminEnrollmentsPage() {
       decision,
     }: {
       item: AdminCourseEnrollmentItem;
-      decision: "approve" | "reject";
+      decision: "approve" | "reject" | "request_revision";
     }) => {
       return decideFn({
         data: {
@@ -85,7 +86,7 @@ function AdminEnrollmentsPage() {
 
   const items = data?.items || [];
   const paged = usePagedList(items, `${activeTab}|${search}`);
-  const counts = data?.counts || { total: 0, pending: 0, approved: 0, rejected: 0 };
+  const counts = data?.counts || { total: 0, pending: 0, approved: 0, rejected: 0, revision_requested: 0 };
 
   return (
     <div className="space-y-6">
@@ -150,6 +151,7 @@ function AdminEnrollmentsPage() {
           {[
             { key: "pending", label: "Menunggu Review", count: counts.pending },
             { key: "all", label: "Semua", count: counts.total },
+            { key: "revision_requested", label: "Perlu Perbaikan", count: counts.revision_requested },
             { key: "approved", label: "Disetujui", count: counts.approved },
             { key: "rejected", label: "Ditolak", count: counts.rejected },
           ].map((tab) => (
@@ -275,6 +277,11 @@ function AdminEnrollmentsPage() {
                           <CheckCircle2 className="h-3 w-3" /> Disetujui (ACC)
                         </span>
                       )}
+                      {item.status === "revision_requested" && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-[0.65rem] font-bold text-orange-800">
+                          <RefreshCw className="h-3 w-3" /> Perlu Perbaikan
+                        </span>
+                      )}
                       {item.status === "rejected" && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-[0.65rem] font-bold text-red-800">
                           <XCircle className="h-3 w-3" /> Ditolak
@@ -350,6 +357,18 @@ function AdminEnrollmentsPage() {
                 <p className="font-semibold text-navy">{selectedItem.courseTitle}</p>
               </div>
 
+              {(selectedItem.documents.length > 0 || selectedItem.requiredDocuments.length > 0) && (
+                <div className="col-span-2 pt-2 border-t border-border/50">
+                  <EnrollmentDocumentsList documents={selectedItem.documents} required={selectedItem.requiredDocuments} />
+                </div>
+              )}
+
+              {selectedItem.status === "revision_requested" && (
+                <div className="col-span-2 rounded-lg bg-orange-50 p-2 text-orange-900">
+                  Menunggu peserta memperbaiki pengajuan. Keputusan baru bisa diambil setelah peserta mengirim ulang.
+                </div>
+              )}
+
               {selectedItem.notes && (
                 <div className="col-span-2 pt-2 border-t border-border/50">
                   <p className="text-[0.65rem] font-bold uppercase text-muted-foreground">
@@ -381,7 +400,7 @@ function AdminEnrollmentsPage() {
                 rows={3}
                 value={decisionNotes}
                 onChange={(e) => setDecisionNotes(e.target.value)}
-                placeholder="Masukkan catatan atau alasan jika disetujui/ditolak..."
+                placeholder="Catatan keputusan. Wajib diisi (minimal 5 karakter) untuk Minta Perbaikan."
                 className="w-full rounded-xl border border-border p-2.5 text-xs focus:border-marine focus:outline-none"
               />
             </div>
@@ -396,10 +415,24 @@ function AdminEnrollmentsPage() {
                 Batal
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
                   type="button"
-                  disabled={decideMutation.isPending}
+                  disabled={decideMutation.isPending || selectedItem.status !== "pending" || decisionNotes.trim().length < 5}
+                  title="Kembalikan ke peserta untuk dilengkapi (catatan wajib)"
+                  onClick={() =>
+                    decideMutation.mutate({
+                      item: selectedItem,
+                      decision: "request_revision",
+                    })
+                  }
+                  className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-700 hover:bg-orange-100 transition disabled:opacity-50"
+                >
+                  Minta Perbaikan
+                </button>
+                <button
+                  type="button"
+                  disabled={decideMutation.isPending || selectedItem.status === "revision_requested"}
                   onClick={() =>
                     decideMutation.mutate({
                       item: selectedItem,
@@ -413,7 +446,7 @@ function AdminEnrollmentsPage() {
 
                 <button
                   type="button"
-                  disabled={decideMutation.isPending}
+                  disabled={decideMutation.isPending || selectedItem.status === "revision_requested"}
                   onClick={() =>
                     decideMutation.mutate({
                       item: selectedItem,

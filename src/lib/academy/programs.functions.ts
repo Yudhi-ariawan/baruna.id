@@ -47,6 +47,8 @@ export type OfferingPayload = {
   completion_evaluation_context?: string | null;
   /** Active completion evaluation template of the same context (required with the evaluation). */
   completion_evaluation_template_id?: string | null;
+  /** Documents participants upload when applying ("Wajib disetujui admin" only). */
+  required_documents?: string[];
 };
 
 export type ProgramOverview = {
@@ -128,6 +130,10 @@ const ERRORS: Record<string, string> = {
   program_access_rule_invalid: "Pilih aturan pendaftaran.",
   program_access_rule_unsupported:
     "Aturan \"Wajib hak akses khusus\" belum tersedia karena belum ada aturan siapa yang memberi hak akses. Pilih aturan lain.",
+  program_documents_invalid: "Nama dokumen persyaratan 2–120 karakter, satu per baris.",
+  program_documents_duplicate: "Ada nama dokumen persyaratan yang sama.",
+  program_documents_too_many: "Maksimal 10 dokumen persyaratan.",
+  program_documents_not_applicable: "Dokumen persyaratan hanya untuk aturan \"Wajib disetujui admin\". Kosongkan daftarnya atau ganti aturannya.",
   program_access_rule_mode_mismatch: "Delivery mode Approved Self-Paced hanya bisa dipakai dengan aturan \"Wajib disetujui admin\".",
   program_self_paced_online_only: "Pelatihan mandiri (self-paced) hanya bisa sepenuhnya online.",
   program_delivery_mode_mismatch: "Delivery mode tidak cocok dengan model belajar (mandiri atau berbasis angkatan).",

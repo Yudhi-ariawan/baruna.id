@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { toFriendlyEnrollmentError } from "@/lib/learning/enrollment-errors";
 
-export type CourseEnrollmentStatus = "none" | "pending" | "approved" | "rejected";
+export type CourseEnrollmentStatus = "none" | "pending" | "approved" | "rejected" | "revision_requested";
 
 export type MyCourseEnrollmentDetail = {
   isEnrolled: boolean;
@@ -14,6 +14,8 @@ export type MyCourseEnrollmentDetail = {
   decisionNotes?: string | null;
   notes?: string | null;
   courseTitle?: string | null;
+  /** Documents already attached to this application (Course Offering, migration 20261110020000). */
+  documents?: Array<{ id: string; requirement: string; fileName: string; uploadedAt: string }>;
 };
 
 const LEARNER_ROLES = ["participant", "trainer", "expert", "super_admin", "admin"];
@@ -65,7 +67,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
       checkUserHasParticipantRole(supabaseAdmin, context.userId),
       (supabaseAdmin as any)
         .from("course_enrollment_applications")
-        .select("status, notes, decision_notes, decision_at, created_at, course_title")
+        .select("id, status, notes, decision_notes, decision_at, created_at, course_title")
         .eq("user_id", context.userId)
         .eq("course_id", data.courseId)
         .maybeSingle(),
@@ -75,7 +77,17 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
     if (!record) return { isEnrolled: false, hasParticipantRole, status: "none" };
 
     const status = record.status as CourseEnrollmentStatus;
+    // Empty until migration 20261110020000 ran.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: docs } = await (supabaseAdmin as any)
+      .from("course_enrollment_documents")
+      .select("id, requirement, file_name, uploaded_at")
+      .eq("application_id", record.id)
+      .eq("user_id", context.userId);
     return {
+      documents: ((docs ?? []) as Array<{ id: string; requirement: string; file_name: string; uploaded_at: string }>).map((d) => ({
+        id: d.id, requirement: d.requirement, fileName: d.file_name, uploadedAt: d.uploaded_at,
+      })),
       isEnrolled: status === "approved",
       hasParticipantRole,
       status,
@@ -95,6 +107,10 @@ export const submitCourseEnrollmentApplication = createServerFn({ method: "POST"
         courseId: z.string().min(1).max(200),
         courseTitle: z.string().min(1).max(300),
         notes: z.string().trim().max(1000).optional(),
+        documents: z
+          .array(z.object({ requirement: z.string().min(1).max(120), path: z.string().min(1).max(200), fileName: z.string().max(200) }))
+          .max(10)
+          .optional(),
       })
       .parse(input),
   )
@@ -105,6 +121,10 @@ export const submitCourseEnrollmentApplication = createServerFn({ method: "POST"
       _course_id: data.courseId,
       _course_title: data.courseTitle,
       _notes: data.notes?.trim() || null,
+      // Only sent when there are documents, so modules keep calling the 3-argument form.
+      ...(data.documents?.length
+        ? { _documents: data.documents.map((d) => ({ requirement: d.requirement, path: d.path, file_name: d.fileName })) }
+        : {}),
     });
     if (error) throw new Error(toFriendlyEnrollmentError(error.message));
 

@@ -97,13 +97,16 @@ export const getOfferingByCode = createServerFn({ method: "GET" })
         },
       },
     });
-    const { data: offering, error } = await supabase
-      .from("course_offerings")
-      .select(
-        "id, offering_code, offering_title, master_course_id, learning_engine_version, legacy_learn_path, shared_learn_path, status, cohort_name, year, access_mode, enrolment_access_rule, master_courses(id, course_code, title, description, legacy_course_id, learning_template_id)",
-      )
-      .eq("offering_code", data.code)
-      .maybeSingle();
+    const columns = (withDocs: boolean) =>
+      `id, offering_code, offering_title, master_course_id, learning_engine_version, legacy_learn_path, shared_learn_path, status, cohort_name, year, access_mode, enrolment_access_rule,${withDocs ? " required_documents," : ""} master_courses(id, course_code, title, description, legacy_course_id, learning_template_id)`;
+    let res = await supabase.from("course_offerings").select(columns(true)).eq("offering_code", data.code).maybeSingle();
+    // Before migration 20261110020000 the documents column does not exist yet.
+    if (res.error && /required_documents/.test(res.error.message)) {
+      res = await supabase.from("course_offerings").select(columns(false)).eq("offering_code", data.code).maybeSingle();
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const offering = res.data as any;
+    const error = res.error;
     if (error) throw new Error(error.message);
     if (!offering) return null;
     const { data: modules } = await supabase
