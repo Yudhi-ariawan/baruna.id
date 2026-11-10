@@ -137,7 +137,7 @@ export function OfferingDraftForm({ value, onChange, lookups, isNew, inUse, disa
           <Options map={rules} />
         </select>
         <span className="mt-1 block font-normal text-muted-foreground">
-          "Wajib disetujui admin" dan "Wajib hak akses khusus" belum tersedia: peserta belum punya formulir pengajuan untuk offering ini.
+          "Wajib disetujui admin": peserta mengajukan dari halaman course, lalu disetujui di Persetujuan Peserta. "Wajib hak akses khusus" belum tersedia.
         </span>
       </label>
       {selfPaced ? (

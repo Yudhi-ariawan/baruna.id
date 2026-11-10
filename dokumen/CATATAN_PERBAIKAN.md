@@ -982,7 +982,7 @@ Audit atas permintaan pengguna (banyak pengguna, banyak peran, banyak perangkat,
 
 **Celah yang ditemukan (dibuktikan `npm run test:academy-guards`, sebelum migrasi: 7/14 gagal):**
 1. **Jalur ubah lama.** Enam RPC dari Phase 1.4 (`set_offering_classification`, `set_self_paced_access_model`, `set_cohort_financial_model`, `set_cohort_payment_responsibility`, `configure_completion_evaluation_requirement`, `assign_completion_evaluation_template`) bersifat SECURITY DEFINER dan hanya memeriksa "admin atau management" (approver termasuk). Uji membuktikan **satu approver** mengubah offering tayang menjadi tatap muka + wajib disetujui admin, dan satu admin mengganti penanggung biaya, tanpa draf, tanpa persetujuan orang lain, tanpa riwayat versi; `admin_version` tetap 1 sehingga draf yang sedang ditinjau akan menimpanya diam-diam. Aplikasi tidak memakai keenam fungsi ini.
-2. **Aturan pendaftaran buntu.** Offering dari layar admin dengan "Wajib disetujui admin" / "Wajib hak akses khusus" (atau delivery mode Approved Self-Paced) diterima, padahal `learning_enrol` meminta pengajuan yang disetujui dan formulir pengajuan (`/academy/apply/<slug>`) hanya mengenal program lama di kode. Tidak ada peserta yang bisa mengikutinya.
+2. **Aturan pendaftaran buntu.** Offering dari layar admin dengan "Wajib disetujui admin" / "Wajib hak akses khusus" (atau delivery mode Approved Self-Paced) diterima, padahal `learning_enrol` meminta pengajuan yang disetujui dan halaman course tidak punya tombol pengajuan. *Koreksi 10 Nov (2as):* jalur pengajuan sendiri (`course_enrollment_apply` → Persetujuan Peserta → `admin_course_enrollment_decide`) sudah ada dan sudah mengenali kode offering; yang kurang hanya tombolnya di halaman course.
 
 **Perbaikan (migrasi `20261104030000`):** hak panggil keenam RPC dicabut dari anon/authenticated (service_role tetap, untuk SQL Editor); `_program_offering_problem` menolak `approval_required`, `entitlement_required`, dan `approved_self_paced` dengan `program_access_rule_unsupported` (berlaku saat dikirim dan saat disetujui). Formulir offering hanya menawarkan "Terbuka" dan "Wajib akun terdaftar", dengan keterangan alasannya; delivery mode Approved Self-Paced disembunyikan. Katalog kini memberi label **Enrolment closed** / **Enrolment opens <tanggal>** sesuai masa pendaftaran (aturan yang sama dengan `learning_enrol`), supaya kartu tidak terlihat bisa diikuti padahal ditolak.
 
@@ -1104,6 +1104,20 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Belum:** Tahap B (*certificate model* di Course Offering, Slide 26) dan Tahap C (jenis sertifikat lain, butuh kehadiran dan asesmen, Slide 23).
 
+## 2as. Pengajuan pendaftaran untuk Course Offering "Wajib disetujui admin" (10 Nov)
+
+**Koreksi:** di 2al dan di daftar kerja mentor saya menulis peserta "belum punya formulir pengajuan" untuk offering baru. Itu keliru (dikoreksi pengguna). Jalur pengajuan sudah ada sejak 15 Okt (bagian 2h–2j): biodata peserta sebagai syarat, `course_enrollment_apply` (aman dari klik ganda), antrean **Persetujuan Peserta**, `admin_course_enrollment_decide` (tolak dengan alasan, tidak bisa memutuskan milik sendiri, setelah disetujui memberi peran Participant dan langsung mendaftarkan peserta ke offering bila kode offering cocok). Yang kurang hanya tombol pengajuan di halaman course `/academy/course/<kode>`.
+
+**Celah tambahan yang ditemukan (dibuktikan `npm run test:offering-application`, sebelum migrasi 11/18):** untuk kode offering, `course_enrollment_apply` menerima judul dari browser apa adanya, dan menerima pengajuan ke offering yang tidak meminta pengajuan, yang sudah selesai, atau yang masa pendaftarannya lewat.
+
+**Perbaikan:**
+- Migrasi `20261110010000`: `_program_offering_problem` menerima lagi "Wajib disetujui admin", dan delivery mode Approved Self-Paced hanya bersama aturan itu (`program_access_rule_mode_mismatch`); "Wajib hak akses khusus" tetap ditolak. `course_enrollment_apply` untuk kode offering: harus `approval_required` (`offering_no_application`), tayang (`offering_closed`), dalam masa pendaftaran (`enrolment_window_closed`), dan judul diambil dari database. Pengajuan modul dan program lama tidak berubah.
+- Aplikasi: komponen `OfferingApplicationAction` di halaman course untuk offering "Wajib disetujui admin": tombol **Ajukan pendaftaran** (atau tautan **Isi biodata peserta dulu** yang kembali ke course), status **Menunggu persetujuan**, **Pengajuan belum disetujui** beserta alasan dan tombol **Ajukan lagi**. Formulir offering menawarkan lagi "Wajib disetujui admin" dan delivery mode Approved Self-Paced. Pesan galat baru di `enrollment-errors.ts`.
+
+**Uji:** `tsc`, lint lulus. Uji langsung baru `npm run test:offering-application` (18 cek: biodata, pengajuan, judul dari database, klik ganda, offering terbuka/selesai/masa lewat, tolak dan ajukan lagi, setujui lalu otomatis terdaftar, belajar sampai antrean kelulusan, aturan formulir). Sebelum migrasi 11/18: alur lama sudah berjalan sampai ujung; gagal 7 = judul palsu diterima, tiga offering yang tidak layak menerima pengajuan, dan tiga aturan formulir. `test:academy-guards` disesuaikan (hanya "hak akses khusus" yang tetap ditolak). Data uji bersih.
+
+**Belum (Slide 22):** unggah dokumen persyaratan, *minta perbaikan* ke peserta (sekarang tolak lalu ajukan lagi), seleksi/skor, waitlist.
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1162,7 +1176,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (68 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (69 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1218,6 +1232,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261105020000_offering_evaluation_template.sql` (template evaluasi akhir dipilih di draf Course Offering, diperiksa database, ikut versi, dikunci setelah ada peserta). Lihat bagian 2an. Jalankan setelah `20261104030000`. **Butuh kode branch ini** (pilihan template di formulir offering).
 - `20261105030000_certificate_guards.sql` (hanya sertifikat kelulusan yang bisa terbit; sertifikat course berbayar tidak terbit gratis; RPC ubah template evaluasi ditutup untuk pengguna biasa). Lihat bagian 2ao. Jalankan setelah `20261105010000` dan `020000`. **Butuh kode branch ini** (pilihan model akses di formulir offering, pesan syarat sertifikat).
 - `20261109010000_completion_approval.sql` (Completion Record dan persetujuan kelulusan; peserta tidak lagi menerbitkan sertifikat sendiri; pembayaran tidak menahan kelulusan). Lihat bagian 2ar. Jalankan setelah `20261105030000`. **Butuh kode branch ini** (menu Persetujuan Kelulusan, status di tab Certificate).
+- `20261110010000_offering_application.sql` (Course Offering "Wajib disetujui admin" dibuka lagi lewat jalur pengajuan peserta; pengajuan ke offering diperiksa: harus meminta pengajuan, tayang, masa pendaftaran buka, judul dari database). Lihat bagian 2as. Jalankan setelah `20261104030000`. **Butuh kode branch ini** (tombol Ajukan pendaftaran di halaman course).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1247,9 +1262,9 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `trainer-quota-list` | 5 (setelah migrasi `20261102010000`) | 2ad | `kh-topics` | 12 (setelah migrasi `20261102020000`) | 2af |
   | `languages` | 12 (setelah migrasi `20261102030000`) | 2ag | `training-categories` | 12 (setelah migrasi `20261102040000`) | 2ah |
   | `academy-programs` | 21 (setelah migrasi `20261104010000`) | 2ai | `course-cover`* | 14 (setelah migrasi `20261104020000`) | 2ak |
-  | `academy-guards` | 14 (setelah migrasi `20261104030000`) | 2al | `course-cover-cleanup` | 12 | 2am |
+  | `academy-guards` | 13 (setelah migrasi `20261110010000`) | 2al, 2as | `course-cover-cleanup` | 12 | 2am |
   | `certificate-path` | 27 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
-  | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | | | |
+  | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | `offering-application` | 18 (setelah migrasi `20261110010000`) | 2as |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

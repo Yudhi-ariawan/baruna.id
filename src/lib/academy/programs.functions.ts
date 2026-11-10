@@ -127,7 +127,8 @@ const ERRORS: Record<string, string> = {
   program_delivery_format_invalid: "Pilih format penyampaian.",
   program_access_rule_invalid: "Pilih aturan pendaftaran.",
   program_access_rule_unsupported:
-    "Aturan \"Wajib disetujui admin\", \"Wajib hak akses khusus\", dan delivery mode Approved Self-Paced belum tersedia: peserta belum punya formulir pengajuan untuk offering ini. Pilih \"Terbuka\" atau \"Wajib akun terdaftar\".",
+    "Aturan \"Wajib hak akses khusus\" belum tersedia karena belum ada aturan siapa yang memberi hak akses. Pilih aturan lain.",
+  program_access_rule_mode_mismatch: "Delivery mode Approved Self-Paced hanya bisa dipakai dengan aturan \"Wajib disetujui admin\".",
   program_self_paced_online_only: "Pelatihan mandiri (self-paced) hanya bisa sepenuhnya online.",
   program_delivery_mode_mismatch: "Delivery mode tidak cocok dengan model belajar (mandiri atau berbasis angkatan).",
   program_self_paced_access_required: "Pelatihan mandiri wajib memilih model akses (gratis, berbayar, atau gratis belajar).",

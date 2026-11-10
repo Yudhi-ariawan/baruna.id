@@ -73,7 +73,9 @@ try {
   const courseId = (await svc.from("master_courses").select("id").eq("course_code", COURSE_CODE).maybeSingle()).data?.id;
 
   console.log("1. Aturan pendaftaran yang belum bisa dilayani halaman course");
-  for (const rule of ["approval_required", "entitlement_required"]) {
+  // Since 20261110010000 "approval_required" works through the participant application;
+  // only "entitlement_required" stays refused.
+  for (const rule of ["entitlement_required"]) {
     const d = (await operator.c.rpc("program_draft_open", { _kind: "course_offering", _target_id: null })).data;
     await save(operator, d, offering(courseId, { enrolment_access_rule: rule }));
     const r = await operator.c.rpc("program_draft_submit", { _draft_id: d });

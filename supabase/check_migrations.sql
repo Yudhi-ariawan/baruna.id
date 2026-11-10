@@ -269,7 +269,10 @@ WITH checks(no, migration, ok) AS (
       to_regclass('public.course_completions') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'completion_decide')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'issue_my_certificate' AND prosrc LIKE '%certificate_requires_approval%')
-      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_completion_sync_progress'))
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_completion_sync_progress')),
+  (69, '20261110010000_offering_application',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'course_enrollment_apply' AND prosrc LIKE '%offering_no_application%')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_program_offering_problem' AND prosrc LIKE '%program_access_rule_mode_mismatch%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

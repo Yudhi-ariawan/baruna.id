@@ -43,6 +43,7 @@ import {
 import { barunaToast } from "@/lib/downloads";
 import { CompletionEvaluationSection } from "@/components/baruna/learning/CompletionEvaluationSection";
 import { CompletionStatusPanel } from "@/components/baruna/learning/CompletionStatusPanel";
+import { OfferingApplicationAction } from "@/components/baruna/learning/OfferingApplicationAction";
 import { CertificateSheetActions } from "@/components/baruna/learning/CertificateSheetActions";
 
 const MENU_ICONS: Partial<Record<MenuItemId, LucideIcon>> = {
@@ -89,6 +90,8 @@ type OfferingWithModules = {
   cohort_name?: string | null;
   year?: number | null;
   status?: string | null;
+  /** "approval_required": participants apply first (PB-ACA-03). */
+  enrolment_access_rule?: string | null;
   master_courses: { id: string; course_code: string; title: string; description: string | null };
   modules: { id: string; module_code: string; title: string; sequence: number }[];
 };
@@ -232,6 +235,8 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
                 >
                   Sign in to enrol
                 </Link>
+              ) : !enrolment && offering.enrolment_access_rule === "approval_required" ? (
+                <OfferingApplicationAction offeringCode={offering.offering_code} title={offering.offering_title} />
               ) : !enrolment ? (
                 <button
                   onClick={handleEnrol}

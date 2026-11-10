@@ -100,7 +100,7 @@ export const getOfferingByCode = createServerFn({ method: "GET" })
     const { data: offering, error } = await supabase
       .from("course_offerings")
       .select(
-        "id, offering_code, offering_title, master_course_id, learning_engine_version, legacy_learn_path, shared_learn_path, status, cohort_name, year, access_mode, master_courses(id, course_code, title, description, legacy_course_id, learning_template_id)",
+        "id, offering_code, offering_title, master_course_id, learning_engine_version, legacy_learn_path, shared_learn_path, status, cohort_name, year, access_mode, enrolment_access_rule, master_courses(id, course_code, title, description, legacy_course_id, learning_template_id)",
       )
       .eq("offering_code", data.code)
       .maybeSingle();

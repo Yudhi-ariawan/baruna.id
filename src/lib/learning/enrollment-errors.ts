@@ -3,6 +3,9 @@
 const MESSAGES: Array<[RegExp, string]> = [
   [/biodata_required/, "Anda wajib melengkapi Formulir Biodata Peserta terlebih dahulu sebelum mendaftar pelatihan ini. Silakan buka menu Daftar Peserta."],
   [/authentication_required/, "Sesi login berakhir. Silakan masuk kembali."],
+  [/offering_no_application/, "Course ini tidak memerlukan pengajuan. Silakan langsung mendaftar dari halaman course."],
+  [/offering_closed/, "Course ini sudah tidak menerima pendaftaran."],
+  [/enrolment_window_closed/, "Masa pendaftaran course ini belum dibuka atau sudah ditutup."],
   [/self_decision_forbidden/, "Anda tidak dapat memutuskan pendaftaran milik akun Anda sendiri."],
   [/decision_already_final/, "Pendaftaran ini sudah diputuskan sebelumnya dan tidak dapat diubah. Muat ulang halaman untuk melihat status terbaru."],
   [/application_not_found/, "Permohonan kepesertaan tidak ditemukan. Muat ulang halaman."],
