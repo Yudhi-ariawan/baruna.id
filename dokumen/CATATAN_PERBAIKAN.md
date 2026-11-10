@@ -1116,6 +1116,8 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Uji:** `tsc`, lint lulus. Uji langsung baru `npm run test:offering-application` (18 cek: biodata, pengajuan, judul dari database, klik ganda, offering terbuka/selesai/masa lewat, tolak dan ajukan lagi, setujui lalu otomatis terdaftar, belajar sampai antrean kelulusan, aturan formulir). Sebelum migrasi 11/18: alur lama sudah berjalan sampai ujung; gagal 7 = judul palsu diterima, tiga offering yang tidak layak menerima pengajuan, dan tiga aturan formulir. `test:academy-guards` disesuaikan (hanya "hak akses khusus" yang tetap ditolak). Data uji bersih.
 
+**Hasil sesudah migrasi (intern-update, 10 Nov):** `test:offering-application` **18/18**. Uji lain lulus: academy-guards 13, academy-programs 21, completion-approval 26, certificate-path 27, certificate-sheet 13, participant-rpc 30, console-roles, console-decisions, course-cover 14, course-cover-cleanup 12, learning-progress 12, lifecycle (Flow 1: 7, Flow 2: 7), module-update 24, admin-module-revision 18, expert-rpc 64, kr-rpc 24, kh-roles 20, knowledge-update 19, kh-topics 12, languages 12, training-categories 12, master-data 15, module-limits 18, trainer-quota-list 5, training-requests 33. Data uji bersih. Diuji manual oleh pemilik proyek sampai persetujuan (10 Nov).
+
 **Belum (Slide 22):** unggah dokumen persyaratan, *minta perbaikan* ke peserta (sekarang tolak lalu ajukan lagi), seleksi/skor, waitlist.
 
 ---
