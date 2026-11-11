@@ -11,7 +11,7 @@ Halaman `/kesiapanrilis` menampilkan dokumen ini sebagai papan: bagian A (butir 
 Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
 "Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
 
-Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `20261111020000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac) dan `20261111030000` (baru, menunggu dijalankan; bagian E). Pengecek `check_migrations.sql` sekarang 73 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
+Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `20261111030000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 73 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
@@ -54,6 +54,7 @@ Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `202611110200
   - Sekarang: berkas terkirim ke penyimpanan privat (PDF maks 10 MB, JPG/PNG maks 2 MB) dan bisa dibuka admin. Saat diminta perbaikan, tombol di notifikasi membuka halaman program yang menampilkan catatan admin dan kelima dokumen. Peserta cukup mengganti dokumen yang bermasalah lalu menekan **Send again**, dari perangkat mana pun. Pengajuan yang dikirim sebelum perbaikan ini harus melengkapi kelima dokumen sekali, karena berkasnya dulu tidak pernah terkirim.
   - Bukti: `test:full-training-documents` 19/19 sesudah migrasi (4/19 sebelum); PGlite 31/31; semua uji lain lulus; sudah diuji manual oleh pemilik proyek (11 Nov): mengunggah kelima berkas saat perbaikan, admin membuka berkas lalu menyetujui, dan halaman pengajuan peserta menampilkan *Accepted* beserta kelima dokumen yang terkirim.
 - **Pengajuan lama yang tercatat dengan judul offering (11 Nov, CATATAN_PERBAIKAN 2ay):** sebelumnya notifikasi dan dashboard menganggapnya modul dan menautkan ke halaman yang tidak ada. Sekarang judul diterjemahkan ke kode offering, sehingga tautannya menuju halaman course yang benar. Tanpa migrasi. Bukti: bagian 5 `test:live-notifications` lulus (kode lama gagal 2 cek). Di intern-update tidak ada pengajuan seperti itu; `main` belum diperiksa.
+- **Keputusan tampil langsung tanpa memuat ulang (11 Nov, Slide 13; CATATAN_PERBAIKAN 2ay):** sebelumnya keputusan admin baru terlihat saat halaman dimuat ulang. Sekarang *setujui*, *tolak*, *minta perbaikan*, dan keputusan kelulusan langsung muncul di lonceng, dashboard, dan halaman pendaftaran peserta (sekitar 0,4 detik lewat Supabase Realtime), dan antrean Persetujuan Peserta langsung menampilkan kiriman ulang. Peserta hanya menerima perubahan miliknya sendiri. Sumber notifikasi lain disegarkan tiap 60 detik. Bukti: `test:live-notifications` 14/14 sesudah migrasi (10/14 sebelum), semua uji lain lulus.
 - **Lintas perangkat untuk Course Offering (9 Nov):** pendaftaran, modul yang ditandai selesai, evaluasi akhir, dan sertifikat course dari Course Offering tersimpan di database dan dibaca dengan identitas akun, sehingga muncul sama di perangkat atau browser mana pun dengan akun yang sama (My Learning dan tab Certificate). Lembar PDF sementara dibuat ulang di perangkat itu dari data database, jadi isinya sama. Dibuktikan oleh `test:certificate-sheet` (data diambil lewat server dengan token akun; peserta lain tidak mendapatkannya). Uji manual dengan dua perangkat nyata belum dilakukan.
 
 ## B. Belum diperbaiki atau belum diputuskan
@@ -91,6 +92,6 @@ Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `202611110200
 
 ## E. Bug dan celah yang diketahui
 
-- **Notifikasi dan dashboard tidak real-time (temuan 10 Nov):** keputusan baru muncul saat halaman dibuka atau dimuat ulang. Data tidak hilang. **Perbaikan siap (11 Nov, CATATAN_PERBAIKAN 2ay), menunggu migrasi `20261111030000` dijalankan di intern-update.** Sesudahnya, keputusan admin (setujui, tolak, minta perbaikan, kelulusan) langsung muncul di lonceng, dashboard, dan halaman pendaftaran peserta tanpa memuat ulang, dan antrean Persetujuan Peserta langsung menampilkan kiriman ulang. Sumber notifikasi lain disegarkan tiap 60 detik. Bukti sejauh ini: PGlite 4/4; `test:live-notifications` 10/14 sebelum migrasi (keempat cek real-time gagal, tidak ada yang bocor ke peserta lain).
+Per 11 Nov tidak ada bug terbuka yang diketahui. Semua temuan audit 10 Nov sudah diperbaiki dan dipindah ke bagian A. Yang masih perlu: uji dua perangkat sungguhan (bagian C).
 
 Pelajaran proses: sebelum bekerja di perangkat lain selalu `git pull`; setelah selesai commit + push.

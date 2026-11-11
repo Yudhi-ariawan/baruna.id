@@ -1283,6 +1283,7 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
   - Peserta menerima keputusan kelulusan.
   - Peserta lain tidak menerima apa pun, baik dengan filter id orang lain maupun tanpa filter.
   - Pengajuan berjudul offering: notifikasi menuju `/academy/course/<kode>`, dashboard mengenalinya sebagai Course Offering, dan judul tidak muncul sebagai modul.
+- **Sesudah migrasi (dijalankan pemilik proyek, 11 Nov): 14/14.** Keputusan sampai ke peserta dalam sekitar 0,4 detik, dan kiriman ulang ke antrean admin sekitar 0,6 detik. Semua 39 uji `test:*` lulus. `enrollment-concurrency` sempat gagal 5 cek karena `fetch failed` (koneksi putus saat permintaan serentak; datanya tetap benar) dan lulus 15/15 saat diulang.
 - **Sebelum migrasi (intern-update, 11 Nov): 10/14.** Keempat cek Realtime gagal (tidak ada event dalam 10 detik), dan tidak ada yang bocor. Dengan kode lama, bagian 5 gagal 2 cek (tautan `/academy/self-paced/Angkatan%20Live…`, jenis `module`). `tsc`, lint, dan `build` lulus.
 
 ---
