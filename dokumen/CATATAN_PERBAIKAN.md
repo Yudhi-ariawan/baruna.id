@@ -1251,6 +1251,8 @@ Perbaikan (migrasi `20261111010000`):
 - `test:participant-dashboard` kini melampirkan dokumen saat mengajukan Full Training (bila tabelnya ada), dan tautan notifikasinya menuju `/academy/apply/<slug>`. Sebelum migrasi tetap 29/29.
 - `test:enrollment-uploads` dan `test:enrollment-revision` memakai nama argumen baru (`courseId`). `tsc`, lint (tanpa masalah baru), dan `build` lulus.
 
+**Uji manual (11 Nov, pemilik proyek):** pengajuan Full Training lama diminta perbaikan. Peserta mengunggah kelima berkas (PDF dan PNG) di kotak perbaikan lalu mengirim ulang. Admin membuka berkas di Persetujuan Peserta (daftar dokumen dibuat dua kolom dan dialog bisa digulir, commit 9a7ce9f dan 220b30e), lalu menyetujui. Halaman pengajuan peserta menampilkan *Accepted* dan *Submitted Documents (5/5)* dari server.
+
 **Pengajuan yang dikirim sebelum migrasi:** berkasnya memang tidak pernah sampai ke server, karena saat itu formulir hanya menyimpan nama berkas di browser. Karena itu, saat diminta perbaikan, kelima dokumennya tampil *missing* dan harus diunggah sekali. Pengajuan sesudah migrasi menyimpan berkasnya, sehingga saat perbaikan hanya dokumen yang bermasalah yang perlu diganti.
 
 **Catatan:** kode branch ini tetap jalan sebelum migrasi (Full Training kembali ke perilaku lama). Pengecualiannya: pencatatan unggahan offering (2aw) memakai argumen `_course_id` yang baru ada setelah migrasi ini. Sampai migrasi dijalankan, unggahan offering kembali diingat di tab saja. Jadi **jalankan migrasi ini sebelum push**.
