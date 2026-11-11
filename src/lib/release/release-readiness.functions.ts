@@ -6,12 +6,13 @@
 // never part of the browser bundle. To be removed with the page.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { parseReadiness, type ReadinessBoard } from "./readiness-board";
 
 export const getReleaseReadiness = createServerFn({ method: "POST" })
   .validator((input) =>
     z.object({ username: z.string().min(1).max(100), password: z.string().min(1).max(200) }).parse(input),
   )
-  .handler(async ({ data }): Promise<{ markdown: string }> => {
+  .handler(async ({ data }): Promise<{ markdown: string; board: ReadinessBoard }> => {
     const user = process.env.RELEASE_PAGE_USER;
     const pass = process.env.RELEASE_PAGE_PASSWORD;
     if (!user || !pass) {
@@ -26,5 +27,5 @@ export const getReleaseReadiness = createServerFn({ method: "POST" })
       throw new Error("Username atau password salah.");
     }
     const { default: markdown } = await import("../../../dokumen/KESIAPAN_RILIS.md?raw");
-    return { markdown };
+    return { markdown, board: parseReadiness(markdown) };
   });

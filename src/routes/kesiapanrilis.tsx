@@ -1,63 +1,59 @@
 // Temporary page for reporting release readiness to supervisors (to be removed).
 // Content comes from dokumen/KESIAPAN_RILIS.md through a server check; see
 // src/lib/release/release-readiness.functions.ts. The login is kept in memory only.
-import { useState, type ComponentProps } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { ClipboardCheck, Loader2, Lock, LogOut } from "lucide-react";
+import { ClipboardCheck, FileText, KanbanSquare, Loader2, Lock, LogOut } from "lucide-react";
 import { getReleaseReadiness } from "@/lib/release/release-readiness.functions";
+import type { ReadinessBoard } from "@/lib/release/readiness-board";
+import { ReadinessBoardView } from "@/components/release/ReadinessBoardView";
+import { ReleaseMarkdown } from "@/components/release/ReleaseMarkdown";
 
 export const Route = createFileRoute("/kesiapanrilis")({
   head: () => ({ meta: [{ title: "Kesiapan Rilis — BARUNA" }, { name: "robots", content: "noindex, nofollow" }] }),
   component: ReleaseReadinessPage,
 });
 
-type Md = ComponentProps<typeof ReactMarkdown>["components"];
-const components: Md = {
-  h1: (p) => <h1 className="font-display text-2xl font-extrabold text-navy sm:text-3xl" {...p} />,
-  h2: (p) => <h2 className="mt-8 border-b border-border pb-2 font-display text-xl font-bold text-navy" {...p} />,
-  h3: (p) => <h3 className="mt-6 font-display text-lg font-bold text-navy" {...p} />,
-  p: (p) => <p className="mt-3 text-sm leading-relaxed text-foreground" {...p} />,
-  ul: (p) => <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed" {...p} />,
-  ol: (p) => <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed" {...p} />,
-  a: (p) => <a className="font-semibold text-marine underline" target="_blank" rel="noreferrer" {...p} />,
-  code: (p) => <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.8em]" {...p} />,
-  hr: () => <hr className="my-6 border-border" />,
-  table: (p) => (
-    <div className="mt-3 overflow-x-auto rounded-xl border border-border">
-      <table className="w-full border-collapse text-left text-sm" {...p} />
-    </div>
-  ),
-  th: (p) => <th className="border-b border-border bg-muted/60 px-3 py-2 font-semibold text-navy" {...p} />,
-  td: (p) => <td className="border-b border-border px-3 py-2 align-top" {...p} />,
-};
-
 function ReleaseReadinessPage() {
   const fetchFn = useServerFn(getReleaseReadiness);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [markdown, setMarkdown] = useState<string | null>(null);
+  const [doc, setDoc] = useState<{ markdown: string; board: ReadinessBoard } | null>(null);
+  const [view, setView] = useState<"board" | "document">("board");
   const login = useMutation({
     mutationFn: () => fetchFn({ data: { username: username.trim(), password } }),
-    onSuccess: (res) => { setMarkdown(res.markdown); setPassword(""); },
+    onSuccess: (res) => { setDoc(res); setPassword(""); },
   });
 
-  if (markdown !== null) {
+  if (doc) {
+    const tab = (key: "board" | "document", label: string, Icon: typeof FileText) => (
+      <button type="button" onClick={() => setView(key)} aria-pressed={view === key}
+        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${view === key ? "bg-white text-navy" : "bg-white/15 hover:bg-white/25"}`}>
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </button>
+    );
     return (
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-navy px-5 py-4 text-white">
           <div className="flex items-center gap-2 text-sm font-semibold"><ClipboardCheck className="h-5 w-5" /> Laporan kesiapan rilis (internal, jangan disebarkan)</div>
-          <button type="button" onClick={() => { setMarkdown(null); setUsername(""); }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/25">
-            <LogOut className="h-3.5 w-3.5" /> Keluar
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {tab("board", "Papan", KanbanSquare)}
+            {tab("document", "Dokumen lengkap", FileText)}
+            <button type="button" onClick={() => { setDoc(null); setUsername(""); setView("board"); }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/25">
+              <LogOut className="h-3.5 w-3.5" /> Keluar
+            </button>
+          </div>
         </div>
-        <article className="rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-8">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{markdown}</ReactMarkdown>
-        </article>
+        {view === "board" ? (
+          <ReadinessBoardView board={doc.board} />
+        ) : (
+          <article className="mx-auto max-w-4xl rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-8">
+            <ReleaseMarkdown>{doc.markdown}</ReleaseMarkdown>
+          </article>
+        )}
       </main>
     );
   }

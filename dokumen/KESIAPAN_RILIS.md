@@ -1,8 +1,9 @@
-# Kesiapan Rilis BARUNA (diperbarui 10 November 2026, mencakup pekerjaan sampai 10 November)
+# Kesiapan Rilis BARUNA (diperbarui 11 November 2026, mencakup pekerjaan sampai 10 November)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
 Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
 Keputusan yang menunggu mentor: `dokumen/MENUNGGU_ARAHAN_MENTOR.md`.
+Halaman `/kesiapanrilis` menampilkan dokumen ini sebagai papan: bagian A (butir yang "diuji manual oleh …" masuk kolom Test manual), bagian B, dan bagian E (Bug). Tulis setiap butir sebagai `- **Judul (tanggal):** isi`.
 
 ## Kesimpulan
 
@@ -76,5 +77,13 @@ Status pemeriksaan terakhir (10 Nov, laptop): semua migrasi sampai `202611100200
 6. Setelah aturan sertifikat diputuskan: template resmi, nomor resmi, dan pencatatan kelulusan di server; tambahkan progres Full Training/AZA hanya jika programnya masih dipakai.
 7. Uji beban sederhana; pastikan Supavisor dan cadangan data.
 8. Pilot terbatas (20-50 pengguna) sebelum dibuka luas.
+
+## E. Bug dan celah yang diketahui
+
+- **Full Training bisa macet setelah Minta Perbaikan (temuan 10 Nov):** jika admin menekan *Minta Perbaikan* pada pengajuan Full Training, halaman Full Training peserta belum mengenal status itu sehingga tidak ada tombol kirim ulang, sementara admin tidak bisa menyetujui atau menolak karena sistem menunggu perbaikan. Wajib diperbaiki (kecil, tanpa migrasi).
+- **Dokumen pendaftaran yang belum dikirim hanya diingat di layar (temuan 10 Nov):** jika peserta mengunggah di satu perangkat lalu pindah perangkat sebelum menekan *Ajukan*, dokumen harus diunggah ulang. Berkas lama tertinggal di penyimpanan privat dan belum dibersihkan otomatis. Setelah dikirim, dokumen aman di semua perangkat.
+- **Uji serentak pendaftaran belum ada (temuan 10 Nov):** kunci untuk dua pengajuan atau dua keputusan yang terjadi bersamaan sudah ada di database, tetapi belum dibuktikan dengan uji yang mengirim keduanya tepat bersamaan.
+- **Notifikasi dan dashboard tidak real-time (temuan 10 Nov):** keputusan baru muncul saat halaman dibuka atau dimuat ulang, dengan jeda hingga sekitar 30 detik. Data tidak hilang.
+- **Pengajuan lama yang tercatat dengan judul offering (temuan 10 Nov):** notifikasinya mengarah ke halaman yang salah. Pengajuan baru selalu memakai kode offering.
 
 Pelajaran proses: sebelum bekerja di perangkat lain selalu `git pull`; setelah selesai commit + push.
