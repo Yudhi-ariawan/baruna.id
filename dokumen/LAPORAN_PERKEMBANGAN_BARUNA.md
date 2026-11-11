@@ -310,3 +310,29 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 
 **Pengujian:** pengajuan offering 11/18 sebelum migrasi menjadi 18/18 sesudahnya. Dokumen dan minta perbaikan 3/16 sebelum migrasi menjadi 16/16 sesudahnya. Notifikasi dan dashboard 9/21 dengan kode lama menjadi 21/21. Semua uji lain lulus, `build` lulus, dan data uji dibersihkan. Diuji manual oleh saya: membuat offering dengan dua dokumen, mengajukan sebagai peserta, lalu meminta perbaikan sebagai admin.
 
+---
+
+## 11/11/2026 (Rabu, 11 November 2026)
+
+**Yang dibuat**
+- **Halaman sementara `/kesiapanrilis`** untuk laporan ke atasan. Isinya dibaca otomatis dari `KESIAPAN_RILIS.md` dan ditampilkan sebagai papan bergaya Trello (Sudah dikerjakan, Test manual, Belum, Bug) atau sebagai dokumen lengkap. Halaman ini memakai login yang diatur lewat `.env`, dan dokumennya hanya dikirim dari server setelah login. Saat ini hanya dipakai di lokal dan nanti akan dihapus.
+- **Dokumen pendaftaran tercatat di server sebelum dikirim.** Dokumen yang diunggah di satu perangkat langsung terlihat dan bisa dikirim dari perangkat lain dengan akun yang sama. Berkas yang tidak terpakai bisa dibersihkan dengan `cleanup:enrollment-documents`.
+- **Berkas formulir Full Training sampai ke admin** (Slide 22). Kelima berkas (paspor, CV, surat penugasan, surat motivasi, foto) kini diunggah ke penyimpanan privat (PDF maks 10 MB, JPG/PNG maks 2 MB) dan bisa dibuka admin di Persetujuan Peserta.
+- **Keputusan tampil langsung (real-time).** Saat admin menyetujui, menolak, meminta perbaikan, atau menyetujui kelulusan, lonceng notifikasi, dashboard, dan halaman pendaftaran peserta langsung berubah dalam sekitar 0,4 detik tanpa dimuat ulang. Antrean Persetujuan Peserta juga langsung menampilkan kiriman ulang.
+
+**Yang diperbaiki**
+- **Full Training macet setelah Minta Perbaikan.** Sebelumnya peserta tidak bisa mengirim ulang, sementara admin tidak bisa memutuskan karena sistem menunggu perbaikan. Sekarang ada kotak perbaikan berisi catatan admin, kelima dokumen dengan tombol *Replace* per dokumen, tanggapan teks, dan *Send again*. Peserta cukup mengganti dokumen yang bermasalah, dari perangkat mana pun.
+- Notifikasi dan dashboard yang salah mengira Full Training sebagai modul, serta pengajuan lama yang tercatat dengan judul offering, kini menuju halaman yang benar.
+- Daftar dokumen di dialog Persetujuan Peserta dibuat ringkas (dua kolom), dan dialognya bisa digulir sehingga tombol keputusan selalu terjangkau.
+
+**Pelajaran yang didapat**
+- Uji manual menemukan masalah yang tidak terlihat dari kode: berkas Full Training ternyata hanya dicatat namanya di browser dan tidak pernah sampai ke admin.
+- Penjelasan jujur bukan pengganti fitur yang memang dibutuhkan. Setelah dicoba sendiri, alur yang benar adalah unggah ulang yang sungguhan.
+- Kunci database perlu dibuktikan dengan permintaan yang benar-benar bersamaan. Uji serentak membuktikan pengajuan dan keputusan tidak pernah ganda.
+
+**Kendala**
+- Pengajuan Full Training yang dikirim sebelum perbaikan harus melengkapi kelima dokumen sekali, karena berkasnya dulu tidak pernah terkirim.
+- Tahap Full Training sesudah disetujui (konfirmasi, belajar, perjalanan, sertifikat) masih tersimpan di browser dan menunggu keputusan mentor tentang nasib program ini.
+- Koneksi sempat putus saat uji serentak (`fetch failed`). Datanya tetap benar, dan ujinya lulus saat diulang.
+
+**Pengujian:** uji serentak 15/15 tanpa perubahan kode. Unggahan tercatat 2/15 sebelum migrasi menjadi 15/15 sesudahnya. Dokumen Full Training 4/19 sebelum migrasi menjadi 19/19 sesudahnya. Notifikasi real-time 10/14 sebelum migrasi menjadi 14/14 sesudahnya. Dashboard 29/29. Semua 39 uji lulus, `build` lulus, dan data uji dibersihkan. Diuji manual oleh saya: Full Training diminta perbaikan, kelima berkas diunggah ulang, admin membuka berkas lalu menyetujui.
