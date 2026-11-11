@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enrollmentKind, type LearningKind } from "./enrollment-target";
+import { resolveOfferingIds } from "./offering-ids.server";
 
 /**
  * The participant dashboard, read from the database only (Slide 15: no learning
@@ -25,6 +26,8 @@ export type MyApplication = {
   decisionNotes: string | null;
   /** What the participant wrote when applying (prefills a resubmission). */
   notes: string | null;
+  /** Course Offering: its code, also for older applications that named the offering title. */
+  offeringCode: string | null;
 };
 
 export type MyCourseProgress = {
@@ -189,11 +192,14 @@ export const getMyLearningOverview = createServerFn({ method: "GET" })
       .filter((e) => e.enrolment_status !== "withdrawn" && e.offering?.learning_engine_version === "shared_v1");
     const offeringCodes = new Set<string>(enrolRows.map((e) => e.offering!.offering_code));
     const unknownIds = [...new Set(appRows.map((r) => r.course_id))].filter((id) => !UUID.test(id) && !offeringCodes.has(id));
-    if (unknownIds.length > 0) {
-      const { data: offs, error: offErr } = await db.from("course_offerings").select("offering_code").in("offering_code", unknownIds);
-      if (offErr) throw new Error(`Gagal memeriksa course: ${offErr.message}`);
-      for (const o of (offs ?? []) as Array<{ offering_code: string }>) offeringCodes.add(o.offering_code);
+    // Offering codes, and offering titles of older applications (2ay): never a module.
+    let resolved = new Map<string, string>();
+    try {
+      resolved = await resolveOfferingIds(db, unknownIds);
+    } catch (e) {
+      throw new Error(`Gagal memeriksa course: ${e instanceof Error ? e.message : String(e)}`);
     }
+    for (const id of resolved.keys()) offeringCodes.add(id);
 
     const applications: MyApplication[] = appRows
       .filter((r) => ["pending", "approved", "rejected", "revision_requested"].includes(r.status))
@@ -206,6 +212,7 @@ export const getMyLearningOverview = createServerFn({ method: "GET" })
         decisionAt: r.decision_at,
         decisionNotes: r.decision_notes,
         notes: r.notes,
+        offeringCode: resolved.get(r.course_id) ?? (offeringCodes.has(r.course_id) ? r.course_id : null),
       }));
 
     // Whether a database module has its official quiz: answer keys are service-role

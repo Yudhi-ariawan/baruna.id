@@ -1257,6 +1257,34 @@ Perbaikan (migrasi `20261111010000`):
 
 **Catatan:** kode branch ini tetap jalan sebelum migrasi (Full Training kembali ke perilaku lama). Pengecualiannya: pencatatan unggahan offering (2aw) memakai argumen `_course_id` yang baru ada setelah migrasi ini. Sampai migrasi dijalankan, unggahan offering kembali diingat di tab saja. Jadi **jalankan migrasi ini sebelum push**.
 
+## 2ay. Keputusan tampil langsung (real-time) dan pengajuan lama berjudul offering (11 Nov)
+
+Dua temuan audit 10 Nov (KESIAPAN_RILIS bagian E), dikerjakan sebelum push atas permintaan pemilik proyek.
+
+**1. Notifikasi belum real-time.** Lonceng, dashboard, dan halaman notifikasi mengambil data sekali lalu menyimpannya 15 detik. Keputusan admin (setujui, tolak, minta perbaikan, kelulusan) baru terlihat saat halaman dibuka atau dimuat ulang. Antrean Persetujuan Peserta juga tidak tahu ada kiriman ulang.
+
+Perbaikan (migrasi `20261111030000`):
+- `course_enrollment_applications` dan `course_completions` dimasukkan ke publikasi Supabase Realtime. Aman dijalankan ulang, dan tidak gagal bila publikasinya sudah mencakup semua tabel.
+- Hook `useLiveLearningUpdates` di Navbar (semua halaman peserta) berlangganan perubahan baris milik pengguna yang login (`user_id=eq.<id>`). Begitu ada perubahan, cache notifikasi, dashboard, data belajar, dan status pendaftaran disegarkan (satu kali per keputusan, jeda 0,4 detik).
+- `useLiveEnrollmentQueue` di Persetujuan Peserta: kiriman baru atau kiriman ulang langsung muncul.
+- Keamanan: Realtime menerapkan RLS tabel pada setiap pelanggan. Peserta hanya menerima baris miliknya (`enrollment_apps_own_read`, `course_completions_own_read`). Hanya admin, operator, dan approver yang menerima semua pengajuan.
+- Cadangan: lonceng dan halaman notifikasi menyegarkan diri tiap 60 detik selama tab terbuka. Ini menangkap sumber notifikasi lain (review, permintaan layanan, kualifikasi trainer, pembaruan modul), atau perubahan saat koneksi Realtime putus.
+- Batas yang perlu diketahui: setiap tab yang login membuka satu koneksi Realtime. Paket gratis Supabase mengizinkan 200 koneksi serentak, Pro 500. Pesan hanya dikirim saat ada keputusan, jadi lalu lintasnya kecil.
+
+**2. Pengajuan lama yang tercatat dengan judul offering.** Sebelum 2as, sebagian pengajuan offering menyimpan **judul** offering sebagai `course_id`, dan `admin_course_enrollment_decide` masih mengenali judul. Notifikasi dan dashboard hanya mengenali kode, sehingga pengajuan seperti itu dianggap modul dan ditautkan ke `/academy/self-paced/<judul>` (halaman tidak ada). Di intern-update saat ini tidak ada pengajuan seperti itu (diperiksa 11 Nov), tetapi `main` belum diperiksa.
+
+Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.server.ts`) menerjemahkan kode **atau judul** offering menjadi kode, dengan urutan yang sama seperti RPC keputusan (kode dulu, lalu offering terbaru dengan judul itu). Fungsi ini dipakai notifikasi keputusan pendaftaran dan dashboard (`MyApplication.offeringCode`). Tautannya kini selalu ke `/academy/course/<kode>`, dan judul tidak lagi muncul sebagai modul. Tombol dashboard untuk Full Training juga menuju `/academy/apply/<slug>`, sama dengan notifikasinya (2ax).
+
+**Uji:**
+- PGlite (`pgtest/learning_realtime.mjs`) 4/4: tanpa publikasi tidak gagal; sebelum migrasi tabel belum dipublikasikan; sesudah migrasi (dua kali) kedua tabel masuk dan tabel lain tetap; publikasi `FOR ALL TABLES` tidak gagal.
+- Uji langsung baru `npm run test:live-notifications` (14 cek; berlangganan Realtime sungguhan seperti aplikasi):
+  - Peserta menerima *minta perbaikan* beserta catatannya tanpa memuat ulang.
+  - Antrean admin menerima kiriman ulang.
+  - Peserta menerima keputusan kelulusan.
+  - Peserta lain tidak menerima apa pun, baik dengan filter id orang lain maupun tanpa filter.
+  - Pengajuan berjudul offering: notifikasi menuju `/academy/course/<kode>`, dashboard mengenalinya sebagai Course Offering, dan judul tidak muncul sebagai modul.
+- **Sebelum migrasi (intern-update, 11 Nov): 10/14.** Keempat cek Realtime gagal (tidak ada event dalam 10 detik), dan tidak ada yang bocor. Dengan kode lama, bagian 5 gagal 2 cek (tautan `/academy/self-paced/Angkatan%20Live…`, jenis `module`). `tsc`, lint, dan `build` lulus.
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1315,7 +1343,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (72 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (73 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1375,6 +1403,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261110020000_enrollment_revision_documents.sql` (pendaftaran: keputusan *Minta Perbaikan*, dokumen persyaratan per offering, bucket privat dokumen). Lihat bagian 2at. Jalankan setelah `20261110010000`. **Butuh kode branch ini** (unggah dokumen di halaman course, tombol Minta Perbaikan dan daftar dokumen di Persetujuan Peserta, isian dokumen di formulir offering).
 - `20261111010000_enrollment_document_uploads.sql` (dokumen pendaftaran yang sudah diunggah tetapi belum dikirim tercatat di server, sehingga terlihat di semua perangkat). Lihat bagian 2aw. Jalankan setelah `20261110020000`. Kode branch ini tetap jalan sebelum migrasi (unggahan diingat di layar seperti dulu).
 - `20261111020000_full_training_documents.sql` (berkas formulir Full Training benar-benar terkirim ke admin dan bisa diganti saat *Minta Perbaikan*; dokumen Full Training boleh PDF atau JPG/PNG). Lihat bagian 2ax. Jalankan setelah `20261111010000`, **sebelum push** (lihat catatan 2ax).
+- `20261111030000_learning_realtime.sql` (keputusan pendaftaran dan kelulusan tampil langsung lewat Supabase Realtime; tanpa perubahan data atau aturan). Lihat bagian 2ay. Kode branch ini tetap jalan sebelum migrasi (penyegaran tiap 60 detik).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1409,7 +1438,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | `offering-application` | 18 (setelah migrasi `20261110010000`) | 2as |
   | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 29 | 2au, 2av, 2ax |
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
-  | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | | | |
+  | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

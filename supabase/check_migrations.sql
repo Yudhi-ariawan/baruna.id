@@ -286,7 +286,11 @@ WITH checks(no, migration, ok) AS (
       to_regclass('public.full_training_programs') IS NOT NULL
       AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'course_enrollment_document_uploads' AND column_name = 'course_id')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'course_enrollment_apply' AND prosrc LIKE '%full_training_programs%')
-      AND EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'enrollment-documents' AND 'image/png' = ANY (allowed_mime_types)))
+      AND EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'enrollment-documents' AND 'image/png' = ANY (allowed_mime_types))),
+  (73, '20261111030000_learning_realtime',
+      EXISTS (SELECT 1 FROM pg_publication p WHERE p.pubname = 'supabase_realtime' AND (p.puballtables OR (
+        EXISTS (SELECT 1 FROM pg_publication_tables t WHERE t.pubname = p.pubname AND t.schemaname = 'public' AND t.tablename = 'course_enrollment_applications')
+        AND EXISTS (SELECT 1 FROM pg_publication_tables t WHERE t.pubname = p.pubname AND t.schemaname = 'public' AND t.tablename = 'course_completions')))))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

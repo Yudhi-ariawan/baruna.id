@@ -7,6 +7,7 @@
 // mentor decision (MENUNGGU_ARAHAN_MENTOR item 9), so they are not notified yet.
 import type { InAppNotification } from "./notifications.functions";
 import { enrollmentKind, enrollmentLearnUrl, enrollmentPageUrl } from "@/lib/learning/enrollment-target";
+import { resolveOfferingIds } from "@/lib/learning/offering-ids.server";
 
 type RawNotif = InAppNotification & { subjectId: string };
 
@@ -39,18 +40,16 @@ export async function buildEnrollmentDecisionNotifications(userId: string): Prom
   type Row = { id: string; event_type: keyof typeof ENROLLMENT_EVENTS; entity_id: string | null; after_data: Record<string, unknown> | null; created_at: string };
   const rows = ((data ?? []) as Row[]).filter((r) => r.entity_id);
 
-  const candidates = [...new Set(rows.map((r) => r.entity_id as string).filter((id) => !UUID.test(id)))];
-  const offeringCodes = new Set<string>();
-  if (candidates.length > 0) {
-    const { data: offs, error: offErr } = await db.from("course_offerings").select("offering_code").in("offering_code", candidates);
-    if (offErr) throw new Error(offErr.message);
-    for (const o of (offs ?? []) as Array<{ offering_code: string }>) offeringCodes.add(o.offering_code);
-  }
+  // Offering code, or (older applications) offering title -> its code.
+  const offerings = await resolveOfferingIds(db, rows.map((r) => r.entity_id as string));
+  const offeringIds = new Set(offerings.keys());
 
   return rows.map((r) => {
     const courseId = r.entity_id as string;
     const status = ENROLLMENT_EVENTS[r.event_type];
-    const kind = enrollmentKind(courseId, offeringCodes);
+    const kind = enrollmentKind(courseId, offeringIds);
+    // Links use the offering code even when the application named the title.
+    const target = offerings.get(courseId) ?? courseId;
     const title = String(r.after_data?.course_title ?? "").trim() || "Pelatihan BARUNA";
     const note = String(r.after_data?.decision_notes ?? "").trim();
     const what = kind === "offering" ? "course" : kind === "program" ? "program" : "modul";
@@ -59,18 +58,18 @@ export async function buildEnrollmentDecisionNotifications(userId: string): Prom
         ? {
             title: `Pendaftaran disetujui: "${title}"`,
             body: `${note ? `${note} ` : ""}Anda sudah terdaftar. Silakan mulai belajar di halaman ${what}.`,
-            url: enrollmentLearnUrl(courseId, kind),
+            url: enrollmentLearnUrl(target, kind),
           }
         : status === "revision_requested"
           ? {
               title: `Admin meminta perbaikan pendaftaran: "${title}"`,
               body: `${note || "Pendaftaran Anda perlu diperbaiki."} Perbaiki lalu kirim ulang di halaman ${what}.`,
-              url: enrollmentPageUrl(courseId, kind),
+              url: enrollmentPageUrl(target, kind),
             }
           : {
               title: `Pendaftaran belum disetujui: "${title}"`,
               body: note || "Admin belum menyetujui pendaftaran Anda. Anda dapat mengajukan lagi.",
-              url: enrollmentPageUrl(courseId, kind),
+              url: enrollmentPageUrl(target, kind),
             };
     return {
       id: `enrollment-${r.id}`,

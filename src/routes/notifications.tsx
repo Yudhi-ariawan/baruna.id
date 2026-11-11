@@ -18,6 +18,7 @@ import {
   listMyNotifications,
   markNotificationsAsRead,
 } from "@/lib/notifications/notifications.functions";
+import { LIVE_FALLBACK_MS } from "@/lib/notifications/use-live-updates";
 import {
   markLocalNotificationsRead,
   useReadNotificationIds,
@@ -68,6 +69,7 @@ function NotificationsPage() {
     queryKey: ["notifications", "my"],
     queryFn: () => getNotifs(),
     retry: false,
+    refetchInterval: LIVE_FALLBACK_MS,
   });
 
   const realNotifs = useMemo(

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pager } from "@/components/governance/Pager";
 import { EnrollmentDocumentsList } from "@/components/governance/EnrollmentDocumentsList";
+import { useLiveEnrollmentQueue } from "@/lib/notifications/use-live-updates";
 import { usePagedList } from "@/lib/governance/usePagedList";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -49,6 +50,8 @@ function AdminEnrollmentsPage() {
 
   const listFn = useServerFn(listAdminCourseEnrollments);
   const decideFn = useServerFn(decideAdminCourseEnrollment);
+  // New and resubmitted applications appear without reloading (Realtime, 2ay).
+  useLiveEnrollmentQueue();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin", "course-enrollments", activeTab, search],

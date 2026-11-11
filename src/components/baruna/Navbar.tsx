@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { listMyNotifications } from "@/lib/notifications/notifications.functions";
+import { LIVE_FALLBACK_MS, useLiveLearningUpdates } from "@/lib/notifications/use-live-updates";
 import { useReadNotificationIds } from "@/lib/notifications/readState";
 import {
   Home,
@@ -67,11 +68,14 @@ export function Navbar() {
 
   const listNotificationsFn = useServerFn(listMyNotifications);
   const readIds = useReadNotificationIds();
+  // Decisions arrive live (Realtime); the periodic refresh covers the other sources.
+  useLiveLearningUpdates();
   const { data: notifications } = useQuery({
     queryKey: ["notifications", "my-navbar-badge"],
     queryFn: () => listNotificationsFn(),
     enabled: authState === "authenticated",
     staleTime: 15000,
+    refetchInterval: LIVE_FALLBACK_MS,
   });
 
   const unreadNotifications =

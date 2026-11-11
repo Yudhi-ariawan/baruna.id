@@ -143,8 +143,8 @@ function CourseRow({ course: c, isId }: { course: MyCourseProgress; isId: boolea
 /** Page where the application lives: the participant fixes or reapplies there. */
 function ApplicationLink({ app, children }: { app: MyApplication; children: React.ReactNode }) {
   const cls = "mt-2 inline-flex items-center gap-1 rounded-lg bg-marine px-3 py-1.5 text-xs font-semibold text-white hover:bg-navy";
-  if (app.kind === "offering") return <Link to="/academy/course/$offeringId" params={{ offeringId: app.courseId }} className={cls}>{children}</Link>;
-  if (app.kind === "program") return <Link to="/academy/applications" className={cls}>{children}</Link>;
+  if (app.kind === "offering") return <Link to="/academy/course/$offeringId" params={{ offeringId: app.offeringCode ?? app.courseId }} className={cls}>{children}</Link>;
+  if (app.kind === "program") return <Link to="/academy/apply/$slug" params={{ slug: app.courseId }} className={cls}>{children}</Link>;
   return <Link to="/academy/self-paced/$code" params={{ code: app.courseId }} className={cls}>{children}</Link>;
 }
 
