@@ -1247,9 +1247,11 @@ Perbaikan (migrasi `20261111010000`):
   - Operator membuka CV, peserta lain tidak bisa.
   - Minta perbaikan: HP mengganti CV, laptop melihatnya lalu mengirim ulang, empat dokumen lain tetap.
   - Disetujui; peserta lain tidak melihat atau memakai berkas orang lain.
-  - **Sebelum migrasi (intern-update, 11 Nov): 4/19.**
+  - **Sebelum migrasi (intern-update, 11 Nov): 4/19. Sesudah migrasi (dijalankan pemilik proyek, 11 Nov): 19/19.** Semua uji `test:*` lain lulus sesudah migrasi. `participant-dashboard` mencari notifikasi Full Training dengan judul dari database, karena judul kini diambil dari `full_training_programs`, bukan dari halaman.
 - `test:participant-dashboard` kini melampirkan dokumen saat mengajukan Full Training (bila tabelnya ada), dan tautan notifikasinya menuju `/academy/apply/<slug>`. Sebelum migrasi tetap 29/29.
 - `test:enrollment-uploads` dan `test:enrollment-revision` memakai nama argumen baru (`courseId`). `tsc`, lint (tanpa masalah baru), dan `build` lulus.
+
+**Pengajuan yang dikirim sebelum migrasi:** berkasnya memang tidak pernah sampai ke server, karena saat itu formulir hanya menyimpan nama berkas di browser. Karena itu, saat diminta perbaikan, kelima dokumennya tampil *missing* dan harus diunggah sekali. Pengajuan sesudah migrasi menyimpan berkasnya, sehingga saat perbaikan hanya dokumen yang bermasalah yang perlu diganti.
 
 **Catatan:** kode branch ini tetap jalan sebelum migrasi (Full Training kembali ke perilaku lama). Pengecualiannya: pencatatan unggahan offering (2aw) memakai argumen `_course_id` yang baru ada setelah migrasi ini. Sampai migrasi dijalankan, unggahan offering kembali diingat di tab saja. Jadi **jalankan migrasi ini sebelum push**.
 

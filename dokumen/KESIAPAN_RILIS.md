@@ -11,7 +11,7 @@ Halaman `/kesiapanrilis` menampilkan dokumen ini sebagai papan: bagian A (butir 
 Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
 "Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
 
-Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `20261111010000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac) dan `20261111020000` (baru, menunggu dijalankan; bagian E). Pengecek `check_migrations.sql` sekarang 72 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
+Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `20261111020000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 72 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
@@ -49,6 +49,10 @@ Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `202611110100
   - Tanpa migrasi. Bukti: `test:participant-dashboard` 29/29 (27/29 dengan kode sebelumnya).
 - **Pendaftaran tahan permintaan serentak (11 Nov, CATATAN_PERBAIKAN 2aw):** uji baru `test:enrollment-concurrency` mengirim permintaan pada detik yang sama dari beberapa login. Hasilnya: peserta yang menekan *Ajukan* dari tiga perangkat sekaligus tetap menghasilkan satu pengajuan; dua admin yang memutuskan bersamaan menghasilkan satu keputusan (yang kalah diberi tahu "sudah diputuskan"); pendaftaran course tidak pernah ganda; kirim ulang yang bersamaan tercatat satu kali. 15/15 lulus tanpa perubahan kode, jadi kunci di database terbukti bekerja.
 - **Dokumen pendaftaran tercatat di server sebelum dikirim (11 Nov, CATATAN_PERBAIKAN 2aw):** dokumen yang diunggah di halaman course langsung tercatat di server dengan label *belum dikirim*, sehingga terlihat dan bisa dikirim dari HP atau laptop mana pun dengan akun yang sama. Unggahan terakhir yang dipakai bila dua perangkat mengganti dokumen yang sama, dan catatannya hilang begitu pengajuan terkirim. Berkas yang tidak terpakai dibersihkan dengan `npm run cleanup:enrollment-documents`. Bukti: `test:enrollment-uploads` 15/15 sesudah migrasi (2/15 sebelum).
+- **Berkas formulir Full Training sampai ke admin dan bisa diganti saat perbaikan (11 Nov, Slide 22; CATATAN_PERBAIKAN 2ax):**
+  - Sebelumnya: lima berkas di formulir Full Training (paspor, CV, surat penugasan, surat motivasi, foto) hanya dicatat namanya di browser. Admin tidak bisa membukanya, dan setelah *Minta Perbaikan* peserta tidak punya tempat untuk mengunggah ulang (temuan uji manual pemilik proyek).
+  - Sekarang: berkas terkirim ke penyimpanan privat (PDF maks 10 MB, JPG/PNG maks 2 MB) dan bisa dibuka admin. Saat diminta perbaikan, tombol di notifikasi membuka halaman program yang menampilkan catatan admin dan kelima dokumen. Peserta cukup mengganti dokumen yang bermasalah lalu menekan **Send again**, dari perangkat mana pun. Pengajuan yang dikirim sebelum perbaikan ini harus melengkapi kelima dokumen sekali, karena berkasnya dulu tidak pernah terkirim.
+  - Bukti: `test:full-training-documents` 19/19 sesudah migrasi (4/19 sebelum); PGlite 31/31; semua uji lain lulus.
 - **Lintas perangkat untuk Course Offering (9 Nov):** pendaftaran, modul yang ditandai selesai, evaluasi akhir, dan sertifikat course dari Course Offering tersimpan di database dan dibaca dengan identitas akun, sehingga muncul sama di perangkat atau browser mana pun dengan akun yang sama (My Learning dan tab Certificate). Lembar PDF sementara dibuat ulang di perangkat itu dari data database, jadi isinya sama. Dibuktikan oleh `test:certificate-sheet` (data diambil lewat server dengan token akun; peserta lain tidak mendapatkannya). Uji manual dengan dua perangkat nyata belum dilakukan.
 
 ## B. Belum diperbaiki atau belum diputuskan
@@ -86,7 +90,6 @@ Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `202611110100
 
 ## E. Bug dan celah yang diketahui
 
-- **Berkas formulir Full Training tidak sampai ke admin (temuan uji manual 11 Nov):** lima berkas di formulir Full Training (paspor, CV, surat penugasan, surat motivasi, foto) hanya dicatat namanya di browser. Admin tidak bisa membukanya, dan setelah *Minta Perbaikan* peserta tidak punya tempat untuk mengunggah ulang. **Perbaikan siap (11 Nov, CATATAN_PERBAIKAN 2ax), menunggu migrasi `20261111020000` dijalankan di intern-update.** Sesudahnya, berkas terkirim ke penyimpanan privat (PDF maks 10 MB, JPG/PNG maks 2 MB), admin bisa membukanya, dan saat diminta perbaikan peserta cukup mengganti dokumen yang bermasalah lalu mengirim ulang, dari perangkat mana pun. Bukti sejauh ini: PGlite 31/31; `test:full-training-documents` 4/19 sebelum migrasi.
 - **Notifikasi dan dashboard tidak real-time (temuan 10 Nov):** keputusan baru muncul saat halaman dibuka atau dimuat ulang, dengan jeda hingga sekitar 30 detik. Data tidak hilang.
 - **Pengajuan lama yang tercatat dengan judul offering (temuan 10 Nov):** notifikasinya mengarah ke halaman yang salah. Pengajuan baru selalu memakai kode offering.
 

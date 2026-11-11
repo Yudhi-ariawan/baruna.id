@@ -206,7 +206,9 @@ try {
   check(ftApp?.kind === "program" && ftApp?.status === "revision_requested" && ftApp?.notes === "Motivasi awal",
     `dashboard: dikenali sebagai Full Training, perlu perbaikan, catatan lama tersedia untuk diisi ulang (${ftApp?.kind}/${ftApp?.status})`);
   n = await enrollNotifs(peserta);
-  const ftRev = n.data?.find((x) => x.type === "revision_requested" && x.title.includes("Full Training TDD"));
+  // Since migration 20261111020000 the title comes from the database, not from the page.
+  const ftRev = n.data?.find((x) => x.type === "revision_requested"
+    && (x.title.includes("Full Training TDD") || x.title.includes("International Training on Fisheries for African Countries")));
   check(ftRev?.targetUrl === `/academy/apply/${FT}`, `notifikasi Full Training menuju halaman pendaftaran program, bisa dibuka dari perangkat mana pun (${ftRev?.targetUrl ?? "TIDAK ADA"})`);
   r = await postFn(peserta.token, APPLY_FILE, "submitCourseEnrollmentApplication", { courseId: FT, courseTitle: "Full Training TDD", notes: "Surat tugas sudah saya kirim lewat email" });
   check(r.data?.status === "pending", `peserta mengirim ulang dengan tanggapan (${r.error?.slice(0, 50) ?? r.data?.status})`);
