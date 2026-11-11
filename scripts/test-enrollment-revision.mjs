@@ -69,7 +69,7 @@ async function persona(label, role) {
   return { id: u.user.id, c, token: s.session.access_token };
 }
 async function uploadDoc(u, name = "dokumen.pdf") {
-  const r = await callFn(u.token, "createEnrollmentDocumentUpload", { offeringCode: OFF, fileName: name, size: PDF.length, contentType: "application/pdf" }, "POST");
+  const r = await callFn(u.token, "createEnrollmentDocumentUpload", { courseId: OFF, fileName: name, size: PDF.length, contentType: "application/pdf" }, "POST");
   if (r.error) return { error: r.error };
   const up = await u.c.storage.from(BUCKET).uploadToSignedUrl(r.data.path, r.data.token, PDF, { contentType: "application/pdf" });
   if (up.error) return { error: up.error.message };
@@ -105,7 +105,7 @@ try {
   const st = await uploadDoc(peserta, "surat-tugas.pdf");
   const cv = await uploadDoc(peserta, "cv.pdf");
   check(Boolean(st.path && cv.path), `PDF terunggah ke penyimpanan privat (${st.error ?? cv.error ?? "ok"})`);
-  const notPdf = await callFn(peserta.token, "createEnrollmentDocumentUpload", { offeringCode: OFF, fileName: "foto.png", size: 100, contentType: "image/png" }, "POST");
+  const notPdf = await callFn(peserta.token, "createEnrollmentDocumentUpload", { courseId: OFF, fileName: "foto.png", size: 100, contentType: "image/png" }, "POST");
   check(/PDF/.test(notPdf.error ?? ""), `bukan PDF ditolak server (${(notPdf.error ?? "DITERIMA").slice(0, 40)})`);
   const pub = st.path ? await fetch(`${URL_}/storage/v1/object/public/${BUCKET}/${st.path}`) : null;
   check(!pub || pub.status >= 400, `dokumen tidak bisa dibuka publik (${pub?.status})`);

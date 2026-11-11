@@ -76,12 +76,12 @@ async function persona(label, role, devices = 1) {
 }
 /** Upload a PDF from one device and record it, as the course page does. */
 async function upload(dev, requirement, fileName) {
-  const r = await callFn(dev.token, DOCS_FILE, "createEnrollmentDocumentUpload", { offeringCode: OFF, fileName, size: PDF.length, contentType: "application/pdf" });
+  const r = await callFn(dev.token, DOCS_FILE, "createEnrollmentDocumentUpload", { courseId: OFF, fileName, size: PDF.length, contentType: "application/pdf" });
   if (r.error) return { error: r.error };
   const up = await dev.c.storage.from(BUCKET).uploadToSignedUrl(r.data.path, r.data.token, PDF, { contentType: "application/pdf" });
   if (up.error) return { error: up.error.message };
   uploaded.push(r.data.path);
-  const reg = await callFn(dev.token, DOCS_FILE, "registerEnrollmentDocument", { offeringCode: OFF, requirement, path: r.data.path, fileName });
+  const reg = await callFn(dev.token, DOCS_FILE, "registerEnrollmentDocument", { courseId: OFF, requirement, path: r.data.path, fileName });
   return reg.error ? { error: reg.error, path: r.data.path } : { path: r.data.path, supported: reg.data?.supported };
 }
 const status = async (dev) => (await callFn(dev.token, APPLY_FILE, "getMyCourseEnrollmentStatus", { courseId: OFF }, "GET")).data;
@@ -151,7 +151,7 @@ try {
   const other = await status(lain.d[0]);
   check((other?.uploads ?? []).length === 0, "peserta lain tidak melihat unggahan orang lain");
   const victimPath = docs2[0]?.storage_path ?? uploaded[0];
-  const steal = await callFn(lain.d[0].token, DOCS_FILE, "registerEnrollmentDocument", { offeringCode: OFF, requirement: "CV", path: victimPath, fileName: "curian.pdf" });
+  const steal = await callFn(lain.d[0].token, DOCS_FILE, "registerEnrollmentDocument", { courseId: OFF, requirement: "CV", path: victimPath, fileName: "curian.pdf" });
   check(Boolean(steal.error), `peserta lain tidak bisa memakai berkas orang lain (${(steal.error ?? (steal.data?.supported === false ? "fitur belum ada" : "BISA")).slice(0, 50)})`);
   const direct = await lain.d[0].c.from("course_enrollment_document_uploads").select("id");
   check(!direct.error && (direct.data ?? []).length === 0, `tabel unggahan hanya menampilkan milik sendiri (${direct.error?.message?.slice(0, 40) ?? "ok"})`);

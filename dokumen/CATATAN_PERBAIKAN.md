@@ -1172,6 +1172,8 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Catatan:** pengajuan yang ditolak di Full Training tetap tanpa tombol ajukan lagi (perilaku lama, nasib program menunggu mentor, P4).
 
+**Diperbarui di 2ax (11 Nov):** pemilik proyek meminta unggah ulang berkas yang sungguhan, jadi penjelasan "berkas hanya di browser" diganti dengan unggahan ke server.
+
 ## 2aw. Pendaftaran: uji serentak dan unggahan yang belum dikirim (11 Nov)
 
 Dua temuan audit 10 Nov (KESIAPAN_RILIS bagian E).
@@ -1203,8 +1205,53 @@ Perbaikan (migrasi `20261111010000`):
 - PGlite 24/24: bukti sebelum migrasi; migrasi bisa diulang; aturan pencatatan (milik sendiri, belum terunggah, bukan PDF, lebih dari 10 MB, dokumen tak diminta, offering tanpa pengajuan, berkas yang sama untuk dokumen lain, tanpa login, klik ganda, penggantian); tidak bisa ditulis langsung; kirim dari unggahan tercatat; catatan hilang dalam transaksi yang sama; ditolak selagi `pending` dan sesudah disetujui; ganti CV saat perbaikan.
 - Uji langsung `npm run test:enrollment-uploads` (15 cek; dua login satu peserta sebagai HP dan laptop): unggah di HP terlihat di laptop; dua perangkat mengganti CV bersamaan tetap satu catatan; kirim dari laptop memakai unggahan terbaru; ditolak selagi menunggu keputusan; minta perbaikan lalu CV baru dari HP dikirim dari laptop; peserta lain tidak melihat atau memakai berkas orang lain; pembersih menghapus berkas pengganti yang terbuang dan menyimpan dokumen terkirim.
 - **Sebelum migrasi (intern-update, 11 Nov): 2/15.** `tsc`, lint (tanpa masalah baru), dan `build` lulus.
+- **Sesudah migrasi (dijalankan pemilik proyek, 11 Nov): 15/15.**
 
 **Catatan:** unggahan tercatat yang tidak pernah dikirim tetap tersimpan (tidak kedaluwarsa). Pembersih dijalankan manual. Jadwal otomatis menunggu keputusan operasional.
+
+## 2ax. Full Training: berkas formulir sampai ke admin dan bisa diganti saat perbaikan (11 Nov)
+
+**Temuan (uji manual pemilik proyek, 11 Nov):** setelah admin menekan *Minta Perbaikan* pada pengajuan Full Training, peserta tidak punya tempat untuk mengunggah berkas lagi. Penyebabnya, lima berkas di formulir Full Training (Passport Copy, CV, Nomination Letter, Motivation Letter, Recent Passport Photo) hanya dicatat **namanya** di `localStorage`. Berkasnya tidak pernah terkirim, sehingga admin tidak bisa membukanya dan tidak ada yang bisa diganti. Penjelasan di 2av (peserta hanya menjawab lewat teks) tidak sesuai dengan yang diminta pemilik proyek, yaitu alur Slide 22 *Unggah Dokumen Persyaratan* → *Minta Perbaikan* → peserta memperbaiki.
+
+**Perbaikan (migrasi `20261111020000`):**
+- Tabel `full_training_programs` (id course = slug pelatihan, judul, daftar dokumen, aktif). Ini salinan daftar dokumen di sisi server, karena halaman program sendiri masih statis di `src/data/training.ts`. Isinya satu program yang ada sekarang, dan labelnya sama persis dengan `DOCUMENT_FIELDS` (dicek uji). Pengunjung hanya bisa membaca; tidak ada tulis dari browser.
+- Bucket privat `enrollment-documents` kini juga menerima JPG/PNG. Dokumen Course Offering tetap **hanya PDF**. Dokumen Full Training boleh PDF (maks 10 MB) atau JPG/PNG (maks 2 MB), sesuai ENGINEERING_STANDARDS. DOC/DOCX tidak diterima lagi karena tidak bisa dibuka langsung di browser admin.
+- `enrollment_document_register` dan `course_enrollment_apply` memperlakukan Full Training seperti offering. Berkas harus unggahan milik peserta sendiri; jenis dan ukurannya dicek dari metadata penyimpanan, termasuk kecocokan ekstensi dengan jenis berkas. Semua dokumen wajib ada, judul pengajuan diambil dari database, dan saat kirim ulang dokumen lama tetap berlaku. Artinya setelah *Minta Perbaikan* peserta cukup mengganti dokumen yang bermasalah. Pengecekan berkas disatukan di `_enrollment_document_file_size`, dan penentuan "course ini meminta dokumen apa" di `_enrollment_document_target` (offering menang bila ada id yang sama).
+- Kolom `course_enrollment_document_uploads.offering_code` diganti nama menjadi `course_id`, dan argumen pertama `enrollment_document_register` menjadi `_course_id`.
+- Pengajuan Full Training lama yang masih *pending* tidak terganggu. Bila nanti diminta perbaikan, peserta harus melengkapi kelima dokumen.
+
+**Aplikasi:**
+- Halaman pendaftaran program (`/academy/apply/<slug>`):
+  - Bila server sudah punya pengajuan dari akun ini (dari perangkat mana pun), halaman menampilkan statusnya. *Pending* atau *approved* tidak bisa mengajukan dua kali. *Minta perbaikan* menampilkan kotak perbaikan (`FullTrainingApplyStatus`).
+  - Langkah *Documents* mengunggah setiap berkas ke server (wajib masuk). Dokumen yang sudah diunggah di perangkat lain, atau dari pengajuan yang ditolak, langsung terhitung.
+  - Kirim memakai unggahan tercatat (`useUploadedDocuments`).
+- Kotak perbaikan `FullTrainingRevision`: catatan admin, kelima dokumen beserta berkas yang dipegang admin, tombol **Replace/Ganti** per dokumen dengan label *new, not sent yet*, tanggapan teks, lalu **Send again**. Tombol terkunci sampai semua dokumen ada. Kotak ini dipakai di halaman pendaftaran, halaman detail pengajuan, dan dashboard. Sebelum migrasi, kotak lama (hanya teks) tetap tampil.
+- Notifikasi keputusan Full Training kini menuju `/academy/apply/<slug>`, yang membaca server, sehingga bisa dibuka dari perangkat mana pun. Halaman *My Applications* masih membaca browser.
+- Halaman detail pengajuan menampilkan dokumen yang dipegang admin (bisa dibuka pemiliknya), bukan nama berkas di browser.
+- Persetujuan Peserta menandai dokumen Full Training yang belum ada, sama seperti offering.
+- Logika unggah dipakai bersama halaman offering dan Full Training (`useEnrollmentDocumentUpload`, `enrollment-document-rules.ts`). Pembersih `cleanup:enrollment-documents` kini juga mengenali berkas `.jpg`/`.png`.
+
+**Uji:**
+- PGlite (`pgtest/full_training_docs.mjs`) **31/31**:
+  - Bukti sebelum migrasi: dokumen Full Training tidak bisa dicatat atau dikirim.
+  - Migrasi: bisa diulang, kolom berganti nama, daftar dokumen dan bucket benar.
+  - Aturan berkas: PDF dan PNG diterima; gambar lebih dari 2 MB, PDF lebih dari 10 MB, ekstensi tak cocok, dokumen tak diminta, dan berkas orang lain ditolak; offering tetap hanya PDF.
+  - Pengajuan: dokumen kurang ditolak tanpa pengajuan setengah jadi; lima dokumen terkirim; selagi *pending* tidak bisa diganti.
+  - Perbaikan: ganti CV saja, empat dokumen lain tetap, lalu disetujui.
+  - Lain-lain: pengajuan lama tidak terganggu tetapi wajib melengkapi saat perbaikan; daftar program tidak bisa diubah dari browser; program nonaktif tidak menerima dokumen; alur offering tetap jalan.
+- Uji langsung baru `npm run test:full-training-documents` (19 cek; dua login satu peserta sebagai HP dan laptop):
+  - Daftar dokumen server sama dengan formulir.
+  - Paspor JPG dan CV dari HP terlihat di laptop.
+  - Gambar 3 MB dan Word ditolak.
+  - Kirim dengan dokumen kurang ditolak tanpa sisa; lengkapi di laptop lalu terkirim dengan lima dokumen; selagi menunggu tidak bisa diganti.
+  - Operator membuka CV, peserta lain tidak bisa.
+  - Minta perbaikan: HP mengganti CV, laptop melihatnya lalu mengirim ulang, empat dokumen lain tetap.
+  - Disetujui; peserta lain tidak melihat atau memakai berkas orang lain.
+  - **Sebelum migrasi (intern-update, 11 Nov): 4/19.**
+- `test:participant-dashboard` kini melampirkan dokumen saat mengajukan Full Training (bila tabelnya ada), dan tautan notifikasinya menuju `/academy/apply/<slug>`. Sebelum migrasi tetap 29/29.
+- `test:enrollment-uploads` dan `test:enrollment-revision` memakai nama argumen baru (`courseId`). `tsc`, lint (tanpa masalah baru), dan `build` lulus.
+
+**Catatan:** kode branch ini tetap jalan sebelum migrasi (Full Training kembali ke perilaku lama). Pengecualiannya: pencatatan unggahan offering (2aw) memakai argumen `_course_id` yang baru ada setelah migrasi ini. Sampai migrasi dijalankan, unggahan offering kembali diingat di tab saja. Jadi **jalankan migrasi ini sebelum push**.
 
 ---
 
@@ -1264,7 +1311,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (71 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (72 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1323,6 +1370,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261110010000_offering_application.sql` (Course Offering "Wajib disetujui admin" dibuka lagi lewat jalur pengajuan peserta; pengajuan ke offering diperiksa: harus meminta pengajuan, tayang, masa pendaftaran buka, judul dari database). Lihat bagian 2as. Jalankan setelah `20261104030000`. **Butuh kode branch ini** (tombol Ajukan pendaftaran di halaman course).
 - `20261110020000_enrollment_revision_documents.sql` (pendaftaran: keputusan *Minta Perbaikan*, dokumen persyaratan per offering, bucket privat dokumen). Lihat bagian 2at. Jalankan setelah `20261110010000`. **Butuh kode branch ini** (unggah dokumen di halaman course, tombol Minta Perbaikan dan daftar dokumen di Persetujuan Peserta, isian dokumen di formulir offering).
 - `20261111010000_enrollment_document_uploads.sql` (dokumen pendaftaran yang sudah diunggah tetapi belum dikirim tercatat di server, sehingga terlihat di semua perangkat). Lihat bagian 2aw. Jalankan setelah `20261110020000`. Kode branch ini tetap jalan sebelum migrasi (unggahan diingat di layar seperti dulu).
+- `20261111020000_full_training_documents.sql` (berkas formulir Full Training benar-benar terkirim ke admin dan bisa diganti saat *Minta Perbaikan*; dokumen Full Training boleh PDF atau JPG/PNG). Lihat bagian 2ax. Jalankan setelah `20261111010000`, **sebelum push** (lihat catatan 2ax).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1355,8 +1403,9 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `academy-guards` | 13 (setelah migrasi `20261110010000`) | 2al, 2as | `course-cover-cleanup` | 12 | 2am |
   | `certificate-path` | 27 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
   | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | `offering-application` | 18 (setelah migrasi `20261110010000`) | 2as |
-  | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 29 | 2au, 2av |
+  | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 29 | 2au, 2av, 2ax |
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
+  | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

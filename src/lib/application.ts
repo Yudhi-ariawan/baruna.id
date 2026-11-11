@@ -26,17 +26,16 @@ export type EnglishLevel = (typeof ENGLISH_LEVELS)[number];
 
 export type DocField = { key: string; label: string; accept: string; hint: string };
 
+// Full Training application documents. The labels are the requirement names the server
+// stores (full_training_programs.required_documents, migration 20261111020000) and must
+// stay identical. Files the selection committee can open in the browser: PDF up to
+// 10 MB, JPG/PNG up to 2 MB.
 export const DOCUMENT_FIELDS: DocField[] = [
-  { key: "passport", label: "Passport Copy", accept: ".pdf,.jpg,.jpeg,.png", hint: "PDF or JPG" },
-  { key: "cv", label: "Curriculum Vitae (CV)", accept: ".pdf,.doc,.docx", hint: "PDF or DOC" },
-  {
-    key: "nomination",
-    label: "Nomination Letter",
-    accept: ".pdf,.jpg,.jpeg,.png",
-    hint: "PDF or JPG",
-  },
-  { key: "motivation", label: "Motivation Letter", accept: ".pdf,.doc,.docx", hint: "PDF or DOC" },
-  { key: "photo", label: "Recent Passport Photo", accept: ".jpg,.jpeg,.png", hint: "JPG or PNG" },
+  { key: "passport", label: "Passport Copy", accept: ".pdf,.jpg,.jpeg,.png", hint: "PDF, JPG or PNG" },
+  { key: "cv", label: "Curriculum Vitae (CV)", accept: ".pdf", hint: "PDF" },
+  { key: "nomination", label: "Nomination Letter", accept: ".pdf,.jpg,.jpeg,.png", hint: "PDF, JPG or PNG" },
+  { key: "motivation", label: "Motivation Letter", accept: ".pdf", hint: "PDF" },
+  { key: "photo", label: "Recent Passport Photo", accept: ".jpg,.jpeg,.png", hint: "JPG or PNG, max 2 MB" },
 ];
 
 export const LEARNING_SECTIONS: { key: string; label: string; desc: string }[] = [

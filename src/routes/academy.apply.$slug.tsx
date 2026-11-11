@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, notFound, Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronRight,
@@ -33,7 +34,12 @@ import {
 } from "@/lib/application";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { submitCourseEnrollmentApplication } from "@/lib/learning/enrollment-application.functions";
+import {
+  getMyCourseEnrollmentStatus,
+  submitCourseEnrollmentApplication,
+} from "@/lib/learning/enrollment-application.functions";
+import { useEnrollmentDocumentUpload } from "@/lib/learning/use-enrollment-document-upload";
+import { FullTrainingApplyStatus } from "@/components/baruna/academy/FullTrainingApplyStatus";
 import { fullTrainingCourseId } from "@/lib/learning/full-training-enrollment";
 
 export const Route = createFileRoute("/academy/apply/$slug")({
@@ -135,7 +141,71 @@ function ApplyPage() {
   const docsCount = Object.values(documents).filter(Boolean).length;
   const allDocsUploaded = docsCount === DOCUMENT_FIELDS.length;
 
+  // Server side of the application (PB-ACA-03): status from any device and, after
+  // migration 20261111020000, the documents themselves (CATATAN_PERBAIKAN 2ax).
+  const courseId = fullTrainingCourseId(p.slug);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+      setAuthChecked(true);
+    });
+  }, []);
+  const statusFn = useServerFn(getMyCourseEnrollmentStatus);
+  const statusQ = useQuery({
+    queryKey: ["learning", "enrollment-status", courseId],
+    queryFn: () => statusFn({ data: { courseId } }),
+    enabled: Boolean(userId),
+    staleTime: 15_000,
+  });
+  /** Files go to the selection committee; null before the migration (names stay in this browser). */
+  const serverDocs = statusQ.data?.programDocuments ?? null;
+  const uploadDocument = useEnrollmentDocumentUpload(courseId, { allowImages: true, english: true });
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  // Documents already on the server (uploaded on another device, or kept from a
+  // rejected application) count as uploaded here.
+  useEffect(() => {
+    const s = statusQ.data;
+    if (!s?.programDocuments) return;
+    const known = new Map<string, { name: string; size: number }>();
+    for (const d of s.documents ?? []) known.set(d.requirement, { name: d.fileName, size: d.sizeBytes ?? 0 });
+    for (const u of s.uploads ?? []) known.set(u.requirement, { name: u.fileName, size: u.sizeBytes ?? 0 });
+    setDocuments((prev) => {
+      const next = { ...prev };
+      for (const f of DOCUMENT_FIELDS) {
+        const k = known.get(f.label);
+        if (k && !next[f.key]) next[f.key] = { ...k, uploadedAt: new Date().toISOString() };
+      }
+      return next;
+    });
+  }, [statusQ.data]);
+
+  const uploadToServer = async (key: string, file: File) => {
+    const field = DOCUMENT_FIELDS.find((d) => d.key === key);
+    if (!field) return;
+    setUploadingKey(key);
+    try {
+      const { supported } = await uploadDocument(field.label, file);
+      if (!supported) throw new Error("Document upload is not available yet. Please try again later.");
+      setDocuments((s) => ({ ...s, [key]: { name: file.name, size: file.size, uploadedAt: new Date().toISOString() } }));
+    } catch (err) {
+      barunaToast(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
   const onFile = (key: string, file: File | null) => {
+    if (file && userId && statusQ.isLoading) {
+      barunaToast("Please wait a moment and try again");
+      return;
+    }
+    if (file && serverDocs) {
+      void uploadToServer(key, file);
+      return;
+    }
     setDocuments((s) => ({
       ...s,
       [key]: file ? { name: file.name, size: file.size, uploadedAt: new Date().toISOString() } : null,
@@ -159,9 +229,11 @@ function ApplyPage() {
     try {
       await submitEnrollmentFn({
         data: {
-          courseId: fullTrainingCourseId(p.slug),
+          courseId,
           courseTitle: p.title,
           notes: motivation.trim().slice(0, 1000) || undefined,
+          // The server attaches the documents recorded for this account (any device).
+          useUploadedDocuments: Boolean(serverDocs),
         },
       });
     } catch (err) {
@@ -217,6 +289,10 @@ function ApplyPage() {
           </div>
         </div>
 
+        {step < 4 && statusQ.data && ["revision_requested", "pending", "approved"].includes(statusQ.data.status) ? (
+          <FullTrainingApplyStatus courseId={courseId} courseTitle={p.title} status={statusQ.data} onDone={() => void statusQ.refetch()} />
+        ) : (
+        <>
         {/* Stepper */}
         {step < 4 && (
           <ol className="flex items-center justify-between gap-1">
@@ -402,7 +478,21 @@ function ApplyPage() {
               <h2 className="font-display text-xl font-bold text-navy">Document Upload</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Upload all required documents to continue. {docsCount} of {DOCUMENT_FIELDS.length} uploaded.
+                {serverDocs ? " Files are sent securely to the selection committee (PDF up to 10 MB, JPG/PNG up to 2 MB)." : ""}
               </p>
+              {authChecked && !userId ? (
+                <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  Sign in to upload your documents.{" "}
+                  <Link to="/auth" search={{ redirect: `/academy/apply/${p.slug}` }} className="font-semibold text-marine underline">
+                    Sign in
+                  </Link>
+                </div>
+              ) : null}
+              {uploadingKey ? (
+                <p className="mt-2 text-xs font-semibold text-marine">
+                  Uploading {DOCUMENT_FIELDS.find((d) => d.key === uploadingKey)?.label}…
+                </p>
+              ) : null}
               <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-marine transition-all"
@@ -433,7 +523,7 @@ function ApplyPage() {
                 )}
                 <button
                   onClick={goNext}
-                  disabled={!allDocsUploaded}
+                  disabled={!allDocsUploaded || uploadingKey !== null || (authChecked && !userId)}
                   className="inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-all hover:-translate-y-0.5 hover:bg-marine/90 hover:shadow-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   Continue <ArrowRight className="h-4 w-4" />
@@ -577,6 +667,8 @@ function ApplyPage() {
               </button>
             </div>
           </section>
+        )}
+        </>
         )}
       </div>
     </AcademyShell>

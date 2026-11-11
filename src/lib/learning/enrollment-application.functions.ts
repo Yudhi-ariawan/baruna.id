@@ -15,21 +15,39 @@ export type MyCourseEnrollmentDetail = {
   notes?: string | null;
   courseTitle?: string | null;
   /** Documents already attached to this application (Course Offering, migration 20261110020000). */
-  documents?: Array<{ id: string; requirement: string; fileName: string; uploadedAt: string }>;
+  documents?: Array<{ id: string; requirement: string; fileName: string; uploadedAt: string; sizeBytes?: number | null }>;
   /** Uploaded on any device but not sent yet (migration 20261111010000). */
-  uploads?: Array<{ requirement: string; path: string; fileName: string; uploadedAt: string }>;
+  uploads?: Array<{ requirement: string; path: string; fileName: string; uploadedAt: string; sizeBytes?: number | null }>;
+  /**
+   * Documents a Full Training program asks for (migration 20261111020000). Null for
+   * other courses and before that migration, when the program form keeps its files
+   * in the browser as before.
+   */
+  programDocuments?: string[] | null;
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function programDocuments(db: any, courseId: string): Promise<string[] | null> {
+  const { data, error } = await db
+    .from("full_training_programs")
+    .select("required_documents")
+    .eq("course_id", courseId)
+    .eq("active", true)
+    .maybeSingle();
+  if (error || !data) return null;
+  return Array.isArray(data.required_documents) ? (data.required_documents as string[]) : null;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function myUploads(db: any, userId: string, courseId: string): Promise<NonNullable<MyCourseEnrollmentDetail["uploads"]>> {
   const { data, error } = await db
     .from("course_enrollment_document_uploads")
-    .select("requirement, storage_path, file_name, uploaded_at")
+    .select("requirement, storage_path, file_name, uploaded_at, size_bytes")
     .eq("user_id", userId)
-    .eq("offering_code", courseId);
-  if (error) return []; // before migration 20261111010000
-  return ((data ?? []) as Array<{ requirement: string; storage_path: string; file_name: string; uploaded_at: string }>).map((u) => ({
-    requirement: u.requirement, path: u.storage_path, fileName: u.file_name, uploadedAt: u.uploaded_at,
+    .eq("course_id", courseId);
+  if (error) return []; // before migration 20261111020000 (column renamed from offering_code)
+  return ((data ?? []) as Array<{ requirement: string; storage_path: string; file_name: string; uploaded_at: string; size_bytes: number | null }>).map((u) => ({
+    requirement: u.requirement, path: u.storage_path, fileName: u.file_name, uploadedAt: u.uploaded_at, sizeBytes: u.size_bytes,
   }));
 }
 
@@ -78,7 +96,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<MyCourseEnrollmentDetail> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [hasParticipantRole, { data: record, error }, uploads] = await Promise.all([
+    const [hasParticipantRole, { data: record, error }, uploads, required] = await Promise.all([
       checkUserHasParticipantRole(supabaseAdmin, context.userId),
       (supabaseAdmin as any)
         .from("course_enrollment_applications")
@@ -87,24 +105,26 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
         .eq("course_id", data.courseId)
         .maybeSingle(),
       myUploads(supabaseAdmin, context.userId, data.courseId),
+      programDocuments(supabaseAdmin, data.courseId),
     ]);
     if (error) throw new Error(toFriendlyEnrollmentError(error.message));
 
-    if (!record) return { isEnrolled: false, hasParticipantRole, status: "none", uploads };
+    if (!record) return { isEnrolled: false, hasParticipantRole, status: "none", uploads, programDocuments: required };
 
     const status = record.status as CourseEnrollmentStatus;
     // Empty until migration 20261110020000 ran.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: docs } = await (supabaseAdmin as any)
       .from("course_enrollment_documents")
-      .select("id, requirement, file_name, uploaded_at")
+      .select("id, requirement, file_name, uploaded_at, size_bytes")
       .eq("application_id", record.id)
       .eq("user_id", context.userId);
     return {
-      documents: ((docs ?? []) as Array<{ id: string; requirement: string; file_name: string; uploaded_at: string }>).map((d) => ({
-        id: d.id, requirement: d.requirement, fileName: d.file_name, uploadedAt: d.uploaded_at,
+      documents: ((docs ?? []) as Array<{ id: string; requirement: string; file_name: string; uploaded_at: string; size_bytes: number | null }>).map((d) => ({
+        id: d.id, requirement: d.requirement, fileName: d.file_name, uploadedAt: d.uploaded_at, sizeBytes: d.size_bytes,
       })),
       uploads,
+      programDocuments: required,
       isEnrolled: status === "approved",
       hasParticipantRole,
       status,

@@ -7,7 +7,7 @@
  * upload never got recorded (closed tab, failed step).
  *
  * A file is deleted only when ALL of these hold:
- *  - it is named like an upload (enrollment/<uuid>/<32 hex>.pdf);
+ *  - it is named like an upload (enrollment/<uuid>/<32 hex>.pdf|.jpg|.png);
  *  - no sent application document uses it (course_enrollment_documents);
  *  - no recorded, not-yet-sent upload uses it (course_enrollment_document_uploads);
  *  - it is older than the grace period (default 24 h), so a file being uploaded right
@@ -25,7 +25,7 @@ import { pathToFileURL } from "node:url";
 export const BUCKET = "enrollment-documents";
 export const PREFIX = "enrollment";
 const USER = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const NAME = /^[0-9a-f]{32}\.pdf$/;
+const NAME = /^[0-9a-f]{32}\.(pdf|jpg|png)$/;
 
 async function list(svc, prefix) {
   const out = [];

@@ -20,7 +20,8 @@ export function enrollmentKind(courseId: string, offeringCodes: ReadonlySet<stri
 export function enrollmentPageUrl(courseId: string, kind: LearningKind): string {
   const id = encodeURIComponent(courseId);
   if (kind === "offering") return `/academy/course/${id}`;
-  if (kind === "program") return "/academy/applications";
+  // The apply page shows the server's status and the revision box on any device (2ax).
+  if (kind === "program") return `/academy/apply/${id}`;
   return `/academy/self-paced/${id}`;
 }
 

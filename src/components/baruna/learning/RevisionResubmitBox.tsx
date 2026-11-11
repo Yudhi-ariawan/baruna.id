@@ -1,9 +1,9 @@
 // "Minta Perbaikan" for applications without documents (Full Training programs, PB-ACA-03,
 // Slide 22): shows the administrator's note and lets the participant answer and send
 // the application again. course_enrollment_apply accepts a resubmission from
-// revision_requested and puts it back to pending. Used on the Full Training
-// application page and on the dashboard, which reads from the server, so it works
-// from any device (the Full Training form itself lives in one browser).
+// revision_requested and puts it back to pending. Since 2ax, FullTrainingRevision
+// (with document replacement) is used instead; this box remains its fallback before
+// migration 20261111020000.
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";

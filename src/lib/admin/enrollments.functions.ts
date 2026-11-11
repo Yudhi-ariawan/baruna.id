@@ -103,13 +103,21 @@ export const listAdminCourseEnrollments = createServerFn({ method: "GET" })
     // Documents and the offering's required list (empty until migration 20261110020000 ran).
     const ids = allItems.map((i) => i.id);
     if (ids.length) {
-      const [{ data: docs }, { data: offs }] = await Promise.all([
+      const courseIds = [...new Set(allItems.map((i) => i.courseId))];
+      const [{ data: docs }, { data: offs }, { data: programs }] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabaseAdmin as any).from("course_enrollment_documents").select("id, application_id, requirement, file_name, uploaded_at").in("application_id", ids),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabaseAdmin as any).from("course_offerings").select("offering_code, required_documents").in("offering_code", [...new Set(allItems.map((i) => i.courseId))]),
+        (supabaseAdmin as any).from("course_offerings").select("offering_code, required_documents").in("offering_code", courseIds),
+        // Full Training programs (migration 20261111020000; null before it).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabaseAdmin as any).from("full_training_programs").select("course_id, required_documents").in("course_id", courseIds),
       ]);
-      const required = new Map(((offs ?? []) as Array<{ offering_code: string; required_documents: string[] | null }>).map((o) => [o.offering_code, o.required_documents ?? []]));
+      const required = new Map<string, string[]>(
+        ((programs ?? []) as Array<{ course_id: string; required_documents: string[] | null }>).map((p) => [p.course_id, p.required_documents ?? []]),
+      );
+      // An offering wins when both exist, as in the database.
+      for (const o of (offs ?? []) as Array<{ offering_code: string; required_documents: string[] | null }>) required.set(o.offering_code, o.required_documents ?? []);
       for (const item of allItems) {
         item.requiredDocuments = required.get(item.courseId) ?? [];
         item.documents = ((docs ?? []) as Array<{ id: string; application_id: string; requirement: string; file_name: string; uploaded_at: string }>)

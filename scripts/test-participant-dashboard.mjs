@@ -64,6 +64,28 @@ async function postFn(token, file, exp, data) {
   }
 }
 const FT = "international-training-fisheries-african-countries"; // Full Training: course id = training slug
+const DOCS_FILE = "/src/lib/learning/enrollment-documents.functions.ts";
+const PDF = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+const uploaded = [];
+/**
+ * After migration 20261111020000 a Full Training application needs its documents:
+ * upload and record one small PDF per required document, as the apply page does.
+ * Before it there is no document list and nothing is uploaded.
+ */
+async function ftAttachDocs(token) {
+  const { data: prog, error } = await svc.from("full_training_programs").select("required_documents").eq("course_id", FT).maybeSingle();
+  if (error || !prog) return 0;
+  for (const requirement of prog.required_documents) {
+    const up = await postFn(token, DOCS_FILE, "createEnrollmentDocumentUpload", { courseId: FT, fileName: "dok.pdf", size: PDF.length, contentType: "application/pdf" });
+    if (up.error) throw new Error(up.error);
+    const put = await svc.storage.from("enrollment-documents").uploadToSignedUrl(up.data.path, up.data.token, PDF, { contentType: "application/pdf" });
+    if (put.error) throw new Error(put.error.message);
+    uploaded.push(up.data.path);
+    const reg = await postFn(token, DOCS_FILE, "registerEnrollmentDocument", { courseId: FT, requirement, path: up.data.path, fileName: `${requirement}.pdf` });
+    if (reg.error) throw new Error(reg.error);
+  }
+  return prog.required_documents.length;
+}
 const overview = async (u) => (await callFn(u.token, OVERVIEW, "getMyLearningOverview"));
 const enrollNotifs = async (u) => {
   const r = await callFn(u.token, NOTIFS, "listMyNotifications");
@@ -173,7 +195,8 @@ try {
 
   console.log("6. Full Training: minta perbaikan lalu kirim ulang (tidak macet)");
   const ftDecide = (admin, d, n) => admin.c.rpc("admin_course_enrollment_decide", { _user_id: peserta.id, _course_id: FT, _decision: d, _notes: n });
-  r = await postFn(peserta.token, APPLY_FILE, "submitCourseEnrollmentApplication", { courseId: FT, courseTitle: "Full Training TDD", notes: "Motivasi awal" });
+  await ftAttachDocs(peserta.token);
+  r = await postFn(peserta.token, APPLY_FILE, "submitCourseEnrollmentApplication", { courseId: FT, courseTitle: "Full Training TDD", notes: "Motivasi awal", useUploadedDocuments: true });
   check(r.data?.status === "pending", `peserta mengajukan Full Training (${r.error?.slice(0, 50) ?? r.data?.status})`);
   r = await ftDecide(operator, "request_revision", "Lampirkan surat tugas atasan");
   check(!r.error, `operator meminta perbaikan Full Training (${errOf(r).slice(0, 50) || "ok"})`);
@@ -184,7 +207,7 @@ try {
     `dashboard: dikenali sebagai Full Training, perlu perbaikan, catatan lama tersedia untuk diisi ulang (${ftApp?.kind}/${ftApp?.status})`);
   n = await enrollNotifs(peserta);
   const ftRev = n.data?.find((x) => x.type === "revision_requested" && x.title.includes("Full Training TDD"));
-  check(ftRev?.targetUrl === "/academy/applications", `notifikasi Full Training menuju halaman Pendaftaran (${ftRev?.targetUrl ?? "TIDAK ADA"})`);
+  check(ftRev?.targetUrl === `/academy/apply/${FT}`, `notifikasi Full Training menuju halaman pendaftaran program, bisa dibuka dari perangkat mana pun (${ftRev?.targetUrl ?? "TIDAK ADA"})`);
   r = await postFn(peserta.token, APPLY_FILE, "submitCourseEnrollmentApplication", { courseId: FT, courseTitle: "Full Training TDD", notes: "Surat tugas sudah saya kirim lewat email" });
   check(r.data?.status === "pending", `peserta mengirim ulang dengan tanggapan (${r.error?.slice(0, 50) ?? r.data?.status})`);
   const ftRow = (await svc.from("course_enrollment_applications").select("status, notes, decision_notes").eq("user_id", peserta.id).eq("course_id", FT).single()).data;
@@ -197,6 +220,8 @@ try {
   check(Boolean(anon.error) && !anon.data, `tanpa login ditolak (${(anon.error ?? "BISA").slice(0, 40)})`);
 } finally {
   console.log("\nMembersihkan data uji...");
+  if (uploaded.length) await svc.storage.from("enrollment-documents").remove(uploaded);
+  if (created.length) await svc.from("course_enrollment_document_uploads").delete().in("user_id", created);
   const { data: offs } = await svc.from("course_offerings").select("id").eq("offering_code", OFF);
   const ids = (offs ?? []).map((x) => x.id);
   if (ids.length) {

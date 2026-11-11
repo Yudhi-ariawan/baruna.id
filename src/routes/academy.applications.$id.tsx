@@ -32,7 +32,8 @@ import {
   Check,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
-import { RevisionResubmitBox } from "@/components/baruna/learning/RevisionResubmitBox";
+import { FullTrainingRevision } from "@/components/baruna/learning/FullTrainingRevision";
+import { EnrollmentDocumentsList } from "@/components/governance/EnrollmentDocumentsList";
 import { Toaster } from "@/components/baruna/Toaster";
 
 import { TravelVisaPrep } from "@/components/baruna/academy/TravelVisaPrep";
@@ -389,12 +390,10 @@ function ApplicationDetail() {
                       </Link>
                     </>
                   ) : revision ? (
-                    <RevisionResubmitBox
+                    <FullTrainingRevision
                       courseId={courseId}
                       courseTitle={app.title}
-                      decisionNotes={serverEnrollment?.decisionNotes}
-                      previousNotes={serverEnrollment?.notes ?? app.motivation.slice(0, 1000)}
-                      documentsStayLocal
+                      fallbackNotes={app.motivation}
                       isId={false}
                       onDone={() => void refetchEnrollment()}
                     />
@@ -465,6 +464,14 @@ function ApplicationDetail() {
             {/* Submitted documents */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-lg font-bold text-navy">Submitted Documents</h2>
+              {serverEnrollment?.documents?.length ? (
+                // Files the selection committee has (migration 20261111020000), from any device.
+                <div className="mt-3">
+                  <p className="mb-2 text-xs text-muted-foreground">Sent to the selection committee.</p>
+                  <EnrollmentDocumentsList documents={serverEnrollment.documents} required={serverEnrollment.programDocuments ?? undefined} />
+                </div>
+              ) : (
+              <>
               <p className="mt-1 text-xs text-muted-foreground">
                 Recorded in this browser only; these files are not sent to the selection committee.
               </p>
@@ -487,6 +494,8 @@ function ApplicationDetail() {
                   );
                 })}
               </ul>
+              </>
+              )}
             </div>
           </div>
         )}

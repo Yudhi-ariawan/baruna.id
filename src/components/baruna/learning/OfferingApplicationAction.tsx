@@ -7,28 +7,21 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Clock, FileText, Loader2, RotateCcw, Send, Upload, XCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import {
   getMyCourseEnrollmentStatus,
   submitCourseEnrollmentApplication,
 } from "@/lib/learning/enrollment-application.functions";
-import {
-  ENROLLMENT_DOCUMENT_BUCKET,
-  ENROLLMENT_DOCUMENT_MAX_BYTES,
-  createEnrollmentDocumentUpload,
-  registerEnrollmentDocument,
-} from "@/lib/learning/enrollment-documents.functions";
+import { useEnrollmentDocumentUpload, type UploadedDocument } from "@/lib/learning/use-enrollment-document-upload";
 
 const dateFmt = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" });
 const fmt = (d?: string | null) => (d ? dateFmt.format(new Date(d)) : "");
-type Uploaded = { requirement: string; path: string; fileName: string };
+type Uploaded = UploadedDocument;
 
 export function OfferingApplicationAction({ offeringCode, title, requiredDocuments }: { offeringCode: string; title: string; requiredDocuments: string[] }) {
   const qc = useQueryClient();
   const statusFn = useServerFn(getMyCourseEnrollmentStatus);
   const submitFn = useServerFn(submitCourseEnrollmentApplication);
-  const uploadFn = useServerFn(createEnrollmentDocumentUpload);
-  const registerFn = useServerFn(registerEnrollmentDocument);
+  const uploadDocument = useEnrollmentDocumentUpload(offeringCode);
   // Only used before migration 20261111010000: then an upload lives in this tab until sent.
   const [uploads, setUploads] = useState<Record<string, Uploaded>>({});
   const [uploading, setUploading] = useState<string | null>(null);
@@ -50,15 +43,10 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
   const pick = async (requirement: string, file: File | undefined) => {
     if (!file) return;
     setUploadError(null);
-    if (file.type !== "application/pdf" || !/\.pdf$/i.test(file.name)) return setUploadError("Dokumen harus berformat PDF.");
-    if (file.size > ENROLLMENT_DOCUMENT_MAX_BYTES) return setUploadError("Ukuran dokumen maksimal 10 MB.");
     setUploading(requirement);
     try {
-      const { path, token } = await uploadFn({ data: { offeringCode, fileName: file.name, size: file.size, contentType: file.type } });
-      const { error } = await supabase.storage.from(ENROLLMENT_DOCUMENT_BUCKET).uploadToSignedUrl(path, token, file, { contentType: "application/pdf" });
-      if (error) throw new Error(`Unggah gagal: ${error.message}`);
       // Recorded on the server so other devices of this account see it; kept in the tab only before the migration.
-      const { supported } = await registerFn({ data: { offeringCode, requirement, path, fileName: file.name } });
+      const { path, supported } = await uploadDocument(requirement, file);
       if (supported) {
         setUploads((u) => { const next = { ...u }; delete next[requirement]; return next; });
         await statusQ.refetch();

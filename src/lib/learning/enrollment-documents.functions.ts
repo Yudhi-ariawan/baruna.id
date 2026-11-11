@@ -1,22 +1,29 @@
-// Required documents of a Course Offering application (PB-ACA-03, Slide 22:
-// "Unggah Dokumen Persyaratan"; migration 20261110020000).
+// Required documents of an application (PB-ACA-03, Slide 22: "Unggah Dokumen
+// Persyaratan"): Course Offerings (migration 20261110020000) and Full Training
+// programs (migration 20261111020000).
 // Files go to the private bucket "enrollment-documents" through a signed upload URL.
-// The database checks every file again (owner, PDF, size, really uploaded) when the
-// application is sent, and only the owner and enrolment deciders may open a file.
+// The database checks every file again (owner, type, size, really uploaded) when it is
+// recorded and when the application is sent, and only the owner and enrolment
+// deciders may open a file.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { toFriendlyEnrollmentError } from "@/lib/learning/enrollment-errors";
+import {
+  ENROLLMENT_DOCUMENT_BUCKET,
+  ENROLLMENT_DOCUMENT_MAX_BYTES,
+  enrollmentContentType,
+  enrollmentFileProblem,
+} from "@/lib/learning/enrollment-document-rules";
 
-export const ENROLLMENT_DOCUMENT_BUCKET = "enrollment-documents";
-export const ENROLLMENT_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+export { ENROLLMENT_DOCUMENT_BUCKET, ENROLLMENT_DOCUMENT_MAX_BYTES };
 
 export const createEnrollmentDocumentUpload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) =>
     z
       .object({
-        offeringCode: z.string().trim().min(3).max(80),
+        courseId: z.string().trim().min(3).max(200),
         fileName: z.string().trim().min(1).max(200),
         size: z.number().int().min(1).max(ENROLLMENT_DOCUMENT_MAX_BYTES),
         contentType: z.string().max(100),
@@ -24,22 +31,37 @@ export const createEnrollmentDocumentUpload = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    if (data.contentType !== "application/pdf" || !/\.pdf$/i.test(data.fileName)) {
-      throw new Error("Dokumen harus berformat PDF.");
-    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabaseAdmin as any;
     const { data: offering } = await db
       .from("course_offerings")
       .select("id, enrolment_access_rule, status")
-      .eq("offering_code", data.offeringCode)
+      .eq("offering_code", data.courseId)
       .maybeSingle();
-    if (!offering || offering.enrolment_access_rule !== "approval_required" || offering.status !== "published") {
-      throw new Error("Course ini tidak menerima pengajuan dengan dokumen.");
+    let allowImages = false;
+    if (offering) {
+      if (offering.enrolment_access_rule !== "approval_required" || offering.status !== "published") {
+        throw new Error("Course ini tidak menerima pengajuan dengan dokumen.");
+      }
+    } else {
+      // Full Training program (missing table before migration 20261111020000 = not supported).
+      const { data: program } = await db
+        .from("full_training_programs")
+        .select("course_id")
+        .eq("course_id", data.courseId)
+        .eq("active", true)
+        .maybeSingle();
+      if (!program) throw new Error("Program ini tidak menerima unggahan dokumen.");
+      allowImages = true;
     }
+    const file = { name: data.fileName, type: data.contentType, size: data.size };
+    const problem = enrollmentFileProblem(file, allowImages);
+    const contentType = enrollmentContentType(file, allowImages);
+    if (problem || !contentType) throw new Error(problem?.id ?? "Jenis dokumen tidak didukung.");
+    const ext = contentType === "application/pdf" ? "pdf" : contentType === "image/png" ? "png" : "jpg";
     const { randomUUID } = await import("node:crypto");
-    const path = `enrollment/${context.userId}/${randomUUID().replace(/-/g, "")}.pdf`;
+    const path = `enrollment/${context.userId}/${randomUUID().replace(/-/g, "")}.${ext}`;
     const { data: signed, error } = await db.storage.from(ENROLLMENT_DOCUMENT_BUCKET).createSignedUploadUrl(path);
     if (error || !signed?.token) {
       throw new Error(
@@ -48,22 +70,22 @@ export const createEnrollmentDocumentUpload = createServerFn({ method: "POST" })
           : `Gagal menyiapkan unggahan: ${error?.message ?? "tidak diketahui"}`,
       );
     }
-    return { path, token: signed.token as string };
+    return { path, token: signed.token as string, contentType };
   });
 
 /**
- * Records an uploaded file as this participant's document for the offering (migration
- * 20261111010000), so every device of the account sees it before the application is
- * sent. The database checks owner, PDF, size, requested document and that the
- * application can still change. Returns supported=false before the migration, so the
- * page keeps the file in the open tab instead (the old behaviour).
+ * Records an uploaded file as this participant's document for the course (migrations
+ * 20261111010000 and 20261111020000), so every device of the account sees it before the
+ * application is sent. The database checks owner, type, size, requested document and
+ * that the application can still change. Returns supported=false before the
+ * migration, so the page keeps the file in the open tab instead (the old behaviour).
  */
 export const registerEnrollmentDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) =>
     z
       .object({
-        offeringCode: z.string().trim().min(3).max(80),
+        courseId: z.string().trim().min(3).max(200),
         requirement: z.string().trim().min(1).max(120),
         path: z.string().trim().min(1).max(200),
         fileName: z.string().trim().min(1).max(200),
@@ -73,7 +95,7 @@ export const registerEnrollmentDocument = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ supported: boolean }> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (context.supabase as any).rpc("enrollment_document_register", {
-      _offering_code: data.offeringCode,
+      _course_id: data.courseId,
       _requirement: data.requirement,
       _path: data.path,
       _file_name: data.fileName,
