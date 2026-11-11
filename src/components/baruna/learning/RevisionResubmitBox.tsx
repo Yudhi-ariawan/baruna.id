@@ -16,11 +16,13 @@ type Props = {
   decisionNotes: string | null | undefined;
   /** Prefill: the notes the participant sent last time (from the server). */
   previousNotes?: string | null;
+  /** Full Training: its form documents stay in the browser, so say so (CATATAN_PERBAIKAN 2av). */
+  documentsStayLocal?: boolean;
   isId?: boolean;
   onDone?: () => void;
 };
 
-export function RevisionResubmitBox({ courseId, courseTitle, decisionNotes, previousNotes, isId = true, onDone }: Props) {
+export function RevisionResubmitBox({ courseId, courseTitle, decisionNotes, previousNotes, documentsStayLocal, isId = true, onDone }: Props) {
   const qc = useQueryClient();
   const submitFn = useServerFn(submitCourseEnrollmentApplication);
   const [notes, setNotes] = useState(previousNotes ?? "");
@@ -46,6 +48,13 @@ export function RevisionResubmitBox({ courseId, courseTitle, decisionNotes, prev
     <div className="mt-2 space-y-2 rounded-xl border border-orange-300 bg-orange-50/70 p-3 text-xs text-orange-950">
       <p className="flex items-center gap-1.5 font-bold"><RotateCcw className="h-3.5 w-3.5" /> {isId ? "Admin meminta perbaikan" : "The administrator asked for a revision"}</p>
       {decisionNotes ? <p className="rounded-lg border border-orange-200 bg-white/80 p-2 italic">"{decisionNotes}"</p> : null}
+      {documentsStayLocal ? (
+        <p className="text-orange-900/80">
+          {isId
+            ? "Berkas pada formulir program ini hanya tersimpan di browser dan tidak terkirim ke admin, jadi tidak bisa diunggah ulang di sini. Tuliskan perbaikan atau keterangan Anda di kolom berikut."
+            : "Files in this program's form are kept in your browser only and are not sent to the administrator, so they cannot be re-uploaded here. Write your correction or explanation below."}
+        </p>
+      ) : null}
       <label className="block font-semibold">
         {isId ? "Tanggapan atau perbaikan Anda untuk admin" : "Your answer or correction for the administrator"}
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} rows={3}

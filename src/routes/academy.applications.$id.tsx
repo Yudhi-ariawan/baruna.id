@@ -394,6 +394,7 @@ function ApplicationDetail() {
                       courseTitle={app.title}
                       decisionNotes={serverEnrollment?.decisionNotes}
                       previousNotes={serverEnrollment?.notes ?? app.motivation.slice(0, 1000)}
+                      documentsStayLocal
                       isId={false}
                       onDone={() => void refetchEnrollment()}
                     />
@@ -464,6 +465,9 @@ function ApplicationDetail() {
             {/* Submitted documents */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-lg font-bold text-navy">Submitted Documents</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Recorded in this browser only; these files are not sent to the selection committee.
+              </p>
               <ul className="mt-3 space-y-2">
                 {DOCUMENT_FIELDS.map((d) => {
                   const meta = app.documents[d.key];

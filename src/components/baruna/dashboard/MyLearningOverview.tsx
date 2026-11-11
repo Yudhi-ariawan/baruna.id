@@ -169,7 +169,7 @@ function ApplicationRow({ app, isId }: { app: MyApplication; isId: boolean }) {
       {revision && app.kind === "program" ? (
         // Full Training forms live in one browser; answering here works from any device.
         <RevisionResubmitBox courseId={app.courseId} courseTitle={app.courseTitle} decisionNotes={null}
-          previousNotes={app.notes} isId={isId} />
+          previousNotes={app.notes} documentsStayLocal isId={isId} />
       ) : revision ? (
         <ApplicationLink app={app}>{isId ? "Perbaiki dan kirim ulang" : "Fix and resubmit"} →</ApplicationLink>
       ) : !pending ? (

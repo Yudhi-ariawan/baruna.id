@@ -1168,6 +1168,8 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Uji:** `test:participant-dashboard` ditambah 8 cek Full Training: mengajukan; diminta perbaikan; admin terkunci selama menunggu; dashboard mengenali Full Training beserta catatan lamanya; notifikasi menuju Pendaftaran; peserta mengirim ulang dengan tanggapan; tanggapan tersimpan dan catatan keputusan lama dibersihkan; approver bisa menyetujui. **Kode sebelumnya: 27/29** (jenis terbaca "module", tautan ke `/academy/self-paced/...`). **Sesudah: 29/29.** `tsc`, lint, dan `build` lulus.
 
+**Uji manual (11 Nov, pemilik proyek):** pengajuan Full Training diminta perbaikan, peserta membuka notifikasi lalu menekan *Send again*, dan status kembali *pending* (tercatat di `admin_audit_log`). Dari uji ini ditemukan bahwa peserta mencari unggah ulang berkas, padahal lima berkas di formulir Full Training hanya dicatat namanya di browser dan tidak pernah sampai ke admin. Tombol unggah ulang sengaja tidak dibuat karena akan menyesatkan. Sebagai gantinya, kotak perbaikan (`documentsStayLocal`) dan bagian *Submitted Documents* kini menjelaskan hal itu, dan peserta menjawab lewat teks. Keputusan unggah sungguhan diserahkan ke mentor (MENUNGGU_ARAHAN_MENTOR, Ruang belajar).
+
 **Catatan:** pengajuan yang ditolak di Full Training tetap tanpa tombol ajukan lagi (perilaku lama, nasib program menunggu mentor, P4).
 
 ---

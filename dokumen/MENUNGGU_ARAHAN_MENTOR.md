@@ -52,6 +52,7 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 
 ### Ruang belajar (setelah perbaikan 2h di CATATAN_PERBAIKAN.md)
 - **Full Training** kini lewat persetujuan admin di `/admin/enrollments` (bagian 2i). Yang belum diputuskan: apakah program African Countries masih dipakai? Halaman My Learning menghapusnya otomatis dari browser.
+  - *(11 Nov)* Lima berkas di formulir Full Training (paspor, CV, surat penugasan, surat motivasi, foto) hanya dicatat namanya di browser. Berkasnya tidak pernah terkirim, admin tidak bisa membukanya, dan peserta tidak bisa mengunggah ulang saat diminta perbaikan (sekarang hanya bisa menjawab lewat teks, CATATAN_PERBAIKAN 2av). **Pertanyaan:** jika Full Training tetap dipakai, perlukah unggah berkas sungguhan seperti di Course Offering (butuh migrasi)? Atau pelatihan yang butuh pemeriksaan dokumen dibuat sebagai Course Offering dengan aturan "Wajib disetujui admin" dan dokumen persyaratan (sudah tersedia)?
 - **Demo Mode** tidak lagi membuka ruang belajar. Admin yang ingin presentasi harus memakai akun peserta yang sudah disetujui. Apakah perlu mode pratinjau khusus admin (diperiksa di server)?
 - **PDF modul Master** sudah tidak ditautkan di halaman publik, tetapi filenya masih aset publik Lovable. Perlu file PDF asli untuk dipindah ke penyimpanan privat.
 
