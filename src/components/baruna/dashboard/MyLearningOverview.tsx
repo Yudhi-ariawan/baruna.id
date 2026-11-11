@@ -7,6 +7,7 @@ import {
   type MyApplication,
   type MyCourseProgress,
 } from "@/lib/learning/my-learning.functions";
+import { RevisionResubmitBox } from "@/components/baruna/learning/RevisionResubmitBox";
 
 /**
  * Participant learning summary, read from the database only:
@@ -165,7 +166,11 @@ function ApplicationRow({ app, isId }: { app: MyApplication; isId: boolean }) {
             ? `${isId ? `Admin meminta perbaikan (${date(app.decisionAt)})` : `Revision requested (${date(app.decisionAt)})`}${app.decisionNotes ? `: ${app.decisionNotes}` : "."}`
             : `${isId ? "Ditolak" : "Rejected"}${app.decisionNotes ? `: ${app.decisionNotes}` : "."}`}
       </p>
-      {revision ? (
+      {revision && app.kind === "program" ? (
+        // Full Training forms live in one browser; answering here works from any device.
+        <RevisionResubmitBox courseId={app.courseId} courseTitle={app.courseTitle} decisionNotes={null}
+          previousNotes={app.notes} isId={isId} />
+      ) : revision ? (
         <ApplicationLink app={app}>{isId ? "Perbaiki dan kirim ulang" : "Fix and resubmit"} →</ApplicationLink>
       ) : !pending ? (
         <ApplicationLink app={app}>{isId ? "Lihat dan ajukan lagi" : "View and reapply"} →</ApplicationLink>

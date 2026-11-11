@@ -153,6 +153,7 @@ function ApplicationCard({ app, userId }: { app: Application; userId: string | n
   const docs = Object.values(app.documents).filter(Boolean).length;
   const total = Object.keys(app.documents).length;
   const accepted = status === "Accepted";
+  const revision = serverEnrollment?.status === "revision_requested";
   return (
     <article className="rounded-2xl border border-border bg-card p-6 shadow-soft">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -175,10 +176,18 @@ function ApplicationCard({ app, userId }: { app: Application; userId: string | n
             </div>
           </div>
         </div>
-        <span className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold ${statusTone[status]}`}>
-          {status}
+        <span className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold ${revision ? "bg-orange-100 text-orange-800" : statusTone[status]}`}>
+          {revision ? "Revision Requested" : status}
         </span>
       </div>
+
+      {revision ? (
+        <p className="mt-4 rounded-xl border border-orange-300 bg-orange-50/70 p-3 text-xs text-orange-950">
+          <span className="font-bold">The administrator asked for a revision.</span>{" "}
+          {serverEnrollment?.decisionNotes ? `"${serverEnrollment.decisionNotes}" ` : ""}
+          Open the details to answer and send the application again.
+        </p>
+      ) : null}
 
       <div className="mt-5 rounded-xl border border-border bg-background p-4">
         <StatusTracker status={status} />

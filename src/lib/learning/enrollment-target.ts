@@ -2,12 +2,15 @@
 // the participant: a Course Offering page, a module page, or a Full Training
 // application. The same id space is shared by all three (PB-ACA-03).
 import { programs } from "@/data/programs";
+import { trainingBySlug } from "@/data/training";
 
 export type LearningKind = "offering" | "module" | "program";
 
 /** offeringCodes: course ids known to be Course Offering codes. */
 export function enrollmentKind(courseId: string, offeringCodes: ReadonlySet<string>): LearningKind {
   if (offeringCodes.has(courseId)) return "offering";
+  // Full Training applications use the training slug as course id (fullTrainingCourseId).
+  if (trainingBySlug[courseId]) return "program";
   const program = programs.find((p) => p.id === courseId);
   if (program && program.type !== "self-paced") return "program";
   return "module";

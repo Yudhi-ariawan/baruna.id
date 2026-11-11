@@ -32,6 +32,7 @@ import {
   Check,
 } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
+import { RevisionResubmitBox } from "@/components/baruna/learning/RevisionResubmitBox";
 import { Toaster } from "@/components/baruna/Toaster";
 
 import { TravelVisaPrep } from "@/components/baruna/academy/TravelVisaPrep";
@@ -138,6 +139,8 @@ function ApplicationDetail() {
   const program = trainingBySlug[app.slug];
   const status = effectiveApplicationStatus(app.status, serverEnrollment?.status);
   const accepted = status === "Accepted";
+  // "Minta Perbaikan" from the administrator: the participant answers and sends again.
+  const revision = serverEnrollment?.status === "revision_requested";
 
   const sendEnrollmentToServer = async () => {
     if (sendingEnrollment) return;
@@ -290,9 +293,9 @@ function ApplicationDetail() {
               </div>
             </div>
             <span
-              className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold ${statusTone[status]}`}
+              className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold ${revision ? "bg-orange-100 text-orange-800" : statusTone[status]}`}
             >
-              {status}
+              {revision ? "Revision Requested" : status}
             </span>
           </div>
         </div>
@@ -385,6 +388,15 @@ function ApplicationDetail() {
                         Sign in <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </>
+                  ) : revision ? (
+                    <RevisionResubmitBox
+                      courseId={courseId}
+                      courseTitle={app.title}
+                      decisionNotes={serverEnrollment?.decisionNotes}
+                      previousNotes={serverEnrollment?.notes ?? app.motivation.slice(0, 1000)}
+                      isId={false}
+                      onDone={() => void refetchEnrollment()}
+                    />
                   ) : serverEnrollment?.status === "none" ? (
                     <>
                       <p className="text-xs text-muted-foreground">

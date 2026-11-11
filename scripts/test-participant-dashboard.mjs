@@ -49,6 +49,21 @@ async function callFn(token, file, exp) {
     return { error: m ? JSON.parse(`"${m[1]}"`) : text.slice(0, 160) };
   }
 }
+const APPLY_FILE = "/src/lib/learning/enrollment-application.functions.ts";
+async function postFn(token, file, exp, data) {
+  const res = await fetch(`${APP}/_serverFn/${fnId(file, exp)}`, { method: "POST",
+    headers: { "x-tsr-serverFn": "true", accept: "application/json", "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify(await toJSONAsync({ data })) });
+  const text = await res.text();
+  try {
+    const v = fromCrossJSON(JSON.parse(text), { refs: new Map(), plugins: [] });
+    return v?.result !== undefined ? { data: v.result } : { error: String(v?.error?.message ?? text.slice(0, 120)) };
+  } catch {
+    const m = text.match(/"message":\{"t":1,"s":"((?:[^"\\]|\\.)*)"\}/);
+    return { error: m ? JSON.parse(`"${m[1]}"`) : text.slice(0, 160) };
+  }
+}
+const FT = "international-training-fisheries-african-countries"; // Full Training: course id = training slug
 const overview = async (u) => (await callFn(u.token, OVERVIEW, "getMyLearningOverview"));
 const enrollNotifs = async (u) => {
   const r = await callFn(u.token, NOTIFS, "listMyNotifications");
@@ -77,6 +92,7 @@ const decide = (admin, u, d, n) => admin.c.rpc("admin_course_enrollment_decide",
 
 await fetch(APP + OVERVIEW); // dev mode registers the server functions once the module is loaded
 await fetch(APP + NOTIFS);
+await fetch(APP + APPLY_FILE);
 try {
   const tpl = (await svc.from("learning_templates").select("id").eq("code", "knowledge_course").single()).data.id;
   courseId = (await svc.from("master_courses").insert({ course_code: COURSE, title: "TDD Dashboard", language: "en", learning_template_id: tpl, status: "active", version: 1 }).select("id").single()).data.id;
@@ -154,6 +170,29 @@ try {
     "dashboard peserta lain: ditolak, tanpa data belajar peserta pertama");
   n = await enrollNotifs(peserta);
   check(n.data?.length === 2 && !n.data.some((x) => x.type === "rejected"), "notifikasi peserta pertama tidak berisi keputusan orang lain");
+
+  console.log("6. Full Training: minta perbaikan lalu kirim ulang (tidak macet)");
+  const ftDecide = (admin, d, n) => admin.c.rpc("admin_course_enrollment_decide", { _user_id: peserta.id, _course_id: FT, _decision: d, _notes: n });
+  r = await postFn(peserta.token, APPLY_FILE, "submitCourseEnrollmentApplication", { courseId: FT, courseTitle: "Full Training TDD", notes: "Motivasi awal" });
+  check(r.data?.status === "pending", `peserta mengajukan Full Training (${r.error?.slice(0, 50) ?? r.data?.status})`);
+  r = await ftDecide(operator, "request_revision", "Lampirkan surat tugas atasan");
+  check(!r.error, `operator meminta perbaikan Full Training (${errOf(r).slice(0, 50) || "ok"})`);
+  check(/application_awaiting_revision/.test(errOf(await ftDecide(approver, "approve", null))), "selagi menunggu perbaikan, admin tidak bisa memutuskan (inilah kenapa peserta harus bisa kirim ulang)");
+  ov = await overview(peserta);
+  const ftApp = ov.data?.applications?.find((a) => a.courseId === FT);
+  check(ftApp?.kind === "program" && ftApp?.status === "revision_requested" && ftApp?.notes === "Motivasi awal",
+    `dashboard: dikenali sebagai Full Training, perlu perbaikan, catatan lama tersedia untuk diisi ulang (${ftApp?.kind}/${ftApp?.status})`);
+  n = await enrollNotifs(peserta);
+  const ftRev = n.data?.find((x) => x.type === "revision_requested" && x.title.includes("Full Training TDD"));
+  check(ftRev?.targetUrl === "/academy/applications", `notifikasi Full Training menuju halaman Pendaftaran (${ftRev?.targetUrl ?? "TIDAK ADA"})`);
+  r = await postFn(peserta.token, APPLY_FILE, "submitCourseEnrollmentApplication", { courseId: FT, courseTitle: "Full Training TDD", notes: "Surat tugas sudah saya kirim lewat email" });
+  check(r.data?.status === "pending", `peserta mengirim ulang dengan tanggapan (${r.error?.slice(0, 50) ?? r.data?.status})`);
+  const ftRow = (await svc.from("course_enrollment_applications").select("status, notes, decision_notes").eq("user_id", peserta.id).eq("course_id", FT).single()).data;
+  check(ftRow?.notes === "Surat tugas sudah saya kirim lewat email" && ftRow?.decision_notes === null, "tanggapan peserta tersimpan, catatan keputusan lama dibersihkan");
+  r = await ftDecide(approver, "approve", null);
+  check(!r.error && (await svc.from("course_enrollment_applications").select("status").eq("user_id", peserta.id).eq("course_id", FT).single()).data?.status === "approved",
+    `approver kini bisa menyetujui (${errOf(r).slice(0, 50) || "ok"})`);
+
   const anon = await callFn(null, OVERVIEW, "getMyLearningOverview");
   check(Boolean(anon.error) && !anon.data, `tanpa login ditolak (${(anon.error ?? "BISA").slice(0, 40)})`);
 } finally {

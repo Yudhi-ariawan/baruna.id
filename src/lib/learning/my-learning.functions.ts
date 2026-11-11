@@ -23,6 +23,8 @@ export type MyApplication = {
   appliedAt: string;
   decisionAt: string | null;
   decisionNotes: string | null;
+  /** What the participant wrote when applying (prefills a resubmission). */
+  notes: string | null;
 };
 
 export type MyCourseProgress = {
@@ -69,7 +71,7 @@ export type MyLearningOverview = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type AppRow = { course_id: string; course_title: string | null; status: string; created_at: string; decision_at: string | null; decision_notes: string | null };
+type AppRow = { course_id: string; course_title: string | null; status: string; created_at: string; decision_at: string | null; decision_notes: string | null; notes: string | null };
 type CourseRow = {
   code: string; title: string | null; completed: boolean; completion_source: string | null; score: number | string | null;
   completed_at: string | null; completed_steps: Record<string, unknown> | null; updated_at: string | null;
@@ -151,7 +153,7 @@ export const getMyLearningOverview = createServerFn({ method: "GET" })
     const db = context.supabase as any;
     const [apps, courses, attempts, certs, enrols] = await Promise.all([
       db.from("course_enrollment_applications")
-        .select("course_id, course_title, status, created_at, decision_at, decision_notes")
+        .select("course_id, course_title, status, created_at, decision_at, decision_notes, notes")
         .eq("user_id", context.userId).order("created_at", { ascending: false }).limit(500),
       db.from("self_paced_enrollments")
         .select("code, title, completed, completion_source, score, completed_at, completed_steps, updated_at")
@@ -203,6 +205,7 @@ export const getMyLearningOverview = createServerFn({ method: "GET" })
         appliedAt: r.created_at,
         decisionAt: r.decision_at,
         decisionNotes: r.decision_notes,
+        notes: r.notes,
       }));
 
     // Whether a database module has its official quiz: answer keys are service-role

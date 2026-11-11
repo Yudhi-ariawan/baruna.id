@@ -1154,7 +1154,21 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 - Dashboard: kartu "Menunggu persetujuan" menyebut jumlah yang perlu perbaikan. *Status Pendaftaran* menampilkan catatan admin dengan tombol **Perbaiki dan kirim ulang** (atau **Lihat dan ajukan lagi** bila ditolak) ke halaman yang tepat. Baris Course Offering menampilkan "x dari y modul selesai" serta status persetujuan kelulusan, dan tombolnya ke `/academy/course/<kode>`.
 - Halaman modul: status *Admin Meminta Perbaikan* tampil dengan catatan dan tombol **Perbaiki & Kirim Ulang**.
 
-**Uji:** `npm run test:participant-dashboard` (21 cek, memanggil aplikasi). Isinya: menunggu, minta perbaikan beserta catatan dan hitungannya, notifikasi dengan tautan ke halaman course, kirim ulang lalu disetujui, satu baris course (bukan modul) dengan 0 dari 2 modul, riwayat notifikasi lengkap, progres 50% setelah satu modul ditandai, penolakan dengan alasan, data dan notifikasi peserta lain tidak terlihat, tanpa login ditolak. **Kode lama: 9/21. Kode baru: 21/21.** Data uji bersih. `tsc` dan lint lulus (tanpa masalah baru).
+**Uji (10 Nov):** `npm run test:participant-dashboard` (21 cek, memanggil aplikasi; menjadi 29 cek di 2av). Isinya: menunggu, minta perbaikan beserta catatan dan hitungannya, notifikasi dengan tautan ke halaman course, kirim ulang lalu disetujui, satu baris course (bukan modul) dengan 0 dari 2 modul, riwayat notifikasi lengkap, progres 50% setelah satu modul ditandai, penolakan dengan alasan, data dan notifikasi peserta lain tidak terlihat, tanpa login ditolak. **Kode lama: 9/21. Kode baru: 21/21.** Data uji bersih. `tsc` dan lint lulus (tanpa masalah baru).
+
+## 2av. Full Training: kirim ulang setelah Minta Perbaikan (11 Nov)
+
+**Temuan (audit akhir 10 Nov, KESIAPAN_RILIS bagian E):** `admin_course_enrollment_decide` menolak *setujui/tolak* selama status `revision_requested` (`application_awaiting_revision`). Halaman Full Training (`academy.applications.$id`, `academy.applications.index`) tidak mengenal status itu (`effectiveApplicationStatus` menjadikannya "Under Review"), dan tombol kirim hanya muncul untuk status `none`. Akibatnya, bila admin meminta perbaikan pada pengajuan Full Training, tidak ada yang bisa melanjutkannya. Ada juga kesalahan dari 2au: `enrollmentKind` mencari Full Training di `programs` (`tr-01` dst.), padahal pengajuan Full Training memakai **slug pelatihan** (`fullTrainingCourseId`). Akibatnya, notifikasi dan dashboard menganggapnya modul dan menautkan ke `/academy/self-paced/<slug>` (404).
+
+**Perbaikan (tanpa migrasi; `course_enrollment_apply` sudah menerima kirim ulang dari `revision_requested`):**
+- Komponen `RevisionResubmitBox`: catatan admin, isian tanggapan peserta (terisi catatan sebelumnya dari server, maks 1000), dan tombol **Kirim ulang**, lewat `submitCourseEnrollmentApplication`. Dobel klik aman: tombol terkunci, dan RPC memakai kunci advisory.
+- Halaman detail Full Training: label **Revision Requested** dan kotak kirim ulang. Halaman daftar: label dan catatan admin.
+- Dashboard: untuk Full Training yang perlu perbaikan, kotak kirim ulang tampil langsung di *Status Pendaftaran*. Karena dashboard membaca dari server, kotak ini bisa dipakai dari perangkat lain (formulir Full Training hanya ada di satu browser). `getMyLearningOverview` ikut mengirim `notes`.
+- `enrollmentKind`: slug di `trainingBySlug` dikenali sebagai Full Training ("program"), sehingga tautannya menuju `/academy/applications`.
+
+**Uji:** `test:participant-dashboard` ditambah 8 cek Full Training: mengajukan; diminta perbaikan; admin terkunci selama menunggu; dashboard mengenali Full Training beserta catatan lamanya; notifikasi menuju Pendaftaran; peserta mengirim ulang dengan tanggapan; tanggapan tersimpan dan catatan keputusan lama dibersihkan; approver bisa menyetujui. **Kode sebelumnya: 27/29** (jenis terbaca "module", tautan ke `/academy/self-paced/...`). **Sesudah: 29/29.** `tsc`, lint, dan `build` lulus.
+
+**Catatan:** pengajuan yang ditolak di Full Training tetap tanpa tombol ajukan lagi (perilaku lama, nasib program menunggu mentor, P4).
 
 ---
 
@@ -1304,7 +1318,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `academy-guards` | 13 (setelah migrasi `20261110010000`) | 2al, 2as | `course-cover-cleanup` | 12 | 2am |
   | `certificate-path` | 27 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
   | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | `offering-application` | 18 (setelah migrasi `20261110010000`) | 2as |
-  | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 21 | 2au |
+  | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 29 | 2au, 2av |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

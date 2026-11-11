@@ -1,4 +1,4 @@
-# Kesiapan Rilis BARUNA (diperbarui 11 November 2026, mencakup pekerjaan sampai 10 November)
+# Kesiapan Rilis BARUNA (diperbarui 11 November 2026, mencakup pekerjaan sampai 11 November)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
 Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
@@ -43,6 +43,10 @@ Status pemeriksaan terakhir (10 Nov, laptop): semua migrasi sampai `202611100200
   - Sebelumnya: setelah admin menekan Minta Perbaikan, peserta tidak menerima notifikasi apa pun (begitu juga saat disetujui atau ditolak), dan dashboard menulis "Menunggu persetujuan 0" tanpa menyebut pengajuannya. Course Offering di dashboard dihitung seperti modul: progresnya selalu 0%, tertulis "kuis belum dikerjakan", dan tombol *Lanjutkan* membuka halaman yang salah.
   - Sekarang: peserta menerima notifikasi *disetujui*, *ditolak* (dengan alasan), dan *diminta perbaikan* (dengan catatan), dengan tautan ke halaman course atau modulnya. Dashboard menampilkan pengajuan yang perlu perbaikan, lengkap dengan catatan dan tombol **Perbaiki dan kirim ulang**. Course Offering tampil dengan "x dari y modul selesai", status kelulusan, dan tombol ke halaman course. Halaman modul juga menampilkan status *Admin Meminta Perbaikan*.
   - Tanpa migrasi. Bukti: `test:participant-dashboard` 21/21 (9/21 dengan kode lama), termasuk data dan notifikasi peserta lain yang tidak terlihat.
+- **Full Training tidak lagi macet setelah Minta Perbaikan (11 Nov, Slide 22; CATATAN_PERBAIKAN 2av):**
+  - Sebelumnya: bila admin menekan *Minta Perbaikan* pada pengajuan Full Training, halaman peserta tetap menulis "Under Review" tanpa tombol kirim ulang, sementara admin tidak bisa memutuskan karena sistem menunggu perbaikan. Pengajuan terjebak. Notifikasi dan dashboard juga salah mengira Full Training sebagai modul dan menautkan ke halaman yang tidak ada.
+  - Sekarang: halaman pengajuan Full Training dan daftar pengajuannya menampilkan **Revision Requested** dengan catatan admin. Peserta menulis tanggapan lalu menekan **Kirim ulang**, dan pengajuan kembali menunggu keputusan admin. Kotak yang sama ada di dashboard, sehingga bisa dipakai dari perangkat mana pun (formulir Full Training sendiri hanya tersimpan di satu browser). Notifikasinya menuju halaman Pendaftaran.
+  - Tanpa migrasi. Bukti: `test:participant-dashboard` 29/29 (27/29 dengan kode sebelumnya).
 - **Lintas perangkat untuk Course Offering (9 Nov):** pendaftaran, modul yang ditandai selesai, evaluasi akhir, dan sertifikat course dari Course Offering tersimpan di database dan dibaca dengan identitas akun, sehingga muncul sama di perangkat atau browser mana pun dengan akun yang sama (My Learning dan tab Certificate). Lembar PDF sementara dibuat ulang di perangkat itu dari data database, jadi isinya sama. Dibuktikan oleh `test:certificate-sheet` (data diambil lewat server dengan token akun; peserta lain tidak mendapatkannya). Uji manual dengan dua perangkat nyata belum dilakukan.
 
 ## B. Belum diperbaiki atau belum diputuskan
@@ -80,7 +84,6 @@ Status pemeriksaan terakhir (10 Nov, laptop): semua migrasi sampai `202611100200
 
 ## E. Bug dan celah yang diketahui
 
-- **Full Training bisa macet setelah Minta Perbaikan (temuan 10 Nov):** jika admin menekan *Minta Perbaikan* pada pengajuan Full Training, halaman Full Training peserta belum mengenal status itu sehingga tidak ada tombol kirim ulang, sementara admin tidak bisa menyetujui atau menolak karena sistem menunggu perbaikan. Wajib diperbaiki (kecil, tanpa migrasi).
 - **Dokumen pendaftaran yang belum dikirim hanya diingat di layar (temuan 10 Nov):** jika peserta mengunggah di satu perangkat lalu pindah perangkat sebelum menekan *Ajukan*, dokumen harus diunggah ulang. Berkas lama tertinggal di penyimpanan privat dan belum dibersihkan otomatis. Setelah dikirim, dokumen aman di semua perangkat.
 - **Uji serentak pendaftaran belum ada (temuan 10 Nov):** kunci untuk dua pengajuan atau dua keputusan yang terjadi bersamaan sudah ada di database, tetapi belum dibuktikan dengan uji yang mengirim keduanya tepat bersamaan.
 - **Notifikasi dan dashboard tidak real-time (temuan 10 Nov):** keputusan baru muncul saat halaman dibuka atau dimuat ulang, dengan jeda hingga sekitar 30 detik. Data tidak hilang.
