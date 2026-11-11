@@ -25,6 +25,7 @@ import { Route as ExpertsRouteImport } from './routes/experts'
 import { Route as FellowshipRouteImport } from './routes/fellowship'
 import { Route as GovernanceRouteImport } from './routes/governance'
 import { Route as HelpRouteImport } from './routes/help'
+import { Route as KesiapanrilisRouteImport } from './routes/kesiapanrilis'
 import { Route as KnowledgeHubRouteImport } from './routes/knowledge-hub'
 import { Route as MySubmissionsRouteImport } from './routes/my-submissions'
 import { Route as NotificationsRouteImport } from './routes/notifications'
@@ -219,6 +220,11 @@ const GovernanceRoute = GovernanceRouteImport.update({
 const HelpRoute = HelpRouteImport.update({
   id: '/help',
   path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KesiapanrilisRoute = KesiapanrilisRouteImport.update({
+  id: '/kesiapanrilis',
+  path: '/kesiapanrilis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KnowledgeHubRoute = KnowledgeHubRouteImport.update({
@@ -836,6 +842,7 @@ export interface FileRoutesByFullPath {
   '/fellowship': typeof FellowshipRoute
   '/governance': typeof GovernanceRouteWithChildren
   '/help': typeof HelpRoute
+  '/kesiapanrilis': typeof KesiapanrilisRoute
   '/knowledge-hub': typeof KnowledgeHubRoute
   '/my-submissions': typeof MySubmissionsRouteWithChildren
   '/notifications': typeof NotificationsRoute
@@ -964,6 +971,7 @@ export interface FileRoutesByTo {
   '/document-viewer': typeof DocumentViewerRoute
   '/fellowship': typeof FellowshipRoute
   '/help': typeof HelpRoute
+  '/kesiapanrilis': typeof KesiapanrilisRoute
   '/knowledge-hub': typeof KnowledgeHubRoute
   '/notifications': typeof NotificationsRoute
   '/partnership': typeof PartnershipRoute
@@ -1094,6 +1102,7 @@ export interface FileRoutesById {
   '/fellowship': typeof FellowshipRoute
   '/governance': typeof GovernanceRouteWithChildren
   '/help': typeof HelpRoute
+  '/kesiapanrilis': typeof KesiapanrilisRoute
   '/knowledge-hub': typeof KnowledgeHubRoute
   '/my-submissions': typeof MySubmissionsRouteWithChildren
   '/notifications': typeof NotificationsRoute
@@ -1229,6 +1238,7 @@ export interface FileRouteTypes {
     | '/fellowship'
     | '/governance'
     | '/help'
+    | '/kesiapanrilis'
     | '/knowledge-hub'
     | '/my-submissions'
     | '/notifications'
@@ -1357,6 +1367,7 @@ export interface FileRouteTypes {
     | '/document-viewer'
     | '/fellowship'
     | '/help'
+    | '/kesiapanrilis'
     | '/knowledge-hub'
     | '/notifications'
     | '/partnership'
@@ -1486,6 +1497,7 @@ export interface FileRouteTypes {
     | '/fellowship'
     | '/governance'
     | '/help'
+    | '/kesiapanrilis'
     | '/knowledge-hub'
     | '/my-submissions'
     | '/notifications'
@@ -1620,6 +1632,7 @@ export interface RootRouteChildren {
   FellowshipRoute: typeof FellowshipRoute
   GovernanceRoute: typeof GovernanceRouteWithChildren
   HelpRoute: typeof HelpRoute
+  KesiapanrilisRoute: typeof KesiapanrilisRoute
   KnowledgeHubRoute: typeof KnowledgeHubRoute
   MySubmissionsRoute: typeof MySubmissionsRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
@@ -1747,6 +1760,13 @@ declare module '@tanstack/react-router' {
       path: '/help'
       fullPath: '/help'
       preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kesiapanrilis': {
+      id: '/kesiapanrilis'
+      path: '/kesiapanrilis'
+      fullPath: '/kesiapanrilis'
+      preLoaderRoute: typeof KesiapanrilisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/knowledge-hub': {
@@ -2874,6 +2894,7 @@ const rootRouteChildren: RootRouteChildren = {
   FellowshipRoute: FellowshipRoute,
   GovernanceRoute: GovernanceRouteWithChildren,
   HelpRoute: HelpRoute,
+  KesiapanrilisRoute: KesiapanrilisRoute,
   KnowledgeHubRoute: KnowledgeHubRoute,
   MySubmissionsRoute: MySubmissionsRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
