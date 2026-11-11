@@ -277,7 +277,11 @@ WITH checks(no, migration, ok) AS (
       to_regclass('public.course_enrollment_documents') IS NOT NULL
       AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'course_offerings' AND column_name = 'required_documents')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'admin_course_enrollment_decide' AND prosrc LIKE '%request_revision%')
-      AND EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'enrollment-documents' AND NOT public))
+      AND EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'enrollment-documents' AND NOT public)),
+  (71, '20261111010000_enrollment_document_uploads',
+      to_regclass('public.course_enrollment_document_uploads') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'enrollment_document_register')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'course_enrollment_documents_consume_upload'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

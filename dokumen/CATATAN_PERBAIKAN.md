@@ -1172,6 +1172,40 @@ Audit atas pekerjaan hari ini (2am, 2an). Pembersih sampul (2am) tidak punya tem
 
 **Catatan:** pengajuan yang ditolak di Full Training tetap tanpa tombol ajukan lagi (perilaku lama, nasib program menunggu mentor, P4).
 
+## 2aw. Pendaftaran: uji serentak dan unggahan yang belum dikirim (11 Nov)
+
+Dua temuan audit 10 Nov (KESIAPAN_RILIS bagian E).
+
+**C. Uji serentak.** Kunci untuk pengajuan (kunci advisory per peserta dan course, baris dikunci `FOR UPDATE`) dan untuk keputusan (`FOR UPDATE`) sudah ada sejak 2as/2at, tetapi belum dibuktikan dengan permintaan yang benar-benar bersamaan. Uji langsung baru `npm run test:enrollment-concurrency` (15 cek, tanpa aplikasi). Setiap permintaan dikirim pada saat yang sama dari sesi login yang berbeda: dua perangkat milik satu peserta, atau dua admin.
+- Enam peserta masing-masing mengajukan dari tiga perangkat sekaligus: tetap satu pengajuan, satu perubahan, dan satu catatan audit.
+- Setujui lawan tolak oleh dua admin (3 kali): satu menang, yang lain mendapat `decision_already_final`, satu audit, dan pendaftaran course hanya ada bila yang menang adalah setujui.
+- Dua admin menyetujui bersamaan: tanpa error, satu audit, satu pendaftaran.
+- Minta perbaikan lawan setujui: satu menang, hasilnya tidak campur.
+- Kirim ulang dari tiga perangkat setelah diminta perbaikan: satu kiriman ulang tercatat.
+- Kirim ulang tepat saat admin menekan setujui: hasilnya salah satu urutan yang sah.
+
+**Hasil: 15/15**, tanpa perubahan kode. Kuncinya terbukti bekerja.
+
+**B. Unggahan yang belum dikirim.** Sebelumnya, PDF yang diunggah di halaman course hanya diingat tab itu sampai *Ajukan* ditekan. Di perangkat lain peserta harus mengunggah ulang, dan berkas pertama tertinggal tanpa rujukan.
+
+Perbaikan (migrasi `20261111010000`):
+- Tabel `course_enrollment_document_uploads`: satu baris per (peserta, offering, dokumen). Hanya pemilik yang bisa membaca, dan tidak ada tulis langsung dari browser.
+- RPC `enrollment_document_register` memeriksa: berkas milik sendiri di bucket privat, PDF, 1 byte–10 MB, dokumen memang diminta offering, offering tayang dan meminta pengajuan, dan pengajuan masih bisa diubah (belum dikirim, ditolak, atau menunggu perbaikan; bukan `pending` atau `approved`). RPC ini memakai kunci yang sama dengan `course_enrollment_apply`. Unggahan baru untuk dokumen yang sama menggantikan yang lama dari perangkat mana pun, dan berkas yang sama dicatat dua kali tetap satu baris.
+- Pemicu `course_enrollment_documents_consume_upload`: begitu dokumen terkirim bersama pengajuan, catatan unggahannya dihapus dalam transaksi yang sama.
+- Aplikasi:
+  - Halaman course mencatat setiap unggahan (`registerEnrollmentDocument`) dan menampilkannya dengan label *belum dikirim*.
+  - `getMyCourseEnrollmentStatus` mengirim daftar unggahan tercatat.
+  - `submitCourseEnrollmentApplication(useUploadedDocuments)` membaca unggahan tercatat milik peserta tepat sebelum mengirim.
+  - Sebelum migrasi, halaman tetap jalan seperti dulu (unggahan diingat di tab).
+- `npm run cleanup:enrollment-documents` (seperti pembersih sampul) menghapus berkas di `enrollment/<peserta>/` yang tidak dipakai dokumen terkirim maupun unggahan tercatat dan berumur lebih dari 24 jam. Bawaannya hanya menampilkan daftar; untuk menghapus pakai `--apply`. Rujukan dibaca ulang sebelum menghapus.
+
+**Uji:**
+- PGlite 24/24: bukti sebelum migrasi; migrasi bisa diulang; aturan pencatatan (milik sendiri, belum terunggah, bukan PDF, lebih dari 10 MB, dokumen tak diminta, offering tanpa pengajuan, berkas yang sama untuk dokumen lain, tanpa login, klik ganda, penggantian); tidak bisa ditulis langsung; kirim dari unggahan tercatat; catatan hilang dalam transaksi yang sama; ditolak selagi `pending` dan sesudah disetujui; ganti CV saat perbaikan.
+- Uji langsung `npm run test:enrollment-uploads` (15 cek; dua login satu peserta sebagai HP dan laptop): unggah di HP terlihat di laptop; dua perangkat mengganti CV bersamaan tetap satu catatan; kirim dari laptop memakai unggahan terbaru; ditolak selagi menunggu keputusan; minta perbaikan lalu CV baru dari HP dikirim dari laptop; peserta lain tidak melihat atau memakai berkas orang lain; pembersih menghapus berkas pengganti yang terbuang dan menyimpan dokumen terkirim.
+- **Sebelum migrasi (intern-update, 11 Nov): 2/15.** `tsc`, lint (tanpa masalah baru), dan `build` lulus.
+
+**Catatan:** unggahan tercatat yang tidak pernah dikirim tetap tersimpan (tidak kedaluwarsa). Pembersih dijalankan manual. Jadwal otomatis menunggu keputusan operasional.
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1230,7 +1264,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (70 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (71 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1288,6 +1322,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261109010000_completion_approval.sql` (Completion Record dan persetujuan kelulusan; peserta tidak lagi menerbitkan sertifikat sendiri; pembayaran tidak menahan kelulusan). Lihat bagian 2ar. Jalankan setelah `20261105030000`. **Butuh kode branch ini** (menu Persetujuan Kelulusan, status di tab Certificate).
 - `20261110010000_offering_application.sql` (Course Offering "Wajib disetujui admin" dibuka lagi lewat jalur pengajuan peserta; pengajuan ke offering diperiksa: harus meminta pengajuan, tayang, masa pendaftaran buka, judul dari database). Lihat bagian 2as. Jalankan setelah `20261104030000`. **Butuh kode branch ini** (tombol Ajukan pendaftaran di halaman course).
 - `20261110020000_enrollment_revision_documents.sql` (pendaftaran: keputusan *Minta Perbaikan*, dokumen persyaratan per offering, bucket privat dokumen). Lihat bagian 2at. Jalankan setelah `20261110010000`. **Butuh kode branch ini** (unggah dokumen di halaman course, tombol Minta Perbaikan dan daftar dokumen di Persetujuan Peserta, isian dokumen di formulir offering).
+- `20261111010000_enrollment_document_uploads.sql` (dokumen pendaftaran yang sudah diunggah tetapi belum dikirim tercatat di server, sehingga terlihat di semua perangkat). Lihat bagian 2aw. Jalankan setelah `20261110020000`. Kode branch ini tetap jalan sebelum migrasi (unggahan diingat di layar seperti dulu).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1321,6 +1356,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `certificate-path` | 27 (setelah migrasi `20261105010000`, `020000`, `030000`, `20261109010000`) | 2an, 2ao, 2ar | `certificate-sheet`* | 13 | 2ap, 2aq |
   | `completion-approval` | 26 (setelah migrasi `20261109010000`) | 2ar | `offering-application` | 18 (setelah migrasi `20261110010000`) | 2as |
   | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 29 | 2au, 2av |
+  | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

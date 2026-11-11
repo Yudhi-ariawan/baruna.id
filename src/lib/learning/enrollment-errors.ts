@@ -7,6 +7,8 @@ const MESSAGES: Array<[RegExp, string]> = [
   [/document_file_invalid/, "Ada dokumen yang tidak valid (harus PDF milik Anda, maksimal 10 MB). Unggah ulang dokumennya."],
   [/document_requirement_unknown|documents_invalid|documents_not_applicable/, "Daftar dokumen tidak sesuai dengan yang diminta course ini. Muat ulang halaman."],
   [/document_not_found/, "Dokumen tidak ditemukan atau Anda tidak berwenang membukanya."],
+  [/application_not_editable/, "Pengajuan ini sedang diproses atau sudah disetujui, jadi dokumennya tidak bisa diganti sekarang. Muat ulang halaman."],
+  [/enrollment_document_register|course_enrollment_document_uploads/, "Pencatatan unggahan belum aktif (migrasi 20261111010000 belum dijalankan)."],
   [/revision_note_required/, "Tuliskan catatan perbaikan untuk peserta (minimal 5 karakter)."],
   [/application_awaiting_revision/, "Pengajuan ini sedang menunggu perbaikan dari peserta. Keputusan bisa diambil setelah peserta mengirim ulang."],
   [/offering_no_application/, "Course ini tidak memerlukan pengajuan. Silakan langsung mendaftar dari halaman course."],

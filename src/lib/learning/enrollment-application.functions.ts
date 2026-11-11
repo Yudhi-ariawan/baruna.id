@@ -16,7 +16,22 @@ export type MyCourseEnrollmentDetail = {
   courseTitle?: string | null;
   /** Documents already attached to this application (Course Offering, migration 20261110020000). */
   documents?: Array<{ id: string; requirement: string; fileName: string; uploadedAt: string }>;
+  /** Uploaded on any device but not sent yet (migration 20261111010000). */
+  uploads?: Array<{ requirement: string; path: string; fileName: string; uploadedAt: string }>;
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function myUploads(db: any, userId: string, courseId: string): Promise<NonNullable<MyCourseEnrollmentDetail["uploads"]>> {
+  const { data, error } = await db
+    .from("course_enrollment_document_uploads")
+    .select("requirement, storage_path, file_name, uploaded_at")
+    .eq("user_id", userId)
+    .eq("offering_code", courseId);
+  if (error) return []; // before migration 20261111010000
+  return ((data ?? []) as Array<{ requirement: string; storage_path: string; file_name: string; uploaded_at: string }>).map((u) => ({
+    requirement: u.requirement, path: u.storage_path, fileName: u.file_name, uploadedAt: u.uploaded_at,
+  }));
+}
 
 const LEARNER_ROLES = ["participant", "trainer", "expert", "super_admin", "admin"];
 
@@ -63,7 +78,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<MyCourseEnrollmentDetail> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [hasParticipantRole, { data: record, error }] = await Promise.all([
+    const [hasParticipantRole, { data: record, error }, uploads] = await Promise.all([
       checkUserHasParticipantRole(supabaseAdmin, context.userId),
       (supabaseAdmin as any)
         .from("course_enrollment_applications")
@@ -71,10 +86,11 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
         .eq("user_id", context.userId)
         .eq("course_id", data.courseId)
         .maybeSingle(),
+      myUploads(supabaseAdmin, context.userId, data.courseId),
     ]);
     if (error) throw new Error(toFriendlyEnrollmentError(error.message));
 
-    if (!record) return { isEnrolled: false, hasParticipantRole, status: "none" };
+    if (!record) return { isEnrolled: false, hasParticipantRole, status: "none", uploads };
 
     const status = record.status as CourseEnrollmentStatus;
     // Empty until migration 20261110020000 ran.
@@ -88,6 +104,7 @@ export const getMyCourseEnrollmentStatus = createServerFn({ method: "GET" })
       documents: ((docs ?? []) as Array<{ id: string; requirement: string; file_name: string; uploaded_at: string }>).map((d) => ({
         id: d.id, requirement: d.requirement, fileName: d.file_name, uploadedAt: d.uploaded_at,
       })),
+      uploads,
       isEnrolled: status === "approved",
       hasParticipantRole,
       status,
@@ -111,10 +128,20 @@ export const submitCourseEnrollmentApplication = createServerFn({ method: "POST"
           .array(z.object({ requirement: z.string().min(1).max(120), path: z.string().min(1).max(200), fileName: z.string().max(200) }))
           .max(10)
           .optional(),
+        /** Send the documents recorded on the server (uploaded from any device) instead of a list from the page. */
+        useUploadedDocuments: z.boolean().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    let documents = data.documents;
+    if (data.useUploadedDocuments) {
+      // Read with the caller's own rights (RLS: own rows only), right before sending.
+      const recorded = await myUploads(context.supabase, context.userId, data.courseId);
+      const byReq = new Map((documents ?? []).map((d) => [d.requirement, d]));
+      for (const u of recorded) byReq.set(u.requirement, { requirement: u.requirement, path: u.path, fileName: u.fileName });
+      documents = [...byReq.values()];
+    }
     // Runs as the caller (RLS + auth.uid()); the RPC is idempotent and never
     // resets an approved application. Any failure surfaces to the user.
     const { data: result, error } = await (context.supabase as any).rpc("course_enrollment_apply", {
@@ -122,8 +149,8 @@ export const submitCourseEnrollmentApplication = createServerFn({ method: "POST"
       _course_title: data.courseTitle,
       _notes: data.notes?.trim() || null,
       // Only sent when there are documents, so modules keep calling the 3-argument form.
-      ...(data.documents?.length
-        ? { _documents: data.documents.map((d) => ({ requirement: d.requirement, path: d.path, file_name: d.fileName })) }
+      ...(documents?.length
+        ? { _documents: documents.map((d) => ({ requirement: d.requirement, path: d.path, file_name: d.fileName })) }
         : {}),
     });
     if (error) throw new Error(toFriendlyEnrollmentError(error.message));

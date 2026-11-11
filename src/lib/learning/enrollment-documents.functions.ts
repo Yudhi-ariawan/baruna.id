@@ -51,6 +51,40 @@ export const createEnrollmentDocumentUpload = createServerFn({ method: "POST" })
     return { path, token: signed.token as string };
   });
 
+/**
+ * Records an uploaded file as this participant's document for the offering (migration
+ * 20261111010000), so every device of the account sees it before the application is
+ * sent. The database checks owner, PDF, size, requested document and that the
+ * application can still change. Returns supported=false before the migration, so the
+ * page keeps the file in the open tab instead (the old behaviour).
+ */
+export const registerEnrollmentDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) =>
+    z
+      .object({
+        offeringCode: z.string().trim().min(3).max(80),
+        requirement: z.string().trim().min(1).max(120),
+        path: z.string().trim().min(1).max(200),
+        fileName: z.string().trim().min(1).max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }): Promise<{ supported: boolean }> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("enrollment_document_register", {
+      _offering_code: data.offeringCode,
+      _requirement: data.requirement,
+      _path: data.path,
+      _file_name: data.fileName,
+    });
+    if (error) {
+      if (/enrollment_document_register|schema cache|PGRST202/.test(`${error.message} ${error.code ?? ""}`)) return { supported: false };
+      throw new Error(toFriendlyEnrollmentError(error.message));
+    }
+    return { supported: true };
+  });
+
 export const getEnrollmentDocumentUrl = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((d) => z.object({ documentId: z.string().uuid() }).parse(d))

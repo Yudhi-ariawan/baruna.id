@@ -16,6 +16,7 @@ import {
   ENROLLMENT_DOCUMENT_BUCKET,
   ENROLLMENT_DOCUMENT_MAX_BYTES,
   createEnrollmentDocumentUpload,
+  registerEnrollmentDocument,
 } from "@/lib/learning/enrollment-documents.functions";
 
 const dateFmt = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" });
@@ -27,6 +28,8 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
   const statusFn = useServerFn(getMyCourseEnrollmentStatus);
   const submitFn = useServerFn(submitCourseEnrollmentApplication);
   const uploadFn = useServerFn(createEnrollmentDocumentUpload);
+  const registerFn = useServerFn(registerEnrollmentDocument);
+  // Only used before migration 20261111010000: then an upload lives in this tab until sent.
   const [uploads, setUploads] = useState<Record<string, Uploaded>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -38,8 +41,10 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
   });
   const submitM = useMutation({
     mutationFn: () =>
-      submitFn({ data: { courseId: offeringCode, courseTitle: title, documents: Object.values(uploads) } }),
+      // The server adds the uploads recorded for this account (any device), read right before sending.
+      submitFn({ data: { courseId: offeringCode, courseTitle: title, documents: Object.values(uploads), useUploadedDocuments: true } }),
     onSuccess: () => { setUploads({}); void qc.invalidateQueries({ queryKey: ["learning"] }); },
+    onError: () => { void statusQ.refetch(); },
   });
 
   const pick = async (requirement: string, file: File | undefined) => {
@@ -52,7 +57,14 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
       const { path, token } = await uploadFn({ data: { offeringCode, fileName: file.name, size: file.size, contentType: file.type } });
       const { error } = await supabase.storage.from(ENROLLMENT_DOCUMENT_BUCKET).uploadToSignedUrl(path, token, file, { contentType: "application/pdf" });
       if (error) throw new Error(`Unggah gagal: ${error.message}`);
-      setUploads((u) => ({ ...u, [requirement]: { requirement, path, fileName: file.name } }));
+      // Recorded on the server so other devices of this account see it; kept in the tab only before the migration.
+      const { supported } = await registerFn({ data: { offeringCode, requirement, path, fileName: file.name } });
+      if (supported) {
+        setUploads((u) => { const next = { ...u }; delete next[requirement]; return next; });
+        await statusQ.refetch();
+      } else {
+        setUploads((u) => ({ ...u, [requirement]: { requirement, path, fileName: file.name } }));
+      }
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -77,7 +89,8 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
   }
 
   const existing = new Map((s?.documents ?? []).map((d) => [d.requirement, d.fileName]));
-  const missing = requiredDocuments.filter((r) => !uploads[r] && !existing.has(r));
+  const recorded = new Map((s?.uploads ?? []).map((u) => [u.requirement, u.fileName]));
+  const missing = requiredDocuments.filter((r) => !uploads[r] && !recorded.has(r) && !existing.has(r));
 
   return (
     <div className="mt-3 space-y-2">
@@ -107,13 +120,15 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
             <div className="space-y-1.5 rounded-xl border border-border bg-background p-2.5 text-xs">
               <p className="font-semibold text-navy">Dokumen persyaratan (PDF, maks 10 MB)</p>
               {requiredDocuments.map((r) => {
-                const name = uploads[r]?.fileName ?? existing.get(r);
+                const fresh = uploads[r]?.fileName ?? recorded.get(r);
+                const name = fresh ?? existing.get(r);
                 return (
                   <label key={r} className="flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1.5">
                       {name ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> : <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                       <span className="font-medium">{r}</span>
                       {name ? <span className="truncate text-muted-foreground">· {name}</span> : null}
+                      {fresh ? <span className="shrink-0 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800">belum dikirim</span> : null}
                     </span>
                     <span className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-marine px-2 py-0.5 font-semibold text-marine">
                       {uploading === r ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
