@@ -28,6 +28,23 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 6. **Peserta yang sudah lulus saat modul diperbarui.** Wajib mengulang, cukup diberi tahu, atau dibiarkan? Apakah sertifikat mencatat versi modul? Lihat juga butir 9.
 7. **Email kontak expert.** Perlu tampil di direktori publik? Email siapa? Dijalankan di intern-update atau hanya main? Lihat juga butir 11.
 
+## Portal Admin sesuai Slide 42-48 (dicatat 16 Nov, dikerjakan 17 Nov di laptop)
+
+Sudah selesai 16 Nov: Jejak Audit `/admin/audit` dan pengalihan `/admin/reviews` (CATATAN_PERBAIKAN 2bd). Sisa dari pemetaan slide Tata Kelola Lintas Sistem:
+
+**Bisa dikerjakan (perlu migrasi, ukuran sedang):**
+
+1. **Permintaan Akses / Peran (LS-01, Slide 42).** Alur di slide: pengguna mengajukan permintaan peran → Admin Console/Operator cek kelengkapan (minta perbaikan bila kurang) → review permintaan, verifikasi role & kewenangan → disetujui atau ditolak dengan alasan → notifikasi ke pengguna. Output: *Access Request Record*, role mapping, audit trail. Sekarang admin langsung memberi peran di Users & Access; belum ada tabel permintaan akses di migrasi. Yang perlu dibuat: tabel + RLS + RPC ajukan/putuskan (pengaju tidak boleh memutuskan miliknya sendiri), formulir di halaman akun, antrean di Portal Admin, notifikasi, baris di Jejak Audit. Peran `expert` tetap lewat alur pendaftaran expert (bukan lewat permintaan ini). Ingat: migrasi baru wajib masuk `supabase/check_migrations.sql` dan daftar migrasi CATATAN_PERBAIKAN bagian 3.
+
+**Besar, tanya mentor dulu sebelum dikerjakan:**
+
+| Slide | Fitur | Catatan / pertanyaan |
+|---|---|---|
+| LS-05 (46) | Master Tarif, Billing PNBP, verifikasi pembayaran, kesiapan SIMPONI | Offering sudah punya kolom biaya, tapi belum ada tabel tarif, tagihan, atau pembayaran. Menyangkut aturan PNBP dan integrasi SIMPONI. Terkait butir 12(c) dan Daftar kerja no. 2 (Pembayaran). |
+| LS-03 (44) | Impor & Migrasi Data Historis | Unggah file, staging, mapping, validasi, review, lalu aktivasi. Pekerjaan besar dan bergantung pada data lama apa yang ada. Pertanyaan: data lama apa (alumni, sertifikat lama, expert lama) dan dari format apa? |
+| LS-06 (47) | Monitoring Integrasi | Baru relevan kalau sudah ada sistem luar yang terhubung. Saat ini belum ada. |
+| LS-07 (48) | UAT, Test Case, Catatan Temuan | Bisa saja tetap dikelola di dokumen, tidak harus jadi fitur aplikasi. Pertanyaan: perlu jadi fitur atau cukup dokumen? |
+
 ## Detail pertanyaan untuk mentor
 
 ### Sertifikat dan kelulusan

@@ -1398,6 +1398,18 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
 
 **Belum:** formulir lain (Become an Expert, kontribusi Knowledge Hub, biodata peserta, Request a Training, pengajuan modul trainer, Tambah User, pendaftaran Full Training) masih memakai pola lama. Polanya bisa dipakai ulang dan diterapkan bertahap.
 
+
+## 2bd. Sidebar dikelompokkan, Jejak Audit di Portal Admin (16 Nov)
+
+Acuan: Slide 42 (LS-01), 43 (LS-02), 45 (LS-04), dan 49 (RACI baris 8: Admin Console menjalankan audit trail). Tanpa migrasi.
+
+- **Sidebar Konsol Kurasi** dikelompokkan per domain: Ringkasan, Expert, Academy, Peserta, Knowledge Hub, Konten Tayang, Pengaturan. Grup tanpa menu yang boleh dibuka tidak ditampilkan. Hak akses tidak berubah.
+- **Jejak Audit** (`/admin/audit`, menu di Portal Admin untuk izin `audit.read`): satu halaman baca-saja yang menggabungkan `admin_audit_log`, `governance_audit_log`, `learning_audit_log`, dan `review_subject_status_history`. Filter sumber, kata kunci kode kejadian, dan rentang tanggal; 50 baris per muat; klik baris untuk melihat data sebelum/sesudah. Kode kejadian diberi label Indonesia (kode yang belum dikenal ditampilkan apa adanya). Server memeriksa `audit.read` sebelum memakai service role, karena dua tabel memang tidak terbaca oleh peran mana pun.
+- **`/admin/reviews`** (antrean modul lama berbahasa Inggris, teks rusak, tanpa menu) dialihkan ke `/governance/modules`. `ModuleReviewPacket`, `getModuleReviewPacket`, dan `listManualModuleReviewQueue` yang hanya dipakai halaman itu dihapus.
+- **Penugasan Expert** (`/admin/service-requests`) tetap tanpa menu: masih disembunyikan menunggu mentor (MENUNGGU_ARAHAN_MENTOR no. 6).
+
+**Uji:** `tsc`, lint, dan `build` lulus. Query keempat tabel dicoba langsung ke database intern-update (baca saja): semua kolom ada, filter kata kunci pada riwayat status jalan.
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
