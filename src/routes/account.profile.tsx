@@ -7,6 +7,7 @@ import { Navbar } from "@/components/baruna/Navbar";
 import { AvatarManager } from "@/components/baruna/account/AvatarManager";
 import { ProfileIdentityForm } from "@/components/baruna/account/ProfileIdentityForm";
 import { AccountSecuritySection } from "@/components/baruna/account/AccountSecuritySection";
+import { RoleRequestSection } from "@/components/baruna/account/RoleRequestSection";
 import { getAccountProfile } from "@/lib/account/account.functions";
 import { useLanguage } from "@/lib/i18n";
 
@@ -72,6 +73,7 @@ function AccountProfilePage() {
               onAvatarChange={setAvatarOverride}
             />
             <ProfileIdentityForm profile={profileQuery.data} />
+            <RoleRequestSection />
             <AccountSecuritySection currentEmail={profileQuery.data.email} />
           </div>
         )}
