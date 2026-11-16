@@ -93,6 +93,7 @@ import { Route as GovernanceLearningProgressRouteImport } from './routes/governa
 import { Route as GovernanceMasterDataRouteImport } from './routes/governance.master-data'
 import { Route as GovernanceModulesRouteImport } from './routes/governance.modules'
 import { Route as GovernancePublicationsRouteImport } from './routes/governance.publications'
+import { Route as GovernancePublishingRouteImport } from './routes/governance.publishing'
 import { Route as GovernanceQueueRouteImport } from './routes/governance.queue'
 import { Route as GovernanceSlaRouteImport } from './routes/governance.sla'
 import { Route as GovernanceTrainingNeedsRouteImport } from './routes/governance.training-needs'
@@ -565,6 +566,11 @@ const GovernancePublicationsRoute = GovernancePublicationsRouteImport.update({
   path: '/publications',
   getParentRoute: () => GovernanceRoute,
 } as any)
+const GovernancePublishingRoute = GovernancePublishingRouteImport.update({
+  id: '/publishing',
+  path: '/publishing',
+  getParentRoute: () => GovernanceRoute,
+} as any)
 const GovernanceQueueRoute = GovernanceQueueRouteImport.update({
   id: '/queue',
   path: '/queue',
@@ -905,6 +911,7 @@ export interface FileRoutesByFullPath {
   '/governance/master-data': typeof GovernanceMasterDataRoute
   '/governance/modules': typeof GovernanceModulesRoute
   '/governance/publications': typeof GovernancePublicationsRoute
+  '/governance/publishing': typeof GovernancePublishingRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/sla': typeof GovernanceSlaRoute
   '/governance/training-needs': typeof GovernanceTrainingNeedsRoute
@@ -1030,6 +1037,7 @@ export interface FileRoutesByTo {
   '/governance/master-data': typeof GovernanceMasterDataRoute
   '/governance/modules': typeof GovernanceModulesRoute
   '/governance/publications': typeof GovernancePublicationsRoute
+  '/governance/publishing': typeof GovernancePublishingRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/sla': typeof GovernanceSlaRoute
   '/governance/training-needs': typeof GovernanceTrainingNeedsRoute
@@ -1165,6 +1173,7 @@ export interface FileRoutesById {
   '/governance/master-data': typeof GovernanceMasterDataRoute
   '/governance/modules': typeof GovernanceModulesRoute
   '/governance/publications': typeof GovernancePublicationsRoute
+  '/governance/publishing': typeof GovernancePublishingRoute
   '/governance/queue': typeof GovernanceQueueRoute
   '/governance/sla': typeof GovernanceSlaRoute
   '/governance/training-needs': typeof GovernanceTrainingNeedsRoute
@@ -1301,6 +1310,7 @@ export interface FileRouteTypes {
     | '/governance/master-data'
     | '/governance/modules'
     | '/governance/publications'
+    | '/governance/publishing'
     | '/governance/queue'
     | '/governance/sla'
     | '/governance/training-needs'
@@ -1426,6 +1436,7 @@ export interface FileRouteTypes {
     | '/governance/master-data'
     | '/governance/modules'
     | '/governance/publications'
+    | '/governance/publishing'
     | '/governance/queue'
     | '/governance/sla'
     | '/governance/training-needs'
@@ -1560,6 +1571,7 @@ export interface FileRouteTypes {
     | '/governance/master-data'
     | '/governance/modules'
     | '/governance/publications'
+    | '/governance/publishing'
     | '/governance/queue'
     | '/governance/sla'
     | '/governance/training-needs'
@@ -2238,6 +2250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GovernancePublicationsRouteImport
       parentRoute: typeof GovernanceRoute
     }
+    '/governance/publishing': {
+      id: '/governance/publishing'
+      path: '/publishing'
+      fullPath: '/governance/publishing'
+      preLoaderRoute: typeof GovernancePublishingRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
     '/governance/queue': {
       id: '/governance/queue'
       path: '/queue'
@@ -2827,6 +2846,7 @@ interface GovernanceRouteChildren {
   GovernanceMasterDataRoute: typeof GovernanceMasterDataRoute
   GovernanceModulesRoute: typeof GovernanceModulesRoute
   GovernancePublicationsRoute: typeof GovernancePublicationsRoute
+  GovernancePublishingRoute: typeof GovernancePublishingRoute
   GovernanceQueueRoute: typeof GovernanceQueueRoute
   GovernanceSlaRoute: typeof GovernanceSlaRoute
   GovernanceTrainingNeedsRoute: typeof GovernanceTrainingNeedsRoute
@@ -2846,6 +2866,7 @@ const GovernanceRouteChildren: GovernanceRouteChildren = {
   GovernanceMasterDataRoute: GovernanceMasterDataRoute,
   GovernanceModulesRoute: GovernanceModulesRoute,
   GovernancePublicationsRoute: GovernancePublicationsRoute,
+  GovernancePublishingRoute: GovernancePublishingRoute,
   GovernanceQueueRoute: GovernanceQueueRoute,
   GovernanceSlaRoute: GovernanceSlaRoute,
   GovernanceTrainingNeedsRoute: GovernanceTrainingNeedsRoute,

@@ -294,7 +294,11 @@ WITH checks(no, migration, ok) AS (
   (74, '20261116010000_master_data_operator_requests',
       to_regclass('public.master_data_change_requests') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_change_decide')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_data_overview' AND prosrc LIKE '%_can_view_master_data%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_data_overview' AND prosrc LIKE '%_can_view_master_data%')),
+  (75, '20261116020000_publication_hold',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'publication_hold')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_publication_hold_guard')
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'experts' AND column_name = 'publication_held_at'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

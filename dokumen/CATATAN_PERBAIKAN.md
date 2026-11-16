@@ -1323,6 +1323,35 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
   - **Sebelum migrasi (intern-update, 16 Nov): 5/21.**
 - `master-data`, `module-limits`, `kh-topics`, `languages`, `training-categories`, `trainer-quota-list`, `console-roles`, dan `console-decisions` tetap lulus dengan kode baru sebelum migrasi.
 
+
+## 2ba. Publisher: turunkan sementara dan tayangkan lagi (16 Nov)
+
+**Keputusan pemilik proyek (16 Nov), MENUNGGU_ARAHAN_MENTOR butir 5, opsi C versi ringkas.** Slide 16: Publisher *mempublikasikan konten/data ke pengguna sesuai hak akses*, dengan akses **terbatas** pada Academy, Knowledge Hub, dan Experts. Slide 21 tetap "disetujui = aktif" untuk Academy, jadi menyetujui tetap langsung menayangkan.
+
+**Sebelumnya:** peran Publisher tidak punya pekerjaan (AUDIT_PERAN: "tahap belum ada").
+
+**Perbaikan (migrasi `20261116020000`)**, untuk Course Offering, publikasi Knowledge Hub, modul, dan profil Expert:
+- `publication_hold(jenis, id, alasan)`: hanya untuk konten yang sedang tayang, dan alasan wajib.
+  - Publikasi, modul, dan expert: `published` → `approved` ("disetujui, tidak tayang"; nilai ini sudah ada di `registry_status_v1`).
+  - Offering: `published` → `closed`.
+  - Semua pembaca publik (view `*_public_v`, `experts_directory_v`, katalog, beranda, `course_enrollment_apply`) sudah hanya menampilkan `published`, jadi konten langsung hilang di mana-mana tanpa mengubah pembaca, membuat versi baru, atau mengarsipkan.
+- `publication_release(jenis, id, catatan)`: kembali ke `published`. Offering hanya tayang lagi bila Master Course-nya aktif. Konten yang diarsipkan selama diturunkan tetap arsip.
+- Trigger `trg_publication_hold_guard` di keempat tabel: selama ditahan, alur lain (revisi yang disetujui, tombol status Program Academy) tidak bisa menayangkannya kembali. Perubahan yang disetujui tetap tersimpan dan tampil saat ditayangkan lagi. Trigger versi tidak terpicu karena `publication_date` dan `version` tidak diubah.
+- `publication_list()` untuk halaman Penayangan. Yang boleh: `publisher`, `admin`, `super_admin` (`_can_publish`). Audit `publication_held` dan `publication_released` di `admin_audit_log`.
+- **Belum:** penjadwalan tayang. Menu Events, Partnership, Community, dan About belum punya data di database (masih data contoh di kode), jadi peran Publisher sebagai pengelola utama di sana menunggu pengelolaan konten untuk menu-menu itu.
+
+**Aplikasi:** halaman Konsol Kurasi baru **Penayangan** (`/governance/publishing`, menu `menus.publishing`). Isinya filter per jenis, "hanya yang diturunkan", dan pencarian. Setiap baris berstatus *Tayang* atau *Diturunkan* (alasan, waktu, oleh siapa), dengan tombol **Turunkan sementara** (alasan wajib) atau **Tayangkan lagi**.
+
+**Catatan perilaku:** selama diturunkan, modul tidak bisa dibuka (akses materi memeriksa status tayang), profil expert hilang dari direktori, dan offering tidak menerima pengajuan baru. Peserta offering yang sudah terdaftar tetap bisa membuka halaman course-nya.
+
+**Uji:**
+- PGlite (`pgtest/publication_hold.mjs`, tabel tiruan dengan kolom dan enum yang sama) **27/27**: bukti sebelum migrasi; migrasi bisa diulang; Approver dan Operator ditolak; alasan wajib; keempat jenis diturunkan dan tidak bisa diturunkan dua kali; konten yang belum tayang ditolak; penjaga menahan revisi yang disetujui dan tombol status offering; tayang lagi beserta versi terbaru; arsip tetap arsip; offering dengan course nonaktif tidak ditayangkan; daftar; audit.
+- Uji langsung baru `npm run test:publication-hold` (16 cek). Uji ini membuat keempat jenis konten uji, lalu memeriksa view publik, `experts_directory_v`, query katalog, dan pengajuan offering:
+  - Publisher melihat keempatnya; Approver tidak bisa menurunkan.
+  - Keempatnya hilang dari publik saat diturunkan; offering menolak pengajuan; tombol status Program Academy tidak menayangkan ulang; daftar menampilkan alasan.
+  - Keempatnya tampil lagi; menayangkan dua kali ditolak; audit tercatat.
+  - **Sebelum migrasi (intern-update, 16 Nov): 1/16**, hanya cek "konten uji tampil".
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1381,7 +1410,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (74 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (75 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1443,6 +1472,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261111020000_full_training_documents.sql` (berkas formulir Full Training benar-benar terkirim ke admin dan bisa diganti saat *Minta Perbaikan*; dokumen Full Training boleh PDF atau JPG/PNG). Lihat bagian 2ax. Jalankan setelah `20261111010000`, **sebelum push** (lihat catatan 2ax).
 - `20261111030000_learning_realtime.sql` (keputusan pendaftaran dan kelulusan tampil langsung lewat Supabase Realtime; tanpa perubahan data atau aturan). Lihat bagian 2ay. Kode branch ini tetap jalan sebelum migrasi (penyegaran tiap 60 detik).
 - `20261116010000_master_data_operator_requests.sql` (Operator membaca Data Master dan mengusulkan perubahan; Approver/Admin lain menyetujui). Lihat bagian 2az. Kode branch ini tetap jalan sebelum migrasi (simpan memakai RPC lama).
+- `20261116020000_publication_hold.sql` (Publisher menurunkan sementara dan menayangkan lagi Course Offering, publikasi, modul, dan profil expert). Lihat bagian 2ba. Sebelum migrasi, halaman Penayangan menampilkan pesan bahwa migrasi belum dijalankan; fitur lain tidak terpengaruh.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1478,7 +1508,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 29 | 2au, 2av, 2ax |
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
-  | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | | | |
+  | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

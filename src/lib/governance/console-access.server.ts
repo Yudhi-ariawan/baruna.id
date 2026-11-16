@@ -22,6 +22,7 @@ type Ctx = { supabase: any; userId: string };
 
 const PROGRAM_MANAGER_ROLES = ["super_admin", "admin", "operator", "approver"];
 const COMPLETION_READER_ROLES = ["operator", "reviewer"];
+const PUBLISHER_ROLES = ["publisher", "admin", "super_admin"];
 
 export async function readConsoleAccess(context: Ctx): Promise<ConsoleAccess> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -85,6 +86,11 @@ export async function readConsoleAccess(context: Ctx): Promise<ConsoleAccess> {
       // Same rule as public._can_view_master_data (migration 20261116010000): Operators
       // read and propose; Approver/Admin decide.
       masterData: { read: canDecideReview || roles.includes("operator"), decide: canDecideReview },
+      // Same rule as public._can_publish (migration 20261116020000).
+      publishing: {
+        read: roles.some((r) => PUBLISHER_ROLES.includes(r)),
+        decide: roles.some((r) => PUBLISHER_ROLES.includes(r)),
+      },
     },
   };
 }

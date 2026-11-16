@@ -54,7 +54,8 @@
     "test:console-decisions": "node --env-file-if-exists=.env scripts/test-console-decisions.mjs",
     "test:full-training-documents": "node --env-file-if-exists=.env scripts/test-full-training-documents.mjs",
     "test:live-notifications": "node --env-file-if-exists=.env scripts/test-live-notifications.mjs",
-    "test:master-data-requests": "node --env-file-if-exists=.env scripts/test-master-data-requests.mjs"
+    "test:master-data-requests": "node --env-file-if-exists=.env scripts/test-master-data-requests.mjs",
+    "test:publication-hold": "node --env-file-if-exists=.env scripts/test-publication-hold.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
