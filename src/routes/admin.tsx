@@ -1,7 +1,7 @@
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ClipboardCheck, GraduationCap, History, LayoutDashboard, ShieldAlert, Users } from "lucide-react";
+import { ClipboardCheck, GraduationCap, History, KeyRound, LayoutDashboard, LogIn, ShieldAlert, Users } from "lucide-react";
 import { getAdminAccess } from "@/lib/admin/users.functions";
 import { getGovernanceConsoleAccess, hasConsoleAccess } from "@/lib/governance/console-access.functions";
 import {
@@ -11,6 +11,8 @@ import {
   type ConsoleNavGroup,
 } from "@/components/baruna/console/ConsoleShell";
 import { useConsoleSession } from "@/components/baruna/console/useConsoleSession";
+import { badgeTotal, useAdminBadges, useCurationBadges } from "@/components/baruna/console/useConsoleBadges";
+import type { AdminBadges } from "@/lib/governance/console-badges.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -51,7 +53,7 @@ export const Route = createFileRoute("/admin")({
 
 // System administration only. Review, verification, approval and enrollment
 // queues live in the curation console (/governance), opened per role.
-function adminNav(canReadAudit: boolean): ConsoleNavGroup[] {
+function adminNav(canReadAudit: boolean, badges: AdminBadges = {}, curationBadge = 0): ConsoleNavGroup[] {
   return [
     {
       group: "Overview",
@@ -61,15 +63,20 @@ function adminNav(canReadAudit: boolean): ConsoleNavGroup[] {
       group: "Manajemen & Pengguna",
       items: [
         { label: "Users & Access", to: "/admin/users", icon: Users },
+        // Slide 42 (LS-01): role requests from My Profile, decided by a super admin.
+        { label: "Permintaan Akses", to: "/admin/access-requests", icon: KeyRound, badge: badges.accessRequests },
         // Slide 42-45, 49 (RACI baris 8): audit trail run from the Admin Console.
         ...(canReadAudit ? [{ label: "Jejak Audit", to: "/admin/audit", icon: History }] : []),
+        // Slide 42 (LS-01) output "Authentication Log": sign-ins and sign-outs.
+        ...(canReadAudit ? [{ label: "Log Autentikasi", to: "/admin/auth-log", icon: LogIn }] : []),
       ],
     },
     {
       group: "Verifikasi & Kurasi",
       items: [
-        { label: "Konsol Kurasi", to: "/governance", icon: ClipboardCheck },
-        { label: "Kualifikasi Trainer", to: "/admin/trainer-applications", icon: GraduationCap },
+        // Total of the curation queues, so admins see waiting work from here too.
+        { label: "Konsol Kurasi", to: "/governance", icon: ClipboardCheck, badge: curationBadge },
+        { label: "Kualifikasi Trainer", to: "/admin/trainer-applications", icon: GraduationCap, badge: badges.trainerApplications },
       ],
     },
   ];
@@ -87,6 +94,9 @@ function AdminLayout() {
     retry: false,
   });
   const denied = accessQuery.isError || (accessQuery.isSuccess && !accessQuery.data?.canReadUsers);
+  const allowed = signedIn && accessQuery.isSuccess && !denied;
+  const adminBadges = useAdminBadges(allowed);
+  const curationBadges = useCurationBadges(allowed);
   // Only asked when the admin portal refuses: point curation roles to their console.
   const consoleQuery = useQuery({
     queryKey: ["governance", "console-access"],
@@ -126,7 +136,7 @@ function AdminLayout() {
       brandTitle="BARUNA Admin"
       brandSubtitle="Portal Tata Kelola"
       sectionLabel="Portal Tata Kelola"
-      navGroups={adminNav(Boolean(accessQuery.data?.canReadAudit))}
+      navGroups={adminNav(Boolean(accessQuery.data?.canReadAudit), adminBadges, badgeTotal(Object.values(curationBadges ?? {})))}
       user={currentUser}
       onSignOut={signOut}
     >

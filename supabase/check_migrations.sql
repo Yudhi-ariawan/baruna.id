@@ -305,7 +305,13 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'attendance_record_set')),
   (77, '20261116040000_full_training_replacement',
       EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'full_training_programs' AND column_name = 'replaced_by_offering_code')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'course_enrollment_apply' AND prosrc LIKE '%program_replaced%'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'course_enrollment_apply' AND prosrc LIKE '%program_replaced%')),
+  -- The auth.sessions trigger (IP/browser) is optional: Supabase may refuse it, and
+  -- sign-ins then come from auth.users. See CATATAN_PERBAIKAN 2bg to check which one runs.
+  (78, '20261116050000_auth_event_log',
+      to_regclass('public.auth_event_log') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_auth_event_write')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'baruna_auth_log_user'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

@@ -56,6 +56,9 @@
     "test:live-notifications": "node --env-file-if-exists=.env scripts/test-live-notifications.mjs",
     "test:master-data-requests": "node --env-file-if-exists=.env scripts/test-master-data-requests.mjs",
     "test:publication-hold": "node --env-file-if-exists=.env scripts/test-publication-hold.mjs",
+    "test:role-requests": "node --env-file-if-exists=.env scripts/test-role-requests.mjs",
+    "test:console-badges": "node --env-file-if-exists=.env scripts/test-console-badges.mjs",
+    "test:auth-log": "node --env-file-if-exists=.env scripts/test-auth-log.mjs",
     "test:offering-attendance": "node --env-file-if-exists=.env scripts/test-offering-attendance.mjs"
   },
   "dependencies": {

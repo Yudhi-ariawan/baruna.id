@@ -47,7 +47,9 @@ import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
 import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAccessRequestsRouteImport } from './routes/admin.access-requests'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminAuthLogRouteImport } from './routes/admin.auth-log'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminEnrollmentsRouteImport } from './routes/admin.enrollments'
 import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
@@ -335,9 +337,19 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAccessRequestsRoute = AdminAccessRequestsRouteImport.update({
+  id: '/access-requests',
+  path: '/access-requests',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAuditRoute = AdminAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuthLogRoute = AdminAuthLogRouteImport.update({
+  id: '/auth-log',
+  path: '/auth-log',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -880,7 +892,9 @@ export interface FileRoutesByFullPath {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/access-requests': typeof AdminAccessRequestsRoute
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/auth-log': typeof AdminAuthLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
@@ -1009,7 +1023,9 @@ export interface FileRoutesByTo {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/access-requests': typeof AdminAccessRequestsRoute
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/auth-log': typeof AdminAuthLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
@@ -1146,7 +1162,9 @@ export interface FileRoutesById {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/access-requests': typeof AdminAccessRequestsRoute
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/auth-log': typeof AdminAuthLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
@@ -1285,7 +1303,9 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/access-requests'
     | '/admin/audit'
+    | '/admin/auth-log'
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/experts'
@@ -1414,7 +1434,9 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/access-requests'
     | '/admin/audit'
+    | '/admin/auth-log'
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/experts'
@@ -1550,7 +1572,9 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/access-requests'
     | '/admin/audit'
+    | '/admin/auth-log'
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/experts'
@@ -1952,11 +1976,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/access-requests': {
+      id: '/admin/access-requests'
+      path: '/access-requests'
+      fullPath: '/admin/access-requests'
+      preLoaderRoute: typeof AdminAccessRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/audit': {
       id: '/admin/audit'
       path: '/audit'
       fullPath: '/admin/audit'
       preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/auth-log': {
+      id: '/admin/auth-log'
+      path: '/auth-log'
+      fullPath: '/admin/auth-log'
+      preLoaderRoute: typeof AdminAuthLogRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/dashboard': {
@@ -2745,7 +2783,9 @@ const AccountRouteWithChildren =
   AccountRoute._addFileChildren(AccountRouteChildren)
 
 interface AdminRouteChildren {
+  AdminAccessRequestsRoute: typeof AdminAccessRequestsRoute
   AdminAuditRoute: typeof AdminAuditRoute
+  AdminAuthLogRoute: typeof AdminAuthLogRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminEnrollmentsRoute: typeof AdminEnrollmentsRoute
   AdminExpertsRoute: typeof AdminExpertsRoute
@@ -2759,7 +2799,9 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAccessRequestsRoute: AdminAccessRequestsRoute,
   AdminAuditRoute: AdminAuditRoute,
+  AdminAuthLogRoute: AdminAuthLogRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminEnrollmentsRoute: AdminEnrollmentsRoute,
   AdminExpertsRoute: AdminExpertsRoute,
