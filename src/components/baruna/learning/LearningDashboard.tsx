@@ -44,6 +44,7 @@ import { barunaToast } from "@/lib/downloads";
 import { CompletionEvaluationSection } from "@/components/baruna/learning/CompletionEvaluationSection";
 import { CompletionStatusPanel } from "@/components/baruna/learning/CompletionStatusPanel";
 import { OfferingApplicationAction } from "@/components/baruna/learning/OfferingApplicationAction";
+import { MyAttendanceSection } from "@/components/baruna/learning/MyAttendanceSection";
 import { CertificateSheetActions } from "@/components/baruna/learning/CertificateSheetActions";
 
 const MENU_ICONS: Partial<Record<MenuItemId, LucideIcon>> = {
@@ -191,6 +192,7 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
               >
                 Withdraw (preserves data)
               </button>
+              <MyAttendanceSection offeringId={offering.id} />
             </>
           )}
         </div>

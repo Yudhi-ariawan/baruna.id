@@ -14,6 +14,7 @@ import {
   Timer,
   UserCheck,
   Megaphone,
+  CalendarCheck,
 } from "lucide-react";
 import {
   ConsoleAccessDenied,
@@ -69,6 +70,8 @@ function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
     menus.trainingNeeds.read && { label: "Permintaan Pelatihan", to: "/governance/training-needs", icon: ClipboardList },
     // Slide 20-21: Master Course and Course Offering are prepared and approved here.
     menus.programs.read && { label: "Program Academy", to: "/governance/programs", icon: Library },
+    // Slide 23: Operator records attendance of cohort offerings (2bb).
+    menus.programs.read && { label: "Kehadiran", to: "/governance/attendance", icon: CalendarCheck },
     // Slide 16: Publisher takes live content down temporarily and puts it back (2ba).
     menus.publishing.read && { label: "Penayangan", to: "/governance/publishing", icon: Megaphone },
   ].filter(Boolean) as ConsoleNavGroup["items"];

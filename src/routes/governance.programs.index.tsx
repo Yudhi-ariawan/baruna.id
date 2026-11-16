@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FullTrainingReplacementPanel } from "@/components/governance/FullTrainingReplacementPanel";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -63,6 +64,8 @@ function ProgramsPage() {
       ) : q.data ? (
         tab === "drafts" ? <DraftList drafts={q.data.drafts} /> : tab === "courses" ? <CourseList data={q.data} /> : <OfferingList data={q.data} />
       ) : null}
+
+      <FullTrainingReplacementPanel />
 
       <p className="text-xs text-muted-foreground">
         Offering yang disetujui bisa dibuka di alamatnya sendiri (tombol Buka). Katalog publik <em>All Programs</em> belum membaca

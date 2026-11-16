@@ -40,6 +40,7 @@ import {
 } from "@/lib/learning/enrollment-application.functions";
 import { useEnrollmentDocumentUpload } from "@/lib/learning/use-enrollment-document-upload";
 import { FullTrainingApplyStatus } from "@/components/baruna/academy/FullTrainingApplyStatus";
+import { useFullTrainingReplacement } from "@/components/baruna/academy/FullTrainingEnrollLink";
 import { fullTrainingCourseId } from "@/lib/learning/full-training-enrollment";
 
 export const Route = createFileRoute("/academy/apply/$slug")({
@@ -159,6 +160,9 @@ function ApplyPage() {
     enabled: Boolean(userId),
     staleTime: 15_000,
   });
+  // Replaced by a Course Offering (2bb): new applicants apply there.
+  const replacement = useFullTrainingReplacement(p.slug).data ?? null;
+  const isNewApplicant = !userId || statusQ.data?.status === "none";
   /** Files go to the selection committee; null before the migration (names stay in this browser). */
   const serverDocs = statusQ.data?.programDocuments ?? null;
   const uploadDocument = useEnrollmentDocumentUpload(courseId, { allowImages: true, english: true });
@@ -289,7 +293,19 @@ function ApplyPage() {
           </div>
         </div>
 
-        {step < 4 && statusQ.data && ["revision_requested", "pending", "approved"].includes(statusQ.data.status) ? (
+        {step < 4 && replacement && isNewApplicant ? (
+          <section className="rounded-2xl border border-border bg-card p-6 text-center shadow-soft sm:p-8">
+            <h2 className="font-display text-xl font-bold text-navy">Applications now open on the course page</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+              This program is now run as a BARUNA Academy course. Apply there with the same documents; your learning,
+              attendance and certificate are kept on every device.
+            </p>
+            <Link to="/academy/course/$offeringId" params={{ offeringId: replacement }}
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground hover:bg-marine/90">
+              Go to the course <ArrowRight className="h-4 w-4" />
+            </Link>
+          </section>
+        ) : step < 4 && statusQ.data && ["revision_requested", "pending", "approved"].includes(statusQ.data.status) ? (
           <FullTrainingApplyStatus courseId={courseId} courseTitle={p.title} status={statusQ.data} onDone={() => void statusQ.refetch()} />
         ) : (
         <>

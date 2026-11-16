@@ -1,6 +1,7 @@
 // Maps course_enrollment_apply / admin_course_enrollment_decide exceptions to
 // messages a participant or admin can act on.
 const MESSAGES: Array<[RegExp, string]> = [
+  [/program_replaced:(.+)/, "Program ini kini dibuka sebagai course di BARUNA Academy. Silakan mendaftar lewat halaman course-nya."],
   [/biodata_required/, "Anda wajib melengkapi Formulir Biodata Peserta terlebih dahulu sebelum mendaftar pelatihan ini. Silakan buka menu Daftar Peserta."],
   [/authentication_required/, "Sesi login berakhir. Silakan masuk kembali."],
   [/documents_required:(.+)/, "Dokumen persyaratan belum lengkap. Unggah semua dokumen yang diminta, lalu kirim lagi."],

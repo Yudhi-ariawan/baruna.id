@@ -298,7 +298,14 @@ WITH checks(no, migration, ok) AS (
   (75, '20261116020000_publication_hold',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'publication_hold')
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_publication_hold_guard')
-      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'experts' AND column_name = 'publication_held_at'))
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'experts' AND column_name = 'publication_held_at')),
+  (76, '20261116030000_offering_attendance',
+      to_regclass('public.attendance_records') IS NOT NULL
+      AND to_regclass('public.offering_sessions') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'attendance_record_set')),
+  (77, '20261116040000_full_training_replacement',
+      EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'full_training_programs' AND column_name = 'replaced_by_offering_code')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'course_enrollment_apply' AND prosrc LIKE '%program_replaced%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

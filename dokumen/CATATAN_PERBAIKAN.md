@@ -1352,6 +1352,38 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
   - Keempatnya tampil lagi; menayangkan dua kali ditolak; audit tercatat.
   - **Sebelum migrasi (intern-update, 16 Nov): 1/16**, hanya cek "konten uji tampil".
 
+
+## 2bb. Full Training menjadi Course Offering: kehadiran dan pengalihan (16 Nov)
+
+**Keputusan pemilik proyek (16 Nov), opsi A: "Kehadiran + arahkan".** Proses bisnis resmi (Slide 20–27) tidak mengenal produk Full Training terpisah. Pelatihan tatap muka/blended adalah Course Offering *cohort-based*. Program African Countries dibuat ulang lewat Program Academy (Master Course beserta modulnya, Offering "Wajib disetujui admin" dengan lima dokumen), sehingga pendaftaran, belajar, kelulusan, dan sertifikatnya ada di server. Dua hal yang belum ada di jalur offering dibangun di sini. Data perjalanan dan visa tidak ada di slide, jadi tidak dipindahkan (ditanyakan ke mentor).
+
+**1. Kehadiran (Slide 23 PB-ACA-04, "Catat Kehadiran" → *Attendance Record*; migrasi `20261116030000`):**
+- `offering_sessions` menyimpan sesi course angkatan (judul, waktu, tempat). `attendance_records` menyimpan satu status per sesi per peserta terdaftar (Hadir, Terlambat, Izin, Tidak hadir, dengan catatan), beserta siapa yang mencatat dan kapan.
+- Pengelola program (Super Admin, Admin, Operator, Approver; `_program_can_manage`) memakai `attendance_session_save`, `attendance_session_delete` (ditolak bila sudah ada catatan), `attendance_record_set` (banyak sekaligus, terkunci per sesi, satu baris per peserta, peserta yang tidak terdaftar menggagalkan seluruh kiriman), dan `attendance_overview`.
+- Peserta memakai `my_attendance` dan hanya melihat miliknya (RLS juga). Tidak ada tulis langsung dari browser; setiap langkah tercatat di audit.
+- Course mandiri ditolak (`attendance_not_applicable`). Kehadiran **belum** menjadi syarat lulus sampai aturannya diputuskan (Slide 24).
+- Aplikasi:
+  - Halaman Konsol Kurasi baru **Kehadiran** (`/governance/attendance`): pilih offering, tambah sesi, lalu tandai Hadir/Terlambat/Izin/Tidak hadir per peserta (ada tombol "Tandai semua hadir"); hanya baris yang berubah yang dikirim.
+  - Halaman course peserta menampilkan **Kehadiran** di kolom samping ("Hadir x dari y sesi tercatat" dan status per sesi).
+
+**2. Pengalihan Full Training lama (migrasi `20261116040000`):**
+- `full_training_programs.replaced_by_offering_code` diatur Approver/Admin lewat `full_training_set_replacement`. Nilainya hanya boleh offering yang tayang dan memakai "Wajib disetujui admin", dan bisa dicabut.
+- `course_enrollment_apply` (salinan persis dari `20261111020000` ditambah satu pemeriksaan): pendaftar **baru** ke program yang dialihkan ditolak dengan `program_replaced:<kode>`. Pengajuan yang sudah berjalan (menunggu, diminta perbaikan, ditolak, disetujui) tetap selesai di program lama. Perbedaan isi fungsinya diperiksa dengan `diff`.
+- Aplikasi:
+  - Panel **Full Training lama → Course Offering** di halaman Program Academy, khusus Approver/Admin.
+  - Tombol *Enroll Now* di halaman program menuju halaman course pengganti.
+  - Halaman `/academy/apply/<slug>` menampilkan arahan ke course untuk pendaftar baru.
+  - Pesan error `program_replaced`.
+
+**Uji:**
+- PGlite (`pgtest/ft_offering.mjs`, di atas migrasi asli sampai `20261111020000`) **26/26**:
+  - Bukti sebelum migrasi; kedua migrasi bisa diulang.
+  - Kehadiran: hak akses; judul wajib; kiriman dengan peserta tak terdaftar batal seluruhnya; status asing ditolak; dicatat ulang tetap satu baris; peserta melihat miliknya, yang tidak terdaftar tidak melihat; rekap staf; hapus sesi bercatatan ditolak; tulis langsung ditolak; sesi kosong bisa dihapus.
+  - Pengalihan: Operator dan kode asing ditolak; pendaftar baru dialihkan; pengajuan lama yang menunggu tidak terganggu dan yang diminta perbaikan tetap bisa mengirim ulang; pengajuan Course Offering tetap jalan; pengalihan bisa dicabut.
+  - Uji ini menangkap kesalahan sebelum dirilis: membaca RECORD `v_ft` di luar cabang Full Training akan memecahkan semua pengajuan offering.
+- Uji langsung baru `npm run test:offering-attendance` (14 cek lewat fungsi server aplikasi). Pengaturan pengalihan program asli dipulihkan di akhir uji.
+  - **Sebelum migrasi (intern-update, 16 Nov): 3/14.**
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1410,7 +1442,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (75 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (77 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1473,6 +1505,8 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261111030000_learning_realtime.sql` (keputusan pendaftaran dan kelulusan tampil langsung lewat Supabase Realtime; tanpa perubahan data atau aturan). Lihat bagian 2ay. Kode branch ini tetap jalan sebelum migrasi (penyegaran tiap 60 detik).
 - `20261116010000_master_data_operator_requests.sql` (Operator membaca Data Master dan mengusulkan perubahan; Approver/Admin lain menyetujui). Lihat bagian 2az. Kode branch ini tetap jalan sebelum migrasi (simpan memakai RPC lama).
 - `20261116020000_publication_hold.sql` (Publisher menurunkan sementara dan menayangkan lagi Course Offering, publikasi, modul, dan profil expert). Lihat bagian 2ba. Sebelum migrasi, halaman Penayangan menampilkan pesan bahwa migrasi belum dijalankan; fitur lain tidak terpengaruh.
+- `20261116030000_offering_attendance.sql` (sesi dan kehadiran course angkatan). Lihat bagian 2bb.
+- `20261116040000_full_training_replacement.sql` (Full Training lama dialihkan ke Course Offering pengganti; menggantikan `course_enrollment_apply`, jalankan setelah `20261111020000`). Lihat bagian 2bb.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1509,6 +1543,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
   | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
+  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

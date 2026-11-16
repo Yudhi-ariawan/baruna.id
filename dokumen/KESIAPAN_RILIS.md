@@ -1,4 +1,4 @@
-# Kesiapan Rilis BARUNA (diperbarui 11 November 2026, mencakup pekerjaan sampai 11 November)
+# Kesiapan Rilis BARUNA (diperbarui 16 November 2026, mencakup pekerjaan sampai 16 November)
 
 Ringkasan posisi proyek: apa yang sudah diperbaiki, apa yang belum, dan apa yang harus selesai sebelum dipakai banyak pengguna.
 Rincian teknis per perbaikan: `dokumen/CATATAN_PERBAIKAN.md` (rencana sisa pekerjaan ada di bagian 2l).
@@ -11,7 +11,7 @@ Halaman `/kesiapanrilis` menampilkan dokumen ini sebagai papan: bagian A (butir 
 Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
 "Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
 
-Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `20261111030000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 73 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
+Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `20261111030000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 77 baris. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
@@ -64,7 +64,8 @@ Status pemeriksaan terakhir (11 Nov, laptop): semua migrasi sampai `202611110300
 - **Kelulusan kursus mandiri** (video/PDF/PPT/kuis modul bawaan) tetap laporan dari browser, karena isinya ada di kode. Tidak ada hak di server yang bergantung padanya (sertifikatnya berlabel CONTOH). Status ini sengaja dibiarkan.
 - **Modul bawaan** (Ocean Literacy, AZA, Africa Fisheries) isinya di kode aplikasi, jadi hanya digerbang di tampilan. 13 PDF Master masih aset publik Lovable.
 - **Full Training dan AZA** progresnya hanya di `localStorage` (tidak ikut berpindah perangkat). Program African Countries juga dihapus otomatis dari browser oleh halaman My Learning. Berkas formulir Full Training: lihat bagian E (perbaikan siap, 11 Nov).
-- **Menunggu mentor:** template dan syarat sertifikat, format nomor resmi, syarat lulus, publisher vs approver, Profile Claim (A1), nasib Full Training (P4), Penugasan Expert (disembunyikan), notifikasi email, kuota peserta, peserta yang sudah lulus saat modul diperbarui, Operator dan Data Master, email kontak expert di intern-update. (Role participant dan expert-jadi-trainer sudah diputuskan pemilik proyek, 21 dan 22 Okt.)
+- **Diputuskan pemilik proyek dan dikerjakan (16 Nov), menunggu migrasi `20261116010000`–`040000`:** Operator mengusulkan perubahan Data Master dan Approver/Admin lain menyetujui (CATATAN_PERBAIKAN 2az); Publisher menurunkan sementara dan menayangkan lagi konten (2ba); Full Training dijadikan Course Offering, dengan kehadiran per sesi dan pengalihan program lama (2bb).
+- **Menunggu mentor:** template dan syarat sertifikat, format nomor resmi, syarat lulus (termasuk apakah kehadiran wajib), Profile Claim (A1), data perjalanan/visa peserta, Penugasan Expert (disembunyikan), notifikasi email, kuota peserta, peserta yang sudah lulus saat modul diperbarui, email kontak expert di intern-update. (Role participant dan expert-jadi-trainer sudah diputuskan pemilik proyek, 21 dan 22 Okt.)
 - **Program Academy, belum:** *certificate model* per Course Offering (Slide 26) dan jenis sertifikat lain, yang butuh data kehadiran dan asesmen (Slide 23); modul masih ditandai selesai oleh peserta sendiri, belum wajib lulus kuis/penilaian (Slide 24), jadi sertifikat tetap berlabel "CONTOH / BELUM RESMI"; hanya sertifikat kelulusan yang tersedia (jenis lain menunggu aturan); dari alur pendaftaran (Slide 22): seleksi/skor dan waitlist (unggah dokumen dan minta perbaikan sudah ada sejak 10 Nov), daftar dokumen wajib per offering menunggu mentor, berkas unggahan yang tidak terpakai dibersihkan dengan perintah manual `cleanup:enrollment-documents` (belum terjadwal otomatis); aturan "Wajib hak akses khusus" masih ditutup; pembayaran belum ada (course mandiri hanya "Gratis"; course angkatan mencatat penanggung biaya tanpa tarif atau tagihan); desain dan isi STTP resmi (tanda tangan, stempel, format nomor) belum ada; isi pertanyaan template evaluasi dikelola lewat SQL; pembersihan sampul dijalankan manual; Webinar dan Workshop masih data contoh. Rencana di CATATAN_PERBAIKAN akhir 2al dan 2ao.
 - **Teknis:** `types.ts` disinkronkan manual (menunggu `npx supabase login`).
 - **Operasional:** database `main` belum diperiksa dan belum menerima migrasi (ranah mentor).

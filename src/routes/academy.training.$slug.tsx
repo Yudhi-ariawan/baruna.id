@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FullTrainingEnrollLink } from "@/components/baruna/academy/FullTrainingEnrollLink";
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import {
   ChevronRight,
@@ -331,13 +332,12 @@ function TrainingDetail() {
           <InfoRow icon={Award} label="Certificate" value="Yes" />
           <InfoRow icon={Users} label="Capacity" value="20 Participants" />
         </div>
-        <Link
-          to="/academy/apply/$slug"
-          params={{ slug: p.slug }}
+        <FullTrainingEnrollLink
+          slug={p.slug}
           className="mt-4 block w-full rounded-xl bg-marine py-2.5 text-center text-sm font-semibold text-marine-foreground transition-colors hover:bg-marine/90"
         >
           Enroll Now
-        </Link>
+        </FullTrainingEnrollLink>
         <button
           onClick={toggle}
           className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-semibold transition-colors ${
@@ -552,13 +552,12 @@ function TrainingDetail() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                to="/academy/apply/$slug"
-                params={{ slug: p.slug }}
+              <FullTrainingEnrollLink
+                slug={p.slug}
                 className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-hover"
               >
                 Enroll Now <ArrowRight className="h-4 w-4" />
-              </Link>
+              </FullTrainingEnrollLink>
               <button
                 onClick={toggle}
                 className="inline-flex items-center gap-2 rounded-xl border border-navy-foreground/40 bg-card/10 px-6 py-3 text-sm font-semibold text-navy-foreground backdrop-blur transition-colors hover:bg-card/20"
