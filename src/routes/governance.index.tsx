@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen, ClipboardList, FileText, GraduationCap, Info, UserCheck, type LucideIcon } from "lucide-react";
 import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
+import { useCurationBadges } from "@/components/baruna/console/useConsoleBadges";
 import type { ConsoleMenuKey } from "@/lib/governance/console-access.functions";
 
 export const Route = createFileRoute("/governance/")({
@@ -29,6 +30,7 @@ const MENUS: Array<{ key: ConsoleMenuKey; label: string; to: string; icon: Lucid
 
 function ConsoleHome() {
   const { data: access } = useConsoleAccess();
+  const badges = useCurationBadges(Boolean(access));
   if (!access) return null;
   const roles = access.roles.filter((code) => ROLE_INFO[code]);
   const visible = MENUS.filter((menu) => access.menus[menu.key].read);
@@ -68,6 +70,7 @@ function ConsoleHome() {
         {visible.map((menu) => {
           const Icon = menu.icon;
           const decide = access.menus[menu.key].decide;
+          const waiting = badges?.[menu.key] ?? 0;
           return (
             <Link
               key={menu.key}
@@ -78,7 +81,12 @@ function ConsoleHome() {
                 <Icon className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-display text-base font-bold text-navy">{menu.label}</p>
+                <p className="flex items-center gap-2 font-display text-base font-bold text-navy">
+                  {menu.label}
+                  {waiting ? (
+                    <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">{waiting} menunggu</span>
+                  ) : null}
+                </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{menu.what}</p>
                 <span
                   className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${

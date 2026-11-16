@@ -8,6 +8,21 @@ export interface ConsoleNavItem {
   to: string;
   icon: LucideIcon;
   exact?: boolean;
+  /** Items waiting in this queue; shown as a count when above 0. */
+  badge?: number;
+}
+
+function NavBadge({ count, active }: { count: number; active: boolean }) {
+  return (
+    <span
+      title={`${count} menunggu tindakan`}
+      className={`ml-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none ${
+        active ? "bg-white text-navy" : "bg-red-500 text-white"
+      }`}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
 }
 
 export interface ConsoleNavGroup {
@@ -35,6 +50,8 @@ export function ConsoleShell({
 }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // On phones the sidebar is closed: a dot on the menu button says something waits.
+  const anyBadge = navGroups.some((g) => g.items.some((i) => (i.badge ?? 0) > 0));
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -104,6 +121,7 @@ export function ConsoleShell({
                         }`}
                       />
                       <div className="min-w-0 flex-1 truncate">{item.label}</div>
+                      {item.badge ? <NavBadge count={item.badge} active={isActive} /> : null}
                     </Link>
                   );
                 })}
@@ -156,9 +174,11 @@ export function ConsoleShell({
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="md:hidden rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+              className="relative md:hidden rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+              aria-label={anyBadge ? "Menu (ada antrean menunggu)" : "Menu"}
             >
               <Menu className="h-5 w-5" />
+              {anyBadge ? <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" /> : null}
             </button>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="font-semibold text-navy">{sectionLabel}</span>
