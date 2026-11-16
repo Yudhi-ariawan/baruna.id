@@ -76,8 +76,8 @@ function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
   ];
   const settings = [
     menus.trainingNeeds.read && { label: "SLA Alur Kerja", to: "/governance/sla", icon: Timer },
-    // Slide 16: Approver/Admin manage the Experts and Academy reference data.
-    menus.experts.decide && { label: "Data Master", to: "/governance/master-data", icon: Database },
+    // Slide 16: Approver/Admin manage the Experts and Academy reference data; Operators propose (2az).
+    menus.masterData.read && { label: "Data Master", to: "/governance/master-data", icon: Database },
     access.isAdmin && { label: "Portal Admin", to: "/admin", icon: Settings },
   ].filter(Boolean) as ConsoleNavGroup["items"];
   if (settings.length) groups.push({ group: "Pengaturan", items: settings });

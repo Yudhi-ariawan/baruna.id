@@ -85,8 +85,13 @@ function ModuleLimitsForm({
         },
       }),
     onMutate: () => onNotice(null),
-    onSuccess: () => {
-      onNotice({ ok: true, text: "Kuota tersimpan dan tercatat di audit trail." });
+    onSuccess: (res) => {
+      onNotice({
+        ok: true,
+        text: res.queued
+          ? "Usulan terkirim. Kuota baru berlaku setelah disetujui Approver atau Admin (lihat Usulan Perubahan di atas)."
+          : "Kuota tersimpan dan tercatat di audit trail.",
+      });
       void qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (e) => {

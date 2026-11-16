@@ -101,7 +101,13 @@ export function TrainerLevelsPanel({ data }: { data: MasterData }) {
         <Save className="h-3.5 w-3.5" /> {m.isPending ? "Menyimpan…" : "Simpan sebagai versi baru"}
       </button>
       {m.isError ? <p className="text-xs text-destructive">{(m.error as Error).message}</p> : null}
-      {m.isSuccess ? <p className="text-xs text-emerald-700">Tersimpan sebagai versi {m.data.version} dan tercatat di audit trail.</p> : null}
+      {m.isSuccess ? (
+        <p className="text-xs text-emerald-700">
+          {m.data.queued
+            ? "Usulan terkirim. Aturan baru berlaku setelah disetujui Approver atau Admin (lihat Usulan Perubahan di atas)."
+            : `Tersimpan sebagai versi ${m.data.result.version} dan tercatat di audit trail.`}
+        </p>
+      ) : null}
 
       <div className="border-t border-border pt-3">
         <p className="text-xs font-semibold text-navy">Riwayat versi</p>

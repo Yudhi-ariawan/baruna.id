@@ -7,6 +7,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { MASTER_FORBIDDEN, masterRowName, submitMasterChange } from "@/lib/governance/master-change.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
@@ -24,7 +25,8 @@ export type MasterKhTopic = {
 };
 
 const ERRORS: Array<[RegExp, string]> = [
-  [/forbidden/, "Hanya Approver, Admin, atau Super Admin yang dapat mengelola Data Master."],
+  // Exactly "forbidden" (not *_rename_forbidden, which has its own message below).
+  [/(^|[^_a-z])forbidden([^_a-z]|$)/, MASTER_FORBIDDEN],
   [/authentication_required/, "Sesi login berakhir. Silakan masuk kembali."],
   [/kh_topic_name_invalid/, "Nama topik wajib 2–120 karakter dan tanpa karakter khusus tak terlihat."],
   [/kh_topic_name_exists/, "Topik dengan nama itu sudah ada (huruf besar/kecil dan spasi tidak dibedakan)."],
@@ -38,11 +40,13 @@ const ERRORS: Array<[RegExp, string]> = [
 
 async function rpc<T>(context: { supabase: unknown }, fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await (context.supabase as Db).rpc(fn, args ?? {});
-  if (error) {
-    const hit = ERRORS.find(([pattern]) => pattern.test(error.message));
-    throw new Error(hit ? hit[1] : error.message);
-  }
+  if (error) throw new Error(friendly(error.message));
   return data as T;
+}
+
+function friendly(message: string): string {
+  const hit = ERRORS.find(([pattern]) => pattern.test(message));
+  return hit ? hit[1] : message;
 }
 
 export const getMasterKhTopics = createServerFn({ method: "GET" })
@@ -62,17 +66,22 @@ export const saveMasterKhTopic = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) =>
-    rpc<{ id: string; name: string }>(context, "master_kh_topic_save", {
-      _id: data.id,
-      _name: data.name,
-      _description: data.description,
-      _display_order: data.displayOrder,
-    }),
+    submitMasterChange<{ id: string; name: string }>(
+      context,
+      { kind: "kh_topic_save", payload: data, summary: `${data.id ? "Ubah" : "Tambah"} topik Knowledge Hub: ${data.name}` },
+      { fn: "master_kh_topic_save", args: { _id: data.id, _name: data.name, _description: data.description, _display_order: data.displayOrder } },
+      friendly,
+    ),
   );
 
 export const setMasterKhTopicActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => z.object({ id: z.string().uuid(), active: z.boolean() }).parse(d))
   .handler(async ({ data, context }) =>
-    rpc<{ id: string; active: boolean }>(context, "master_kh_topic_set_active", { _id: data.id, _active: data.active }),
+    submitMasterChange<{ id: string; active: boolean }>(
+      context,
+      { kind: "kh_topic_set_active", payload: data, summary: `${data.active ? "Aktifkan" : "Nonaktifkan"} topik Knowledge Hub: ${await masterRowName("kh_topic_taxonomy", data.id)}` },
+      { fn: "master_kh_topic_set_active", args: { _id: data.id, _active: data.active } },
+      friendly,
+    ),
   );

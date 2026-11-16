@@ -290,7 +290,11 @@ WITH checks(no, migration, ok) AS (
   (73, '20261111030000_learning_realtime',
       EXISTS (SELECT 1 FROM pg_publication p WHERE p.pubname = 'supabase_realtime' AND (p.puballtables OR (
         EXISTS (SELECT 1 FROM pg_publication_tables t WHERE t.pubname = p.pubname AND t.schemaname = 'public' AND t.tablename = 'course_enrollment_applications')
-        AND EXISTS (SELECT 1 FROM pg_publication_tables t WHERE t.pubname = p.pubname AND t.schemaname = 'public' AND t.tablename = 'course_completions')))))
+        AND EXISTS (SELECT 1 FROM pg_publication_tables t WHERE t.pubname = p.pubname AND t.schemaname = 'public' AND t.tablename = 'course_completions'))))),
+  (74, '20261116010000_master_data_operator_requests',
+      to_regclass('public.master_data_change_requests') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_change_decide')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'master_data_overview' AND prosrc LIKE '%_can_view_master_data%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

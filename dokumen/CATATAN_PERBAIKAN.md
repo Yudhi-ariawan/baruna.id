@@ -1286,6 +1286,43 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
 - **Sesudah migrasi (dijalankan pemilik proyek, 11 Nov): 14/14.** Keputusan sampai ke peserta dalam sekitar 0,4 detik, dan kiriman ulang ke antrean admin sekitar 0,6 detik. Semua 39 uji `test:*` lulus. `enrollment-concurrency` sempat gagal 5 cek karena `fetch failed` (koneksi putus saat permintaan serentak; datanya tetap benar) dan lulus 15/15 saat diulang.
 - **Sebelum migrasi (intern-update, 11 Nov): 10/14.** Keempat cek Realtime gagal (tidak ada event dalam 10 detik), dan tidak ada yang bocor. Dengan kode lama, bagian 5 gagal 2 cek (tautan `/academy/self-paced/Angkatan%20Live…`, jenis `module`). `tsc`, lint, dan `build` lulus.
 
+
+## 2az. Data Master: Operator mengusulkan, Approver/Admin menyetujui (16 Nov)
+
+**Keputusan pemilik proyek (16 Nov), MENUNGGU_ARAHAN_MENTOR butir 10, opsi C.** Slide 16 mendefinisikan Operator sebagai pengelola data harian dengan akses penuh pada Academy dan Experts, dan sekaligus meminta *akses sensitif memerlukan verifikasi & persetujuan berjenjang*.
+
+**Sebelumnya:** hanya Approver, Admin, dan Super Admin yang bisa membaca atau mengubah Data Master (`_can_decide_review`). Operator bahkan tidak bisa membukanya.
+
+**Perbaikan (migrasi `20261116010000`):**
+- `_can_view_master_data`: Operator ikut bisa membaca keenam daftar Data Master. Penjaga di enam fungsi baca diganti tanpa menyalin isi fungsinya: teks penjaga yang sama persis diganti lewat `pg_get_functiondef`. Migrasi berhenti dengan error bila teks itu tidak ditemukan.
+- Tabel `master_data_change_requests` (jenis, isi, ringkasan, status, pengusul, penyetuju, alasan, hasil). RLS hanya untuk pembaca Data Master; tidak ada tulis langsung.
+- `master_change_submit` menjadi satu pintu simpan:
+  - Approver/Admin: langsung dijalankan oleh RPC lama, aturan dan audit tidak berubah.
+  - Operator: disimpan sebagai usulan *pending*. Klik ganda tidak membuat usulan dobel, dan maksimal 20 usulan menunggu per Operator.
+- `master_change_decide`: Approver/Admin **lain** menyetujui atau menolak (alasan wajib). Saat disetujui, RPC lama dijalankan dalam transaksi yang sama dengan semua pemeriksaannya. Bila gagal, misalnya kuota sudah diubah orang lain atau nama sudah ada, tidak ada yang berubah dan usulan tetap *pending*.
+- `master_change_cancel`: pengusul menarik usulannya.
+- Setiap langkah tercatat di `admin_audit_log`. Perubahan yang diterapkan tetap punya catatan auditnya sendiri atas nama penyetuju.
+
+**Aplikasi:**
+- Menu Data Master tampil untuk Operator (`menus.masterData`).
+- Semua tombol simpan di Data Master lewat `submitMasterChange` (`master-change.server.ts`). Sebelum migrasi, otomatis kembali memanggil RPC lama.
+- Panel baru **Usulan Perubahan** di atas halaman. Operator melihat penjelasan bahwa perubahannya menjadi usulan, beserta notifikasi saat usulan terkirim. Penyetuju melihat tombol Setujui dan Tolak (dengan alasan); pengusul melihat tombol Batalkan; riwayat 30 hari ditampilkan.
+- Pesan Kuota dan Aturan Level membedakan "tersimpan" dari "usulan terkirim".
+- Diperbaiki sekalian: di empat berkas Data Master, pola `/forbidden/` ikut menangkap `*_in_use_rename_forbidden`, sehingga pesan "sudah dipakai, nama tidak bisa diganti" tidak pernah tampil. Polanya kini hanya cocok untuk kata `forbidden` yang berdiri sendiri.
+
+**Uji:**
+- PGlite (`pgtest/master_requests.mjs`, fungsi tiruan dengan teks penjaga yang sama) **37/37**:
+  - Bukti sebelum migrasi; migrasi bisa diulang.
+  - Operator membaca keenam daftar, peserta tetap ditolak, Operator tetap tidak bisa memakai RPC lama.
+  - Usulan tersimpan, klik ganda tetap satu; jenis asing, peserta, fungsi internal, dan tulis langsung ditolak.
+  - Operator lain tidak bisa menyetujui; tolak wajib beralasan; disetujui satu kali atas nama penyetuju; audit lengkap.
+  - Kuota usang dan isi rusak menggagalkan persetujuan tanpa perubahan.
+  - Approver tetap simpan langsung; usulan sendiri tidak bisa disetujui walau kemudian menjadi Approver; batal hanya oleh pengusul; RLS.
+  - Uji ini menemukan bug sebelum dirilis: fungsi pemeriksa yang dipakai RLS belum bisa dipanggil oleh `authenticated`.
+- Uji langsung baru `npm run test:master-data-requests` (21 cek lewat fungsi server aplikasi, bahasa uji `zz-…`): Operator membaca; usulan bahasa baru; Approver melihat lalu menyetujui; disetujui dua kali ditolak; usulan nonaktifkan ditolak dengan alasan; pembatalan; Approver tetap langsung; tulis langsung, baca peserta, dan audit.
+  - **Sebelum migrasi (intern-update, 16 Nov): 5/21.**
+- `master-data`, `module-limits`, `kh-topics`, `languages`, `training-categories`, `trainer-quota-list`, `console-roles`, dan `console-decisions` tetap lulus dengan kode baru sebelum migrasi.
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1344,7 +1381,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (73 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (74 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1405,6 +1442,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261111010000_enrollment_document_uploads.sql` (dokumen pendaftaran yang sudah diunggah tetapi belum dikirim tercatat di server, sehingga terlihat di semua perangkat). Lihat bagian 2aw. Jalankan setelah `20261110020000`. Kode branch ini tetap jalan sebelum migrasi (unggahan diingat di layar seperti dulu).
 - `20261111020000_full_training_documents.sql` (berkas formulir Full Training benar-benar terkirim ke admin dan bisa diganti saat *Minta Perbaikan*; dokumen Full Training boleh PDF atau JPG/PNG). Lihat bagian 2ax. Jalankan setelah `20261111010000`, **sebelum push** (lihat catatan 2ax).
 - `20261111030000_learning_realtime.sql` (keputusan pendaftaran dan kelulusan tampil langsung lewat Supabase Realtime; tanpa perubahan data atau aturan). Lihat bagian 2ay. Kode branch ini tetap jalan sebelum migrasi (penyegaran tiap 60 detik).
+- `20261116010000_master_data_operator_requests.sql` (Operator membaca Data Master dan mengusulkan perubahan; Approver/Admin lain menyetujui). Lihat bagian 2az. Kode branch ini tetap jalan sebelum migrasi (simpan memakai RPC lama).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1440,6 +1478,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `enrollment-revision`* | 16 (setelah migrasi `20261110020000`) | 2at | `participant-dashboard`* | 29 | 2au, 2av, 2ax |
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
+  | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

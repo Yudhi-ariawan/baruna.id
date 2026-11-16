@@ -9,6 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { MASTER_FORBIDDEN, masterRowName, submitMasterChange } from "@/lib/governance/master-change.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
@@ -43,7 +44,8 @@ export type MasterData = {
 };
 
 const ERRORS: Array<[RegExp, string]> = [
-  [/forbidden/, "Hanya Approver, Admin, atau Super Admin yang dapat mengelola Data Master."],
+  // Exactly "forbidden" (not *_rename_forbidden, which has its own message below).
+  [/(^|[^_a-z])forbidden([^_a-z]|$)/, MASTER_FORBIDDEN],
   [/authentication_required/, "Sesi login berakhir. Silakan masuk kembali."],
   [/expertise_name_invalid/, "Nama bidang wajib 2–120 karakter dan tanpa karakter khusus tak terlihat."],
   [/expertise_name_exists/, "Bidang dengan nama itu sudah ada (huruf besar/kecil dan spasi tidak dibedakan)."],
@@ -97,19 +99,24 @@ export const saveMasterExpertise = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) =>
-    rpc<{ id: string; name: string }>(context, "master_expertise_save", {
-      _id: data.id,
-      _name: data.name,
-      _description: data.description,
-      _display_order: data.displayOrder,
-    }),
+    submitMasterChange<{ id: string; name: string }>(
+      context,
+      { kind: "expertise_save", payload: data, summary: `${data.id ? "Ubah" : "Tambah"} bidang keahlian: ${data.name}` },
+      { fn: "master_expertise_save", args: { _id: data.id, _name: data.name, _description: data.description, _display_order: data.displayOrder } },
+      friendly,
+    ),
   );
 
 export const setMasterExpertiseActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => z.object({ id: z.string().uuid(), active: z.boolean() }).parse(d))
   .handler(async ({ data, context }) =>
-    rpc<{ id: string; active: boolean }>(context, "master_expertise_set_active", { _id: data.id, _active: data.active }),
+    submitMasterChange<{ id: string; active: boolean }>(
+      context,
+      { kind: "expertise_set_active", payload: data, summary: `${data.active ? "Aktifkan" : "Nonaktifkan"} bidang keahlian: ${await masterRowName("expertise_taxonomy", data.id)}` },
+      { fn: "master_expertise_set_active", args: { _id: data.id, _active: data.active } },
+      friendly,
+    ),
   );
 
 export const saveTrainerLevels = createServerFn({ method: "POST" })
@@ -131,7 +138,12 @@ export const saveTrainerLevels = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) =>
-    rpc<{ version: number }>(context, "master_trainer_levels_set", { _rules: data.rules, _note: data.note }),
+    submitMasterChange<{ version: number }>(
+      context,
+      { kind: "trainer_levels_set", payload: data, summary: `Aturan level trainer: ${data.rules.map((r) => `${r.level} ≥ ${r.minParticipants}`).join(", ")} (alasan: ${data.note})` },
+      { fn: "master_trainer_levels_set", args: { _rules: data.rules, _note: data.note } },
+      friendly,
+    ),
   );
 
 // ── Kuota modul per level trainer (migration 20261023020000) ─────────────────
@@ -180,9 +192,10 @@ export const saveModuleLimits = createServerFn({ method: "POST" })
     z.object({ limits: limitMap, expected: seenMap, note: z.string().trim().min(5).max(500) }).parse(d),
   )
   .handler(async ({ data, context }) =>
-    rpc<{ limits: ModuleLimitMap }>(context, "master_module_limits_set", {
-      _limits: data.limits,
-      _expected: data.expected,
-      _note: data.note,
-    }),
+    submitMasterChange<{ limits: ModuleLimitMap }>(
+      context,
+      { kind: "module_limits_set", payload: data, summary: `Kuota modul: ${TRAINER_LEVEL_ORDER.map((l) => `${l} ${data.expected[l]}→${data.limits[l]}`).join(", ")} (alasan: ${data.note})` },
+      { fn: "master_module_limits_set", args: { _limits: data.limits, _expected: data.expected, _note: data.note } },
+      friendly,
+    ),
   );

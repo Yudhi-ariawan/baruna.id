@@ -82,6 +82,9 @@ export async function readConsoleAccess(context: Ctx): Promise<ConsoleAccess> {
         read: canDecideReview || roles.some((r) => COMPLETION_READER_ROLES.includes(r)),
         decide: canDecideReview,
       },
+      // Same rule as public._can_view_master_data (migration 20261116010000): Operators
+      // read and propose; Approver/Admin decide.
+      masterData: { read: canDecideReview || roles.includes("operator"), decide: canDecideReview },
     },
   };
 }

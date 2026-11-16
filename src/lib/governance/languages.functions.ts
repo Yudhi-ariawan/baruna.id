@@ -7,6 +7,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { MASTER_FORBIDDEN, masterRowName, submitMasterChange } from "@/lib/governance/master-change.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
@@ -24,7 +25,8 @@ export type MasterLanguage = {
 };
 
 const ERRORS: Array<[RegExp, string]> = [
-  [/forbidden/, "Hanya Approver, Admin, atau Super Admin yang dapat mengelola Data Master."],
+  // Exactly "forbidden" (not *_rename_forbidden, which has its own message below).
+  [/(^|[^_a-z])forbidden([^_a-z]|$)/, MASTER_FORBIDDEN],
   [/authentication_required/, "Sesi login berakhir. Silakan masuk kembali."],
   [/language_code_invalid/, "Kode bahasa harus kode ISO 639: 2–3 huruf kecil, boleh dengan varian (mis. sw, fil, pt-br)."],
   [/language_code_exists/, "Kode bahasa itu sudah dipakai bahasa lain."],
@@ -40,11 +42,13 @@ const ERRORS: Array<[RegExp, string]> = [
 
 async function rpc<T>(context: { supabase: unknown }, fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await (context.supabase as Db).rpc(fn, args ?? {});
-  if (error) {
-    const hit = ERRORS.find(([pattern]) => pattern.test(error.message));
-    throw new Error(hit ? hit[1] : error.message);
-  }
+  if (error) throw new Error(friendly(error.message));
   return data as T;
+}
+
+function friendly(message: string): string {
+  const hit = ERRORS.find(([pattern]) => pattern.test(message));
+  return hit ? hit[1] : message;
 }
 
 export const getMasterLanguages = createServerFn({ method: "GET" })
@@ -65,18 +69,22 @@ export const saveMasterLanguage = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) =>
-    rpc<{ id: string; code: string }>(context, "master_language_save", {
-      _id: data.id,
-      _code: data.code,
-      _name: data.name,
-      _native_name: data.nativeName,
-      _display_order: data.displayOrder,
-    }),
+    submitMasterChange<{ id: string; code: string }>(
+      context,
+      { kind: "language_save", payload: data, summary: `${data.id ? "Ubah" : "Tambah"} bahasa: ${data.name} (${data.code})` },
+      { fn: "master_language_save", args: { _id: data.id, _code: data.code, _name: data.name, _native_name: data.nativeName, _display_order: data.displayOrder } },
+      friendly,
+    ),
   );
 
 export const setMasterLanguageActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => z.object({ id: z.string().uuid(), active: z.boolean() }).parse(d))
   .handler(async ({ data, context }) =>
-    rpc<{ id: string; active: boolean }>(context, "master_language_set_active", { _id: data.id, _active: data.active }),
+    submitMasterChange<{ id: string; active: boolean }>(
+      context,
+      { kind: "language_set_active", payload: data, summary: `${data.active ? "Aktifkan" : "Nonaktifkan"} bahasa: ${await masterRowName("languages_taxonomy", data.id)}` },
+      { fn: "master_language_set_active", args: { _id: data.id, _active: data.active } },
+      friendly,
+    ),
   );
