@@ -47,6 +47,7 @@ import { Route as AcademyWebinarRouteImport } from './routes/academy.webinar'
 import { Route as AcademyWorkshopRouteImport } from './routes/academy.workshop'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminEnrollmentsRouteImport } from './routes/admin.enrollments'
 import { Route as AdminExpertsRouteImport } from './routes/admin.experts'
@@ -332,6 +333,11 @@ const AccountProfileRoute = AccountProfileRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -874,6 +880,7 @@ export interface FileRoutesByFullPath {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
@@ -1002,6 +1009,7 @@ export interface FileRoutesByTo {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
@@ -1138,6 +1146,7 @@ export interface FileRoutesById {
   '/academy/webinar': typeof AcademyWebinarRoute
   '/academy/workshop': typeof AcademyWorkshopRoute
   '/account/profile': typeof AccountProfileRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/experts': typeof AdminExpertsRoute
@@ -1276,6 +1285,7 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/audit'
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/experts'
@@ -1404,6 +1414,7 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/audit'
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/experts'
@@ -1539,6 +1550,7 @@ export interface FileRouteTypes {
     | '/academy/webinar'
     | '/academy/workshop'
     | '/account/profile'
+    | '/admin/audit'
     | '/admin/dashboard'
     | '/admin/enrollments'
     | '/admin/experts'
@@ -1938,6 +1950,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/dashboard': {
@@ -2726,6 +2745,7 @@ const AccountRouteWithChildren =
   AccountRoute._addFileChildren(AccountRouteChildren)
 
 interface AdminRouteChildren {
+  AdminAuditRoute: typeof AdminAuditRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminEnrollmentsRoute: typeof AdminEnrollmentsRoute
   AdminExpertsRoute: typeof AdminExpertsRoute
@@ -2739,6 +2759,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuditRoute: AdminAuditRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminEnrollmentsRoute: AdminEnrollmentsRoute,
   AdminExpertsRoute: AdminExpertsRoute,

@@ -59,33 +59,49 @@ export const Route = createFileRoute("/governance")({
 /** Sidebar of the curation console: only the menus this account may open. */
 function consoleNav(access: ConsoleAccess): ConsoleNavGroup[] {
   const { menus } = access;
-  const curation = [
+  const items = (list: Array<ConsoleNavGroup["items"][number] | false>) =>
+    list.filter(Boolean) as ConsoleNavGroup["items"];
+
+  // Grouped by business domain (Slide 35-41 Experts, 11-25 Academy, 26-34 Knowledge Hub).
+  const experts = items([
     menus.experts.read && { label: "Verifikasi Expert", to: "/governance/experts", icon: UserCheck },
     menus.modules.read && { label: "Verifikasi Modul", to: "/governance/modules", icon: BookOpen },
-    menus.publications.read && { label: "Verifikasi Publikasi", to: "/governance/publications", icon: FileText },
+  ]);
+  const academy = items([
+    // Slide 20-21: Master Course and Course Offering are prepared and approved here.
+    menus.programs.read && { label: "Program Academy", to: "/governance/programs", icon: Library },
+    menus.trainingNeeds.read && { label: "Permintaan Pelatihan", to: "/governance/training-needs", icon: ClipboardList },
+  ]);
+  const participants = items([
     menus.enrollments.read && { label: "Persetujuan Peserta", to: "/governance/enrollments", icon: GraduationCap },
+    // Slide 23: Operator records attendance of cohort offerings (2bb).
+    menus.programs.read && { label: "Kehadiran", to: "/governance/attendance", icon: CalendarCheck },
     menus.enrollments.read && { label: "Pemantauan Progres", to: "/governance/learning-progress", icon: LineChart },
     // Slide 24 (PB-ACA-05): Review and Approval Completion before the certificate.
     menus.completions.read && { label: "Persetujuan Kelulusan", to: "/governance/completions", icon: Award },
-    menus.trainingNeeds.read && { label: "Permintaan Pelatihan", to: "/governance/training-needs", icon: ClipboardList },
-    // Slide 20-21: Master Course and Course Offering are prepared and approved here.
-    menus.programs.read && { label: "Program Academy", to: "/governance/programs", icon: Library },
-    // Slide 23: Operator records attendance of cohort offerings (2bb).
-    menus.programs.read && { label: "Kehadiran", to: "/governance/attendance", icon: CalendarCheck },
+  ]);
+  const knowledgeHub = items([
+    menus.publications.read && { label: "Verifikasi Publikasi", to: "/governance/publications", icon: FileText },
+  ]);
+  const live = items([
     // Slide 16: Publisher takes live content down temporarily and puts it back (2ba).
     menus.publishing.read && { label: "Penayangan", to: "/governance/publishing", icon: Megaphone },
-  ].filter(Boolean) as ConsoleNavGroup["items"];
+  ]);
 
   const groups: ConsoleNavGroup[] = [
     { group: "Ringkasan", items: [{ label: "Beranda Konsol", to: "/governance", icon: LayoutDashboard, exact: true }] },
-    { group: "Verifikasi & Kurasi", items: curation },
-  ];
-  const settings = [
+    { group: "Expert", items: experts },
+    { group: "Academy", items: academy },
+    { group: "Peserta", items: participants },
+    { group: "Knowledge Hub", items: knowledgeHub },
+    { group: "Konten Tayang", items: live },
+  ].filter((g) => g.items.length > 0);
+  const settings = items([
     menus.trainingNeeds.read && { label: "SLA Alur Kerja", to: "/governance/sla", icon: Timer },
     // Slide 16: Approver/Admin manage the Experts and Academy reference data; Operators propose (2az).
     menus.masterData.read && { label: "Data Master", to: "/governance/master-data", icon: Database },
     access.isAdmin && { label: "Portal Admin", to: "/admin", icon: Settings },
-  ].filter(Boolean) as ConsoleNavGroup["items"];
+  ]);
   if (settings.length) groups.push({ group: "Pengaturan", items: settings });
   return groups;
 }

@@ -8,7 +8,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Json } from "@/integrations/supabase/types";
 import { getGovernanceRoles } from "./governance-roles";
 
 
@@ -35,85 +34,6 @@ export const getMyRoles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<string[]> => getGovernanceRoles(context));
 
-export const getModuleReviewPacket = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ subjectId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    const { data: allowed, error: roleError } = await context.supabase.rpc("has_any_governance_role", { _user_id: context.userId });
-    if (roleError || !allowed) throw new Error("forbidden");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: revision, error } = await supabaseAdmin.from("review_subject_revisions")
-      .select("revision, snapshot, submitted_at").eq("subject_id", data.subjectId)
-      .order("revision", { ascending: false }).limit(1).maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!revision) return null;
-    const snapshot = revision.snapshot as { payload?: Record<string, Json> };
-    const payload = snapshot.payload ?? {};
-    const meta = (payload.metadata as Record<string, unknown>) ?? {};
-    const raw = Array.isArray(payload.attachments)
-      ? payload.attachments
-      : Array.isArray(meta.attached_resources)
-        ? (meta.attached_resources as unknown[])
-        : Array.isArray(payload.documents)
-          ? payload.documents
-          : [];
-
-    const attachments = await Promise.all(
-      raw.map(async (item) => {
-        const file = item as {
-          category?: string;
-          name?: string;
-          fileName?: string;
-          size?: number;
-          fileSize?: number;
-          type?: string;
-          fileType?: string;
-          path?: string;
-          bucket?: string;
-        };
-        if (!file.path) return null;
-
-        const targetBucket =
-          file.bucket ||
-          (file.path.includes("/modules/") ? "module-attachments" : "expert-applications");
-        const fileName = file.fileName || file.name || "Attachment";
-
-        let [preview, download] = await Promise.all([
-          supabaseAdmin.storage.from(targetBucket).createSignedUrl(file.path, 900),
-          supabaseAdmin.storage
-            .from(targetBucket)
-            .createSignedUrl(file.path, 900, { download: fileName }),
-        ]);
-
-        if ((preview.error || download.error) && targetBucket === "module-attachments") {
-          const [fbPreview, fbDownload] = await Promise.all([
-            supabaseAdmin.storage.from("expert-applications").createSignedUrl(file.path, 900),
-            supabaseAdmin.storage
-              .from("expert-applications")
-              .createSignedUrl(file.path, 900, { download: fileName }),
-          ]);
-          if (!fbPreview.error) {
-            preview = fbPreview;
-            download = fbDownload;
-          }
-        }
-
-        if (preview.error || !preview.data?.signedUrl) return null;
-
-        return {
-          category: file.category ?? "attachment",
-          name: fileName,
-          size: file.size || file.fileSize || 0,
-          type: file.type || file.fileType || "application/octet-stream",
-          path: file.path,
-          signedUrl: preview.data.signedUrl,
-          downloadUrl: download.data?.signedUrl ?? preview.data.signedUrl,
-        };
-      }),
-    );
-    return { revision: revision.revision, submittedAt: revision.submitted_at, payload, attachments: attachments.filter((file): file is NonNullable<typeof file> => Boolean(file)) };
-  });
-
 // ─── Reviewer queue ────────────────────────────────────────────────────────
 export const listMyReviewQueue = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -128,20 +48,6 @@ export const listMyReviewQueue = createServerFn({ method: "GET" })
       .order("assigned_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
-  });
-
-export const listManualModuleReviewQueue = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data: allowed, error: roleError } = await context.supabase.rpc("has_any_governance_role", { _user_id: context.userId });
-    if (roleError || !allowed) throw new Error("forbidden");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.from("review_subjects")
-      .select("id,title,current_status,required_recommendations,updated_at,review_records(id,status)")
-      .eq("kind", "module").in("current_status", ["pending", "under_review", "decision_pending"])
-      .order("updated_at", { ascending: true });
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => ({ id: row.id, title: row.title, current_status: row.current_status, required_recommendations: row.required_recommendations, updated_at: row.updated_at, submitted_recommendations: row.review_records.filter((record) => record.status === "submitted").length }));
   });
 
 export const getReviewSubject = createServerFn({ method: "GET" })

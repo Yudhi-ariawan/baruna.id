@@ -1,7 +1,7 @@
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ClipboardCheck, GraduationCap, LayoutDashboard, ShieldAlert, Users } from "lucide-react";
+import { ClipboardCheck, GraduationCap, History, LayoutDashboard, ShieldAlert, Users } from "lucide-react";
 import { getAdminAccess } from "@/lib/admin/users.functions";
 import { getGovernanceConsoleAccess, hasConsoleAccess } from "@/lib/governance/console-access.functions";
 import {
@@ -51,23 +51,29 @@ export const Route = createFileRoute("/admin")({
 
 // System administration only. Review, verification, approval and enrollment
 // queues live in the curation console (/governance), opened per role.
-const ADMIN_NAV: ConsoleNavGroup[] = [
-  {
-    group: "Overview",
-    items: [{ label: "Dashboard Overview", to: "/admin", icon: LayoutDashboard, exact: true }],
-  },
-  {
-    group: "Manajemen & Pengguna",
-    items: [{ label: "Users & Access", to: "/admin/users", icon: Users }],
-  },
-  {
-    group: "Verifikasi & Kurasi",
-    items: [
-      { label: "Konsol Kurasi", to: "/governance", icon: ClipboardCheck },
-      { label: "Kualifikasi Trainer", to: "/admin/trainer-applications", icon: GraduationCap },
-    ],
-  },
-];
+function adminNav(canReadAudit: boolean): ConsoleNavGroup[] {
+  return [
+    {
+      group: "Overview",
+      items: [{ label: "Dashboard Overview", to: "/admin", icon: LayoutDashboard, exact: true }],
+    },
+    {
+      group: "Manajemen & Pengguna",
+      items: [
+        { label: "Users & Access", to: "/admin/users", icon: Users },
+        // Slide 42-45, 49 (RACI baris 8): audit trail run from the Admin Console.
+        ...(canReadAudit ? [{ label: "Jejak Audit", to: "/admin/audit", icon: History }] : []),
+      ],
+    },
+    {
+      group: "Verifikasi & Kurasi",
+      items: [
+        { label: "Konsol Kurasi", to: "/governance", icon: ClipboardCheck },
+        { label: "Kualifikasi Trainer", to: "/admin/trainer-applications", icon: GraduationCap },
+      ],
+    },
+  ];
+}
 
 function AdminLayout() {
   const { authReady, signedIn, currentUser, signOut } = useConsoleSession("/admin/users");
@@ -120,7 +126,7 @@ function AdminLayout() {
       brandTitle="BARUNA Admin"
       brandSubtitle="Portal Tata Kelola"
       sectionLabel="Portal Tata Kelola"
-      navGroups={ADMIN_NAV}
+      navGroups={adminNav(Boolean(accessQuery.data?.canReadAudit))}
       user={currentUser}
       onSignOut={signOut}
     >
