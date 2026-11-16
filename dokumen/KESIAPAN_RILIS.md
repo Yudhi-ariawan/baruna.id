@@ -73,7 +73,7 @@ Status pemeriksaan terakhir (16 Nov, laptop): semua migrasi sampai `202611160400
 - **Operasional:** database `main` belum diperiksa dan belum menerima migrasi (ranah mentor).
 
 - **Uji di HP / dua perangkat untuk pekerjaan 16 Nov (16 Nov):** pemilik proyek akan menguji di HP: Kehadiran (admin mengubah status di laptop, peserta melihat di HP), unggah dokumen di HP lalu kirim dari laptop, serta Data Master dan Penayangan. Bisa lewat situs Lovable `intern-update` (sudah di-push) atau `npm run dev -- --host` di Wi-Fi yang sama.
-- **Uji manual A (Data Master lewat usulan) dan B (Penayangan) (16 Nov):** langkahnya ada di bagian F; belum dilaporkan selesai. Sejauh ini Data Master baru dicoba dengan akun Super Admin, yang memang langsung menyimpan tanpa usulan.
+- **Uji manual A Data Master dan B Penayangan (16 Nov):** langkahnya ada di bagian F; belum dilaporkan selesai. Sejauh ini Data Master baru dicoba dengan akun Super Admin, yang memang langsung menyimpan tanpa usulan.
 
 ## C. Kenapa belum siap dirilis luas
 

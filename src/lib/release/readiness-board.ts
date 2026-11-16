@@ -9,7 +9,45 @@
 // An item is a top-level "- " line plus its indented lines; "**Title (meta):**" at the
 // start becomes the card title and its tag.
 
-export type BoardCard = { id: string; title: string; meta: string | null; body: string };
+export type BoardCard = {
+  id: string;
+  title: string;
+  meta: string | null;
+  body: string;
+  /** Date read from the tag ("16 Nov", "21–22 Okt" -> the 22nd, "SELESAI 21 Okt"), YYYY-MM-DD; null without a date. */
+  date: string | null;
+};
+
+const MONTHS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, mei: 5, may: 5, jun: 6, jul: 7, agu: 8, agt: 8, aug: 8,
+  sep: 9, okt: 10, oct: 10, nov: 11, des: 12, dec: 12,
+};
+const DATE_IN_TAG = /(\d{1,2})(?:\s*[–-]\s*(\d{1,2}))?\s+(jan|feb|mar|apr|mei|may|jun|jul|agu|agt|aug|sep|okt|oct|nov|des|dec)[a-z]*\.?(?:\s+(\d{4}))?/i;
+/** Year used when a tag gives none (the document covers one project year). */
+const DEFAULT_YEAR = 2026;
+
+export function dateOfTag(tag: string | null): string | null {
+  const m = tag ? DATE_IN_TAG.exec(tag) : null;
+  if (!m) return null;
+  const day = Number(m[2] ?? m[1]);
+  const month = MONTHS[m[3].toLowerCase()];
+  const year = m[4] ? Number(m[4]) : DEFAULT_YEAR;
+  if (!month || day < 1 || day > 31) return null;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** Newest first; same date: later in the document first; undated last, in document order. */
+function newestFirst(cards: BoardCard[]): BoardCard[] {
+  return cards
+    .map((card, index) => ({ card, index }))
+    .sort((a, b) => {
+      if (a.card.date && b.card.date) return b.card.date.localeCompare(a.card.date) || b.index - a.index;
+      if (a.card.date) return -1;
+      if (b.card.date) return 1;
+      return a.index - b.index;
+    })
+    .map((x) => x.card);
+}
 export type BoardColumnKey = "todo" | "done" | "manual" | "bug";
 export type BoardColumn = { key: BoardColumnKey; label: string; hint: string; cards: BoardCard[] };
 export type ReadinessBoard = {
@@ -70,15 +108,15 @@ function toCard(text: string, id: string): { card: BoardCard; struckDone: boolea
   let meta: string | null = null;
   const m = /^(.*?)\s*\((.+)\)$/.exec(title);
   if (m && m[1]) { title = m[1].trim(); meta = m[2].trim(); }
-  return { card: { id, title, meta, body: rest }, struckDone };
+  return { card: { id, title, meta, body: rest, date: dateOfTag(meta) }, struckDone };
 }
 
 export function parseReadiness(md: string): ReadinessBoard {
   const { title, preamble, sections } = splitSections(md);
   const columns: Record<BoardColumnKey, BoardColumn> = {
-    todo: { key: "todo", label: "Yang belum dikerjakan", hint: "Bagian B: belum diperbaiki atau menunggu keputusan", cards: [] },
-    done: { key: "done", label: "Yang sudah dikerjakan", hint: "Bagian A: sudah diperbaiki dan diuji otomatis", cards: [] },
-    manual: { key: "manual", label: "Test manual sudah bisa", hint: "Bagian A yang sudah diuji manual di browser", cards: [] },
+    todo: { key: "todo", label: "Yang belum dikerjakan", hint: "Bagian B: belum diperbaiki atau menunggu keputusan · terbaru di atas", cards: [] },
+    done: { key: "done", label: "Yang sudah dikerjakan", hint: "Bagian A: sudah diperbaiki dan diuji otomatis · terbaru di atas", cards: [] },
+    manual: { key: "manual", label: "Test manual sudah bisa", hint: "Bagian A yang sudah diuji manual di browser · terbaru di atas", cards: [] },
     bug: { key: "bug", label: "Bug", hint: "Bagian E: bug dan celah yang diketahui", cards: [] },
   };
   const summary: string[] = [preamble.join("\n").trim()];
@@ -106,7 +144,7 @@ export function parseReadiness(md: string): ReadinessBoard {
   return {
     title,
     summary: summary.filter(Boolean).join("\n\n"),
-    columns: [columns.todo, columns.done, columns.manual, columns.bug],
+    columns: [columns.todo, columns.done, columns.manual, columns.bug].map((c) => ({ ...c, cards: newestFirst(c.cards) })),
     details,
   };
 }
