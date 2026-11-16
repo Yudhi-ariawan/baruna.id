@@ -17,6 +17,10 @@ Acuan: `dokumen/CATATAN_PERBAIKAN.md` (bagian 5) dan 51 slide proses bisnis di `
 10. **DIPUTUSKAN pemilik proyek (16 Nov), opsi C:** Operator membaca dan mengusulkan, Approver/Admin lain menyetujui (CATATAN_PERBAIKAN 2az). Pertanyaan asli: **Operator dan Data Master.** Data Master (bidang keahlian, aturan level trainer, kuota modul per level; CATATAN_PERBAIKAN 2aa, 2ab) sekarang hanya untuk Approver, Admin, dan Super Admin. Slide 16 juga memberi Operator akses penuh pada Experts dan Academy. Apakah Operator boleh mengelola Data Master?
 11. **Email kontak expert di direktori.** Migrasi PC `20261008030000` dan `20261008040000` (menampilkan email kontak resmi expert) belum berlaku di intern-update dan mengisi email akun KKP tertentu (CATATAN_PERBAIKAN 2ac). Apakah dijalankan di intern-update, atau hanya di main?
 12. **Sertifikat dan pendaftaran untuk offering dari layar Program Academy** (dicatat 4 Nov, CATATAN_PERBAIKAN 2al). (a) Syarat lulus resmi apa? Sekarang sertifikat butuh semua modul selesai plus satu catatan evaluasi lama yang tidak lagi diisi dari layar mana pun, jadi offering baru belum bisa menghasilkan sertifikat. Apakah evaluasi akhir (template evaluasi) menggantikannya? (b) Offering dengan "Wajib disetujui admin" atau "hak akses khusus" butuh formulir pengajuan peserta dan antrean persetujuan untuk offering baru; layar admin sementara hanya menerima "Terbuka" dan "Wajib akun terdaftar". Siapa yang menyetujui pendaftaran dan apa batas waktunya? (c) Pembayaran: sistem hanya mencatat penanggung biaya (peserta, instansi, sponsor, dst.), tanpa tarif, tagihan, atau status bayar. Apakah itu cukup, atau perlu mekanisme pembayaran?
+13. **Tata Kelola Lintas Sistem (Slide 44, 46, 47, 48)** (dicatat 16 Nov): tarif/PNBP/SIMPONI, impor data historis (termasuk 20 alumni 2024 yang masih tertulis di kode), integrasi sistem, dan UAT. Rincian dan pertanyaannya di bagian "Portal Admin sesuai Slide 42-48" di bawah.
+14. **Siapa yang boleh melihat formulir Permintaan Peran** (dicatat 16 Nov, CATATAN_PERBAIKAN 2be). Sekarang kartu "Permintaan Peran" di Profil Saya tampil untuk **semua** akun yang login, termasuk peserta dan masyarakat umum, dan bisa dipakai mengajukan Operator, Reviewer, Verifier, Approver, atau Publisher (keputusan tetap di super admin). Pemilik proyek menilai ini kurang pas setelah publik: peran kurasi adalah peran internal pengelola (Slide 16); peserta bisa bingung dan mengira itu langkah wajib atau jalur menjadi trainer (jalur trainer adalah Join as Expert); antrean super admin bisa penuh permintaan iseng; dan daftar peran beserta tugasnya terbuka untuk orang luar.
+    **Usulan:** formulir hanya tampil (dan server hanya menerima) untuk akun dengan **email domain resmi** (mis. `@kkp.go.id`) **atau** akun yang **sudah memegang peran kurasi** (untuk meminta peran tambahan). Akun lain tidak melihat kartunya. Pengelola dari luar KKP tetap bisa diberi peran langsung oleh super admin di Users & Access. Ukuran kecil; tanpa migrasi bila domain ditulis di kode, satu migrasi kecil bila daftar domain diatur lewat Data Master.
+    **Pertanyaan:** (a) Domain apa saja yang dianggap internal: cukup `@kkp.go.id`, atau juga UPT, BRSDM, instansi mitra? (b) Daftar domain cukup ditetapkan di kode, atau harus bisa diatur admin? (c) Atau formulir sebaiknya tetap untuk semua akun sesuai bunyi Slide 42 ("Pengguna mengirim permintaan akses/role")?
 
 ## Daftar kerja berikutnya (dicatat 9 Nov, dikerjakan satu per satu)
 
@@ -34,16 +38,85 @@ Sudah selesai 16 Nov: Jejak Audit `/admin/audit` dan pengalihan `/admin/reviews`
 
 **Bisa dikerjakan (perlu migrasi, ukuran sedang):**
 
-1. **Permintaan Akses / Peran (LS-01, Slide 42).** Alur di slide: pengguna mengajukan permintaan peran → Admin Console/Operator cek kelengkapan (minta perbaikan bila kurang) → review permintaan, verifikasi role & kewenangan → disetujui atau ditolak dengan alasan → notifikasi ke pengguna. Output: *Access Request Record*, role mapping, audit trail. Sekarang admin langsung memberi peran di Users & Access; belum ada tabel permintaan akses di migrasi. Yang perlu dibuat: tabel + RLS + RPC ajukan/putuskan (pengaju tidak boleh memutuskan miliknya sendiri), formulir di halaman akun, antrean di Portal Admin, notifikasi, baris di Jejak Audit. Peran `expert` tetap lewat alur pendaftaran expert (bukan lewat permintaan ini). Ingat: migrasi baru wajib masuk `supabase/check_migrations.sql` dan daftar migrasi CATATAN_PERBAIKAN bagian 3.
+1. ~~**Permintaan Akses / Peran (LS-01, Slide 42).**~~ **SELESAI 16 Nov tanpa migrasi** (CATATAN_PERBAIKAN 2be; keputusan pemilik proyek: peran kurasi saja, diputuskan super admin, tanpa tahap minta perbaikan). Untuk mentor: perlukah tahap "minta perbaikan" dan pembatalan oleh pengguna? Catatan asli: Alur di slide: pengguna mengajukan permintaan peran → Admin Console/Operator cek kelengkapan (minta perbaikan bila kurang) → review permintaan, verifikasi role & kewenangan → disetujui atau ditolak dengan alasan → notifikasi ke pengguna. Output: *Access Request Record*, role mapping, audit trail. Sekarang admin langsung memberi peran di Users & Access. **Koreksi 16 Nov:** sisi database sudah ada sejak migrasi `20260911073000`/`20260911080000`/`20261021080000`: tabel `rbac_role_change_requests` (RLS aktif, tulis hanya lewat RPC), `request_rbac_role_change` (pengguna mengajukan untuk dirinya sendiri; pemegang `users.assign_role` untuk orang lain), `decide_rbac_role_change` (hanya `roles.manage` = super_admin; pengaju/penerima tidak boleh menyetujui; peran langsung diterapkan; tercatat di `admin_audit_log`). Pembungkus `src/lib/auth/role-governance.server.ts` juga ada. Yang belum: server function, formulir pengajuan di halaman akun, antrean keputusan di Portal Admin, notifikasi ke pengguna, label di Jejak Audit. Tabel di intern-update masih kosong. Keputusan yang perlu diambil sebelum dikerjakan: peran apa yang boleh diajukan sendiri, siapa yang memutuskan (sekarang hanya super_admin, admin tidak bisa), dan apakah perlu tahap "cek kelengkapan / minta perbaikan" (status itu belum ada di tabel, jadi butuh migrasi). Peran `expert` tetap lewat alur pendaftaran expert. Migrasi baru wajib masuk `supabase/check_migrations.sql` dan daftar migrasi CATATAN_PERBAIKAN bagian 3.
 
 **Besar, tanya mentor dulu sebelum dikerjakan:**
 
-| Slide | Fitur | Catatan / pertanyaan |
-|---|---|---|
-| LS-05 (46) | Master Tarif, Billing PNBP, verifikasi pembayaran, kesiapan SIMPONI | Offering sudah punya kolom biaya, tapi belum ada tabel tarif, tagihan, atau pembayaran. Menyangkut aturan PNBP dan integrasi SIMPONI. Terkait butir 12(c) dan Daftar kerja no. 2 (Pembayaran). |
-| LS-03 (44) | Impor & Migrasi Data Historis | Unggah file, staging, mapping, validasi, review, lalu aktivasi. Pekerjaan besar dan bergantung pada data lama apa yang ada. Pertanyaan: data lama apa (alumni, sertifikat lama, expert lama) dan dari format apa? |
-| LS-06 (47) | Monitoring Integrasi | Baru relevan kalau sudah ada sistem luar yang terhubung. Saat ini belum ada. |
-| LS-07 (48) | UAT, Test Case, Catatan Temuan | Bisa saja tetap dikelola di dokumen, tidak harus jadi fitur aplikasi. Pertanyaan: perlu jadi fitur atau cukup dokumen? |
+Kondisi di bawah diperiksa langsung ke kode dan database intern-update (16 Nov).
+
+| Slide | Fitur | Perlu tanya mentor? | Ukuran bila dikerjakan | Bisa dikerjakan sekarang |
+|---|---|---|---|---|
+| LS-05 (46) | Tarif, Billing PNBP, pembayaran, SIMPONI | **Ya, paling penting** (menahan sertifikat berbayar) | Besar | Tidak |
+| LS-03 (44) | Impor & migrasi data historis | **Ya** | Kecil (sekali jalan) sampai besar (menu impor) | Tidak |
+| LS-06 (47) | Integrasi sistem & monitoring | Ya, tidak mendesak | Ikut integrasi pertama | Tidak |
+| LS-07 (48) | Pengujian, UAT, kriteria penerimaan | Ya, ringan | Kecil bila cukup dokumen | Ya: template UAT dan Berita Acara |
+
+#### LS-05 (Slide 46): Tarif, Billing PNBP, Pembayaran, SIMPONI Readiness
+
+**Isi slide:** admin mengelola Master Tarif dan menetapkan pembayar/skema → menerbitkan tagihan (kode billing) → data disiapkan untuk SIMPONI (sistem PNBP Kemenkeu) → bukti bayar diverifikasi, status lunas dicatat dan direkonsiliasi → layanan/sertifikat diaktifkan. Output: Tariff Record, Billing Record, Payment Status, Payer Record, SIMPONI Readiness, Audit Trail.
+
+**Kondisi aplikasi:**
+- Course Offering angkatan selalu `fee_based`; yang dicatat hanya **penanggung biaya** (peserta, instansi, sponsor, dana pemerintah, berbagi biaya), tanpa nominal.
+- Tidak ada tabel tarif, tagihan, pembayaran, maupun status bayar per peserta.
+- Course mandiri "paid" dan "free_to_learn" (sertifikat berbayar) **ditolak** formulir admin (`program_access_model_unsupported`), dan peserta model itu tidak bisa mendapat sertifikat (`certificate_payment_required`, migrasi `20261105030000`).
+- Kosakata `billing_requested`, `billing_issued`, `payment_confirmed`, `zero_tariff_approved` sudah ada di database sejak Juli tetapi dilarang dipakai.
+
+**Kenapa tanya mentor:** tarif PNBP ditetapkan lewat Peraturan Pemerintah tentang jenis dan tarif PNBP KKP (aplikasi tidak boleh mengarang tarif); SIMPONI butuh akses resmi Kemenkeu (kode satker, akun billing) yang tidak bisa disiapkan tim pengembang.
+
+**Pertanyaan:**
+1. Apakah ada layanan BARUNA yang memang **berbayar**, atau semua dibiayai pemerintah/sponsor sehingga cukup mencatat penanggung biaya seperti sekarang?
+2. Bila berbayar: tarif mengacu PP PNBP yang mana, dan siapa yang menetapkan nominal per program?
+3. Pembayaran lewat **SIMPONI** langsung, atau bukti bayar diunggah lalu diverifikasi manual oleh operator?
+4. Bolehkah sertifikat terbit sebelum lunas? Slide 22 dan 24 menyebut pembayaran "tidak menentukan kelulusan", sedangkan aturan database sekarang menahan sertifikat.
+
+**Ukuran:** versi tanpa SIMPONI (tarif, tagihan, unggah bukti, verifikasi operator) kira-kira 3–4 migrasi dan 4–5 halaman; integrasi SIMPONI terpisah dan butuh kredensial Kemenkeu. Terkait butir 12(c) dan Daftar kerja no. 2 (Pembayaran).
+
+#### LS-03 (Slide 44): Impor, Migrasi, dan Data Historis
+
+**Isi slide:** operator memilih domain/dataset dan mengunggah file sumber/template → sistem menyimpan batch impor, memvalidasi format, memetakan kolom (mapping) → data masuk **staging** → hasil migrasi direview dan disetujui → diaktifkan sebagai record historis. Aturan: data historis wajib punya sumber/bukti dan timestamp, wajib duplicate check, tercatat di audit trail.
+
+**Kondisi aplikasi:**
+- Tidak ada fitur unggah/impor CSV atau Excel.
+- **Data alumni Training 2024** (20 alumni dari 10 negara Afrika, 13 modul, 7–15 Sep 2024) **tertulis langsung di kode** (`src/data/edition2024.ts`), dipakai `/academy/alumni` dan `/academy/edition-2024`. Tidak ada di database: tidak bisa dicari, tidak punya sertifikat di sistem, dan hanya bisa diubah programmer.
+- 11 expert KKP sudah ada di database, dimasukkan manual lewat skrip (bukan alur impor).
+
+**Kenapa tanya mentor:** template, mapping, dan aturan validasi bergantung pada data lama apa yang ada dan formatnya. Bila datanya sedikit, menu impor lengkap berlebihan; cukup dimasukkan sekali lewat migrasi.
+
+**Pertanyaan:**
+1. Data lama apa yang harus masuk BARUNA (alumni sebelum 2024, sertifikat lama, expert dari sistem lain, publikasi lama)?
+2. Formatnya apa (Excel, sistem lama, database lain) dan kira-kira berapa banyak?
+3. **Sekali jalan** (dibantu tim pengembang) atau **berulang** (perlu menu impor untuk operator)?
+4. Apakah 20 alumni 2024 perlu dipindah ke database (akun, klaim sertifikat, jaringan alumni)?
+
+**Ukuran:** kecil bila sekali jalan (satu migrasi data + skrip cek); besar bila menu impor lengkap (staging, mapping, review, aktivasi, audit; kira-kira 2–3 migrasi dan 3–4 halaman).
+
+#### LS-06 (Slide 47): Integrasi Sistem
+
+**Isi slide:** pertukaran data dengan sistem internal/eksternal lewat **API Gateway** (OAuth2/API Key); validasi, mapping, penanganan error dan retry, log integrasi; **dasbor monitoring** dan alert ke admin; enkripsi, rate limiting, SLA per integrasi.
+
+**Kondisi aplikasi:** BARUNA belum terhubung ke sistem luar mana pun (yang keluar hanya tautan video YouTube/Vimeo, bukan integrasi data). Belum ada API untuk sistem lain dan belum ada sistem yang mengirim data ke BARUNA.
+
+**Kenapa ditunda:** monitoring baru berguna bila integrasinya ada; dasbor sekarang akan kosong.
+
+**Pertanyaan:**
+1. Sistem mana yang direncanakan terhubung (SIMPONI dari LS-05, kepegawaian/SSO KKP, satu data KKP, sistem pelatihan lain)?
+2. Adakah sistem yang perlu **mengambil data dari BARUNA** (misalnya daftar expert atau alumni untuk portal lain)?
+
+**Ukuran:** per integrasi. Kerangka log dan monitoring dibuat bersama integrasi pertama (kemungkinan SIMPONI).
+
+#### LS-07 (Slide 48): Pengujian, UAT, dan Kriteria Penerimaan
+
+**Isi slide:** admin menyiapkan lingkungan uji, menyusun **test case**, menjadwalkan UAT → pengguna menjalankan skenario dan memberi masukan → temuan dicatat sebagai **defect record** dan diperbaiki → approval acceptance dan **Berita Acara UAT**. Slide 50 menjadwalkan UAT September–Oktober 2026 dengan output "Berita Acara UAT" dan "Daftar temuan & tindak lanjut".
+
+**Kondisi proyek:** 43 skrip uji otomatis `test:*` (menulis data uji ke database sungguhan lalu membersihkannya); langkah uji manual dan bug yang diketahui di `KESIAPAN_RILIS.md`; temuan dan perbaikan di `CATATAN_PERBAIKAN.md`. Di aplikasi belum ada menu test case, temuan, atau berita acara.
+
+**Kenapa tidak harus jadi fitur:** UAT adalah proses proyek, bukan layanan untuk pengguna BARUNA; biasanya cukup di dokumen/spreadsheet yang ditandatangani.
+
+**Pertanyaan:**
+1. Cukup didokumentasikan di dokumen/spreadsheet dengan Berita Acara ditandatangani di luar aplikasi, atau KKP mewajibkan pencatatan di dalam sistem?
+2. Siapa pengguna yang ikut UAT dan kapan jadwalnya (Sep–Okt di roadmap sudah lewat)?
+
+**Bisa disiapkan tanpa menunggu:** template UAT (skenario per peran, kolom hasil, tabel temuan, format Berita Acara) dari langkah uji manual yang sudah ada.
 
 ## Detail pertanyaan untuk mentor
 

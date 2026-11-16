@@ -1410,6 +1410,59 @@ Acuan: Slide 42 (LS-01), 43 (LS-02), 45 (LS-04), dan 49 (RACI baris 8: Admin Con
 
 **Uji:** `tsc`, lint, dan `build` lulus. Query keempat tabel dicoba langsung ke database intern-update (baca saja): semua kolom ada, filter kata kunci pada riwayat status jalan.
 
+
+## 2be. Permintaan Akses / Peran (Slide 42, LS-01) (16 Nov)
+
+**Temuan:** sisi database sudah ada sejak September (tabel `rbac_role_change_requests`, RPC `request_rbac_role_change` dan `decide_rbac_role_change`, migrasi `20260911073000`/`20260911080000`/`20261021080000`), tetapi tidak ada tampilan sama sekali; tabel di intern-update kosong. Peran hanya bisa diberikan langsung oleh admin.
+
+**Keputusan pemilik proyek (16 Nov):** yang boleh diajukan sendiri hanya peran kurasi (operator, reviewer, verifier, approver, publisher); yang memutuskan tetap super admin (`roles.manage`, aturan database yang sudah ada); tahap "minta perbaikan" belum dibuat (cukup setujui/tolak dengan alasan); hanya permintaan pemberian peran yang ditampilkan.
+
+**Dibuat (tanpa migrasi):**
+- **Profil Saya → Permintaan Peran** (`RoleRequestSection`): pilih peran (yang sudah dimiliki atau sedang menunggu tidak ditawarkan), alasan minimal 20 karakter, tanggal berakhir opsional, dan riwayat permintaan beserta catatan keputusan.
+- **Portal Admin → Permintaan Akses** (`/admin/access-requests`): tab Menunggu keputusan / Sudah diputuskan; nama, email, jabatan, instansi, dan peran aktif pengaju; Setujui (catatan opsional) atau Tolak (alasan wajib). Admin biasa hanya melihat; tombol untuk super admin saja; permintaan untuk akun sendiri tidak bisa diputuskan sendiri (dijaga RPC).
+- **Pemeriksaan ganda** di server: peran yang sudah dimiliki atau masih menunggu ditolak. Tidak atomik (dua kiriman di detik yang sama bisa lolos); akibatnya hanya persetujuan kedua mengaktifkan peran yang sama, tidak merusak data.
+- **Notifikasi** (`access-notifications.server.ts`): pengguna diberi tahu saat disetujui/ditolak (dengan alasan); super admin diberi tahu setiap permintaan baru.
+- **Jejak Audit:** label `role_change_requested` / `_applied` / `_rejected`.
+
+**Batas yang diketahui:** RPC database masih menerima permintaan peran `admin` bila dipanggil langsung (bukan lewat aplikasi); tetap aman karena keputusan hanya oleh super admin. Pengguna belum bisa membatalkan permintaannya sendiri (status `cancelled` ada di tabel, RPC-nya belum).
+
+**Uji:** `npm run test:role-requests` (baru) 24/24: validasi alasan/peran/tanggal, permintaan ganda, peran Expert, hak baca dan putuskan per peran, setujui → peran aktif, putusan ganda ditolak, tolak wajib alasan, tampilan pengguna, notifikasi kedua arah, pemisahan tugas, audit. `test:live-notifications` 14/14, `test:lifecycle` dan `test:kh-roles` lulus. `tsc`, lint, `build` lulus. Uji manual pemilik proyek (16 Nov) lulus.
+
+
+## 2bf. Angka antrean di sidebar Konsol Kurasi dan Portal Admin (16 Nov)
+
+**Permintaan pemilik proyek:** kurator tidak perlu membuka menu satu per satu untuk tahu ada pekerjaan baru.
+
+**Dibuat (tanpa migrasi):**
+- Badge merah berisi jumlah item yang menunggu di samping menu sidebar (di atas 99 tampil "99+"). Menu aktif memakai badge putih. Di HP, tombol menu diberi titik merah bila ada antrean.
+- Konsol Kurasi: Verifikasi Expert, Verifikasi Modul, Verifikasi Publikasi, Permintaan Pelatihan (`review_subjects` berstatus pending/under_review/decision_pending, sama dengan tab "Menunggu"), Persetujuan Peserta (pendaftaran pending), Persetujuan Kelulusan (pending_review), Program Academy (draf submitted), Data Master (usulan pending). Bagi admin, "Portal Admin" menampilkan jumlah antrean Portal Admin.
+- Portal Admin: Permintaan Akses (pending), Kualifikasi Trainer (submitted), dan "Konsol Kurasi" berisi total antrean kurasi.
+- Beranda Konsol: kartu menu menampilkan "N menunggu".
+- Hanya menu yang boleh dibuka akun itu yang dihitung (aturan `readConsoleAccess` yang sama dengan sidebar); angka Portal Admin hanya untuk `users.read`. Penghitungan memakai permintaan jumlah saja (`count`, tanpa mengambil isi).
+- Diperbarui setiap 30 detik, saat pindah halaman, dan saat tab browser dibuka lagi.
+
+**Catatan:** angka menghitung seluruh antrean, termasuk pengajuan milik akun itu sendiri (yang tetap tidak bisa ia putuskan). Kehadiran dan Penayangan tidak diberi angka karena bukan antrean persetujuan.
+
+**Uji:** `npm run test:console-badges` (baru) 7/7: kedelapan angka sama dengan hitungan langsung di database, reviewer hanya mendapat angka menu yang boleh dibukanya, pengguna tanpa peran kurasi tidak mendapat angka, reviewer ditolak membaca angka Portal Admin, permintaan baru menaikkan angka. `tsc`, lint, `build` lulus. Uji manual pemilik proyek (16 Nov) sesuai.
+
+
+## 2bg. Log Autentikasi (Slide 42, LS-01 output "Authentication Log") (16 Nov)
+
+**Temuan (pemilik proyek, 16 Nov):** seorang teman login sebagai admin di perangkatnya, tetapi tidak ada jejaknya di Manajemen Pengguna & Akses. Penyebab: aplikasi tidak mencatat login sama sekali. Jejak Audit hanya mencatat perubahan, dan kolom "Terakhir Masuk" (dari Supabase Auth) hanya berubah saat login dengan kata sandi, tidak saat sesi lama dipakai lagi. Slide 42 mewajibkan *Authentication Log*. Pemeriksaan database waktu itu: login terakhir ke semua akun pukul 21.48 (`admin@gmail.com`); kemungkinan teman itu memakai sesi tersimpan, hanya melihat-lihat, atau tersambung ke database lain (`main`).
+
+**Kenapa tabel sendiri:** `auth.audit_log_entries` milik Supabase hanya terisi bila setelan penyimpanan log di database aktif, dan skema `auth` tidak bisa dibaca lewat API.
+
+**Dibuat (migrasi `20261116050000`):**
+- Tabel `auth_event_log` (tanpa foreign key, agar riwayat tetap ada setelah akun dihapus; email disimpan saat kejadian). RLS aktif tanpa policy, tanpa hak untuk anon/authenticated; hanya dibaca server function setelah `audit.read`.
+- Trigger `auth.sessions`: sesi baru = **Masuk** (dengan IP dan user-agent), sesi dihapus = **Keluar / sesi berakhir** (tidak dicatat bila sesi hilang karena akunnya dihapus).
+- Trigger `auth.users`: **Akun dibuat**, **Email dikonfirmasi**, **Kata sandi diubah**, **Minta reset kata sandi**. Bila Supabase menolak trigger di `auth.sessions`, login dicatat dari `last_sign_in_at` (tanpa IP/peramban) dan migrasi tetap berhasil.
+- Semua trigger menelan kesalahannya sendiri: pencatatan yang gagal tidak pernah menghalangi login, pendaftaran, atau ganti kata sandi.
+- Halaman **Portal Admin → Log Autentikasi** (`/admin/auth-log`, izin `audit.read`): tabel waktu, kejadian, akun (nama, email, penanda Admin), peramban ("Chrome · Windows"), dan IP; filter jenis kejadian, email, rentang tanggal, "hanya akun admin", dan "sembunyikan akun uji @example.test" (bawaan aktif, karena skrip uji membuat dan menghapus banyak akun); 50 baris per muat.
+
+**Batas:** percobaan login yang **gagal** (kata sandi salah) tidak tercatat, karena Supabase tidak menulisnya ke tabel mana pun yang bisa dipicu. Memakai sesi lama (tanpa mengetik kata sandi) dan memperbarui token juga tidak dicatat sebagai "Masuk". Belum ada pembersihan otomatis untuk catatan lama.
+
+**Uji:** `npm run test:auth-log` (baru) 14/14 di intern-update setelah migrasi: akun dibuat, masuk tercatat sekali (jalur `auth.sessions`, IP dan peramban ikut), perbarui token tidak dihitung masuk, keluar, ganti kata sandi, halaman menampilkan nama dan urutan terbaru, filter kejadian/admin/akun uji, karakter khusus ditolak, pengguna biasa ditolak, tabel tidak terbaca dari browser. `tsc`, lint, `build` lulus.
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1533,6 +1586,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261116020000_publication_hold.sql` (Publisher menurunkan sementara dan menayangkan lagi Course Offering, publikasi, modul, dan profil expert). Lihat bagian 2ba. Sebelum migrasi, halaman Penayangan menampilkan pesan bahwa migrasi belum dijalankan; fitur lain tidak terpengaruh.
 - `20261116030000_offering_attendance.sql` (sesi dan kehadiran course angkatan). Lihat bagian 2bb.
 - `20261116040000_full_training_replacement.sql` (Full Training lama dialihkan ke Course Offering pengganti; menggantikan `course_enrollment_apply`, jalankan setelah `20261111020000`). Lihat bagian 2bb.
+- `20261116050000_auth_event_log.sql` (Log Autentikasi: tabel `auth_event_log` dan trigger di `auth.users` dan `auth.sessions`). Lihat bagian 2bg. **Sudah dijalankan di intern-update (16 Nov).**
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
