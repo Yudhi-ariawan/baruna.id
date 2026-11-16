@@ -1320,7 +1320,7 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
   - Approver tetap simpan langsung; usulan sendiri tidak bisa disetujui walau kemudian menjadi Approver; batal hanya oleh pengusul; RLS.
   - Uji ini menemukan bug sebelum dirilis: fungsi pemeriksa yang dipakai RLS belum bisa dipanggil oleh `authenticated`.
 - Uji langsung baru `npm run test:master-data-requests` (21 cek lewat fungsi server aplikasi, bahasa uji `zz-…`): Operator membaca; usulan bahasa baru; Approver melihat lalu menyetujui; disetujui dua kali ditolak; usulan nonaktifkan ditolak dengan alasan; pembatalan; Approver tetap langsung; tulis langsung, baca peserta, dan audit.
-  - **Sebelum migrasi (intern-update, 16 Nov): 5/21.**
+  - **Sebelum migrasi (intern-update, 16 Nov): 5/21. Sesudah migrasi (dijalankan pemilik proyek, 16 Nov): 21/21.** Semua 42 uji `test:*` lulus sesudah migrasi.
 - `master-data`, `module-limits`, `kh-topics`, `languages`, `training-categories`, `trainer-quota-list`, `console-roles`, dan `console-decisions` tetap lulus dengan kode baru sebelum migrasi.
 
 
@@ -1350,7 +1350,7 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
   - Publisher melihat keempatnya; Approver tidak bisa menurunkan.
   - Keempatnya hilang dari publik saat diturunkan; offering menolak pengajuan; tombol status Program Academy tidak menayangkan ulang; daftar menampilkan alasan.
   - Keempatnya tampil lagi; menayangkan dua kali ditolak; audit tercatat.
-  - **Sebelum migrasi (intern-update, 16 Nov): 1/16**, hanya cek "konten uji tampil".
+  - **Sebelum migrasi (intern-update, 16 Nov): 1/16**, hanya cek "konten uji tampil". **Sesudah migrasi: 16/16.** Semua 42 uji `test:*` lulus sesudah migrasi.
 
 
 ## 2bb. Full Training menjadi Course Offering: kehadiran dan pengalihan (16 Nov)
@@ -1382,7 +1382,7 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
   - Pengalihan: Operator dan kode asing ditolak; pendaftar baru dialihkan; pengajuan lama yang menunggu tidak terganggu dan yang diminta perbaikan tetap bisa mengirim ulang; pengajuan Course Offering tetap jalan; pengalihan bisa dicabut.
   - Uji ini menangkap kesalahan sebelum dirilis: membaca RECORD `v_ft` di luar cabang Full Training akan memecahkan semua pengajuan offering.
 - Uji langsung baru `npm run test:offering-attendance` (14 cek lewat fungsi server aplikasi). Pengaturan pengalihan program asli dipulihkan di akhir uji.
-  - **Sebelum migrasi (intern-update, 16 Nov): 3/14.**
+  - **Sebelum migrasi (intern-update, 16 Nov): 3/14. Sesudah migrasi: 14/14.** Semua 42 uji `test:*` lulus sesudah migrasi.
 
 ---
 
