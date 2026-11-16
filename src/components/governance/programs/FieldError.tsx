@@ -1,7 +1,6 @@
 // Message under a form field that needs fixing (Program Academy drafts).
 import { AlertCircle } from "lucide-react";
 
-export const errCls = (msg?: string) => (msg ? "border-red-400 bg-red-50/40 focus:outline-red-500" : "");
 
 export function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;

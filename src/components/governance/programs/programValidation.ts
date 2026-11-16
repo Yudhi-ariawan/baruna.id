@@ -15,7 +15,12 @@ export function cleanCode(v: string, mode: "upper" | "lower"): string {
   return dashed.trim().replace(/\s+/g, "-").toLowerCase();
 }
 
+// Same as [[:cntrl:]] in the database check (_program_text_ok).
+// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f]/;
+
+/** Red border for a field that needs fixing. */
+export const errCls = (msg?: string) => (msg ? "border-red-400 bg-red-50/40 focus:outline-red-500" : "");
 const textOk = (v: string | null | undefined, min: number, max: number) => {
   const t = (v ?? "").trim();
   return t.length >= min && t.length <= max && !CONTROL.test(v ?? "");

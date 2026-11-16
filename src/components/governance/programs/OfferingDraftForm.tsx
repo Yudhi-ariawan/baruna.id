@@ -13,8 +13,8 @@ import {
   SELF_PACED_ACCESS,
   UNSUPPORTED_DELIVERY_MODES,
 } from "./programLabels";
-import { cleanCode, type FieldErrors } from "./programValidation";
-import { FieldError, errCls } from "./FieldError";
+import { cleanCode, errCls, type FieldErrors } from "./programValidation";
+import { FieldError } from "./FieldError";
 
 const input = "mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-sm disabled:bg-slate-50";
 const label = "block text-xs font-semibold text-navy";
