@@ -57,7 +57,7 @@ Status pemeriksaan terakhir (16 Nov, laptop): semua migrasi sampai `202611160400
 - **Keputusan tampil langsung tanpa memuat ulang (11 Nov, Slide 13; CATATAN_PERBAIKAN 2ay):** sebelumnya keputusan admin baru terlihat saat halaman dimuat ulang. Sekarang *setujui*, *tolak*, *minta perbaikan*, dan keputusan kelulusan langsung muncul di lonceng, dashboard, dan halaman pendaftaran peserta (sekitar 0,4 detik lewat Supabase Realtime), dan antrean Persetujuan Peserta langsung menampilkan kiriman ulang. Peserta hanya menerima perubahan miliknya sendiri. Sumber notifikasi lain disegarkan tiap 60 detik. Bukti: `test:live-notifications` 14/14 sesudah migrasi (10/14 sebelum), semua uji lain lulus.
 - **Operator mengelola Data Master lewat usulan (16 Nov, Slide 16; keputusan pemilik proyek; CATATAN_PERBAIKAN 2az):** Operator kini bisa membuka Data Master. Setiap perubahan yang ia simpan menjadi usulan di panel *Usulan Perubahan*, lalu Approver atau Admin **lain** menyetujui (perubahan diterapkan dengan aturan yang sama) atau menolak dengan alasan. Approver dan Admin tetap menyimpan langsung, dan setiap langkah tercatat. Bukti: `test:master-data-requests` 21/21 sesudah migrasi (5/21 sebelum).
 - **Publisher menurunkan sementara dan menayangkan lagi (16 Nov, Slide 16; keputusan pemilik proyek; CATATAN_PERBAIKAN 2ba):** konten yang disetujui tetap langsung tayang (Slide 21). Lewat menu *Penayangan*, Publisher atau Admin bisa menurunkan sementara Course Offering, modul, publikasi Knowledge Hub, atau profil Expert dengan alasan; konten langsung hilang dari semua halaman publik dan tidak menerima pendaftaran baru. *Tayangkan lagi* mengembalikannya, dan selama diturunkan alur lain tidak bisa menayangkannya kembali. Belum: penjadwalan tayang, serta Events/Partnership/Community/About yang belum punya data di database. Bukti: `test:publication-hold` 16/16 sesudah migrasi (1/16 sebelum).
-- **Full Training menjadi Course Offering: kehadiran dan pengalihan (16 Nov, Slide 23; keputusan pemilik proyek; CATATAN_PERBAIKAN 2bb):** menu *Kehadiran* untuk membuat sesi course angkatan dan mencatat Hadir/Terlambat/Izin/Tidak hadir per peserta; peserta melihat kehadirannya di halaman course. Program Full Training lama bisa ditautkan ke offering pengganti di Program Academy: pendaftar baru diarahkan ke course itu, sedangkan pengajuan yang sudah berjalan selesai di jalur lama. Kehadiran belum menjadi syarat lulus. Bukti: `test:offering-attendance` 14/14 sesudah migrasi (3/14 sebelum); semua 42 uji lulus.
+- **Full Training menjadi Course Offering: kehadiran dan pengalihan (16 Nov, Slide 23; keputusan pemilik proyek; CATATAN_PERBAIKAN 2bb):** menu *Kehadiran* untuk membuat sesi course angkatan dan mencatat Hadir/Terlambat/Izin/Tidak hadir per peserta; peserta melihat kehadirannya di halaman course. Program Full Training lama bisa ditautkan ke offering pengganti di Program Academy: pendaftar baru diarahkan ke course itu, sedangkan pengajuan yang sudah berjalan selesai di jalur lama. Kehadiran belum menjadi syarat lulus. Bukti: `test:offering-attendance` 14/14 sesudah migrasi (3/14 sebelum); semua 42 uji lulus. Sudah diuji manual oleh pemilik proyek (16 Nov, laptop): Master Course 13 modul dan offering `africa-fisheries-2026-b1` dibuat dan disetujui orang lain, program lama ditautkan, *Enroll Now* membawa ke course baru, peserta mengunggah 5 dokumen PDF dan disetujui, sesi "Hari 1 — Pembukaan" dicatat, dan peserta melihat kehadirannya. Datanya diperiksa ada di database Supabase, bukan di browser. Uji di HP menyusul (bagian B).
 - **Lintas perangkat untuk Course Offering (9 Nov):** pendaftaran, modul yang ditandai selesai, evaluasi akhir, dan sertifikat course dari Course Offering tersimpan di database dan dibaca dengan identitas akun, sehingga muncul sama di perangkat atau browser mana pun dengan akun yang sama (My Learning dan tab Certificate). Lembar PDF sementara dibuat ulang di perangkat itu dari data database, jadi isinya sama. Dibuktikan oleh `test:certificate-sheet` (data diambil lewat server dengan token akun; peserta lain tidak mendapatkannya). Uji manual dengan dua perangkat nyata belum dilakukan.
 
 ## B. Belum diperbaiki atau belum diputuskan
@@ -71,6 +71,9 @@ Status pemeriksaan terakhir (16 Nov, laptop): semua migrasi sampai `202611160400
 - **Program Academy, belum:** *certificate model* per Course Offering (Slide 26) dan jenis sertifikat lain, yang butuh data kehadiran dan asesmen (Slide 23); modul masih ditandai selesai oleh peserta sendiri, belum wajib lulus kuis/penilaian (Slide 24), jadi sertifikat tetap berlabel "CONTOH / BELUM RESMI"; hanya sertifikat kelulusan yang tersedia (jenis lain menunggu aturan); dari alur pendaftaran (Slide 22): seleksi/skor dan waitlist (unggah dokumen dan minta perbaikan sudah ada sejak 10 Nov), daftar dokumen wajib per offering menunggu mentor, berkas unggahan yang tidak terpakai dibersihkan dengan perintah manual `cleanup:enrollment-documents` (belum terjadwal otomatis); aturan "Wajib hak akses khusus" masih ditutup; pembayaran belum ada (course mandiri hanya "Gratis"; course angkatan mencatat penanggung biaya tanpa tarif atau tagihan); desain dan isi STTP resmi (tanda tangan, stempel, format nomor) belum ada; isi pertanyaan template evaluasi dikelola lewat SQL; pembersihan sampul dijalankan manual; Webinar dan Workshop masih data contoh. Rencana di CATATAN_PERBAIKAN akhir 2al dan 2ao.
 - **Teknis:** `types.ts` disinkronkan manual (menunggu `npx supabase login`).
 - **Operasional:** database `main` belum diperiksa dan belum menerima migrasi (ranah mentor).
+
+- **Uji di HP / dua perangkat untuk pekerjaan 16 Nov (16 Nov):** pemilik proyek akan menguji di HP: Kehadiran (admin mengubah status di laptop, peserta melihat di HP), unggah dokumen di HP lalu kirim dari laptop, serta Data Master dan Penayangan. Bisa lewat situs Lovable `intern-update` (sudah di-push) atau `npm run dev -- --host` di Wi-Fi yang sama.
+- **Uji manual A (Data Master lewat usulan) dan B (Penayangan) (16 Nov):** langkahnya ada di bagian F; belum dilaporkan selesai. Sejauh ini Data Master baru dicoba dengan akun Super Admin, yang memang langsung menyimpan tanpa usulan.
 
 ## C. Kenapa belum siap dirilis luas
 
@@ -96,5 +99,33 @@ Status pemeriksaan terakhir (16 Nov, laptop): semua migrasi sampai `202611160400
 ## E. Bug dan celah yang diketahui
 
 Per 11 Nov tidak ada bug terbuka yang diketahui. Semua temuan audit 10 Nov sudah diperbaiki dan dipindah ke bagian A. Yang masih perlu: uji dua perangkat sungguhan (bagian C).
+
+
+## F. Langkah uji manual pekerjaan 16 November
+
+Persiapan: buat akun yang perannya **hanya Operator** dan **hanya Publisher** lewat Portal Admin → Tambah User. Akun `admin99` memegang hampir semua peran, sehingga perubahannya selalu langsung tersimpan.
+
+**A. Data Master (Operator mengusulkan, Approver/Admin menyetujui).**
+1. Login sebagai Operator, buka Konsol Kurasi → Data Master, lalu tambah satu bahasa (misalnya Sundanese, kode `su`).
+2. Pastikan muncul "Usulan terkirim" dan bahasanya belum ada di daftar.
+3. Login sebagai Approver/Admin, lalu klik **Setujui** di *Usulan Perubahan*. Bahasanya kini muncul.
+4. Ulangi dengan usulan lain, lalu **Tolak** dengan alasan. Operator melihat alasannya di riwayat.
+
+**B. Publisher (turunkan sementara dan tayangkan lagi).**
+1. Login sebagai Publisher, buka **Penayangan**, dan pilih satu modul.
+2. Klik **Turunkan sementara** dan tulis alasannya.
+3. Buka halaman Academy di jendela lain: modul itu sudah hilang.
+4. Klik **Tayangkan lagi**: modul itu tampil kembali.
+
+**C. Full Training ke Course Offering (sudah diuji manual oleh pemilik proyek, 16 Nov).**
+1. Di Program Academy, buat Master Course "International Training on Fisheries for African Countries" beserta modulnya, lalu minta orang lain menyetujuinya.
+2. Buat Offering cohort-based, blended, "Wajib disetujui admin", dengan dokumen Passport Copy, CV, Nomination Letter, Motivation Letter, dan Recent Passport Photo. Minta disetujui.
+3. Di panel *Full Training lama → Course Offering*, pilih offering tadi lalu Simpan.
+4. Logout, buka halaman program Full Training, dan klik *Enroll Now*: Anda dibawa ke halaman course baru.
+5. Login dengan akun peserta lain, ajukan pendaftaran di course itu (lima dokumen PDF), lalu setujui sebagai admin.
+6. Buka menu **Kehadiran**, pilih offering, tambah sesi "Hari 1", tandai peserta Hadir, lalu Simpan.
+7. Login sebagai peserta dan buka halaman course: di kolom samping tertulis "Hadir 1 dari 1 sesi tercatat".
+
+Temuan selama uji C: kode modul yang disalin dari tabel membawa karakter Tab tersembunyi sehingga draf ditolak tanpa menyebut modul mana. Sudah diperbaiki: formulir Program Academy kini merapikan kode otomatis dan menandai isian yang salah di kolomnya (CATATAN_PERBAIKAN 2bc).
 
 Pelajaran proses: sebelum bekerja di perangkat lain selalu `git pull`; setelah selesai commit + push.

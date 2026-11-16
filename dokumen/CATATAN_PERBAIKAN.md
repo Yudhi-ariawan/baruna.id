@@ -1382,7 +1382,21 @@ Perbaikan (tanpa migrasi): `resolveOfferingIds` (`src/lib/learning/offering-ids.
   - Pengalihan: Operator dan kode asing ditolak; pendaftar baru dialihkan; pengajuan lama yang menunggu tidak terganggu dan yang diminta perbaikan tetap bisa mengirim ulang; pengajuan Course Offering tetap jalan; pengalihan bisa dicabut.
   - Uji ini menangkap kesalahan sebelum dirilis: membaca RECORD `v_ft` di luar cabang Full Training akan memecahkan semua pengajuan offering.
 - Uji langsung baru `npm run test:offering-attendance` (14 cek lewat fungsi server aplikasi). Pengaturan pengalihan program asli dipulihkan di akhir uji.
-  - **Sebelum migrasi (intern-update, 16 Nov): 3/14. Sesudah migrasi: 14/14.** Semua 42 uji `test:*` lulus sesudah migrasi.
+  - **Sebelum migrasi (intern-update, 16 Nov): 3/14. Sesudah migrasi: 14/14.** Uji manual pemilik proyek (16 Nov, laptop) lulus sampai peserta melihat kehadirannya; data terbukti ada di database. Uji di HP menyusul. Semua 42 uji `test:*` lulus sesudah migrasi.
+
+
+## 2bc. Formulir Program Academy menandai isian yang salah (16 Nov)
+
+**Temuan (uji manual pemilik proyek, 16 Nov):** draf Master Course ditolak dengan pesan "Kode modul: 2–30 huruf besar…" padahal semua kode terlihat benar. Pemeriksaan database menunjukkan `AFT-01` dan `AFT-03` berakhiran karakter Tab (terbawa saat menyalin dari tabel). `btrim` di database tidak membuang Tab, dan pesannya tidak menyebut modul mana yang salah.
+
+**Perbaikan (tanpa migrasi):**
+- `programValidation.ts` memeriksa setiap kolom formulir Master Course dan Course Offering dengan aturan yang sama dengan `_program_course_problem` / `_program_offering_problem`. Kolom yang salah diberi border merah dan pesan di bawahnya (`FieldError`).
+- Di bawah formulir ada ringkasan "Perbaiki N isian bertanda merah" berisi tombol yang langsung menggulir ke kolomnya. *Kirim untuk persetujuan* ditahan sampai semua isian benar. Database tetap memeriksa ulang.
+- Kode dirapikan saat diketik atau ditempel: spasi, Tab, dan tanda hubung tipografis dibuang atau diganti "-"; kode modul jadi huruf besar, kode course/offering jadi huruf kecil dengan spasi menjadi "-". Draf lama yang tersimpan dengan Tab dirapikan otomatis saat dibuka.
+
+**Uji:** fungsi validasi diuji dengan isi draf asli dari database (tepat modul #1 dan #3 yang ditandai; setelah dirapikan tidak ada kesalahan), plus kode course salah, judul pendek, jam 0, kode ganda, dokumen ganda, dan tanggal terbalik: 8/8. `tsc`, lint, dan `build` lulus.
+
+**Belum:** formulir lain (Become an Expert, kontribusi Knowledge Hub, biodata peserta, Request a Training, pengajuan modul trainer, Tambah User, pendaftaran Full Training) masih memakai pola lama. Polanya bisa dipakai ulang dan diterapkan bertahap.
 
 ---
 

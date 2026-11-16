@@ -336,3 +336,29 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 - Koneksi sempat putus saat uji serentak (`fetch failed`). Datanya tetap benar, dan ujinya lulus saat diulang.
 
 **Pengujian:** uji serentak 15/15 tanpa perubahan kode. Unggahan tercatat 2/15 sebelum migrasi menjadi 15/15 sesudahnya. Dokumen Full Training 4/19 sebelum migrasi menjadi 19/19 sesudahnya. Notifikasi real-time 10/14 sebelum migrasi menjadi 14/14 sesudahnya. Dashboard 29/29. Semua 39 uji lulus, `build` lulus, dan data uji dibersihkan. Diuji manual oleh saya: Full Training diminta perbaikan, kelima berkas diunggah ulang, admin membuka berkas lalu menyetujui.
+
+---
+
+## 16/11/2026 (Senin, 16 November 2026)
+
+**Yang dibuat**
+- **Tiga keputusan yang selama ini menunggu mentor, saya putuskan sebagai pemilik proyek dan langsung dikerjakan:**
+  - **Data Master lewat usulan:** Operator kini bisa membuka Data Master. Setiap perubahannya menjadi usulan yang harus disetujui Approver atau Admin lain, atau ditolak dengan alasan. Approver dan Admin tetap menyimpan langsung.
+  - **Menu Penayangan untuk Publisher:** Publisher atau Admin bisa menurunkan sementara Course Offering, modul, publikasi Knowledge Hub, dan profil Expert dengan alasan, lalu menayangkannya lagi. Konten yang diturunkan langsung hilang dari semua halaman publik.
+  - **Full Training dijadikan Course Offering:** program African Countries dibuat ulang lewat Program Academy. Ada menu **Kehadiran** baru: admin membuat sesi dan mencatat Hadir/Terlambat/Izin/Tidak hadir, dan peserta melihat kehadirannya di halaman course. Halaman Full Training lama mengarahkan pendaftar baru ke course pengganti, sedangkan pengajuan yang sedang berjalan tetap aman.
+
+**Yang diperbaiki**
+- **Formulir Program Academy menandai isian yang salah.** Saat uji manual, kode modul yang disalin dari tabel membawa karakter Tab tersembunyi sehingga draf ditolak tanpa keterangan modul mana. Sekarang kolom yang salah diberi tanda merah dengan pesan, ada ringkasan yang bisa diklik menuju kolomnya, dan kode dirapikan otomatis.
+- Sekalian diperbaiki: pesan "nama sudah dipakai" di Data Master selama ini tertutup oleh pesan hak akses.
+
+**Pelajaran yang didapat**
+- Keputusan yang lama menunggu bisa dibuka dengan menyiapkan pilihan A/B/C beserta usulannya, lalu diputuskan dan dicatat jelas sebagai keputusan pemilik proyek.
+- Status yang sudah ada di database (misalnya "disetujui tetapi tidak tayang") bisa dipakai untuk fitur baru tanpa mengubah semua halaman pembaca.
+- Uji manual menemukan masalah yang tidak terlihat di layar (karakter tersembunyi). Pesan error harus menunjuk kolom yang salah, bukan hanya aturannya.
+
+**Kendala**
+- Menu Events, Partnership, Community, dan About belum punya data di database, sehingga peran Publisher di sana belum bisa dibuat.
+- Data perjalanan/visa peserta dan apakah kehadiran menjadi syarat lulus masih perlu ditanyakan ke mentor.
+- Uji di HP dan uji manual Data Master dengan akun Operator murni belum dilakukan.
+
+**Pengujian:** Data Master lewat usulan 5/21 sebelum migrasi menjadi 21/21 sesudahnya. Penayangan 1/16 menjadi 16/16. Kehadiran dan pengalihan 3/14 menjadi 14/14. Validasi formulir 8/8. Semua 42 rangkaian uji lulus, `build` lulus, dan data uji dibersihkan. Uji manual alur Full Training ke Course Offering lulus sampai peserta melihat kehadirannya, dan datanya terbukti tersimpan di database, bukan di browser.
