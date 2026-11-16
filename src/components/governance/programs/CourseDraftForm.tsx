@@ -5,6 +5,8 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import type { CoursePayload, ModulePayload, ProgramOverview } from "@/lib/academy/programs.functions";
 import { CourseCoverField } from "@/components/governance/programs/CourseCoverField";
+import { cleanCode, type FieldErrors } from "./programValidation";
+import { FieldError, errCls } from "./FieldError";
 
 const input = "mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-sm disabled:bg-slate-50";
 const label = "block text-xs font-semibold text-navy";
@@ -18,9 +20,11 @@ type Props = {
   /** Course already used by participants: module set is fixed. */
   inUse: boolean;
   disabled: boolean;
+  /** Field-level problems to show (red border + message). */
+  errors?: FieldErrors;
 };
 
-export function CourseDraftForm({ draftId, value, onChange, lookups, isNew, inUse, disabled }: Props) {
+export function CourseDraftForm({ draftId, value, onChange, lookups, isNew, inUse, disabled, errors = {} }: Props) {
   const modules = value.modules ?? [];
   const set = (patch: Partial<CoursePayload>) => onChange({ ...value, ...patch });
   const setModule = (i: number, patch: Partial<ModulePayload>) =>
@@ -37,32 +41,37 @@ export function CourseDraftForm({ draftId, value, onChange, lookups, isNew, inUs
       <div className="grid gap-3 sm:grid-cols-2">
         <label className={label}>
           Kode course {isNew ? "(tidak bisa diubah setelah disetujui)" : "(tetap)"}
-          <input className={input} value={value.course_code ?? ""} disabled={disabled || !isNew} maxLength={80}
-            onChange={(e) => set({ course_code: e.target.value.toLowerCase() })} placeholder="mis. seaweed-farming" />
+          <input className={`${input} ${errCls(errors.course_code)}`} data-field="course_code" value={value.course_code ?? ""} disabled={disabled || !isNew} maxLength={80}
+            onChange={(e) => set({ course_code: cleanCode(e.target.value, "lower") })} placeholder="mis. africa-fisheries-training" />
+          <FieldError msg={errors.course_code} />
         </label>
         <label className={label}>
           Judul
-          <input className={input} value={value.title ?? ""} disabled={disabled} maxLength={200} onChange={(e) => set({ title: e.target.value })} />
+          <input className={`${input} ${errCls(errors.title)}`} data-field="title" value={value.title ?? ""} disabled={disabled} maxLength={200} onChange={(e) => set({ title: e.target.value })} />
+          <FieldError msg={errors.title} />
         </label>
         <label className={`${label} sm:col-span-2`}>
           Deskripsi
           <textarea className={`${input} min-h-[90px]`} value={value.description ?? ""} disabled={disabled} maxLength={4000}
             onChange={(e) => set({ description: e.target.value })} />
+          <FieldError msg={errors.description} />
         </label>
         <label className={label}>
           Bahasa
-          <select className={input} value={value.language ?? ""} disabled={disabled} onChange={(e) => set({ language: e.target.value })}>
+          <select className={`${input} ${errCls(errors.language)}`} data-field="language" value={value.language ?? ""} disabled={disabled} onChange={(e) => set({ language: e.target.value })}>
             <option value="">Pilih bahasa…</option>
             {lookups.languages.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
           </select>
+          <FieldError msg={errors.language} />
         </label>
         <label className={label}>
           Template pembelajaran
-          <select className={input} value={value.learning_template_code ?? ""} disabled={disabled}
+          <select className={`${input} ${errCls(errors.learning_template_code)}`} data-field="learning_template_code" value={value.learning_template_code ?? ""} disabled={disabled}
             onChange={(e) => set({ learning_template_code: e.target.value })}>
             <option value="">Pilih template…</option>
             {lookups.templates.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
           </select>
+          <FieldError msg={errors.learning_template_code} />
         </label>
         <CourseCoverField draftId={draftId} value={value.cover_path} disabled={disabled}
           onChange={(cover_path) => set({ cover_path })} />
@@ -77,25 +86,29 @@ export function CourseDraftForm({ draftId, value, onChange, lookups, isNew, inUs
             </p>
           ) : null}
         </div>
+        <FieldError msg={errors.modules} />
         <ol className="space-y-2">
           {modules.map((m, i) => (
-            <li key={i} className="grid gap-2 rounded-xl border border-border p-2.5 sm:grid-cols-[2.5rem_8rem_1fr_6rem_auto] sm:items-end">
+            <li key={i} className={`grid gap-2 rounded-xl border p-2.5 sm:grid-cols-[2.5rem_8rem_1fr_6rem_auto] sm:items-start ${errors[`module.${i}.code`] || errors[`module.${i}.title`] || errors[`module.${i}.hours`] ? "border-red-300 bg-red-50/30" : "border-border"}`}>
               <span className="text-xs font-semibold text-muted-foreground">#{i + 1}</span>
               <label className={label}>
                 Kode
-                <input className={input} value={m.module_code} disabled={disabled || inUse} maxLength={30}
-                  onChange={(e) => setModule(i, { module_code: e.target.value.toUpperCase() })} placeholder="SW-01" />
+                <input className={`${input} ${errCls(errors[`module.${i}.code`])}`} data-field={`module.${i}.code`} value={m.module_code} disabled={disabled || inUse} maxLength={30}
+                  onChange={(e) => setModule(i, { module_code: cleanCode(e.target.value, "upper") })} placeholder="AFT-01" />
+                <FieldError msg={errors[`module.${i}.code`]} />
               </label>
               <label className={label}>
                 Judul modul
-                <input className={input} value={m.title} disabled={disabled} maxLength={200} onChange={(e) => setModule(i, { title: e.target.value })} />
+                <input className={`${input} ${errCls(errors[`module.${i}.title`])}`} data-field={`module.${i}.title`} value={m.title} disabled={disabled} maxLength={200} onChange={(e) => setModule(i, { title: e.target.value })} />
+                <FieldError msg={errors[`module.${i}.title`]} />
               </label>
               <label className={label}>
                 Jam
-                <input className={input} inputMode="decimal" value={String(m.learning_hours ?? "")} disabled={disabled}
+                <input className={`${input} ${errCls(errors[`module.${i}.hours`])}`} data-field={`module.${i}.hours`} inputMode="decimal" value={Number.isNaN(m.learning_hours) ? "" : String(m.learning_hours ?? "")} disabled={disabled}
                   onChange={(e) => setModule(i, { learning_hours: e.target.value === "" ? (NaN as number) : Number(e.target.value.replace(",", ".")) })} />
+                <FieldError msg={errors[`module.${i}.hours`]} />
               </label>
-              <div className="flex gap-1">
+              <div className="flex gap-1 sm:pt-5">
                 <button type="button" aria-label="Naikkan" disabled={disabled || i === 0} onClick={() => move(i, -1)}
                   className="rounded-lg border border-border p-1.5 disabled:opacity-40"><ArrowUp className="h-3.5 w-3.5" /></button>
                 <button type="button" aria-label="Turunkan" disabled={disabled || i === modules.length - 1} onClick={() => move(i, 1)}
