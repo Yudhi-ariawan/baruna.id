@@ -6,6 +6,7 @@ import { MODULE_CATEGORY_LABELS, primaryModuleCategory } from "@/lib/academy/mod
 import { shortCourseProgress, type ShortCourseEnrollment, useShortCourses } from "@/lib/shortCourses";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import defaultCover from "@/assets/self-paced/m01.jpg";
+import { HorizontalScroller } from "@/components/baruna/HorizontalScroller";
 
 function SectionHead({
   title,
@@ -251,11 +252,11 @@ export function LearningSections({ publishedModules }: { publishedModules: Publi
             href="/academy"
           />
           {publishedModules.length > 0 ? (
-            <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-none">
+            <HorizontalScroller label={t("learning.recommendedTitle")}>
               {publishedModules.slice(0, 6).map((module) => (
                 <RecommendedCard key={module.id} module={module} />
               ))}
-            </div>
+            </HorizontalScroller>
           ) : (
             <div className="grid min-h-40 place-items-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
               <div>
