@@ -51,5 +51,48 @@ ok("self-paced: langkah 5 tidak menuntut apa pun", Object.keys(trainingRequestSt
 ok("tanpa pendekatan belajar ditandai di langkah 4", "preferredLearningApproach" in trainingRequestStepErrors(4, { ...demoTrainingDraft, preferredLearningApproach: "" }));
 // 7. spaces only count as empty
 ok("nama berisi spasi saja dianggap kosong", "fullName" in trainingRequestStepErrors(1, { ...demoTrainingDraft, fullName: "   " }));
+
+// ===== Become an Expert (/experts/join, CATATAN_PERBAIKAN 2bk) =====
+console.log("\n== Become an Expert ==");
+const { emptyExpertApplication } = await jiti.import("@/lib/experts");
+const { ExpertPayloadSchema, getExpertPayloadIncompleteFields } = await jiti.import("@/lib/experts/application-validation");
+const { expertJoinStepErrors, firstExpertStepWithErrors } = await jiti.import("@/components/baruna/experts/join-validation");
+// The server: SaveInput (name 2-160 + payload schema), completeness gate, database max 20 bidang.
+const serverRejects = (f) =>
+  !ExpertPayloadSchema.safeParse(f).success ||
+  f.fullName.trim().length < 2 || f.fullName.trim().length > 160 ||
+  getExpertPayloadIncompleteFields(f).length > 0 ||
+  f.expertise.length > 20;
+const fullExpert = {
+  ...emptyExpertApplication, fullName: "Dr. Budi Santoso", title: "Researcher", institution: "BRIN", country: "Indonesia",
+  email: "budi@brin.go.id", expertise: ["Fisheries Management"], roles: ["Trainer"], biography: "Peneliti perikanan 10 tahun.",
+};
+const all = (f) => [1, 2, 3].flatMap((s) => Object.keys(expertJoinStepErrors(s, f, true)));
+ok("expert kosong: langkah 1 menandai nama, jabatan, institusi, negara, email",
+  ["fullName", "title", "institution", "country", "email"].every((k) => k in expertJoinStepErrors(1, emptyExpertApplication, true)));
+ok("expert lengkap: tidak ada yang ditandai", firstExpertStepWithErrors(fullExpert, true) === null);
+ok("expert lengkap: diterima server", !serverRejects(fullExpert));
+// every field the server's completeness gate asks for is marked on screen
+for (const [k, empty] of [["fullName", ""], ["title", ""], ["institution", ""], ["country", ""], ["email", ""], ["expertise", []], ["roles", []], ["biography", " "]]) {
+  const f = { ...fullExpert, [k]: empty };
+  ok(`expert tanpa ${k}: layar menandai dan server menolak`, all(f).includes(k) && serverRejects(f));
+}
+// every length limit is caught on screen before the server rejects
+for (const [k, n] of [["fullName", 161], ["title", 161], ["institution", 201], ["country", 81], ["phone", 41], ["linkedin", 301], ["website", 301], ["biography", 20001], ["yearsExperience", 21]]) {
+  const f = { ...fullExpert, [k]: "a".repeat(n) };
+  ok(`expert ${k} ${n} karakter: layar menandai dan server menolak`, all(f).includes(k) && serverRejects(f));
+}
+const emailLong = { ...fullExpert, email: `${"a".repeat(250)}@x.id` };
+ok("expert email 255 karakter: layar menandai dan server menolak", all(emailLong).includes("email") && serverRejects(emailLong));
+const oneChar = { ...fullExpert, fullName: "A" };
+ok("expert nama 1 huruf: layar menandai (server menolak saat simpan draf)", all(oneChar).includes("fullName") && serverRejects(oneChar));
+const many = { ...fullExpert, expertise: Array.from({ length: 21 }, (_, i) => `Bidang ${i}`) };
+ok("expert 21 bidang keahlian: layar menandai dan database menolak", all(many).includes("expertise") && serverRejects(many));
+for (const [k, n] of [["structuredLanguages", 21], ["structuredProjects", 31], ["structuredPublications", 51]]) {
+  const f = { ...fullExpert, [k]: Array.from({ length: n }, (_, i) => ({ id: String(i) })) };
+  ok(`expert ${k} ${n} butir: layar menandai dan server menolak`, all(f).includes(k) && serverRejects(f));
+}
+ok("expert email salah ditandai di layar", all({ ...fullExpert, email: "budi@" }).includes("email"));
+ok("pesan ikut bahasa halaman", expertJoinStepErrors(1, emptyExpertApplication, false).fullName === "Enter your full name.");
 console.log(`\n${pass}/${pass + fail} lulus`);
 process.exit(fail ? 1 : 0);

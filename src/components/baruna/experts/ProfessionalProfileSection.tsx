@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { FieldError } from "@/components/baruna/forms/FieldError";
+import { fieldErrorCls } from "@/components/baruna/forms/field-errors";
 import {
   BookOpen,
   Languages as LanguagesIcon,
@@ -28,6 +30,8 @@ interface ProfessionalProfileSectionProps {
   set: <K extends keyof ExpertApplicationDraft>(key: K, value: ExpertApplicationDraft[K]) => void;
   setForm: React.Dispatch<React.SetStateAction<ExpertApplicationDraft>>;
   inputClass: string;
+  /** Field errors from the form (join-validation), shown under each field. */
+  errors?: Record<string, string>;
 }
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -68,6 +72,7 @@ export function ProfessionalProfileSection({
   set,
   setForm,
   inputClass,
+  errors = {},
 }: ProfessionalProfileSectionProps) {
   // --- Languages State & Handlers (Aligned with public.expert_languages) ---
   const [customLanguage, setCustomLanguage] = useState("");
@@ -203,10 +208,10 @@ export function ProfessionalProfileSection({
     <SectionCard icon={BookOpen} n={4} title="Professional Profile">
       <div className="grid gap-6">
         {/* Professional Biography */}
-        <div>
+        <div data-field="biography">
           <FieldLabel required>Professional Biography</FieldLabel>
           <textarea
-            className={`${inputClass} min-h-[120px] resize-y`}
+            className={`${inputClass}${fieldErrorCls(errors.biography)} min-h-[120px] resize-y`}
             value={form.biography}
             maxLength={2500}
             placeholder="Ringkasan latar belakang profesional, fokus keahlian maritim & perikanan, serta rekam jejak kepakaran Anda..."
@@ -215,10 +220,11 @@ export function ProfessionalProfileSection({
           <p className="mt-1 text-[11px] text-muted-foreground text-right">
             {form.biography.length} / 2500 karakter
           </p>
+          <FieldError msg={errors.biography} />
         </div>
 
         {/* Years of Experience */}
-        <div className="max-w-xs">
+        <div className="max-w-xs" data-field="yearsExperience">
           <FieldLabel>Years of Experience (Tahun Pengalaman)</FieldLabel>
           <input
             className={inputClass}
@@ -228,10 +234,12 @@ export function ProfessionalProfileSection({
             value={form.yearsExperience}
             onChange={(e) => set("yearsExperience", e.target.value)}
           />
+          <FieldError msg={errors.yearsExperience} />
         </div>
 
         {/* Languages Spoken (Sesuai Skema ERD public.expert_languages) */}
-        <div className="rounded-xl border border-border/80 bg-slate-50/50 p-4 space-y-3">
+        <div data-field="structuredLanguages" className="rounded-xl border border-border/80 bg-slate-50/50 p-4 space-y-3">
+          <FieldError msg={errors.structuredLanguages} />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <LanguagesIcon className="h-4 w-4 text-marine" />
@@ -349,7 +357,8 @@ export function ProfessionalProfileSection({
         </div>
 
         {/* Key Projects & Portofolio (Sesuai Skema ERD public.expert_projects) */}
-        <div className="rounded-xl border border-border/80 bg-slate-50/50 p-4 space-y-3">
+        <div data-field="structuredProjects" className="rounded-xl border border-border/80 bg-slate-50/50 p-4 space-y-3">
+          <FieldError msg={errors.structuredProjects} />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FolderGit2 className="h-4 w-4 text-marine" />
@@ -535,7 +544,8 @@ export function ProfessionalProfileSection({
         </div>
 
         {/* Publications & Research (Sesuai Skema ERD public.expert_publications) */}
-        <div className="rounded-xl border border-border/80 bg-slate-50/50 p-4 space-y-3">
+        <div data-field="structuredPublications" className="rounded-xl border border-border/80 bg-slate-50/50 p-4 space-y-3">
+          <FieldError msg={errors.structuredPublications} />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ScrollText className="h-4 w-4 text-marine" />

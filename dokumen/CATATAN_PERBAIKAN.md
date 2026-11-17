@@ -1522,7 +1522,24 @@ Akun uji dibuat dengan metadata lengkap dan dihapus di akhir. Sudah diperiksa: 0
 - Saat *Submit*: bila draf (misalnya draf revisi atau draf yang dipulihkan setelah login) masih punya kolom salah, halaman kembali ke langkah tersebut dan menandainya, bukan mengirim lalu gagal.
 - Komponen bersama: `FieldErrorSummary` sekarang bisa diberi judul sendiri (halaman ini berbahasa Inggris); `focusField` dan `fieldErrorCls` di `src/components/baruna/forms/field-errors.ts`. Aturan server tidak berubah, jadi tidak ada migrasi.
 
-**Uji:** `npm run test:form-validation` **30/30**: form kosong, Individual (organisasi tidak wajib), email salah ditandai di layar dan juga ditolak server, draf lengkap lolos layar dan diterima server, setiap batas panjang (18 kolom) ditandai di layar sebelum ditolak server, sumber dana wajib hanya untuk *facilitated*, isian spasi saja dianggap kosong. Dicek di browser lebar HP (390 px): 5 kolom merah, fokus ke Full Name, ringkasan bisa diklik, tanpa geser samping. `tsc`, lint, dan `npm run build` lulus.
+**Uji:** `npm run test:form-validation` **30/30** (bagian Request a Training): form kosong, Individual (organisasi tidak wajib), email salah ditandai di layar dan juga ditolak server, draf lengkap lolos layar dan diterima server, setiap batas panjang (18 kolom) ditandai di layar sebelum ditolak server, sumber dana wajib hanya untuk *facilitated*, isian spasi saja dianggap kosong. Dicek di browser lebar HP (390 px): 5 kolom merah, fokus ke Full Name, ringkasan bisa diklik, tanpa geser samping. `tsc`, lint, dan `npm run build` lulus.
+
+---
+
+## 2bk. Become an Expert menandai isian yang salah (17 Nov)
+
+**Sebelumnya:** di `/experts/join` tombol *Next* dan *Submit* hanya memberi satu pesan umum ("Harap lengkapi semua kolom wajib…"). Batas panjang tidak dicek di layar, sehingga misalnya nama satu huruf baru gagal di server dengan pesan teknis saat *Save Draft*, dan 21 bidang keahlian baru ditolak database saat kirim.
+
+**Sekarang** (pola sama dengan 2bj, pesan dalam bahasa halaman Indonesia/Inggris):
+- Aturan per langkah di `src/components/baruna/experts/join-validation.ts`:
+  - kolom wajib sama dengan gerbang kelengkapan server (`getExpertPayloadIncompleteFields`): nama, jabatan, institusi, negara, email, bidang keahlian, peran, biografi;
+  - batas panjang dan jumlah sama dengan `ExpertPayloadSchema` dan `SaveInput` (nama 2–160 karakter) serta database (maks. 20 bidang keahlian, migrasi `20261023010000`);
+  - format email dicek di layar saat *Next*/*Submit* saja. Server tidak memeriksa format email, dan draf tetap boleh disimpan dengan email yang belum selesai diketik.
+- Kolom yang salah diberi garis merah dan pesan, ada ringkasan yang bisa diklik di atas tombol, dan kursor pindah ke kolom pertama. Bagian Profil Profesional (biografi, tahun pengalaman, daftar bahasa/proyek/publikasi) ikut menampilkan pesannya.
+- *Submit* kembali ke langkah pertama yang masih salah. *Save Draft* dengan nama kurang dari 2 huruf langsung menunjuk kolom nama.
+- Aturan server tidak berubah, jadi tidak ada migrasi.
+
+**Uji:** `npm run test:form-validation` **58/58** (28 cek baru untuk expert): setiap kolom yang diminta gerbang kelengkapan server ditandai di layar; setiap batas panjang (10 kolom) dan jumlah (bidang keahlian, bahasa, proyek, publikasi) ditandai di layar sebelum server/database menolak; isian lengkap tidak ditandai dan diterima server; pesan ikut bahasa halaman. Dicek di browser lebar HP dengan akun uji sementara (dihapus sesudahnya): langkah 1 menandai 3 kolom (nama 1 huruf, institusi kosong, email `budi@`) dengan fokus di nama; setelah diisi benar tanda hilang; langkah 2 menandai bidang keahlian dan peran; tanpa geser samping. `tsc`, lint, dan `npm run build` lulus.
 
 ---
 

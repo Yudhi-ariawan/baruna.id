@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -54,6 +54,9 @@ import {
   type LanguageProficiency,
 } from "@/lib/experts";
 import { useLanguage } from "@/lib/i18n";
+import { FieldError, FieldErrorSummary } from "@/components/baruna/forms/FieldError";
+import { fieldErrorCls, focusField } from "@/components/baruna/forms/field-errors";
+import { expertJoinLabels, expertJoinStepErrors, firstExpertStepWithErrors } from "@/components/baruna/experts/join-validation";
 import { CountrySelect } from "@/components/ui/country-select";
 import { PhoneInput } from "@/components/ui/phone-input";
 
@@ -307,38 +310,27 @@ function JoinExpertPage() {
       roles: f.roles.includes(role) ? f.roles.filter((x) => x !== role) : [...f.roles, role],
     }));
 
+  // Per-field errors for the current step (same rules as the server). They show after
+  // the first "Next" on that step, then update while typing.
+  const stepErrors = useMemo(() => expertJoinStepErrors(currentStep, form, isId), [currentStep, form, isId]);
+  const [triedStep, setTriedStep] = useState<number | null>(null);
+  const errors: Record<string, string> = triedStep === currentStep ? stepErrors : {};
+  const cls = (k: string) => inputClass + fieldErrorCls(errors[k]);
+
+  const showStepErrors = (step: number, keys: string[]) => {
+    setCurrentStep(step);
+    setTriedStep(step);
+    setError(null);
+    setTimeout(() => focusField(keys[0]), 60);
+  };
+
+  // Before submitting: back to the first step that still has a field to fix.
   const validate = () => {
-    if (
-      !form.fullName.trim() ||
-      !form.title.trim() ||
-      !form.institution.trim() ||
-      !form.country.trim() ||
-      !form.email.trim()
-    ) {
-      const msg = "Please complete the required personal information fields.";
-      setError(msg);
-      toast.error(msg);
-      return false;
-    }
-    if (form.expertise.length === 0) {
-      const msg = "Please select at least one area of expertise.";
-      setError(msg);
-      toast.error(msg);
-      return false;
-    }
-    if (form.roles.length === 0) {
-      const msg = "Please select at least one available role.";
-      setError(msg);
-      toast.error(msg);
-      return false;
-    }
-    if (!form.biography.trim()) {
-      const msg = "Please provide a professional biography.";
-      setError(msg);
-      toast.error(msg);
-      return false;
-    }
-    return true;
+    const pending = firstExpertStepWithErrors(form, isId);
+    if (!pending) return true;
+    showStepErrors(pending.step, Object.keys(pending.errors));
+    toast.error(isId ? "Masih ada isian yang perlu diperbaiki (bertanda merah)." : "Some fields still need fixing (marked in red).");
+    return false;
   };
 
   const uploadSelectedFiles = async (id: string) => {
@@ -377,10 +369,9 @@ function JoinExpertPage() {
     // click that lands before that, which would otherwise create duplicate drafts.
     if (inFlightRef.current) return;
     if (shouldSubmit && !validate()) return;
-    if (!form.fullName.trim()) {
-      const msg = "Full name is required before saving a draft.";
-      setError(msg);
-      toast.error(msg);
+    if (form.fullName.trim().length < 2) {
+      showStepErrors(1, ["fullName"]);
+      toast.error(isId ? "Isi nama lengkap (minimal 2 huruf) sebelum menyimpan draf." : "Enter your full name (2+ characters) before saving a draft.");
       return;
     }
     inFlightRef.current = true;
@@ -732,19 +723,20 @@ function JoinExpertPage() {
             <div className="animate-in fade-in-50 duration-200">
               <SectionCard icon={User} n={1} title={isId ? "Data Diri & Kontak" : "Personal Information"}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
+                  <div data-field="fullName">
                     <FieldLabel required>{isId ? "Nama Lengkap & Gelar" : "Full Name"}</FieldLabel>
                     <input
-                      className={inputClass}
+                      className={cls("fullName")}
                       value={form.fullName}
                       onChange={(e) => set("fullName", e.target.value)}
                       placeholder={isId ? "Contoh: Dr. Budi Santoso, M.Sc." : "e.g., Dr. Budi Santoso, M.Sc."}
                     />
+                    <FieldError msg={errors.fullName} />
                   </div>
-                  <div>
+                  <div data-field="title">
                     <FieldLabel required>{isId ? "Jabatan / Gelar Profesional" : "Professional Title"}</FieldLabel>
                     <select
-                      className={inputClass}
+                      className={cls("title")}
                       value={selectedProfessionalTitle}
                       onChange={(e) => {
                         const value = e.target.value;
@@ -765,41 +757,45 @@ function JoinExpertPage() {
                     </select>
                     {selectedProfessionalTitle === CUSTOM_PROFESSIONAL_TITLE_VALUE && (
                       <input
-                        className={`${inputClass} mt-2`}
+                        className={`${cls("title")} mt-2`}
                         value={form.title}
                         onChange={(e) => set("title", e.target.value)}
                         placeholder={isId ? "Masukkan jabatan fungsional lainnya" : "Enter another functional or professional title"}
                       />
                     )}
+                    <FieldError msg={errors.title} />
                   </div>
-                  <div>
+                  <div data-field="institution">
                     <FieldLabel required>{isId ? "Institusi / Organisasi" : "Institution / Organization"}</FieldLabel>
                     <input
-                      className={inputClass}
+                      className={cls("institution")}
                       value={form.institution}
                       onChange={(e) => set("institution", e.target.value)}
                       placeholder={isId ? "Contoh: Badan Riset dan Inovasi Nasional (BRIN)" : "e.g., Marine Research Institute"}
                     />
+                    <FieldError msg={errors.institution} />
                   </div>
-                  <div>
+                  <div data-field="country">
                     <FieldLabel required>{isId ? "Negara Domisili / Tugas" : "Country"}</FieldLabel>
                     <CountrySelect
                       value={form.country}
                       onChange={(countryName) => set("country", countryName)}
                       isId={isId}
                     />
+                    <FieldError msg={errors.country} />
                   </div>
-                  <div>
+                  <div data-field="email">
                     <FieldLabel required>{isId ? "Alamat Email" : "Email Address"}</FieldLabel>
                     <input
-                      className={inputClass}
+                      className={cls("email")}
                       type="email"
                       value={form.email}
                       onChange={(e) => set("email", e.target.value)}
                       placeholder="name@example.com"
                     />
+                    <FieldError msg={errors.email} />
                   </div>
-                  <div>
+                  <div data-field="phone">
                     <FieldLabel>{isId ? "Nomor Telepon / WhatsApp" : "Phone Number"}</FieldLabel>
                     <PhoneInput
                       value={form.phone}
@@ -807,24 +803,27 @@ function JoinExpertPage() {
                       countryName={form.country || "Indonesia"}
                       isId={isId}
                     />
+                    <FieldError msg={errors.phone} />
                   </div>
-                  <div>
+                  <div data-field="linkedin">
                     <FieldLabel>LinkedIn</FieldLabel>
                     <input
-                      className={inputClass}
+                      className={cls("linkedin")}
                       value={form.linkedin}
                       onChange={(e) => set("linkedin", e.target.value)}
                       placeholder="https://linkedin.com/in/…"
                     />
+                    <FieldError msg={errors.linkedin} />
                   </div>
-                  <div>
+                  <div data-field="website">
                     <FieldLabel>{isId ? "Situs Web Pribadi / Portofolio" : "Personal Website / Portfolio"}</FieldLabel>
                     <input
-                      className={inputClass}
+                      className={cls("website")}
                       value={form.website}
                       onChange={(e) => set("website", e.target.value)}
                       placeholder="https://…"
                     />
+                    <FieldError msg={errors.website} />
                   </div>
                 </div>
               </SectionCard>
@@ -838,7 +837,10 @@ function JoinExpertPage() {
                 <p className="mb-3 text-xs sm:text-sm text-muted-foreground">
                   {isId ? "Pilih semua bidang yang sesuai dengan kompetensi Anda." : "Select all domains that apply to your background."}
                 </p>
-                <ExpertiseSelector selected={form.expertise} onToggle={toggleExpertise} isId={isId} />
+                <div data-field="expertise" tabIndex={-1} className="outline-none">
+                  <ExpertiseSelector selected={form.expertise} onToggle={toggleExpertise} isId={isId} />
+                  <FieldError msg={errors.expertise} />
+                </div>
               </SectionCard>
 
               <SectionCard icon={ClipboardCheck} n={3} title={isId ? "Peran yang Diminati" : "Available Roles"}>
@@ -850,7 +852,8 @@ function JoinExpertPage() {
                     ? "Memilih \"Trainer\" berarti setelah disetujui Anda langsung dapat mengajukan modul pelatihan. Tanpa memilih Trainer, Anda tetap terdaftar sebagai expert dan dapat mengajukan Kualifikasi Trainer kemudian."
                     : "Choosing \"Trainer\" lets you submit training modules once approved. Without it you are still listed as an expert and may apply for trainer qualification later."}
                 </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <FieldError msg={errors.roles} />
+                <div data-field="roles" className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {EXPERT_ROLES.map((role) => {
                     const active = form.roles.includes(role);
                     return (
@@ -890,6 +893,7 @@ function JoinExpertPage() {
                 set={set}
                 setForm={setForm}
                 inputClass={inputClass}
+                errors={errors}
               />
             </div>
           )}
@@ -1018,6 +1022,16 @@ function JoinExpertPage() {
             </div>
           )}
 
+          <FieldErrorSummary
+            errors={errors}
+            labels={expertJoinLabels(isId)}
+            title={(n) =>
+              isId
+                ? `Perbaiki ${n} isian bertanda merah (klik untuk menuju ke isiannya):`
+                : `Please fix ${n} field${n > 1 ? "s" : ""} marked in red (click to go to the field):`
+            }
+          />
+
           {/* Stepper Bottom Actions */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-border/80">
             <div>
@@ -1059,50 +1073,12 @@ function JoinExpertPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (currentStep === 1) {
-                      if (
-                        !form.fullName.trim() ||
-                        !form.title.trim() ||
-                        !form.institution.trim() ||
-                        !form.country.trim() ||
-                        !form.email.trim()
-                      ) {
-                        const msg = isId
-                          ? "Harap lengkapi semua kolom wajib di Data Diri sebelum melanjutkan."
-                          : "Please complete all required personal information fields.";
-                        setError(msg);
-                        toast.error(msg);
-                        return;
-                      }
+                    const keys = Object.keys(stepErrors);
+                    if (keys.length) {
+                      showStepErrors(currentStep, keys);
+                      return;
                     }
-                    if (currentStep === 2) {
-                      if (form.expertise.length === 0) {
-                        const msg = isId
-                          ? "Pilih minimal satu bidang keahlian."
-                          : "Please select at least one area of expertise.";
-                        setError(msg);
-                        toast.error(msg);
-                        return;
-                      }
-                      if (form.roles.length === 0) {
-                        const msg = isId
-                          ? "Pilih minimal satu peran yang diminati."
-                          : "Please select at least one available role.";
-                        setError(msg);
-                        toast.error(msg);
-                        return;
-                      }
-                    }
-                    if (currentStep === 3) {
-                      if (!form.biography.trim()) {
-                        const msg = isId
-                          ? "Harap isi ringkasan biografi profesional Anda."
-                          : "Please provide a professional biography.";
-                        setError(msg);
-                        toast.error(msg);
-                        return;
-                      }
-                    }
+                    setTriedStep(null);
                     setError(null);
                     setCurrentStep((s) => Math.min(5, s + 1));
                   }}
