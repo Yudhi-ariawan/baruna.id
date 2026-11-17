@@ -279,7 +279,7 @@ function Edition2024Page() {
                 ))}
               </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {EDITION_2024_IMPACT.slice(0, 4).map((s) => (
                 <div key={s.label} className="rounded-2xl border border-border bg-card p-5 text-center shadow-soft">
                   <p className="font-display text-3xl font-extrabold text-marine">{s.value}</p>
@@ -404,7 +404,7 @@ function Edition2024Page() {
             {grouped.map((g) => (
               <div key={g.group} className="rounded-2xl border border-border bg-card p-6 shadow-soft">
                 <h2 className="font-display text-base font-bold text-navy">{g.group}</h2>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {g.items.map((ins) => (
                     <div key={ins.slug} className="flex items-start gap-3 rounded-xl border border-border bg-background p-3.5">
                       <img src={ins.photo} alt={ins.name} loading="lazy" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover" />
@@ -439,7 +439,7 @@ function Edition2024Page() {
                     {group.items.length}
                   </span>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {group.items.map((p) => (
                     <Link
                       key={p.id}
@@ -475,7 +475,7 @@ function Edition2024Page() {
               <p className="mt-1 text-sm text-muted-foreground">
                 The graduating cohort of the first edition — now part of the BARUNA African Fisheries Alumni Network.
               </p>
-              <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {[
                   { value: "20", label: "Alumni" },
                   { value: "10", label: "African Countries" },
@@ -509,7 +509,7 @@ function Edition2024Page() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Select a country to filter the Alumni Directory.
               </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {COUNTRY_STATS.map((c) => (
                   <Link
                     key={c.name}
@@ -534,7 +534,7 @@ function Edition2024Page() {
             {/* Network pillars */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h3 className="font-display text-base font-bold text-navy">African Fisheries Alumni Network</h3>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {ALUMNI_NETWORK_PILLARS.map((p) => (
                   <div key={p.title} className="rounded-xl border border-border bg-background p-4">
                     <p className="text-sm font-bold text-navy">{p.title}</p>
@@ -551,7 +551,7 @@ function Edition2024Page() {
         {tab === "Impact" && (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
             <h2 className="font-display text-lg font-bold text-navy">Program Impact</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {EDITION_2024_IMPACT.map((s) => (
                 <div key={s.label} className="rounded-2xl border border-border bg-background p-5 text-center">
                   <p className="font-display text-3xl font-extrabold text-marine">{s.value}</p>
@@ -567,7 +567,7 @@ function Edition2024Page() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
             <h2 className="font-display text-lg font-bold text-navy">Photo Gallery</h2>
             <p className="mt-1 text-sm text-muted-foreground">Browse documentation by category.</p>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {GALLERY_CATEGORIES.map((c, i) => (
                 <div key={c.name} className="group overflow-hidden rounded-xl border border-border bg-background">
                   <div className="relative h-32 overflow-hidden">
@@ -590,7 +590,7 @@ function Edition2024Page() {
         {tab === "Videos" && (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
             <h2 className="font-display text-lg font-bold text-navy">Videos</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {EDITION_2024_VIDEOS.map((v, i) => (
                 <div key={v.title} className="overflow-hidden rounded-xl border border-border bg-background">
                   <div className="relative grid h-36 place-items-center bg-navy/90">
@@ -614,7 +614,7 @@ function Edition2024Page() {
         {tab === "Documentation" && (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
             <h2 className="font-display text-lg font-bold text-navy">Documentation Library</h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {EDITION_2024_DOCUMENTS.map((d) => (
                 <div key={d.title} className="flex items-start gap-3 rounded-xl border border-border bg-background p-4">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-marine/10 text-marine">
@@ -638,7 +638,7 @@ function Edition2024Page() {
 
         {/* ---------- Testimonials ---------- */}
         {tab === "Testimonials" && (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {EDITION_2024_TESTIMONIALS.map((t) => (
               <div key={t.name} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
                 <Quote className="h-6 w-6 text-marine/40" />

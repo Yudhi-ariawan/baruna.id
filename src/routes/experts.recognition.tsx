@@ -49,7 +49,7 @@ function RecognitionPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {LEVELS.map((lvl) => (
             <article key={lvl} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-marine">
@@ -77,7 +77,7 @@ function RecognitionPage() {
             <ShieldAlert className="h-5 w-5 text-marine" /> Quality Safeguards
           </h2>
           <p className="mt-1 text-sm text-foreground/70">Participant numbers alone never guarantee recognition. All promotions require:</p>
-          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+          <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {[
               `Course completion rate ≥ ${QUALITY_GATES.minCompletionRate}%`,
               `Average participant rating ≥ ${QUALITY_GATES.minAverageRating.toFixed(1)} / 5`,

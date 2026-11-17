@@ -81,7 +81,7 @@ export function TrainerApplicationReview({ app, onChanged }: { app: AdminTrainer
 
       <details>
         <summary className="cursor-pointer text-xs font-semibold text-marine">Lihat isi pengajuan</summary>
-        <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
+        <dl className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
           <Item label="Peran diajukan" value={p.proposedRoles?.join(", ")} wide />
           <Item label="Pengalaman melatih" value={p.trainingExperience} wide />
           <Item label="Bukti kompetensi mengajar" value={p.teachingEvidence} wide />

@@ -32,7 +32,7 @@ function FollowingPage() {
 
         <section>
           <h2 className="mb-3 font-display text-lg font-bold text-navy">Organizers</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {organizers.map((org) => {
               const following = has(org);
               return (

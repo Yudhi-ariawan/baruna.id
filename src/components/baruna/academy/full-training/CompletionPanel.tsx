@@ -69,7 +69,7 @@ export function CompletionPanel({ data, transcript }: { data: CertificateData; t
           </div>
         )}
 
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+        <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {rows.map((r) => (
             <div key={r.label} className="rounded-xl border border-border bg-background p-3">
               <dt className="text-[0.7rem] uppercase tracking-wide text-muted-foreground">{r.label}</dt>
@@ -94,7 +94,7 @@ export function CompletionPanel({ data, transcript }: { data: CertificateData; t
       </div>
 
       {/* Badge + Transcript */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-soft">
           <div className="flex items-center gap-2">
             <BadgeCheck className="h-5 w-5 text-marine" />

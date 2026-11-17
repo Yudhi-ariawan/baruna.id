@@ -67,7 +67,7 @@ function HostPage() {
           subtitle="Bring your marine and fisheries event to a global community. Host, co-host, or partner with BARUNA."
         />
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {options.map(({ icon: Icon, title, desc }) => (
             <div
               key={title}
@@ -82,7 +82,7 @@ function HostPage() {
           ))}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
           {/* Collaboration form */}
           <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
             <h2 className="font-display text-xl font-bold text-navy">Collaboration Request</h2>
@@ -105,7 +105,7 @@ function HostPage() {
                 }}
                 className="mt-5 grid gap-4"
               >
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <input required className={inputClass} placeholder="Your name" />
                   <input required type="email" className={inputClass} placeholder="Email" />
                   <input required className={inputClass} placeholder="Organization" />

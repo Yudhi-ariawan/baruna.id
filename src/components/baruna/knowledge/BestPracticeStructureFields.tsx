@@ -111,7 +111,7 @@ export function BestPracticeStructureForm({ value, onChange }: BestPracticeStruc
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {FIELDS.map((field) => (
           <div key={field.key} className="flex flex-col">
             <label className="text-xs font-bold text-navy">{field.label}</label>
@@ -144,7 +144,7 @@ export function BestPracticeStructurePreview({ value }: { value?: Partial<BestPr
         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
         Struktur Praktik Baik (Best Practice Structure)
       </div>
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {entries.map((f) => (
           <div key={f.key} className="rounded-lg border border-border/80 bg-card p-3">
             <dt className="text-[0.65rem] font-bold uppercase tracking-wider text-marine">{f.label}</dt>

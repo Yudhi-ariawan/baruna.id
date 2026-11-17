@@ -76,7 +76,7 @@ function AnalyticsPage() {
           </p>
         </header>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {tiles.map((t) => {
             const inner = (
               <>
@@ -117,7 +117,7 @@ function AnalyticsPage() {
         <section id="by-level" className="rounded-2xl border border-border bg-card p-6 shadow-soft">
           <h2 className="font-display text-lg font-bold text-navy">Distribusi Level Trainer Aktif</h2>
           <p className="mt-1 text-xs text-muted-foreground">Level dari status trainer resmi yang ditetapkan administrator BARUNA.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
             {(["certified", "advanced", "senior", "master"] as const).map((lvl) => (
               <Link key={lvl} to="/experts/recognition" className="rounded-xl border border-border p-4 text-center hover:border-marine/50 transition">
                 <p className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">{LEVEL_LABEL[lvl]}</p>

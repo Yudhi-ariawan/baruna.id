@@ -333,7 +333,7 @@ function PortalDashboard() {
         {/* ========================================================
             3. SUMMARY STAT CARDS (4 METRICS)
            ======================================================== */}
-        <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             icon={BookOpenCheck}
             label="Modul Disetujui (Tayang)"

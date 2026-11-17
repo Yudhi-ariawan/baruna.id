@@ -129,7 +129,7 @@ function AboutPage() {
     >
       <div className="space-y-6">
         <Panel className="overflow-hidden p-0">
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="p-6 sm:p-8">
               <h1 className="font-display text-3xl font-extrabold text-navy">{t("about.title")}</h1>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -145,7 +145,7 @@ function AboutPage() {
           </div>
         </Panel>
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
           <div className="space-y-6">
             <Panel>
               <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ function AboutPage() {
 
             <Panel>
               <SectionHeader title={t("about.valuesTitle")} action={null} />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {values.map((v) => (
                   <div key={v.title} className="flex gap-3">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-marine/10 font-display text-lg font-extrabold text-marine">{v.letter}</span>
@@ -182,7 +182,7 @@ function AboutPage() {
 
             <Panel>
               <SectionHeader title={t("about.whatWeDoTitle")} action={null} />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {whatWeDo.map((w) => {
                   const Icon = w.icon;
                   return (

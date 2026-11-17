@@ -177,7 +177,7 @@ function ExpertProfile() {
           <ArrowLeft className="h-4 w-4" /> Back to Experts Directory
         </Link>
 
-        <div className="mt-4 grid gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
           <aside className="space-y-4">
             <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
               <div className="aspect-[3/4] w-full overflow-hidden bg-secondary/40">
@@ -274,7 +274,7 @@ function ExpertProfile() {
                 )}
               </div>
             </section>
-            <section className="grid gap-6 sm:grid-cols-2">
+            <section className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
                 <h2 className="flex items-center gap-2 font-display text-lg font-bold text-navy">
                   <Languages className="h-5 w-5 text-marine" /> Languages
@@ -324,7 +324,7 @@ function ExpertProfile() {
                 </span>
               </div>
               {expertContributions.length > 0 ? (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {expertContributions.map((item) => (
                     <a
                       key={item.id}

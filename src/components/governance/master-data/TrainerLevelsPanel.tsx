@@ -69,7 +69,7 @@ export function TrainerLevelsPanel({ data }: { data: MasterData }) {
       </div>
       <div className="grid gap-2">
         {TRAINER_LEVEL_ORDER.map((level) => (
-          <div key={level} className="grid gap-2 sm:grid-cols-[8rem_8rem_1fr] sm:items-end">
+          <div key={level} className="grid grid-cols-1 gap-2 sm:grid-cols-[8rem_8rem_1fr] sm:items-end">
             <p className="text-sm font-semibold text-navy">{LABEL[level]}</p>
             <label className="text-xs font-semibold text-navy">
               Min. lulusan

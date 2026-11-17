@@ -38,7 +38,7 @@ export function CourseDraftForm({ draftId, value, onChange, lookups, isNew, inUs
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className={label}>
           Kode course {isNew ? "(tidak bisa diubah setelah disetujui)" : "(tetap)"}
           <input className={`${input} ${errCls(errors.course_code)}`} data-field="course_code" value={value.course_code ?? ""} disabled={disabled || !isNew} maxLength={80}

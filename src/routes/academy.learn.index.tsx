@@ -261,7 +261,7 @@ function MyLearning() {
                   </Link>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {shortCourses.map((sc) => {
                     const title = sc.title || masterByCode[sc.code]?.title || `Module ${sc.code}`;
                     const instructor = sc.instructor || "BARUNA Trainer";

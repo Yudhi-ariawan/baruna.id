@@ -377,8 +377,11 @@ function AdminPublicationsPage() {
                         <Calendar className="h-3 w-3" /> {formatDate(item.createdAt)}
                       </span>
                       {item.fileInfo && (
-                        <span className="flex items-center gap-1 text-marine font-semibold">
-                          <FileText className="h-3 w-3" /> {item.fileInfo.name} ({formatBytes(item.fileInfo.size)})
+                        <span className="flex min-w-0 max-w-full items-center gap-1 text-marine font-semibold" title={item.fileInfo.name}>
+                          <FileText className="h-3 w-3 shrink-0" />
+                          {/* Long file names without spaces must not widen the page on a phone. */}
+                          <span className="min-w-0 truncate">{item.fileInfo.name}</span>
+                          <span className="shrink-0">({formatBytes(item.fileInfo.size)})</span>
                         </span>
                       )}
                     </div>

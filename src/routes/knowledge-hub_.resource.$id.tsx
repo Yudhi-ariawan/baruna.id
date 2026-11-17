@@ -434,7 +434,7 @@ function ResourceDetailPage() {
           <ArrowLeft className="h-3.5 w-3.5" /> Back to {r.typeLabel}s
         </Link>
 
-        <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
           <div className="space-y-6">
             <Panel className="overflow-hidden p-0">
               {isPlaying && inlineMedia && inlineMedia.kind !== "audio" ? (
@@ -691,7 +691,7 @@ function ResourceDetailPage() {
             {r.type === "best-practices" && r.practiceStructure && Object.values(r.practiceStructure).some((v) => typeof v === "string" && v.trim()) ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Practice Structure</h2>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {r.practiceStructure.challenge && <Field term="Challenge" desc={r.practiceStructure.challenge} />}
                   {r.practiceStructure.context && <Field term="Context" desc={r.practiceStructure.context} />}
                   {r.practiceStructure.intervention && <Field term="Intervention" desc={r.practiceStructure.intervention} />}
@@ -705,7 +705,7 @@ function ResourceDetailPage() {
             ) : r.type === "best-practices" && isDemo ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Practice Structure</h2>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field term="Challenge" desc={BEST_PRACTICE_STRUCTURE.challenge} />
                   <Field term="Context" desc={BEST_PRACTICE_STRUCTURE.context} />
                   <Field term="Intervention" desc={BEST_PRACTICE_STRUCTURE.intervention} />
@@ -723,7 +723,7 @@ function ResourceDetailPage() {
             Object.values(r.caseStudyStructure).some((v) => typeof v === "string" && v.trim()) ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Case Study</h2>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {r.caseStudyStructure.background && <Field term="Background" desc={r.caseStudyStructure.background} />}
                   {r.caseStudyStructure.problem && <Field term="Problem" desc={r.caseStudyStructure.problem} />}
                   {r.caseStudyStructure.intervention && <Field term="Intervention" desc={r.caseStudyStructure.intervention} />}
@@ -737,7 +737,7 @@ function ResourceDetailPage() {
             ) : r.type === "case-studies" && isDemo ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Case Study</h2>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field term="Background" desc={CASE_STUDY_STRUCTURE.background} />
                   <Field term="Problem" desc={CASE_STUDY_STRUCTURE.problem} />
                   <Field term="Intervention" desc={CASE_STUDY_STRUCTURE.intervention} />
@@ -756,7 +756,7 @@ function ResourceDetailPage() {
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Toolkit &amp; Included Tools</h2>
                 {r.toolkitStructure.includedTools && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {String(r.toolkitStructure.includedTools)
                       .split(/\r?\n|,|•/)
                       .map((s: string) => s.trim())
@@ -768,7 +768,7 @@ function ResourceDetailPage() {
                       ))}
                   </div>
                 )}
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {r.toolkitStructure.targetUsers && <Field term="Target Users" desc={r.toolkitStructure.targetUsers} />}
                   {r.toolkitStructure.prerequisites && <Field term="Prerequisites & Software" desc={r.toolkitStructure.prerequisites} />}
                   {r.toolkitStructure.usageSteps && <Field term="Usage Guide" desc={r.toolkitStructure.usageSteps} />}
@@ -777,7 +777,7 @@ function ResourceDetailPage() {
             ) : r.type === "toolkits" && isDemo ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Included Tools</h2>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {TOOLKIT_TOOLS.map((t) => (
                     <div key={t} className="flex items-center gap-2 rounded-lg border border-border p-2.5 text-sm">
                       <Layers className="h-4 w-4 text-marine" /> {t}
@@ -792,7 +792,7 @@ function ResourceDetailPage() {
             Object.values(r.policyBriefStructure).some((v) => typeof v === "string" && v.trim()) ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Policy Brief</h2>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {r.policyBriefStructure.policyIssue && <Field term="Policy Issue" desc={r.policyBriefStructure.policyIssue} />}
                   {r.policyBriefStructure.keyFindings && <Field term="Key Findings" desc={r.policyBriefStructure.keyFindings} />}
                   {r.policyBriefStructure.recommendedActions && (
@@ -806,7 +806,7 @@ function ResourceDetailPage() {
             ) : r.type === "policy-briefs" && isDemo ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Policy Brief</h2>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field term="Policy Issue" desc={`Advancing ${category?.name.toLowerCase()} practice across the region.`} />
                   <Field term="Key Findings" desc="Practitioner surveys highlight recurring capacity gaps addressed by BARUNA training." />
                   <Field term="Recommended Actions" desc="Fund national trainer cohorts and mainstream BARUNA modules into partner curricula." />
@@ -820,7 +820,7 @@ function ResourceDetailPage() {
             Object.values(r.infographicStructure).some((v) => typeof v === "string" && v.trim()) ? (
               <Panel>
                 <h2 className="font-display text-base font-bold text-navy">Infographic &amp; Visual Summary</h2>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {r.infographicStructure.keyTakeaways && <Field term="Key Takeaways" desc={r.infographicStructure.keyTakeaways} />}
                   {r.infographicStructure.dataSource && <Field term="Data Source" desc={r.infographicStructure.dataSource} />}
                   {r.infographicStructure.targetAudience && <Field term="Target Audience" desc={r.infographicStructure.targetAudience} />}
@@ -861,7 +861,7 @@ function ResourceDetailPage() {
 
             <Panel>
               <h2 className="font-display text-base font-bold text-navy">Related Resources</h2>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {related.map((rr, i) => <ResourceCard key={rr.id} r={rr} index={i} />)}
               </div>
             </Panel>

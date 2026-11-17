@@ -900,7 +900,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                 <h3 className="font-display text-sm font-bold text-navy mb-3">
                   Video Syllabus &amp; Chapters
                 </h3>
-                <div className="grid gap-2.5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {module.learningObjectives.length > 0 ? (
                     module.learningObjectives.map((obj, i) => (
                       <div
@@ -1119,7 +1119,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                     <h4 className="font-display text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
                       <FileCheck className="h-4 w-4 text-marine" /> Supporting Module Files
                     </h4>
-                    <div className="grid gap-2.5 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                       {trainerGuideDoc && (
                         <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
                           <div className="min-w-0 flex-1 pr-2">
@@ -1320,7 +1320,7 @@ export function DynamicModuleLmsPlayer({ module }: { module: PublishedModuleDeta
                 <h4 className="font-display text-xs font-bold uppercase tracking-wider text-navy mb-3 flex items-center gap-1.5">
                   <BookOpen className="h-4 w-4 text-marine" /> Key Points Before Taking the Assessment
                 </h4>
-                <div className="grid gap-2.5 sm:grid-cols-2 text-xs text-muted-foreground">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 text-xs text-muted-foreground">
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/60">
                     <span className="font-semibold text-navy block mb-1">1. Core Concept Mastery</span>
                     Review the definitions, operating principles, and reference standards presented in the module and learning video.

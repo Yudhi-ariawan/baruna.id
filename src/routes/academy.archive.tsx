@@ -84,7 +84,7 @@ function ArchivePage() {
                 <h2 className="mt-1 font-display text-lg font-extrabold text-navy group-hover:text-marine">
                   {a.title}
                 </h2>
-                <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                   <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {a.location}</span>
                   <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> {a.period}</span>
                   <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {a.participants} participants</span>

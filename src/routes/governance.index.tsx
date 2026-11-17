@@ -46,7 +46,7 @@ function ConsoleHome() {
       </div>
 
       {roles.length ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {roles.map((code) => (
             <div key={code} className="rounded-xl border border-border bg-white p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-marine">{ROLE_INFO[code].label}</p>
@@ -66,7 +66,7 @@ function ConsoleHome() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {visible.map((menu) => {
           const Icon = menu.icon;
           const decide = access.menus[menu.key].decide;

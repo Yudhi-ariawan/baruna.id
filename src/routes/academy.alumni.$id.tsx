@@ -147,7 +147,7 @@ function AlumnusProfile() {
           </div>
 
           {/* Facts */}
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {facts.map((f) => (
               <div key={f.label} className="flex items-start gap-2.5 rounded-xl border border-border bg-background p-3">
                 <f.icon className="mt-0.5 h-4 w-4 shrink-0 text-marine" />
@@ -169,7 +169,7 @@ function AlumnusProfile() {
         {/* Completed Modules */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
           <h2 className="font-display text-lg font-bold text-navy">Completed Modules</h2>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {modules.map((m) => (
               <div key={m.no} className="flex items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
@@ -180,7 +180,7 @@ function AlumnusProfile() {
         </div>
 
         {/* Action Plan + Current Impact (placeholders) */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-dashed border-marine/40 bg-marine/5 p-5">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-marine" />

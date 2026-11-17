@@ -1063,7 +1063,7 @@ function CertificatePanel({
       }
     >
       <p className="text-xs text-muted-foreground">{AZA_META.certificate} — {AZA_META.fullTitle}.</p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3 text-xs">
         <Stat label="Final score" value={`${finalScore}/100`} />
         <Stat label="Passing grade" value={`${AZA_PASS_MARK}/100`} />
         <Stat label="Eligible" value={eligible ? "Yes" : "Not yet"} />

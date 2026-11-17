@@ -450,7 +450,7 @@ function RequestTrainingPage() {
               </div>
             )}
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[
                 { label: "Reference Number", value: req.reference },
                 { label: "Submission Date", value: formatDate(req.createdAt) },
@@ -615,7 +615,7 @@ function RequestTrainingPage() {
               </h2>
               <div className="mt-5 grid gap-4">
                 <Field label="Requester Type" required>
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {REQUESTER_TYPES.map((t) => {
                       const active = draft.requesterType === t;
                       return (
@@ -637,7 +637,7 @@ function RequestTrainingPage() {
                 </Field>
               </div>
 
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Full Name" required>
                   <input
                     className={inputClass}
@@ -714,7 +714,7 @@ function RequestTrainingPage() {
           {step === 2 && (
             <div>
               <h2 className="font-display text-lg font-bold text-navy">Step 2 — Training Need</h2>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Training Topic" required>
                   <input
                     className={inputClass}
@@ -764,7 +764,7 @@ function RequestTrainingPage() {
                   />
                 </Field>
               </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Field label="Current Competency" required>
                   <select
                     className={inputClass}
@@ -858,7 +858,7 @@ function RequestTrainingPage() {
                   </Field>
                 )}
                 {!isIndividual && (
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field label="Estimated number of participants">
                       <select
                         className={inputClass}
@@ -977,7 +977,7 @@ function RequestTrainingPage() {
 
               ) : (
                 <div className="mt-5 grid gap-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field label="Preferred delivery">
                       <select
                         className={inputClass}
@@ -1067,7 +1067,7 @@ function RequestTrainingPage() {
 
                   <div>
                     <p className={labelClass}>Support requested from BARUNA</p>
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {SUPPORT_OPTIONS.map((o) => {
                         const checked = draft.supportRequested.includes(o);
                         return (
@@ -1271,7 +1271,7 @@ function ReviewBlock({ title, rows }: { title: string; rows: [string, string][] 
   return (
     <div className="rounded-xl border border-border bg-background p-4">
       <p className="font-display text-sm font-bold text-navy">{title}</p>
-      <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
         {rows.map(([label, value]) => (
           <div key={label} className="flex flex-col">
             <dt className="text-[0.6rem] font-bold uppercase tracking-wide text-muted-foreground">

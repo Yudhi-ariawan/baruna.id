@@ -179,7 +179,7 @@ export function AccountSecuritySection({ currentEmail }: { currentEmail: string 
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Change Password Form */}
         <div className="rounded-xl border border-border/80 bg-background/50 p-5 space-y-4">
           <div className="flex items-center gap-2 font-display text-sm font-bold text-navy">

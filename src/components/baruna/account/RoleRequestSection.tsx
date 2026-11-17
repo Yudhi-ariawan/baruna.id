@@ -100,7 +100,7 @@ export function RoleRequestSection() {
             >
               <fieldset className="space-y-2">
                 <legend className="text-xs font-semibold text-navy">{isId ? "Peran yang diajukan" : "Requested role"}</legend>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {choices.map((r) => (
                     <label
                       key={r}

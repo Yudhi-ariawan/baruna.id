@@ -213,7 +213,7 @@ export function ProfileIdentityForm({ profile }: { profile: AccountProfile }) {
         </div>
       </div>
 
-      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Identitas Pribadi */}
         <ProfileField
           label={isId ? "Nama Lengkap" : "Full Name"}

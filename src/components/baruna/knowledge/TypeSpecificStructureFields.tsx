@@ -84,7 +84,7 @@ export function PolicyBriefStructureForm({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {POLICY_BRIEF_FIELDS.map((field) => (
           <div key={field.key} className="flex flex-col">
             <label className="text-xs font-bold text-navy">{field.label}</label>
@@ -113,7 +113,7 @@ export function PolicyBriefStructurePreview({ value }: { value?: Partial<PolicyB
         <CheckCircle2 className="h-4 w-4 text-blue-600" />
         Struktur Risalah Kebijakan (Policy Brief Highlights)
       </div>
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {entries.map((f) => (
           <div key={f.key} className="rounded-lg border border-border/80 bg-card p-3">
             <dt className="text-[0.65rem] font-bold uppercase tracking-wider text-marine">{f.label}</dt>
@@ -218,7 +218,7 @@ export function CaseStudyStructureForm({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {CASE_STUDY_FIELDS.map((field) => (
           <div key={field.key} className="flex flex-col">
             <label className="text-xs font-bold text-navy">{field.label}</label>
@@ -247,7 +247,7 @@ export function CaseStudyStructurePreview({ value }: { value?: Partial<CaseStudy
         <CheckCircle2 className="h-4 w-4 text-indigo-600" />
         Struktur Studi Kasus (Case Study Details)
       </div>
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {entries.map((f) => (
           <div key={f.key} className="rounded-lg border border-border/80 bg-card p-3">
             <dt className="text-[0.65rem] font-bold uppercase tracking-wider text-marine">{f.label}</dt>
@@ -328,7 +328,7 @@ export function InfographicStructureForm({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {INFOGRAPHIC_FIELDS.map((field) => (
           <div key={field.key} className="flex flex-col">
             <label className="text-xs font-bold text-navy">{field.label}</label>
@@ -357,7 +357,7 @@ export function InfographicStructurePreview({ value }: { value?: Partial<Infogra
         <CheckCircle2 className="h-4 w-4 text-amber-600" />
         Rincian Infografik &amp; Sumber Data Visual
       </div>
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {entries.map((f) => (
           <div key={f.key} className="rounded-lg border border-border/80 bg-card p-3">
             <dt className="text-[0.65rem] font-bold uppercase tracking-wider text-marine">{f.label}</dt>
@@ -438,7 +438,7 @@ export function ToolkitStructureForm({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {TOOLKIT_FIELDS.map((field) => (
           <div key={field.key} className="flex flex-col">
             <label className="text-xs font-bold text-navy">{field.label}</label>
@@ -467,7 +467,7 @@ export function ToolkitStructurePreview({ value }: { value?: Partial<ToolkitStru
         <CheckCircle2 className="h-4 w-4 text-teal-600" />
         Spesifikasi Instrumen &amp; Panduan Toolkit
       </div>
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {entries.map((f) => (
           <div key={f.key} className="rounded-lg border border-border/80 bg-card p-3">
             <dt className="text-[0.65rem] font-bold uppercase tracking-wider text-marine">{f.label}</dt>

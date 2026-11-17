@@ -593,7 +593,7 @@ function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; i
       </p>
 
       {/* Quick-select cards for the 3 main tracks: Publication, Best Practice, Video */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {quickTracks.map((qt) => {
           const isSelected =
             form.type === qt.type ||
@@ -695,7 +695,7 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
     <div>
       <h2 className="font-display text-lg font-bold text-navy">Step 2 — Resource Information</h2>
       <p className="mt-1 text-sm text-muted-foreground">Tell the community about your resource.</p>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <FieldLabel required>Title</FieldLabel>
           <input className={inputClass} value={form.title} maxLength={160} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Tilapia Farming Manual" />
@@ -1201,7 +1201,7 @@ function StepAccess({ form, set }: { form: ResourceDraft; set: SetFn }) {
     <div>
       <h2 className="font-display text-lg font-bold text-navy">Step 4 — Access &amp; License</h2>
       <p className="mt-1 text-sm text-muted-foreground">Set who can access this resource.</p>
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {ACCESS_LEVELS.map((level) => {
           const active = form.accessLevel === level;
           return (

@@ -577,7 +577,7 @@ function TrainingDetail() {
           <p className="mt-0.5 text-xs text-muted-foreground">
             International Training on Fisheries for African Countries
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between">
                 <span className="font-display text-lg font-bold text-navy">2024</span>
@@ -656,7 +656,7 @@ function TrainingDetail() {
 
             <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-xl font-bold text-navy">For Fisheries Professionals from African Countries</h2>
-              <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+              <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.1fr] lg:items-center">
                 <div className="relative grid place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-marine/10 via-marine/5 to-accent/10 p-8">
                   <Globe className="h-40 w-40 text-marine/30" strokeWidth={1} />
                   <span className="absolute inline-flex items-center gap-1.5 rounded-full bg-marine px-3 py-1.5 text-xs font-bold text-marine-foreground shadow-hover">
@@ -688,7 +688,7 @@ function TrainingDetail() {
             {/* Learning Outcomes */}
             <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-xl font-bold text-navy">What You Will Learn</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {p.outcomes.map((o) => (
                   <div key={o} className="flex items-start gap-2.5 rounded-xl border border-border bg-secondary/30 p-3.5">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-marine" />
@@ -810,7 +810,7 @@ function TrainingDetail() {
             {/* Learning Outcomes */}
             <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-xl font-bold text-navy">Learning Outcomes</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {p.outcomes.map((o) => (
                   <div key={o} className="flex items-start gap-2.5 rounded-xl border border-border bg-secondary/30 p-3.5">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-marine" />
@@ -945,7 +945,7 @@ function TrainingDetail() {
                 className="mt-4 h-64 w-full rounded-2xl object-cover sm:h-80"
               />
 
-              <div className="mt-5 grid gap-5 rounded-2xl border border-border bg-secondary/30 p-5 lg:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-5 rounded-2xl border border-border bg-secondary/30 p-5 lg:grid-cols-2">
                 <div className="flex gap-3">
                   <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-marine" />
                   <div>
@@ -970,7 +970,7 @@ function TrainingDetail() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {p.venue.photos.map((ph) => (
                   <figure key={ph.caption} className="overflow-hidden rounded-2xl border border-border">
                     <img
@@ -994,7 +994,7 @@ function TrainingDetail() {
           <section className="space-y-6">
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <h2 className="font-display text-xl font-bold text-navy">Participant Reviews</h2>
-              <div className="mt-5 grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
+              <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
                 <div className="text-center sm:border-r sm:border-border sm:pr-8">
                   <p className="font-display text-5xl font-extrabold text-navy">{p.rating}</p>
                   <div className="mt-1 flex items-center justify-center gap-0.5 text-star">
@@ -1021,7 +1021,7 @@ function TrainingDetail() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {p.reviewsList.map((r) => (
                 <article key={r.name} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
                   <div className="flex items-center justify-between gap-3">
@@ -1086,7 +1086,7 @@ function ModulesPreview({
       <h2 className="font-display text-xl font-bold text-navy">
         Training Modules <span className="text-muted-foreground">({p.modules.length})</span>
       </h2>
-      <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {p.modules.map((m, i) => {
           const num = i + 1;
           const doc = pdfMap?.[num];

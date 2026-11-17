@@ -47,7 +47,7 @@ export function PublishedOfferingsSection({
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((o) => (
           <OfferingCard key={o.offeringCode} offering={o} image={image} />
         ))}

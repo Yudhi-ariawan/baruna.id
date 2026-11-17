@@ -351,7 +351,7 @@ function ApplyPage() {
               This capacity-building program is designed for fisheries professionals from African countries. Please
               confirm that you meet the eligibility criteria before continuing your application.
             </p>
-            <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
+            <ul className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {eligibilityCriteria.map((c) => (
                 <li key={c} className="flex items-start gap-2.5 rounded-xl border border-border bg-background px-3.5 py-3 text-sm font-medium text-navy">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-marine" />
@@ -375,7 +375,7 @@ function ApplyPage() {
           <section className="space-y-6">
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
               <h2 className="font-display text-xl font-bold text-navy">Personal Information</h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Full Name" required>
                   <TextInput value={personal.fullName} onChange={(e) => setP("fullName", e.target.value)} placeholder="As shown on passport" />
                 </Field>
@@ -407,7 +407,7 @@ function ApplyPage() {
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
               <h2 className="font-display text-xl font-bold text-navy">Professional Information</h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Organization" required>
                   <TextInput value={professional.organization} onChange={(e) => setPr("organization", e.target.value)} placeholder="Your organization" />
                 </Field>
@@ -434,7 +434,7 @@ function ApplyPage() {
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
               <h2 className="font-display text-xl font-bold text-navy">English Proficiency</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {ENGLISH_LEVELS.map((lvl) => (
                   <button
                     key={lvl}
@@ -635,7 +635,7 @@ function ApplyPage() {
             <p className="mt-2 text-sm text-muted-foreground">Thank you for applying to</p>
             <p className="mt-1 font-display text-base font-bold text-navy">{p.title}</p>
 
-            <div className="mx-auto mt-6 grid max-w-sm gap-3 sm:grid-cols-2">
+            <div className="mx-auto mt-6 grid grid-cols-1 max-w-sm gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-border bg-background p-4">
                 <p className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">Application ID</p>
                 <p className="mt-1 font-display text-lg font-bold text-marine">{submittedId}</p>
@@ -698,7 +698,7 @@ function ReviewBlock({ title, rows, onEdit }: { title: string; rows: [string, st
         <h2 className="font-display text-lg font-bold text-navy">{title}</h2>
         <button onClick={onEdit} className="text-xs font-semibold text-marine hover:text-navy">Edit</button>
       </div>
-      <dl className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
         {rows.map(([k, v]) => (
           <div key={k}>
             <dt className="text-xs text-muted-foreground">{k}</dt>

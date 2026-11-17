@@ -64,7 +64,7 @@ export function ReadinessBoardView({ board }: { board: ReadinessBoard }) {
         <div className="mt-3"><ReleaseMarkdown>{board.summary}</ReleaseMarkdown></div>
       </div>
 
-      <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
         {board.columns.map((c) => <Column key={c.key} column={c} />)}
       </div>
 

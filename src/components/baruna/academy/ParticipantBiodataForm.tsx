@@ -323,7 +323,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
           </div>
 
           {/* 3 & 4. Tempat Lahir & Tanggal Lahir */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-navy">
                 Tempat Lahir <span className="text-red-500">*</span>
@@ -353,7 +353,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
           </div>
 
           {/* 5 & 6. Jenis Kelamin & Agama */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-navy">
                 Jenis Kelamin <span className="text-red-500">*</span>
@@ -394,7 +394,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
           </div>
 
           {/* 7 & 8. Jabatan & Pangkat/Golongan (Foto 4 & 5) */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-navy">
                 Jabatan <span className="text-red-500">*</span>
@@ -430,7 +430,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
           </div>
 
           {/* 9 & 10. Pendidikan Terakhir & No. HP */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-navy">
                 Pendidikan Terakhir <span className="text-red-500">*</span>
@@ -516,7 +516,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
           </div>
 
           {/* 14 & 15. Provinsi & Kabupaten/Kota */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-navy">
                 Provinsi <span className="text-red-500">*</span>

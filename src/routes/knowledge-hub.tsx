@@ -138,7 +138,7 @@ function KnowledgeHubPage() {
             {results.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("common.noResults")}</p>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {results.map((r) => (
                   <Link key={r.id} to="/knowledge-hub/resource/$id" params={{ id: r.id }} className="rounded-lg border border-border p-3 text-sm hover:border-marine/40 hover:bg-muted">
                     <p className="text-[0.65rem] font-bold uppercase tracking-wider text-marine">{r.typeLabel}</p>
@@ -151,7 +151,7 @@ function KnowledgeHubPage() {
           </Panel>
         )}
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_330px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_330px]">
           <div className="space-y-6">
             <Banner
               image={pageImages.bannerUnderwater}
@@ -227,7 +227,7 @@ function KnowledgeHubPage() {
                 </Link>
               </div>
               {latest.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {latest.map((r, i) => <ResourceCard key={r.id} r={r} index={i} />)}
                 </div>
               ) : (

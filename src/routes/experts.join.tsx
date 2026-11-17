@@ -731,7 +731,7 @@ function JoinExpertPage() {
           {currentStep === 1 && (
             <div className="animate-in fade-in-50 duration-200">
               <SectionCard icon={User} n={1} title={isId ? "Data Diri & Kontak" : "Personal Information"}>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <FieldLabel required>{isId ? "Nama Lengkap & Gelar" : "Full Name"}</FieldLabel>
                     <input
@@ -850,7 +850,7 @@ function JoinExpertPage() {
                     ? "Memilih \"Trainer\" berarti setelah disetujui Anda langsung dapat mengajukan modul pelatihan. Tanpa memilih Trainer, Anda tetap terdaftar sebagai expert dan dapat mengajukan Kualifikasi Trainer kemudian."
                     : "Choosing \"Trainer\" lets you submit training modules once approved. Without it you are still listed as an expert and may apply for trainer qualification later."}
                 </p>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {EXPERT_ROLES.map((role) => {
                     const active = form.roles.includes(role);
                     return (
@@ -898,7 +898,7 @@ function JoinExpertPage() {
           {currentStep === 4 && (
             <div className="animate-in fade-in-50 duration-200">
               <SectionCard icon={Upload} n={4} title={isId ? "Unggah Dokumen Pendukung" : "Upload Documents"}>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <ExpertDocumentUpload
                     label={isId ? "CV / Riwayat Hidup" : "CV / Resume"}
                     file={files.cv ?? null}

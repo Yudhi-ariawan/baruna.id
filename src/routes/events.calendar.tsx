@@ -95,7 +95,7 @@ function CalendarPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft sm:grid-cols-3">
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-navy outline-none">
             <option value="">All categories</option>
             {eventCategories.map((c) => (

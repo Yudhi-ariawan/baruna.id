@@ -354,7 +354,7 @@ export function ModuleQuizBuilder({
                   </span>
                 </label>
 
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {[0, 1, 2, 3].map((optIdx) => {
                     const letter = String.fromCharCode(65 + optIdx);
                     const isKey = q.correctAnswer === optIdx;

@@ -91,7 +91,7 @@ function EventsHome() {
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
           <div className="space-y-6">
             {/* Dynamic featured hero */}
             <section className="relative overflow-hidden rounded-3xl shadow-card">

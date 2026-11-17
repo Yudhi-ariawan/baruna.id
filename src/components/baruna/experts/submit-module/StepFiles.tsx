@@ -115,7 +115,7 @@ export function StepFiles({
             </div>
           )}
 
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {RESOURCES.map((r, idx) => {
               const newFile = attachedFiles[r];
               const existing = existingFiles[r];

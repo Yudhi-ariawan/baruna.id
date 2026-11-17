@@ -18,7 +18,7 @@ export function Hero() {
         />
         <div className="hero-overlay absolute inset-0" />
 
-        <div className="relative grid gap-6 sm:gap-8 p-4 sm:p-10 lg:grid-cols-[1.4fr_1fr] lg:p-12 w-full">
+        <div className="relative grid grid-cols-1 gap-6 sm:gap-8 p-4 sm:p-10 lg:grid-cols-[1.4fr_1fr] lg:p-12 w-full">
           {/* Left copy */}
           <div className="max-w-xl text-navy-foreground">
             <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight">

@@ -101,7 +101,7 @@ export function CandidatePortalHub({ userDisplayName }: { userDisplayName?: stri
               : "The BARUNA Trainer Portal is an exclusive workspace for verified marine instructors to design course syllabi, teach cohorts, and manage their professional facilitation portfolio."}
           </p>
 
-          <div className="mt-8 grid gap-4 text-left sm:grid-cols-3">
+          <div className="mt-8 grid grid-cols-1 gap-4 text-left sm:grid-cols-3">
             <div className="rounded-xl border border-border/80 bg-slate-50/60 p-4">
               <div className="flex items-center gap-2 text-marine font-bold text-xs uppercase tracking-wide">
                 <BookOpen className="h-4 w-4" /> 1. Ajukan Modul
@@ -436,7 +436,7 @@ export function CandidatePortalHub({ userDisplayName }: { userDisplayName?: stri
           </div>
 
           {/* Bidang Keahlian & Peran */}
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
                 Bidang Keahlian yang Diajukan:
@@ -490,7 +490,7 @@ export function CandidatePortalHub({ userDisplayName }: { userDisplayName?: stri
             </div>
 
             {docs.length > 0 ? (
-              <div className="grid gap-2.5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {docs.map((doc, idx) => (
                   <div
                     key={doc.path || idx}

@@ -64,7 +64,7 @@ function BecomeTrainerPage() {
           </p>
         </div>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {STEPS.map((s, i) => (
             <article key={s.title} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Step {i + 1}</div>

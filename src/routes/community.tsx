@@ -138,7 +138,7 @@ function CommunityPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
           <div className="space-y-6">
             <Banner
               image={pageImages.bannerUnderwater}
@@ -155,7 +155,7 @@ function CommunityPage() {
 
             <section>
               <SectionHeader title={t("community.recentDiscussions")} action={t("common.viewAll")} />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {discussions.map((d) => (
                   <article key={d.title} className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-hover">
                     <CategoryBadge label={d.tag} />
@@ -180,7 +180,7 @@ function CommunityPage() {
 
             <section>
               <SectionHeader title={t("community.featuredGroups")} action={t("common.viewAll")} />
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {groups.map((g) => (
                   <article key={g.name} className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
                     <img src={g.image} alt={g.name} loading="lazy" width={120} height={120} className="h-14 w-14 rounded-xl object-cover" />

@@ -82,7 +82,7 @@ function SubmitPage() {
           }}
           className="grid gap-5 rounded-2xl border border-border bg-card p-6 shadow-soft"
         >
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field label="Event Title" required>
               <input required className={inputClass} placeholder="e.g. Coastal Resilience Forum 2026" />
             </Field>
@@ -146,7 +146,7 @@ function SubmitPage() {
             />
           </Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {["Upload Poster", "Upload Banner"].map((label) => (
               <Field key={label} label={label}>
                 <div className="flex items-center gap-3 rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">

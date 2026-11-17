@@ -190,7 +190,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
         <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${progress}%` }} />
         </div>
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+        <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {steps.map((s) => (
             <li key={s.key} className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 py-2.5">
               {s.done ? (
@@ -213,7 +213,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
           <DocLetterRow label="Program Acceptance Letter" desc="Confirmation of your selection into the program." onDownload={downloadAcceptance} />
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Visa Status">
             <Select value={t.visa.status} onChange={(v) => patch("visa", { status: v as VisaStatus })} options={[...VISA_STATUSES]} />
           </Field>
@@ -254,7 +254,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
           />
         </Field>
         {t.travel.arrivalAirport === "Other" && (
-          <div className="mt-3 grid gap-4 rounded-xl border border-dashed border-border bg-background p-4 md:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-4 rounded-xl border border-dashed border-border bg-background p-4 md:grid-cols-3">
             <Field label="Airport Name">
               <TextInput value={t.travel.otherAirportName} onChange={(v) => patch("travel", { otherAirportName: v })} onBlur={saveToast} />
             </Field>
@@ -268,7 +268,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
         )}
 
         <p className="mt-5 mb-1 text-xs font-bold uppercase tracking-wide text-foreground/70">Arrival Flight Information</p>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Airline">
             <TextInput value={t.travel.airline} onChange={(v) => patch("travel", { airline: v })} placeholder="e.g. Singapore Airlines" onBlur={saveToast} />
           </Field>
@@ -284,7 +284,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
         </div>
 
         <p className="mt-5 mb-1 text-xs font-bold uppercase tracking-wide text-foreground/70">Transit Information (optional)</p>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Transit Airport">
             <TextInput value={t.travel.transitAirport} onChange={(v) => patch("travel", { transitAirport: v })} onBlur={saveToast} />
           </Field>
@@ -328,7 +328,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
                 ]}
               />
             </Field>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Arrival Date">
                 <TextInput type="date" value={t.transfer.arrivalDate} onChange={(v) => patch("transfer", { arrivalDate: v })} />
               </Field>
@@ -347,7 +347,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
               <Select value={t.transfer.status} onChange={(v) => patch("transfer", { status: v as PickupStatus })} options={[...PICKUP_STATUSES]} />
             </Field>
 
-            <div className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2">
               <p className="col-span-full text-xs font-bold uppercase tracking-wide text-foreground/70">Transfer Assignment</p>
               <DisplayPair label="Driver Name" value={t.transfer.status === "Driver Assigned" || t.transfer.status === "Completed" ? "I Made Wirawan" : "To be assigned"} />
               <DisplayPair label="Vehicle Number" value={t.transfer.status === "Driver Assigned" || t.transfer.status === "Completed" ? "DK 1234 BA" : "To be assigned"} />
@@ -360,7 +360,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
 
       {/* 4 — Accommodation */}
       <SectionCard icon={Hotel} step="4" title="Accommodation Arrangement">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Accommodation Preference">
             <Radio
               name="roomPref"
@@ -394,7 +394,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
           />
         </Field>
 
-        <div className="mt-4 grid gap-3 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">
           <p className="col-span-full text-xs font-bold uppercase tracking-wide text-foreground/70">Assigned Accommodation</p>
           <DisplayPair label="Hotel Name" value={accommodationConfirmed ? "The Anvaya Beach Resort Bali" : "To be confirmed"} />
           <DisplayPair label="Room Type" value={accommodationConfirmed ? (t.accommodation.preference || "Single Room") : "To be confirmed"} />
@@ -416,7 +416,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
 
       {/* 5 — Departure */}
       <SectionCard icon={PlaneTakeoff} step="5" title="Departure Information">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Airline">
             <TextInput value={t.departure.airline} onChange={(v) => patch("departure", { airline: v })} onBlur={saveToast} />
           </Field>
@@ -442,7 +442,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
           </Field>
         </div>
         {t.departure.transferRequired === "Yes" && (
-          <div className="mt-4 grid gap-3 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">
             <p className="col-span-full text-xs font-bold uppercase tracking-wide text-foreground/70">Departure Transfer</p>
             <DisplayPair label="Scheduled Pickup Time" value={t.departure.departureTime ? `${t.departure.departureTime} (3h before departure)` : "To be confirmed"} />
             <DisplayPair label="Driver Information" value="Assigned 24h before departure" />
@@ -453,7 +453,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
       {/* 6 — Training Kit & Apparel */}
       <SectionCard icon={Shirt} step="6" title="Training Kit & Apparel">
         <p className="text-sm text-muted-foreground">Participants will receive:</p>
-        <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+        <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {KIT_ITEMS.map((k) => (
             <li key={k} className="flex items-center gap-2 text-sm font-medium text-navy">
               <CheckCircle2 className="h-4 w-4 text-badge-training" /> {k}
@@ -471,7 +471,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
         <SizeTable headers={["Size", "Head Circumference"]} rows={CAP_SIZES.map((s) => [s.size, s.head])} selected={t.kit.capSize} onSelect={(size) => patch("kit", { capSize: size })} />
 
         <p className="mt-5 mb-2 text-xs font-bold uppercase tracking-wide text-foreground/70">Additional Body Measurements</p>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Field label="Height (cm)">
             <TextInput type="number" value={t.kit.height} onChange={(v) => patch("kit", { height: v })} onBlur={saveToast} />
           </Field>
@@ -553,7 +553,7 @@ export function TravelVisaPrep({ app, id }: { app: Application; id: string }) {
 
       {/* 9 — Emergency Contact */}
       <SectionCard icon={PhoneCall} step="9" title="Emergency Contact">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Emergency Contact Name">
             <TextInput value={t.emergency.name} onChange={(v) => patch("emergency", { name: v })} onBlur={saveToast} />
           </Field>

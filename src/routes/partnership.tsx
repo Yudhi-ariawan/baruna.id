@@ -146,7 +146,7 @@ function PartnershipPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
           <div className="space-y-6">
             <Banner
               image={pageImages.bannerUnderwater}
@@ -163,7 +163,7 @@ function PartnershipPage() {
 
             <section>
               <SectionHeader title={t("partnership.opportunitiesTitle")} action={t("bottomGrid.viewAllPartners")} />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {opportunities.map((o) => (
                   <article key={o.title} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
                     <div className="relative h-32 overflow-hidden">

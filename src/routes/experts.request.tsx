@@ -263,7 +263,7 @@ function RequestExpertPage() {
             <div>
               <h2 className="font-display text-lg font-bold text-navy">Step 1 — Select Request Type</h2>
               <p className="mt-1 text-sm text-muted-foreground">Choose the service you need.</p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {REQUEST_TYPE_ORDER.map((t) => {
                   const c = REQUEST_TYPE_CONFIG[t];
                   const Icon = TYPE_ICON[t];
@@ -308,7 +308,7 @@ function RequestExpertPage() {
                 Step 2 — {config.label} Request
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">{config.purpose}</p>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {config.fields.map((f) => (
                   <Field
                     key={f.key}

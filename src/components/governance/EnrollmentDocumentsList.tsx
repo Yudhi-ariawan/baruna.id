@@ -43,7 +43,7 @@ export function EnrollmentDocumentsList({ documents, required }: { documents: En
       <p className="text-[0.65rem] font-bold uppercase text-muted-foreground">
         Dokumen persyaratan ({documents.length}{required?.length ? `/${required.length}` : ""})
       </p>
-      <ul className="grid gap-1.5 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {sorted.map((d) => (
           <li key={d.id} className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-card px-2 py-1 text-[11px] leading-tight">
             <FileText className="h-3.5 w-3.5 shrink-0 text-marine" />

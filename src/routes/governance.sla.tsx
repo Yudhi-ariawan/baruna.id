@@ -112,7 +112,7 @@ function PolicyRow({ policy, canEdit }: { policy: SlaPolicy; canEdit: boolean })
       </div>
 
       {canEdit ? (
-        <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_1fr_auto_auto] sm:items-end">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr_auto_auto] sm:items-end">
           <label className="text-xs font-semibold text-navy">
             Target (jam)
             <input

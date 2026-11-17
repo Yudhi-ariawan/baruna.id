@@ -73,7 +73,7 @@ function AddLanguage() {
   const codeOk = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/.test(code.trim().toLowerCase());
   const valid = codeOk && name.trim().length >= 2;
   return (
-    <div className="grid gap-2 rounded-xl border border-dashed border-border p-3 sm:grid-cols-[7rem_1fr_1fr_auto] sm:items-end">
+    <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed border-border p-3 sm:grid-cols-[7rem_1fr_1fr_auto] sm:items-end">
       <label className="text-xs font-semibold text-navy">
         Kode ISO
         <input value={code} maxLength={12} onChange={(e) => setCode(e.target.value)} placeholder="mis. sw" className={input} />
@@ -119,7 +119,7 @@ function LanguageRow({ item }: { item: MasterLanguage }) {
   return (
     <li className="p-3 text-sm">
       {editing ? (
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_6rem_auto_auto] sm:items-end">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_6rem_auto_auto] sm:items-end">
           <label className="text-xs font-semibold text-navy">
             Nama ({item.code})
             <input value={name} maxLength={80} disabled={item.usage > 0} onChange={(e) => setName(e.target.value)}

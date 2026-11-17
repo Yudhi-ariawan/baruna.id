@@ -97,7 +97,7 @@ function AlumniNetworkPage() {
         </div>
 
         {/* Pillars */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ALUMNI_NETWORK_PILLARS.map((p, i) => {
             const Icon = PILLAR_ICONS[i % PILLAR_ICONS.length];
             return (
@@ -142,7 +142,7 @@ function AlumniNetworkPage() {
         {/* Success stories */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
           <h2 className="font-display text-lg font-bold text-navy">Success Stories</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {EDITION_2024_TESTIMONIALS.map((t) => (
               <div key={t.name} className="rounded-xl border border-border bg-background p-4">
                 <div className="flex items-center gap-3">

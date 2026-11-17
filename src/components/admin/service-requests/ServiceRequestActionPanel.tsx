@@ -141,7 +141,7 @@ export function ServiceRequestActionPanel({
           </DialogDescription>
         </DialogHeader>
 
-        <section className="grid gap-2 rounded-xl border border-border bg-slate-50 p-3 text-xs sm:grid-cols-2">
+        <section className="grid grid-cols-1 gap-2 rounded-xl border border-border bg-slate-50 p-3 text-xs sm:grid-cols-2">
           {Object.entries(values).filter(([, v]) => v).slice(0, 24).map(([k, v]) => (
             <div key={k} className="min-w-0">
               <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">{LABEL_KEYS[k] ?? k}</span>
@@ -183,7 +183,7 @@ export function ServiceRequestActionPanel({
             {action === "assign" && <ExpertPicker selected={expertId} onSelect={setExpertId} search={expertSearch} onSearch={setExpertSearch} />}
 
             {action === "complete" && (
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Field label="Judul kegiatan *" value={completion.activityTitle} onChange={(v) => setCompletion((c) => ({ ...c, activityTitle: v }))} className="sm:col-span-2" />
                 <Field label="Penyelenggara" value={completion.organizer} onChange={(v) => setCompletion((c) => ({ ...c, organizer: v }))} />
                 <Field label="Negara" value={completion.country} onChange={(v) => setCompletion((c) => ({ ...c, country: v }))} />

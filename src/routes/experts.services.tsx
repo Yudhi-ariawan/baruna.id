@@ -43,7 +43,7 @@ function ServicesPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {SERVICES.map((s) => (
             <Link key={s.label} to="/experts/request" search={{ type: s.type }} className="group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
               <div className="grid h-11 w-11 place-items-center rounded-xl bg-marine/10 text-marine group-hover:bg-marine group-hover:text-marine-foreground">

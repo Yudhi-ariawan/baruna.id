@@ -253,7 +253,7 @@ export function BottomGrid({
 }) {
   return (
     <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-8 sm:py-10 w-full overflow-hidden">
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5 w-full">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5 w-full">
         <UpcomingEvents />
         <KnowledgeHubCard resources={latestResources} />
         <FeaturedExperts experts={featuredExperts} />

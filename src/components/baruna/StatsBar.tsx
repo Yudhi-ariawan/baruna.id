@@ -34,7 +34,7 @@ export function StatsBar() {
   return (
     <footer className="bg-navy text-navy-foreground w-full overflow-hidden">
       <div className="mx-auto max-w-[1500px] px-3 sm:px-6 py-8 sm:py-10 w-full">
-        <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr] lg:items-center w-full">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr] lg:items-center w-full">
           <div className="grid grid-cols-2 gap-4 sm:gap-6 sm:grid-cols-3 lg:grid-cols-5 w-full">
             {translatedStats.map(({ value, label, icon: Icon }) => {
               const formattedValue = formatValue(value);

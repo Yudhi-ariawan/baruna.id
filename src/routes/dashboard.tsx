@@ -237,7 +237,7 @@ function DashboardPage() {
           <TrainerKnowledgePublicationsCard variant="participant" />
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {cards.map((c) => (
             <div key={c.title} className="rounded-2xl border border-border bg-card p-5 shadow-soft hover:border-marine/40 transition-colors">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-marine">

@@ -41,7 +41,7 @@ function HelpPage() {
         {isId ? "Semua yang Anda butuhkan untuk menggunakan platform BARUNA." : "Everything you need to use the BARUNA demo."}
       </p>
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+      <section className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Link to="/about" className="rounded-2xl border border-border bg-card p-5 shadow-soft hover:border-marine/50">
           <BookOpen className="h-6 w-6 text-marine" />
           <p className="mt-2 font-bold text-navy">{isId ? "Panduan pengguna" : "User guides"}</p>

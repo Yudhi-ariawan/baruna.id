@@ -114,7 +114,7 @@ function ModuleLimitsForm({
       {!complete ? (
         <p className="text-xs text-destructive">Kuota di database belum lengkap untuk keempat level. Isi semuanya lalu simpan.</p>
       ) : null}
-      <div className="grid gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
         {TRAINER_LEVEL_ORDER.map((level) => (
           <label key={level} className="text-xs font-semibold text-navy">
             {LABEL[level]}

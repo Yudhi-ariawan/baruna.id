@@ -213,7 +213,7 @@ export function InPersonTraining({ app, id }: { app: Application; id: string }) 
 
       {/* Section 2 — Training Information */}
       <SectionCard icon={ClipboardCheck} step="2" title="Training Information">
-        <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
           <InfoCell icon={Building2} label="Venue" value={TRAINING_INFO.venue} />
           <InfoCell icon={MapPin} label="Location" value={TRAINING_INFO.location} />
           <InfoCell icon={CalendarDays} label="Training Dates" value={TRAINING_INFO.dates} />
@@ -341,7 +341,7 @@ export function InPersonTraining({ app, id }: { app: Application; id: string }) 
 
       {/* Section 6 — Group Assignment */}
       <SectionCard icon={Users} step="6" title="Group Assignment">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {GROUP_ASSIGNMENTS.map((g) => (
             <div key={g.group} className="rounded-xl border border-border bg-background p-4">
               <div className="flex items-center justify-between gap-2">
@@ -455,7 +455,7 @@ export function InPersonTraining({ app, id }: { app: Application; id: string }) 
 
       {/* Section 8 — Field Visit Information */}
       <SectionCard icon={Bus} step="8" title="Field Visit Information">
-        <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
           <InfoCell icon={MapPin} label="Field Visit Location" value={FIELD_VISIT.location} />
           <InfoCell icon={CalendarDays} label="Date" value={FIELD_VISIT.date} />
           <InfoCell icon={Clock} label="Departure Time" value={FIELD_VISIT.departure} />

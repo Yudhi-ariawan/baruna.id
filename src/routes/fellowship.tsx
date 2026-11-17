@@ -151,7 +151,7 @@ function FellowshipPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
           <div className="space-y-6">
             <Banner
               image={pageImages.bannerFellowship}
@@ -169,7 +169,7 @@ function FellowshipPage() {
 
             <section>
               <SectionHeader title={t("fellowship.featuredOpportunities")} action={t("bottomGrid.viewAllOpportunities")} />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {opportunities.map((o) => (
                   <article key={o.title} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-hover">
                     <div className="relative h-36 overflow-hidden">
@@ -193,7 +193,7 @@ function FellowshipPage() {
 
             <Panel>
               <SectionHeader title="How It Works" action={null} />
-              <ol className="grid gap-5 sm:grid-cols-3 lg:grid-cols-5">
+              <ol className="grid grid-cols-1 gap-5 sm:grid-cols-3 lg:grid-cols-5">
                 {steps.map((s, i) => (
                   <li key={s.label} className="text-center">
                     <div className="relative mx-auto grid h-14 w-14 place-items-center rounded-full bg-marine/10 text-marine">

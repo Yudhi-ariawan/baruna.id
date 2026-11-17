@@ -444,7 +444,7 @@ function DynamicModuleOverview({ module }: { module: PublishedModuleDetail }) {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                 <Video className="h-4 w-4" />

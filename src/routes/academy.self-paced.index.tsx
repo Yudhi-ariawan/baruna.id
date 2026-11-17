@@ -136,7 +136,7 @@ function SelfPacedIndex() {
             includes the same module, so you do not need to retake it.
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Stat label="Courses Available" value={String(catalog.length + offerings.length)} icon={Layers} />
             <Stat label="Enrolled" value={String(enrichedCount.enrolled)} icon={BookOpen} />
             <Stat label="Completed" value={String(enrichedCount.completed)} icon={CheckCircle2} />
@@ -174,7 +174,7 @@ function SelfPacedIndex() {
         />
 
         {/* Grid */}
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {catalog.map((p) => (
             <CourseCard key={p.id} program={p} completed={isCompletedFor(p, isCompleted)} />
           ))}

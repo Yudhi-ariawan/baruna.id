@@ -121,7 +121,7 @@ function AlumniPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft sm:grid-cols-3">
           <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 sm:col-span-3">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
@@ -175,7 +175,7 @@ function AlumniPage() {
         </div>
 
         {/* Grid 2024 */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {filtered.map((a) => (
             <Link
               key={a.id}

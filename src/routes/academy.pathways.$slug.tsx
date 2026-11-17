@@ -235,7 +235,7 @@ function PathwayDetail() {
         </div>
 
         {/* Pathway Overview */}
-        <div className="grid items-center gap-5 rounded-2xl border border-border bg-card p-5 shadow-soft lg:grid-cols-[1.4fr_1fr]">
+        <div className="grid grid-cols-1 items-center gap-5 rounded-2xl border border-border bg-card p-5 shadow-soft lg:grid-cols-[1.4fr_1fr]">
           <div>
             <h2 className="font-display text-xl font-bold text-navy">Pathway Overview</h2>
             {p.overview.map((para) => (
@@ -286,7 +286,7 @@ function PathwayDetail() {
         {isCert && p.certificationJourney && (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
             <h2 className="font-display text-base font-bold text-navy">Certification Journey</h2>
-            <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <ol className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {p.certificationJourney.map((step) => {
                 const SIcon = step.icon;
                 return (

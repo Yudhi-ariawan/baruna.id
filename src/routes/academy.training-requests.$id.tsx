@@ -130,7 +130,7 @@ function TrainingRequestDetailPage() {
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <RequestTimeline request={request} />
         <RequesterCards form={request.form} />
       </div>

@@ -160,7 +160,7 @@ function DemoHub() {
         {/* Overview stats */}
         <section id="overview" className="space-y-3">
           <SectionTitle icon={Layers} title="Demonstration Dashboard" subtitle="Verified from the master synthetic records." />
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Stat label="Demo Experts" value={String(DEMO_EXPERTS.length)} />
             <Stat label="Verified Experts" value={String(DEMO_EXPERTS.length)} />
             <Stat label="Approved Trainers" value={String(DEMO_EXPERTS.length)} />
@@ -168,7 +168,7 @@ function DemoHub() {
             <Stat label="Published Self-Paced Courses" value={String(DEMO_SHORT_COURSES.length)} />
             <Stat label="Visible Sample Participants" value={String(DEMO_PARTICIPANTS.length)} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <BigStat label="Synthetic Successful Participants" value={usp.toLocaleString()} />
             <BigStat label="Participant Learning Hours Generated" value={`${plhg.toLocaleString()} h`} />
             <BigStat
@@ -186,7 +186,7 @@ function DemoHub() {
         {/* Pathway */}
         <section id="pathway" className="space-y-3">
           <SectionTitle icon={Trophy} title="Trainer Recognition Pathway" subtitle="Recognition is never awarded automatically — quality gates must also be verified." />
-          <ol className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <ol className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
             {[
               { step: "1", label: "Verified BARUNA Expert", detail: "Identity & credentials confirmed." },
               { step: "2", label: "Approved BARUNA Trainer", detail: "Passed trainer qualification." },
@@ -271,7 +271,7 @@ function DemoHub() {
             </span>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filteredExperts.map((e) => {
               const cat = DEMO_CATEGORIES.find((c) => c.slug === e.category)!;
               const course = DEMO_SHORT_COURSES.find((c) => c.trainerId === e.id)!;
@@ -326,7 +326,7 @@ function DemoHub() {
         {/* Short course catalogue */}
         <section id="courses" className="space-y-3">
           <SectionTitle icon={BookOpen} title="Demo Self-Paced Course Catalogue" subtitle="Nine published demonstration courses." />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {DEMO_SHORT_COURSES.map((c) => {
               const mod = getModuleByCode(c.moduleCode)!;
               const trainer = DEMO_EXPERTS.find((e) => e.id === c.trainerId)!;
@@ -406,7 +406,7 @@ function DemoHub() {
         {/* Certificates */}
         <section id="certificates" className="space-y-3">
           <SectionTitle icon={FileText} title="Sample Certificates of Training Delivery" subtitle="One preview per trainer — SAMPLE — NOT VALID." />
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {DEMO_EXPERTS.map((e) => {
               const course = DEMO_SHORT_COURSES.find((c) => c.trainerId === e.id)!;
               const mod = getModuleByCode(e.moduleCode)!;

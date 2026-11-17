@@ -19,7 +19,7 @@ export function MyCourseOfferings({ enrolments, certificates }: { enrolments: My
             <h2 className="font-display text-xl font-bold text-navy">BARUNA Academy Courses ({enrolments.length})</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">Courses you enrolled in on the BARUNA learning platform.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {enrolments.map((e) => {
               const o = one(e.course_offerings)!;
               const done = e.completion_status === "completed";
@@ -58,7 +58,7 @@ export function MyCourseOfferings({ enrolments, certificates }: { enrolments: My
             <h2 className="font-display text-xl font-bold text-navy">My Certificates ({certificates.length})</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">Certificates issued by BARUNA Academy, verifiable by their number.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {certificates.map((c) => {
               const o = one(c.course_offerings);
               return (

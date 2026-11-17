@@ -949,7 +949,7 @@ function UserDialog({
             className="space-y-3"
           >
             <SectionTitle icon={<UserRound className="h-4 w-4" />} text="Profile" />
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Full name">
                 <input
                   required
@@ -1005,7 +1005,7 @@ function UserDialog({
             <p className="text-xs text-muted-foreground">
               Peran <strong>expert</strong> terkunci: diberikan saat pendaftaran expert disetujui (bersama profil expert) dan dicabut lewat <strong>Arsip</strong> di menu persetujuan expert.
             </p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {roles.map((role) => {
                 const isSelected = selectedRoles.includes(role);
                 const isOriginallyAssigned = currentAssignedRoles.includes(role);

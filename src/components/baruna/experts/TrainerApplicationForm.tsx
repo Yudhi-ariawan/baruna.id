@@ -141,7 +141,7 @@ export function TrainerApplicationForm({ onSubmitted }: { onSubmitted: () => Pro
         <textarea rows={3} maxLength={4000} value={text.materialDevelopment} onChange={set("materialDevelopment")} className={area} />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className={`${label} sm:col-span-2`}>Proposed module topic *
           <input maxLength={240} value={text.proposedModuleTopic} onChange={set("proposedModuleTopic")} className={area} />
         </label>

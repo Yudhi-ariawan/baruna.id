@@ -243,7 +243,7 @@ function SavedPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {savedKhResources.map((r, idx) => (
                   <ResourceCard key={r.id} r={r} index={idx} />
                 ))}

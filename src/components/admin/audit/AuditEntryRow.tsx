@@ -74,7 +74,7 @@ export function AuditEntryRow({ entry }: { entry: AuditEntry }) {
             {entry.subjectId ? <> · ID pengajuan: <span className="font-mono">{entry.subjectId}</span></> : null}
             {entry.actorId ? <> · ID pelaku: <span className="font-mono">{entry.actorId}</span></> : null}
           </p>
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <JsonBlock label="Sebelum" value={entry.source === "status" ? null : entry.before} />
             <JsonBlock label="Sesudah" value={entry.source === "status" ? null : entry.after} />
           </div>

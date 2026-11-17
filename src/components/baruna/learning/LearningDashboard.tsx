@@ -258,7 +258,7 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
           <nav
             aria-label="Course sections"
             className="rounded-2xl border border-border bg-card p-2 shadow-soft"
@@ -386,7 +386,7 @@ function OverviewSection({ offering }: { offering: OfferingWithModules }) {
       <p className="text-sm text-foreground/80">
         {offering.master_courses.description ?? "—"}
       </p>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <MetaCard label="Modules" value={String(offering.modules.length)} />
         <MetaCard label="Engine" value={offering.learning_engine_version} />
       </div>

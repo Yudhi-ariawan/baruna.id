@@ -48,7 +48,7 @@ export function WelcomeTab() {
         title="Welcome to your learning journey"
         desc="Start here to understand how the program works, then complete the Pre-Test to unlock Module 1."
       />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {WELCOME_ITEMS.map((w) => {
           const Icon = welcomeIcons[w.kind] ?? Sparkles;
           return (
@@ -130,7 +130,7 @@ export function AssessmentTab({
           </div>
           <span className="text-sm font-semibold text-marine">{quizzesPassed}/{totalModules} passed</span>
         </div>
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+        <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {LMS_MODULES.map((m) => {
             const passed = lms.modules[m.id].quiz;
             return (
@@ -211,7 +211,7 @@ export function CompletionTab({
           Complete every requirement below to unlock your certificate, badge and transcript.
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <RequirementCard label="All Modules" done={completedModules === totalModules} detail={`${completedModules}/${totalModules} complete`} />
         <RequirementCard label="Module Quizzes" done={allModuleQuizzesPassed(app)} detail={`${quizzesPassed}/${totalModules} passed`} />
         <RequirementCard label="Post-Test" done={lms.postTest} detail={lms.postTest ? "Passed" : "Not passed"} />

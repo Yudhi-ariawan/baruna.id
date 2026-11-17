@@ -230,7 +230,7 @@ export function LearningSections({ publishedModules }: { publishedModules: Publi
 
   return (
     <section className="mx-auto max-w-[1500px] px-3 sm:px-6 py-6 sm:py-8 w-full overflow-hidden">
-      <div className="grid gap-6 lg:grid-cols-2 w-full">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 w-full">
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-soft min-w-0 overflow-hidden">
           <SectionHead
             title={t("learning.continueTitle")}

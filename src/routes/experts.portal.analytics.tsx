@@ -48,7 +48,7 @@ function AnalyticsPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Metric icon={Users} label="Successful Participants" value={formatUsp(t.uniqueSuccessfulParticipants)} />
           <Metric icon={TrendingUp} label="Learning Hours Generated" value={formatUsp(hours * t.uniqueSuccessfulParticipants)} />
           <Metric

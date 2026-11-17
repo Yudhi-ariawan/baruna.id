@@ -438,7 +438,7 @@ export function ProfessionalProfileSection({
                   Batal
                 </button>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">
                     Nama Proyek / Kegiatan <span className="text-destructive">*</span>
@@ -614,7 +614,7 @@ export function ProfessionalProfileSection({
                   Batal
                 </button>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">
                     Judul Publikasi / Artikel / Buku <span className="text-destructive">*</span>

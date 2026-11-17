@@ -69,7 +69,7 @@ function AddItem({ newLabel, newPlaceholder, save, invalidate }: Props) {
   });
   const valid = name.trim().length >= 2 && name.trim().length <= 120;
   return (
-    <div className="grid gap-2 rounded-xl border border-dashed border-border p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <div className="grid grid-cols-1 gap-2 rounded-xl border border-dashed border-border p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
       <label className="text-xs font-semibold text-navy">
         {newLabel}
         <input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder={newPlaceholder}
@@ -112,7 +112,7 @@ function ItemRow({ item, save, setActive, invalidate, confirmDeactivate }: Props
   return (
     <li className="p-3 text-sm">
       {editing ? (
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_6rem_auto_auto] sm:items-end">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_6rem_auto_auto] sm:items-end">
           <label className="text-xs font-semibold text-navy">
             Nama
             <input value={name} maxLength={120} disabled={item.usage > 0} onChange={(e) => setName(e.target.value)}

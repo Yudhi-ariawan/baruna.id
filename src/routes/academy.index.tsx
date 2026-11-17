@@ -288,7 +288,7 @@ function AcademyOverview() {
           </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <Panel>
             <SectionHeader title={t("sidebar.byCategory")} action={null} />
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">

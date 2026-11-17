@@ -24,7 +24,7 @@ export function Banner({ image, alt, title, description, stats, cta, side }: Ban
         className="absolute inset-0 h-full w-full object-cover"
       />
       <div className="hero-overlay absolute inset-0" />
-      <div className="relative grid gap-6 p-7 sm:p-9 lg:grid-cols-[1.5fr_1fr] lg:items-center lg:p-10">
+      <div className="relative grid grid-cols-1 gap-6 p-7 sm:p-9 lg:grid-cols-[1.5fr_1fr] lg:items-center lg:p-10">
         <div className="max-w-2xl text-navy-foreground">
           <h2 className="font-display text-3xl font-extrabold leading-[1.1] sm:text-4xl">{title}</h2>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-navy-foreground/85 sm:text-base">

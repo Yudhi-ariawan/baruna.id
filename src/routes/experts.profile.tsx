@@ -299,7 +299,7 @@ function MyExpertProfilePage() {
                     </div>
                   )}
 
-                  <div className="mt-5 grid gap-3 border-t border-border pt-5 text-sm sm:grid-cols-3">
+                  <div className="mt-5 grid grid-cols-1 gap-3 border-t border-border pt-5 text-sm sm:grid-cols-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Expertise</p>
                       <p className="mt-1 font-semibold text-navy">

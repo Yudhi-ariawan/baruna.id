@@ -76,7 +76,7 @@ function OfferingAttendance({ offeringId }: { offeringId: string }) {
   const current = data.sessions.find((s) => s.id === sessionId) ?? null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
       <section className="space-y-3 rounded-2xl border border-border bg-white p-4">
         <h2 className="font-display text-base font-bold text-navy">Sesi ({data.sessions.length})</h2>
         <ul className="space-y-1.5">

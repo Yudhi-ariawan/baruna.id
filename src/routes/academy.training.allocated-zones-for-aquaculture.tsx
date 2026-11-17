@@ -267,7 +267,7 @@ function AzaDetailPage() {
         {/* ---------------- Learning Outcomes ---------------- */}
         <Section id="outcomes" icon={GraduationCap} title="Learning Outcomes">
           <p className="mb-3">After completing the course, participants should be able to:</p>
-          <ol className="grid gap-2 sm:grid-cols-2">
+          <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {AZA_OUTCOMES.map((o, i) => (
               <li key={o} className="flex items-start gap-2 rounded-xl bg-muted/40 p-3">
                 <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-marine/15 text-xs font-bold text-marine">
@@ -281,7 +281,7 @@ function AzaDetailPage() {
 
         {/* ---------------- Target Participants ---------------- */}
         <Section id="audience" icon={Users} title="Who Should Join">
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {AZA_AUDIENCE.map((a) => (
               <li key={a} className="flex items-start gap-2">
                 <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-marine" />
@@ -355,7 +355,7 @@ function AzaDetailPage() {
 
         {/* ---------------- Learning Journey ---------------- */}
         <Section id="journey" icon={Layers} title="Individual Learning Journey">
-          <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {AZA_JOURNEY.map((step, i) => (
               <li
                 key={step}
@@ -382,7 +382,7 @@ function AzaDetailPage() {
           <p className="mb-3">
             The final project is completed individually. Participants choose one of two options:
           </p>
-          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-marine/20 bg-marine/5 p-3">
               <p className="text-xs font-bold text-marine">OPTION A</p>
               <p className="mt-1 font-semibold text-navy">BARUNA Simulation Case</p>
@@ -399,7 +399,7 @@ function AzaDetailPage() {
             </div>
           </div>
           <p className="mb-2 font-semibold text-navy">Required components</p>
-          <ul className="mb-4 grid gap-1 sm:grid-cols-2">
+          <ul className="mb-4 grid grid-cols-1 gap-1 sm:grid-cols-2">
             {AZA_PROJECT_COMPONENTS.map((c, i) => (
               <li key={c} className="text-xs text-foreground/80">
                 {i + 1}. {c}
@@ -407,7 +407,7 @@ function AzaDetailPage() {
             ))}
           </ul>
           <p className="mb-2 font-semibold text-navy">Uploads</p>
-          <ul className="grid gap-1 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {AZA_PROJECT_UPLOADS.map((u) => (
               <li key={u.key} className="text-xs text-foreground/80">
                 {u.required ? "• " : "• (optional) "}
@@ -454,7 +454,7 @@ function AzaDetailPage() {
             {AZA_PASS_MARK}/100.
           </p>
           <p className="mt-3 font-semibold text-navy">Completion requires:</p>
-          <ul className="mt-1 grid gap-1 sm:grid-cols-2">
+          <ul className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-2">
             {[
               "Complete every mandatory module",
               "Complete every mandatory quiz",
@@ -483,7 +483,7 @@ function AzaDetailPage() {
             Final projects are reviewed asynchronously by an assigned expert. Feedback target:
             within five working days after a complete submission.
           </p>
-          <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {[
               "Submit Final Project",
               "Administrative Completeness Check",
@@ -532,7 +532,7 @@ function AzaDetailPage() {
 
         {/* ---------------- Learning Resources ---------------- */}
         <Section id="resources" icon={FileText} title="Learning Resources">
-          <ul className="grid gap-1 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {AZA_RESOURCES.map((r) => (
               <li key={r} className="flex items-start gap-2 text-xs">
                 <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-marine" />
@@ -562,7 +562,7 @@ function AzaDetailPage() {
 
         {/* ---------------- Related Programs ---------------- */}
         <Section id="related" icon={Layers} title="Related Programs">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {AZA_RELATED.map((r) => (
               <a
                 key={r.title}
