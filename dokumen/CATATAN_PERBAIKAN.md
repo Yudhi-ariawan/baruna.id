@@ -1463,6 +1463,30 @@ Acuan: Slide 42 (LS-01), 43 (LS-02), 45 (LS-04), dan 49 (RACI baris 8: Admin Con
 
 **Uji:** `npm run test:auth-log` (baru) 14/14 di intern-update setelah migrasi: akun dibuat, masuk tercatat sekali (jalur `auth.sessions`, IP dan peramban ikut), perbarui token tidak dihitung masuk, keluar, ganti kata sandi, halaman menampilkan nama dan urutan terbaru, filter kejadian/admin/akun uji, karakter khusus ditolak, pengguna biasa ditolak, tabel tidak terbaca dari browser. `tsc`, lint, `build` lulus.
 
+
+## 2bh. Permintaan Peran: aturan ditegakkan di database dan bisa dibatalkan (17 Nov)
+
+**Temuan (catatan 2be, dikerjakan dari PC 16 Nov):**
+- Aplikasi hanya menawarkan lima peran kurasi, tetapi `request_rbac_role_change` menerima **peran apa pun untuk diri sendiri**, termasuk `admin`, bila dipanggil langsung lewat API. Yang ditolak hanya `expert` dan `super_admin`. Tetap aman karena hanya super admin yang memutuskan, tetapi aturan itu seharusnya ada di database.
+- Pemeriksaan "sudah punya / masih menunggu" hanya di aplikasi dan tidak atomik.
+- Pengguna tidak bisa membatalkan permintaannya, padahal status `cancelled` sudah ada.
+
+**Perbaikan (migrasi `20261117010000`):**
+- `request_rbac_role_change` (salinan persis `20261021080000` ditambah pemeriksaan; perbedaannya dibandingkan otomatis):
+  - pengajuan untuk diri sendiri tanpa izin `users.assign_role` hanya boleh `operator`, `reviewer`, `verifier`, `approver`, `publisher` dengan aksi `grant` (`role_not_requestable`);
+  - peran yang sudah dimiliki ditolak (`role_already_held`);
+  - permintaan *pending* kedua untuk orang, peran, dan aksi yang sama ditolak (`role_request_pending`), diserialkan dengan kunci advisory.
+- Indeks unik parsial `rbac_role_change_requests_one_pending` sebagai pengaman terakhir. Data intern-update diperiksa dulu: 1 permintaan, tidak ada yang ganda.
+- RPC baru `cancel_rbac_role_change`: hanya pengaju, hanya selagi *pending*, dan tercatat di audit (`role_change_cancelled`).
+- Pengajuan oleh admin untuk orang lain tidak berubah.
+
+**Aplikasi:** Profil Saya → Permintaan Peran punya tombol **Batalkan permintaan** pada permintaan yang menunggu (`cancelRoleRequest`). Ada juga pesan yang jelas untuk kode-kode baru.
+
+**Uji:**
+- PGlite (`pgtest/role_request_guards.mjs`) **17/17**: bukti sebelum migrasi (peserta bisa mengajukan admin, permintaan ganda tersimpan); migrasi bisa diulang; admin, peran di luar daftar, dan revoke untuk diri sendiri ditolak; Operator boleh; kiriman kedua dan peran yang sudah dimiliki ditolak; indeks unik menolak sisipan langsung; admin untuk orang lain tetap bisa; peserta tidak bisa mengajukan untuk orang lain; batal hanya oleh pengaju dan tidak dua kali; boleh mengajukan lagi; audit.
+- `npm run test:role-requests` ditambah bagian 7 (8 cek, RPC dipanggil langsung tanpa aplikasi): admin dan revoke untuk diri sendiri ditolak; dua kiriman bersamaan hanya satu tersimpan; pembatalan oleh orang lain ditolak; pembatalan oleh pengaju lewat Profil Saya; batal dua kali ditolak; mengajukan lagi; peran yang sudah dimiliki ditolak.
+  - **Sebelum migrasi (intern-update, 17 Nov): 24/32**, yaitu bagian 1–6 lulus dan kedelapan cek bagian 7 gagal.
+
 ---
 
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
@@ -1521,7 +1545,7 @@ Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini
 **Database main dan intern-update adalah dua database Supabase berbeda.** Migrasi yang ditempel manual di SQL Editor tidak meninggalkan catatan, jadi gunakan pengecek:
 
 1. Buka `supabase/check_migrations.sql`, tempel di SQL Editor database yang ingin diperiksa, lalu Run. (Hanya membaca, tidak mengubah apa pun.)
-2. Hasilnya satu baris per migrasi (77 baris): `OK` atau `BELUM DIJALANKAN`.
+2. Hasilnya satu baris per migrasi (79 baris): `OK` atau `BELUM DIJALANKAN`.
 3. Jalankan file migrasi yang berstatus BELUM DIJALANKAN, **berurutan sesuai nomor**, dari folder `supabase/migrations/`. Jika satu migrasi error, hentikan dan perbaiki sebelum lanjut.
 4. Jalankan pengecek lagi sampai semuanya OK.
 
@@ -1587,6 +1611,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261116030000_offering_attendance.sql` (sesi dan kehadiran course angkatan). Lihat bagian 2bb.
 - `20261116040000_full_training_replacement.sql` (Full Training lama dialihkan ke Course Offering pengganti; menggantikan `course_enrollment_apply`, jalankan setelah `20261111020000`). Lihat bagian 2bb.
 - `20261116050000_auth_event_log.sql` (Log Autentikasi: tabel `auth_event_log` dan trigger di `auth.users` dan `auth.sessions`). Lihat bagian 2bg. **Sudah dijalankan di intern-update (16 Nov).**
+- `20261117010000_role_request_guards.sql` (Permintaan Peran: hanya lima peran kurasi untuk diri sendiri, tanpa permintaan ganda, bisa dibatalkan). Lihat bagian 2bh. Jalankan setelah `20261021080000`. Kode branch ini tetap jalan sebelum migrasi (tombol batal memberi pesan bahwa migrasi belum dijalankan).
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 

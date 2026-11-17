@@ -311,7 +311,11 @@ WITH checks(no, migration, ok) AS (
   (78, '20261116050000_auth_event_log',
       to_regclass('public.auth_event_log') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_auth_event_write')
-      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'baruna_auth_log_user'))
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'baruna_auth_log_user')),
+  (79, '20261117010000_role_request_guards',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cancel_rbac_role_change')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'request_rbac_role_change' AND prosrc LIKE '%role_not_requestable%')
+      AND to_regclass('public.rbac_role_change_requests_one_pending') IS NOT NULL)
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, KeyRound, Loader2, Send } from "lucide-react";
-import { getMyRoleRequests, submitRoleRequest } from "@/lib/account/role-requests.functions";
+import { cancelRoleRequest, getMyRoleRequests, submitRoleRequest } from "@/lib/account/role-requests.functions";
 import {
   REASON_MAX,
   REASON_MIN,
@@ -31,6 +31,11 @@ export function RoleRequestSection() {
   const qc = useQueryClient();
   const listFn = useServerFn(getMyRoleRequests);
   const submitFn = useServerFn(submitRoleRequest);
+  const cancelFn = useServerFn(cancelRoleRequest);
+  const cancel = useMutation({
+    mutationFn: (id: string) => cancelFn({ data: { id } }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
   const q = useQuery({ queryKey: QUERY_KEY, queryFn: () => listFn(), staleTime: 30_000 });
 
   const [role, setRole] = useState<RequestableRole | "">("");
@@ -171,12 +176,20 @@ export function RoleRequestSection() {
                       </span>
                     </div>
                     <p className="text-xs text-slate-600">{isId ? "Alasan" : "Reason"}: {r.reason}</p>
+                    {r.status === "pending" ? (
+                      <button type="button" disabled={cancel.isPending}
+                        onClick={() => { if (window.confirm(isId ? "Batalkan permintaan ini?" : "Withdraw this request?")) cancel.mutate(r.id); }}
+                        className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-navy hover:bg-muted disabled:opacity-50">
+                        {isId ? "Batalkan permintaan" : "Withdraw request"}
+                      </button>
+                    ) : null}
                     {r.decisionNote ? (
                       <p className="text-xs text-slate-700"><b>{isId ? "Catatan keputusan" : "Decision note"}:</b> {r.decisionNote}</p>
                     ) : null}
                   </li>
                 ))}
               </ul>
+              {cancel.isError ? <p className="mt-1 text-xs text-destructive">{(cancel.error as Error).message}</p> : null}
             </div>
           ) : null}
         </div>

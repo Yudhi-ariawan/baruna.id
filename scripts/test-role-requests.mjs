@@ -145,6 +145,32 @@ try {
   const n = (t) => audit.filter((a) => a.event_type === t).length;
   check(n("role_change_requested") === 3 && n("role_change_applied") === 1 && n("role_change_rejected") === 1,
     `diajukan 3, disetujui 1, ditolak 1 tercatat (${n("role_change_requested")}/${n("role_change_applied")}/${n("role_change_rejected")})`);
+
+  console.log("7. Aturan di database (migrasi 20261117010000, CATATAN 2bh)");
+  const rpcAsk = (who, role, action = "grant") => who.c.rpc("request_rbac_role_change", {
+    _target_user_id: who.id, _role_code: role, _action: action, _reason: REASON, _scope: {}, _valid_from: new Date().toISOString(), _valid_until: null });
+  const lain = await persona("lain", null);
+  r = await rpcAsk(lain, "admin");
+  check(/role_not_requestable/.test(r.error?.message ?? ""), `RPC langsung: peran admin untuk diri sendiri ditolak (${(r.error?.message ?? "DITERIMA").slice(0, 40)})`);
+  if (!r.error) await svc.from("rbac_role_change_requests").delete().eq("id", r.data);
+  r = await rpcAsk(lain, "verifier", "revoke");
+  check(/role_not_requestable/.test(r.error?.message ?? ""), "RPC langsung: aksi revoke untuk diri sendiri ditolak");
+  const both = await Promise.all([rpcAsk(lain, "publisher"), rpcAsk(lain, "publisher")]);
+  const pend = ((await svc.from("rbac_role_change_requests").select("id").eq("target_user_id", lain.id).eq("status", "pending")).data ?? []);
+  check(both.filter((x) => !x.error).length === 1 && pend.length === 1, `dua kiriman bersamaan: hanya satu tersimpan (${pend.length} pending)`);
+  r = await callFn(admin.token, ACCOUNT, "cancelRoleRequest", { id: pend[0]?.id });
+  check(/tidak ditemukan/.test(r.error ?? ""), "orang lain tidak bisa membatalkan permintaan itu");
+  r = await callFn(lain.token, ACCOUNT, "cancelRoleRequest", { id: pend[0]?.id });
+  const st = (await svc.from("rbac_role_change_requests").select("status").eq("id", pend[0]?.id ?? "00000000-0000-0000-0000-000000000000").maybeSingle()).data?.status;
+  check(r.data?.cancelled === true && st === "cancelled", `pengaju membatalkan dari Profil Saya (${r.error?.slice(0, 50) ?? st})`);
+  r = await callFn(lain.token, ACCOUNT, "cancelRoleRequest", { id: pend[0]?.id });
+  check(/sudah diputuskan atau dibatalkan/.test(r.error ?? ""), "dibatalkan dua kali ditolak");
+  r = await callFn(lain.token, ACCOUNT, "submitRoleRequest", { role: "publisher", reason: REASON });
+  check(Boolean(r.data?.id), "setelah dibatalkan, bisa mengajukan lagi");
+  await svc.from("rbac_user_roles").insert({ user_id: lain.id, role_id: roleId.reviewer, is_primary: false, status: "active", reason: "tdd_role_test" });
+  await new Promise((res) => setTimeout(res, 1500));
+  r = await rpcAsk(lain, "reviewer");
+  check(/role_already_held/.test(r.error?.message ?? ""), "RPC langsung: peran yang sudah dimiliki ditolak");
 } finally {
   console.log("\nMembersihkan data uji...");
   if (created.length) {

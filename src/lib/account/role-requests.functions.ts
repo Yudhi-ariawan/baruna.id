@@ -113,6 +113,7 @@ export const submitRoleRequest = createServerFn({ method: "POST" })
     }
 
     try {
+      // The database enforces the same rules atomically (migration 20261117010000).
       const id = await requestRoleChange(context, {
         targetUserId: context.userId,
         role: data.role,
@@ -124,4 +125,21 @@ export const submitRoleRequest = createServerFn({ method: "POST" })
     } catch (err) {
       throw new Error(roleRequestError(err instanceof Error ? err.message : String(err)));
     }
+  });
+
+/** Withdraw my own pending request (migration 20261117010000). */
+export const cancelRoleRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("cancel_rbac_role_change", { _request_id: data.id });
+    if (error) {
+      throw new Error(
+        /cancel_rbac_role_change|PGRST202/.test(`${error.message} ${error.code ?? ""}`)
+          ? "Pembatalan membutuhkan migrasi database 20261117010000. Jalankan supabase/check_migrations.sql."
+          : roleRequestError(error.message),
+      );
+    }
+    return { cancelled: true };
   });

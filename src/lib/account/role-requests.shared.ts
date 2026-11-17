@@ -80,7 +80,12 @@ export function roleRequestError(message: string): string {
   if (message.includes("invalid_validity_window")) return "Tanggal berakhir harus setelah hari ini.";
   if (message.includes("role_not_found")) return "Peran tidak dikenal.";
   if (message.includes("separation_of_duties_required")) return "Permintaan Anda sendiri (atau untuk akun Anda) harus diputuskan oleh super admin lain.";
-  if (message.includes("request_not_pending")) return "Permintaan ini sudah diputuskan sebelumnya. Muat ulang halaman.";
+  if (message.includes("role_not_requestable")) return "Peran ini tidak bisa diajukan sendiri. Pilih Operator, Reviewer, Verifier, Approver, atau Publisher.";
+  if (message.includes("role_already_held")) return "Anda sudah memiliki peran ini.";
+  if (message.includes("role_request_pending") || message.includes("rbac_role_change_requests_one_pending")) {
+    return "Permintaan untuk peran ini masih menunggu keputusan.";
+  }
+  if (message.includes("request_not_pending")) return "Permintaan ini sudah diputuskan atau dibatalkan sebelumnya. Muat ulang halaman.";
   if (message.includes("request_not_found")) return "Permintaan tidak ditemukan.";
   if (message.includes("forbidden")) return "Anda tidak berwenang melakukan tindakan ini.";
   return message;
