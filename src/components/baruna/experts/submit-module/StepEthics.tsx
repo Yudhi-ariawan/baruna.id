@@ -1,11 +1,14 @@
 import { Eye } from "lucide-react";
 import { Section, Grid, Field, inp } from "./FormPrimitives";
+import { FieldError } from "@/components/baruna/forms/FieldError";
+import { fieldErrorCls } from "@/components/baruna/forms/field-errors";
 import { DECLARATIONS, type ModuleFormFields, type UpdateField } from "./config";
 
 export function StepEthics({
   isId,
   formFields,
   updateField,
+  errors = {},
   totalFilesCount,
   videoUrl,
   checked,
@@ -15,6 +18,7 @@ export function StepEthics({
   isId: boolean;
   formFields: ModuleFormFields;
   updateField: UpdateField;
+  errors?: Record<string, string>;
   totalFilesCount: number;
   videoUrl: string;
   checked: Record<number, boolean>;
@@ -77,25 +81,26 @@ export function StepEthics({
           <Field
             label={isId ? "Pemegang Hak Cipta (Copyright Holder)" : "Copyright Holder"}
             required
-          >
+           name="copyrightHolder" error={errors.copyrightHolder}>
             <input
               value={formFields.copyrightHolder}
               onChange={(e) => updateField("copyrightHolder", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.copyrightHolder)}
               required
             />
           </Field>
-          <Field label={isId ? "Lisensi Penggunaan" : "Usage License"}>
+          <Field label={isId ? "Lisensi Penggunaan" : "Usage License"} name="licensing" error={errors.licensing}>
             <input
               value={formFields.licensing}
               onChange={(e) => updateField("licensing", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.licensing)}
               placeholder="e.g. CC BY-NC-SA 4.0"
             />
           </Field>
         </Grid>
 
-        <div className="space-y-3 rounded-xl border border-marine/20 bg-marine/5 p-4">
+        <div data-field="declarations" className={`space-y-3 rounded-xl border border-marine/20 bg-marine/5 p-4${fieldErrorCls(errors.declarations)}`}>
+          <FieldError msg={errors.declarations} />
           <div className="flex items-center justify-between border-b border-marine/15 pb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-marine">
               {isId ? "Pernyataan Etika & Orisinalitas (Wajib)" : "Ethics & Originality Declarations (Required)"}

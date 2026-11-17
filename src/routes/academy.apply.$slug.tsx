@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, notFound, Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -42,6 +42,9 @@ import { useEnrollmentDocumentUpload } from "@/lib/learning/use-enrollment-docum
 import { FullTrainingApplyStatus } from "@/components/baruna/academy/FullTrainingApplyStatus";
 import { useFullTrainingReplacement } from "@/components/baruna/academy/FullTrainingEnrollLink";
 import { fullTrainingCourseId } from "@/lib/learning/full-training-enrollment";
+import { FieldError, FieldErrorSummary } from "@/components/baruna/forms/FieldError";
+import { fieldErrorCls, focusField } from "@/components/baruna/forms/field-errors";
+import { APPLY_LABELS, applyFormErrors } from "@/components/baruna/academy/apply-validation";
 
 export const Route = createFileRoute("/academy/apply/$slug")({
   loader: ({ params }) => {
@@ -94,13 +97,14 @@ const STEPS = ["Eligibility", "Application", "Documents", "Review"] as const;
 const stepIcons = [ClipboardCheck, UserRound, Upload, FileCheck2];
 
 // ── Small form primitives ────────────────────────────────────────────────────
-function Field({ label, children, required }: { label: string; children: ReactNode; required?: boolean }) {
+function Field({ label, children, required, name, error }: { label: string; children: ReactNode; required?: boolean; name?: string; error?: string }) {
   return (
-    <label className="block">
+    <label className="block" data-field={name}>
       <span className="mb-1.5 block text-xs font-semibold text-navy">
         {label} {required && <span className="text-destructive">*</span>}
       </span>
       {children}
+      <FieldError msg={error} />
     </label>
   );
 }
@@ -108,12 +112,12 @@ function Field({ label, children, required }: { label: string; children: ReactNo
 const inputCls =
   "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-marine focus:ring-2 focus:ring-marine/20";
 
-function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={inputCls} />;
+function TextInput({ invalid, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { invalid?: string }) {
+  return <input {...props} className={inputCls + fieldErrorCls(invalid)} />;
 }
 
-function SelectInput(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={inputCls} />;
+function SelectInput({ invalid, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { invalid?: string }) {
+  return <select {...props} className={inputCls + fieldErrorCls(invalid)} />;
 }
 
 function ApplyPage() {
@@ -138,7 +142,15 @@ function ApplyPage() {
     personal.fullName && personal.gender && personal.nationality && personal.email && personal.phone;
   const professionalValid =
     professional.organization && professional.position && professional.country && professional.experience;
-  const formValid = personalValid && professionalValid && english && motivation.trim().length > 10;
+  // Per-field errors, shown after the first "Continue" and updated while typing.
+  const formErrors = useMemo(
+    () => applyFormErrors(personal, professional, english, motivation),
+    [personal, professional, english, motivation],
+  );
+  const formValid = Boolean(personalValid && professionalValid) && Object.keys(formErrors).length === 0;
+  const [triedForm, setTriedForm] = useState(false);
+  const [triedDocs, setTriedDocs] = useState(false);
+  const errors: Record<string, string> = triedForm ? formErrors : {};
   const docsCount = Object.values(documents).filter(Boolean).length;
   const allDocsUploaded = docsCount === DOCUMENT_FIELDS.length;
 
@@ -376,31 +388,31 @@ function ApplyPage() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
               <h2 className="font-display text-xl font-bold text-navy">Personal Information</h2>
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Full Name" required>
-                  <TextInput value={personal.fullName} onChange={(e) => setP("fullName", e.target.value)} placeholder="As shown on passport" />
+                <Field label="Full Name" required name="fullName" error={errors.fullName}>
+                  <TextInput invalid={errors.fullName} value={personal.fullName} onChange={(e) => setP("fullName", e.target.value)} placeholder="As shown on passport" />
                 </Field>
-                <Field label="Gender" required>
-                  <SelectInput value={personal.gender} onChange={(e) => setP("gender", e.target.value)}>
+                <Field label="Gender" required name="gender" error={errors.gender}>
+                  <SelectInput invalid={errors.gender} value={personal.gender} onChange={(e) => setP("gender", e.target.value)}>
                     <option value="">Select gender</option>
                     <option>Female</option>
                     <option>Male</option>
                     <option>Prefer not to say</option>
                   </SelectInput>
                 </Field>
-                <Field label="Nationality" required>
-                  <TextInput value={personal.nationality} onChange={(e) => setP("nationality", e.target.value)} placeholder="e.g. Nigerian" />
+                <Field label="Nationality" required name="nationality" error={errors.nationality}>
+                  <TextInput invalid={errors.nationality} value={personal.nationality} onChange={(e) => setP("nationality", e.target.value)} placeholder="e.g. Nigerian" />
                 </Field>
-                <Field label="Date of Birth">
-                  <TextInput type="date" value={personal.dob} onChange={(e) => setP("dob", e.target.value)} />
+                <Field label="Date of Birth" name="dob" error={errors.dob}>
+                  <TextInput invalid={errors.dob} type="date" value={personal.dob} onChange={(e) => setP("dob", e.target.value)} />
                 </Field>
-                <Field label="Passport Number">
-                  <TextInput value={personal.passportNumber} onChange={(e) => setP("passportNumber", e.target.value)} placeholder="Passport no." />
+                <Field label="Passport Number" name="passportNumber" error={errors.passportNumber}>
+                  <TextInput invalid={errors.passportNumber} value={personal.passportNumber} onChange={(e) => setP("passportNumber", e.target.value)} placeholder="Passport no." />
                 </Field>
-                <Field label="Email Address" required>
-                  <TextInput type="email" value={personal.email} onChange={(e) => setP("email", e.target.value)} placeholder="you@example.com" />
+                <Field label="Email Address" required name="email" error={errors.email}>
+                  <TextInput invalid={errors.email} type="email" value={personal.email} onChange={(e) => setP("email", e.target.value)} placeholder="you@example.com" />
                 </Field>
-                <Field label="Phone Number" required>
-                  <TextInput value={personal.phone} onChange={(e) => setP("phone", e.target.value)} placeholder="+234 ..." />
+                <Field label="Phone Number" required name="phone" error={errors.phone}>
+                  <TextInput invalid={errors.phone} value={personal.phone} onChange={(e) => setP("phone", e.target.value)} placeholder="+234 ..." />
                 </Field>
               </div>
             </div>
@@ -408,17 +420,17 @@ function ApplyPage() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
               <h2 className="font-display text-xl font-bold text-navy">Professional Information</h2>
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Organization" required>
-                  <TextInput value={professional.organization} onChange={(e) => setPr("organization", e.target.value)} placeholder="Your organization" />
+                <Field label="Organization" required name="organization" error={errors.organization}>
+                  <TextInput invalid={errors.organization} value={professional.organization} onChange={(e) => setPr("organization", e.target.value)} placeholder="Your organization" />
                 </Field>
-                <Field label="Position" required>
-                  <TextInput value={professional.position} onChange={(e) => setPr("position", e.target.value)} placeholder="Your role" />
+                <Field label="Position" required name="position" error={errors.position}>
+                  <TextInput invalid={errors.position} value={professional.position} onChange={(e) => setPr("position", e.target.value)} placeholder="Your role" />
                 </Field>
-                <Field label="Country" required>
-                  <TextInput value={professional.country} onChange={(e) => setPr("country", e.target.value)} placeholder="Country of work" />
+                <Field label="Country" required name="country" error={errors.country}>
+                  <TextInput invalid={errors.country} value={professional.country} onChange={(e) => setPr("country", e.target.value)} placeholder="Country of work" />
                 </Field>
-                <Field label="Years of Experience" required>
-                  <SelectInput value={professional.experience} onChange={(e) => setPr("experience", e.target.value)}>
+                <Field label="Years of Experience" required name="experience" error={errors.experience}>
+                  <SelectInput invalid={errors.experience} value={professional.experience} onChange={(e) => setPr("experience", e.target.value)}>
                     <option value="">Select experience</option>
                     <option>2–5 years</option>
                     <option>6–10 years</option>
@@ -426,15 +438,16 @@ function ApplyPage() {
                     <option>16+ years</option>
                   </SelectInput>
                 </Field>
-                <Field label="Sector of Expertise">
-                  <TextInput value={professional.sector} onChange={(e) => setPr("sector", e.target.value)} placeholder="e.g. Aquaculture, Hatchery" />
+                <Field label="Sector of Expertise" name="sector" error={errors.sector}>
+                  <TextInput invalid={errors.sector} value={professional.sector} onChange={(e) => setPr("sector", e.target.value)} placeholder="e.g. Aquaculture, Hatchery" />
                 </Field>
               </div>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
               <h2 className="font-display text-xl font-bold text-navy">English Proficiency</h2>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <FieldError msg={errors.english} />
+              <div data-field="english" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {ENGLISH_LEVELS.map((lvl) => (
                   <button
                     key={lvl}
@@ -454,13 +467,13 @@ function ApplyPage() {
 
             <div className="rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
               <h2 className="font-display text-xl font-bold text-navy">Motivation Statement</h2>
-              <Field label="Why do you want to join this training?" required>
+              <Field label="Why do you want to join this training?" required name="motivation" error={errors.motivation}>
                 <textarea
                   value={motivation}
                   onChange={(e) => setMotivation(e.target.value)}
                   rows={5}
                   placeholder="Tell us about your goals and how this training will benefit your work and community..."
-                  className={`${inputCls} resize-y`}
+                  className={`${inputCls}${fieldErrorCls(errors.motivation)} resize-y`}
                 />
               </Field>
             </div>
@@ -470,14 +483,21 @@ function ApplyPage() {
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
               <div className="flex flex-col items-end gap-1.5">
-                {!formValid && (
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Complete all required fields (*), choose an English level, and write a short motivation to continue.
-                  </p>
-                )}
+                <FieldErrorSummary
+                  errors={errors}
+                  labels={APPLY_LABELS}
+                  title={(n) => `Please fix ${n} field${n > 1 ? "s" : ""} marked in red (click to go to the field):`}
+                />
                 <button
-                  onClick={goNext}
-                  disabled={!formValid}
+                  onClick={() => {
+                    const keys = Object.keys(formErrors);
+                    if (keys.length) {
+                      setTriedForm(true);
+                      setTimeout(() => focusField(keys[0]), 60);
+                      return;
+                    }
+                    goNext();
+                  }}
                   className="inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-all hover:-translate-y-0.5 hover:bg-marine/90 hover:shadow-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   Continue <ArrowRight className="h-4 w-4" />
@@ -516,14 +536,15 @@ function ApplyPage() {
                 />
               </div>
               <div className="mt-5 space-y-3">
-                {DOCUMENT_FIELDS.map((d) => (
-                  <DocumentUploadRow
-                    key={d.key}
-                    field={d}
-                    meta={documents[d.key]}
-                    onChange={(file) => onFile(d.key, file)}
-                  />
-                ))}
+                {DOCUMENT_FIELDS.map((d) => {
+                  const missing = triedDocs && !documents[d.key];
+                  return (
+                    <div key={d.key} data-field={`doc.${d.key}`} className={missing ? "rounded-xl ring-2 ring-red-400" : undefined}>
+                      <DocumentUploadRow field={d} meta={documents[d.key]} onChange={(file) => onFile(d.key, file)} />
+                      {missing ? <div className="px-1 pb-1"><FieldError msg="Upload this document." /></div> : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -538,8 +559,16 @@ function ApplyPage() {
                   </p>
                 )}
                 <button
-                  onClick={goNext}
-                  disabled={!allDocsUploaded || uploadingKey !== null || (authChecked && !userId)}
+                  onClick={() => {
+                    const first = DOCUMENT_FIELDS.find((d) => !documents[d.key]);
+                    if (first) {
+                      setTriedDocs(true);
+                      setTimeout(() => focusField(`doc.${first.key}`), 60);
+                      return;
+                    }
+                    goNext();
+                  }}
+                  disabled={uploadingKey !== null || (authChecked && !userId)}
                   className="inline-flex items-center gap-2 rounded-xl bg-marine px-6 py-3 text-sm font-semibold text-marine-foreground transition-all hover:-translate-y-0.5 hover:bg-marine/90 hover:shadow-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   Continue <ArrowRight className="h-4 w-4" />

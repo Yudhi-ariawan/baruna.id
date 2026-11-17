@@ -33,6 +33,14 @@ import { StepInfo } from "@/components/baruna/experts/submit-module/StepInfo";
 import { StepSyllabus } from "@/components/baruna/experts/submit-module/StepSyllabus";
 import { StepFiles } from "@/components/baruna/experts/submit-module/StepFiles";
 import { StepEthics } from "@/components/baruna/experts/submit-module/StepEthics";
+import { FieldErrorSummary } from "@/components/baruna/forms/FieldError";
+import { focusField } from "@/components/baruna/forms/field-errors";
+import {
+  firstModuleStepWithErrors,
+  moduleFormLabels,
+  moduleStepErrors,
+  moduleTitleError,
+} from "@/components/baruna/experts/submit-module/validation";
 
 export const Route = createFileRoute("/experts/portal/submit-module")({
   head: () => ({
@@ -167,57 +175,32 @@ function SubmitModulePage() {
   const isTrainerUpdate =
     isRevision && moduleUpdate.byTrainer && latestDecision?.decision !== "return_for_revision";
 
-  // Step Validation checks
-  const isStep1Valid = useMemo(() => {
-    return Boolean(
-      formFields.title.trim() &&
-        formFields.topic.trim() &&
-        formFields.competency.trim() &&
-        formFields.summary.trim() &&
-        formFields.targetParticipants.trim() &&
-        Number(formFields.hours) > 0,
-    );
-  }, [formFields]);
+  // Per-field errors for the current step. They show after the first "Next" on that
+  // step, then update while typing.
+  const stepErrors = useMemo(
+    () => moduleStepErrors(currentStep, formFields, quizQuestions, allDecls, isId),
+    [currentStep, formFields, quizQuestions, allDecls, isId],
+  );
+  const [triedStep, setTriedStep] = useState<number | null>(null);
+  const errors: Record<string, string> = triedStep === currentStep ? stepErrors : {};
 
-  const isQuizValid = useMemo(() => {
-    if (quizQuestions.length === 0) return true;
-    return quizQuestions.every(
-      (q) =>
-        q.question.trim().length > 0 &&
-        q.options.filter((o) => o.trim().length > 0).length >= 2,
-    );
-  }, [quizQuestions]);
-
-  const isStep2Valid = useMemo(() => {
-    return Boolean(
-      formFields.objectives.trim() &&
-        formFields.outcomes.trim() &&
-        formFields.assessment.trim() &&
-        Number(formFields.passingScore) >= 0 &&
-        isQuizValid,
-    );
-  }, [formFields, isQuizValid]);
+  const showStepErrors = (step: number, keys: string[]) => {
+    setCurrentStep(step);
+    setTriedStep(step);
+    setError(null);
+    setTimeout(() => focusField(keys[0]), 60);
+  };
 
   const totalFilesCount = Object.keys(attachedFiles).length + Object.keys(existingFiles).length;
 
   const goNext = () => {
-    if (currentStep === 1 && !isStep1Valid) {
-      setError(
-        isId
-          ? "Harap lengkapi semua kolom wajib di Langkah 1 sebelum melanjutkan."
-          : "Please fill out all required fields in Step 1.",
-      );
-      return;
-    }
-    if (currentStep === 2 && !isStep2Valid) {
-      setError(
-        isId
-          ? "Harap lengkapi silabus & metode penilaian di Langkah 2 sebelum melanjutkan."
-          : "Please complete syllabus & evaluation fields in Step 2.",
-      );
+    const keys = Object.keys(stepErrors);
+    if (keys.length) {
+      showStepErrors(currentStep, keys);
       return;
     }
     setError(null);
+    setTriedStep(null);
     setCurrentStep((s) => Math.min(4, s + 1));
   };
 
@@ -225,20 +208,16 @@ function SubmitModulePage() {
   const handleSave = async (submitIntent: boolean) => {
     if (!gate.allowed) return;
     if (saveLock.current) return;
-    if (submitIntent && (!isStep1Valid || !isStep2Valid || !allDecls)) {
-      if (!isQuizValid) {
-        setError(
-          isId
-            ? "Terdapat butir soal kuis yang belum lengkap. Harap lengkapi teks pertanyaan dan minimal 2 pilihan jawaban, atau hapus soal tersebut."
-            : "Incomplete quiz questions found. Please complete question text and at least 2 options, or remove the question.",
-        );
-      } else {
-        setError(
-          isId
-            ? "Harap lengkapi semua bidang wajib dan centang 4 poin pernyataan etika sebelum mengirimkan."
-            : "Please complete all required fields and check the 4 ethics declarations before submitting.",
-        );
+    if (submitIntent) {
+      const pending = firstModuleStepWithErrors(formFields, quizQuestions, allDecls, isId);
+      if (pending) {
+        showStepErrors(pending.step, Object.keys(pending.errors));
+        return;
       }
+    } else if (formFields.title.trim() && moduleTitleError(formFields.title, isId)) {
+      // A draft may have no title yet ("Draft Module" is used), but a 1-2 character
+      // title is refused by the server.
+      showStepErrors(1, ["title"]);
       return;
     }
 
@@ -449,7 +428,6 @@ function SubmitModulePage() {
             </div>
 
             {/* Error Message */}
-            {/* Error Message */}
             {error && (
               <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs font-medium text-destructive flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
@@ -459,7 +437,7 @@ function SubmitModulePage() {
 
             {currentStep === 1 && (
               <div className="space-y-6 animate-in fade-in-50 duration-200">
-                <StepInfo isId={isId} formFields={formFields} updateField={updateField} />
+                <StepInfo isId={isId} formFields={formFields} updateField={updateField} errors={errors} />
               </div>
             )}
 
@@ -469,6 +447,7 @@ function SubmitModulePage() {
                   isId={isId}
                   formFields={formFields}
                   updateField={updateField}
+                  errors={errors}
                   quizQuestions={quizQuestions}
                   setQuizQuestions={setQuizQuestions}
                 />
@@ -498,6 +477,7 @@ function SubmitModulePage() {
                   isId={isId}
                   formFields={formFields}
                   updateField={updateField}
+                  errors={errors}
                   totalFilesCount={totalFilesCount}
                   videoUrl={videoUrl}
                   checked={checked}
@@ -506,6 +486,16 @@ function SubmitModulePage() {
                 />
               </div>
             )}
+
+            <FieldErrorSummary
+              errors={errors}
+              labels={moduleFormLabels(isId)}
+              title={(n) =>
+                isId
+                  ? `Perbaiki ${n} isian bertanda merah (klik untuk menuju ke isiannya):`
+                  : `Please fix ${n} field${n > 1 ? "s" : ""} marked in red (click to go to the field):`
+              }
+            />
 
             <StepActions
               isId={isId}

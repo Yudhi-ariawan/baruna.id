@@ -1,3 +1,5 @@
+import { FieldError } from "@/components/baruna/forms/FieldError";
+
 export const inp =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-marine focus:ring-1 focus:ring-marine";
 
@@ -27,18 +29,24 @@ export function Field({
   label,
   required,
   children,
+  name,
+  error,
 }: {
   label: string;
   required?: boolean;
+  /** Marks the field for focusField / the error summary. */
+  name?: string;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div data-field={name}>
       <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
         {label}
         {required && <span className="text-destructive"> *</span>}
       </label>
       {children}
+      <FieldError msg={error} />
     </div>
   );
 }

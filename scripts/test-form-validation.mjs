@@ -136,5 +136,82 @@ ok("KH bagian Best Practice berisi spasi saja ditandai", khAll({ ...bpFull, prac
 for (const y of ["1979", "2101", "25", "20a5"]) ok(`KH tahun "${y}" ditandai`, khAll({ ...khFull, year: y }).includes("year"));
 ok("KH tanpa centang pernyataan ditandai", khAll({ ...khFull, declaration: false }).includes("declaration"));
 ok("KH langkah pertama yang salah dipilih benar (tautan salah -> langkah 3)", firstKhStepWithErrors({ ...khFull, externalUrl: "doi.org" })?.step === 3);
+
+// ===== Trainer: pengajuan modul (CATATAN_PERBAIKAN 2bm) =====
+console.log("\n== Trainer: pengajuan modul ==");
+const { moduleStepErrors, firstModuleStepWithErrors, moduleTitleError, quizProblems } = await jiti.import("@/components/baruna/experts/submit-module/validation");
+const modFull = {
+  title: "Marine Protected Area Management", topic: "Konservasi", competency: "Zonasi", deliveryFormat: "Self-paced", hours: 8,
+  level: "Intermediate", language: "Bahasa Indonesia", summary: "Ringkasan.", targetParticipants: "Peneliti", objectives: "1. Memahami",
+  outcomes: "Mampu merancang", assessment: "Kuis", passingScore: 70, copyrightHolder: "Budi", licensing: "CC BY-NC-SA 4.0",
+};
+const q = (o = {}) => ({ id: 1, question: "Apa itu MPA?", options: ["A", "B", "", ""], correctAnswer: 0, ...o });
+const modAll = (f, quiz = [], decl = true) => [1, 2, 4].flatMap((st) => Object.keys(moduleStepErrors(st, f, quiz, decl, true)));
+ok("modul lengkap: tidak ada yang ditandai", firstModuleStepWithErrors(modFull, [q()], true, true) === null);
+// Server/database title rule: 3-240 after trimming (ModuleSubmission + trainer_module_save).
+const serverTitleOk = (t) => t.trim().length >= 3 && t.trim().length <= 240;
+for (const t of ["", "AB", "  AB  ", "ABC", "a".repeat(240), "a".repeat(241)]) {
+  ok(`modul judul ${t.length} karakter: layar ${moduleTitleError(t, true) ? "menandai" : "menerima"} sama dengan server`,
+    Boolean(moduleTitleError(t, true)) === !serverTitleOk(t));
+}
+ok("modul kosong: langkah 1 menandai judul, topik, kompetensi, bahasa, target, ringkasan",
+  ["title", "topic", "competency", "language", "targetParticipants", "summary"].every((k) => k in moduleStepErrors(1, { ...modFull, title: "", topic: "", competency: "", language: "", targetParticipants: "", summary: "" }, [], true, true)));
+ok("modul jam 0 ditandai", modAll({ ...modFull, hours: 0 }).includes("hours"));
+ok("modul nilai kelulusan 101 ditandai", modAll({ ...modFull, passingScore: 101 }).includes("passingScore"));
+ok("modul tanpa tujuan/capaian/metode ditandai", ["objectives", "outcomes", "assessment"].every((k) => modAll({ ...modFull, objectives: "", outcomes: " ", assessment: "" }).includes(k)));
+ok("modul soal tanpa teks ditandai", quizProblems([q({ question: " " })], true).length === 1);
+ok("modul soal dengan 1 pilihan ditandai", quizProblems([q({ options: ["A", "", "", ""] })], true).length === 1);
+ok("modul kunci jawaban ke pilihan kosong ditandai", quizProblems([q({ correctAnswer: 3 })], true)[0]?.includes("kunci jawaban"));
+ok("modul pesan kuis menyebut nomor soal", modAll(modFull, [q(), q({ question: "" })]).includes("quiz") &&
+  moduleStepErrors(2, modFull, [q(), q({ question: "" })], true, true).quiz.includes("Soal #2"));
+ok("modul tanpa kuis: lolos (kuis opsional)", !modAll(modFull, []).includes("quiz"));
+ok("modul pemegang hak cipta kosong ditandai (dulu bertanda wajib tapi tidak dicek)", modAll({ ...modFull, copyrightHolder: "" }).includes("copyrightHolder"));
+ok("modul pernyataan belum dicentang ditandai", modAll(modFull, [], false).includes("declarations"));
+ok("modul langkah pertama yang salah: kuis -> langkah 2", firstModuleStepWithErrors(modFull, [q({ question: "" })], true, true)?.step === 2);
+
+// ===== Portal Admin: Tambah User (CATATAN_PERBAIKAN 2bm) =====
+console.log("\n== Portal Admin: Tambah User ==");
+const { z } = await import("zod");
+const { createUserErrors, emailTakenMessage } = await jiti.import("@/components/admin/users/create-user-validation");
+// Same schema as createUser (src/lib/admin/users.functions.ts).
+const CreateUserServer = z.object({
+  email: z.string().trim().email().max(254), password: z.string().min(8).max(128),
+  displayName: z.string().trim().min(2).max(120), organization: z.string().trim().max(160).optional(),
+  jobTitle: z.string().trim().max(120).optional(), phone: z.string().trim().max(40).optional(), roles: z.array(z.string()).min(1),
+});
+const userFull = { displayName: "Dr. Budi", email: "budi@kkp.go.id", password: "Rahasia123", organization: "KKP", jobTitle: "Staf", phone: "+6281", roles: ["registered_user"] };
+const screenOk = (f) => Object.keys(createUserErrors(f)).length === 0;
+const serverOk = (f) => CreateUserServer.safeParse({ ...f, organization: f.organization || undefined, jobTitle: f.jobTitle || undefined, phone: f.phone || undefined }).success;
+const userCases = [
+  ["lengkap", {}], ["nama kosong", { displayName: "" }], ["nama 1 huruf", { displayName: "B" }], ["nama 121", { displayName: "a".repeat(121) }],
+  ["email kosong", { email: "" }], ["email salah", { email: "budi@" }], ["email 255", { email: `${"a".repeat(245)}@kkp.go.id` }],
+  ["sandi 7", { password: "1234567" }], ["sandi 8", { password: "12345678" }], ["sandi 129", { password: "a".repeat(129) }],
+  ["institusi 161", { organization: "a".repeat(161) }], ["jabatan 121", { jobTitle: "a".repeat(121) }], ["telepon 41", { phone: "1".repeat(41) }],
+  ["tanpa peran", { roles: [] }], ["institusi kosong (opsional)", { organization: "" }],
+];
+for (const [name, patch] of userCases) {
+  const f = { ...userFull, ...patch };
+  ok(`Tambah User ${name}: layar ${screenOk(f) ? "menerima" : "menandai"} sama dengan server`, screenOk(f) === serverOk(f));
+}
+ok("Tambah User email sudah terdaftar dipetakan ke kolom email", Boolean(emailTakenMessage("A user with this email address has already been registered")));
+ok("Tambah User error lain tidak dipetakan ke email", emailTakenMessage("role_assignment_forbidden") === null);
+
+// ===== Pendaftaran Full Training (CATATAN_PERBAIKAN 2bm) =====
+console.log("\n== Pendaftaran Full Training ==");
+const { applyFormErrors } = await jiti.import("@/components/baruna/academy/apply-validation");
+const pFull = { fullName: "Amina Bello", gender: "Female", nationality: "Nigerian", dob: "", passportNumber: "", email: "amina@fish.ng", phone: "+234" };
+const prFull = { organization: "NIOMR", position: "Researcher", country: "Nigeria", experience: "6–10 years", sector: "" };
+const motiv = "Saya ingin belajar budidaya.";
+ok("Full Training lengkap: tidak ada yang ditandai", Object.keys(applyFormErrors(pFull, prFull, "Intermediate", motiv)).length === 0);
+const emptyP = Object.fromEntries(Object.keys(pFull).map((k) => [k, ""]));
+const emptyPr = Object.fromEntries(Object.keys(prFull).map((k) => [k, ""]));
+const eEmpty = applyFormErrors(emptyP, emptyPr, "", "");
+ok("Full Training kosong: 11 isian wajib ditandai",
+  ["fullName", "gender", "nationality", "email", "phone", "organization", "position", "country", "experience", "english", "motivation"].every((k) => k in eEmpty) && Object.keys(eEmpty).length === 11);
+ok("Full Training kolom opsional tidak ditandai", !["dob", "passportNumber", "sector"].some((k) => k in eEmpty));
+ok("Full Training email salah ditandai", "email" in applyFormErrors({ ...pFull, email: "amina@" }, prFull, "Basic", motiv));
+ok("Full Training motivasi 10 karakter ditandai (aturan lama: lebih dari 10)", "motivation" in applyFormErrors(pFull, prFull, "Basic", "a".repeat(10)));
+ok("Full Training motivasi 11 karakter diterima", !("motivation" in applyFormErrors(pFull, prFull, "Basic", "a".repeat(11))));
+ok("Full Training motivasi 1.001 karakter ditandai (server menyimpan maks. 1.000)", "motivation" in applyFormErrors(pFull, prFull, "Basic", "a".repeat(1001)));
 console.log(`\n${pass}/${pass + fail} lulus`);
 process.exit(fail ? 1 : 0);

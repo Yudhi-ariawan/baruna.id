@@ -1562,6 +1562,39 @@ Dicek juga di browser lebar HP dengan akun uji sementara (dihapus sesudahnya). B
 
 ---
 
+## 2bm. Tiga formulir terakhir menandai isian yang salah: modul trainer, Tambah User, pendaftaran (17 Nov)
+
+Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan yang bisa diklik, kursor pindah ke kolom pertama, dan tombol kirim membawa ke langkah yang masih salah. Aturan server dan database tidak berubah, jadi tidak ada migrasi. Dengan ini semua formulir di daftar KESIAPAN_RILIS bagian B sudah memakai pola per kolom.
+
+**1. Pengajuan modul trainer** (`/experts/portal/submit-module`; aturan di `src/components/baruna/experts/submit-module/validation.ts`):
+- Judul 3–240 karakter, sama dengan server (`ModuleSubmission`) dan database (`trainer_module_save`: `title_required`). Aturan ini juga berlaku saat *Simpan sebagai Draf*: judul 1–2 huruf sebelumnya gagal dengan pesan teknis.
+- **Pemegang Hak Cipta** sebelumnya bertanda wajib tetapi tidak pernah dicek. Sekarang dicek saat kirim.
+- Kuis: pesan menyebut nomor soal. Kasus yang ditandai: teks kosong, kurang dari 2 pilihan, atau **kunci jawaban menunjuk pilihan yang kosong**. Kasus terakhir sebelumnya lolos dan membuat soal yang tidak bisa dijawab benar.
+- `Field` di `FormPrimitives.tsx` kini bisa diberi `name` dan `error`, sehingga dipakai oleh semua langkah.
+
+**2. Tambah User** di Portal Admin (`/admin/users`; aturan di `src/components/admin/users/create-user-validation.ts`):
+- Batas sama dengan server `createUser`: nama 2–120, email valid dan maks. 254, kata sandi 8–128, institusi/jabatan/telepon maks. 160/120/40, minimal satu peran.
+- Gelembung bawaan browser yang hanya menunjuk satu kolom diganti tanda per kolom.
+- **Email yang sudah terdaftar** (diketahui server) kini ditandai di kolom Email dengan pesan yang jelas, bukan muncul sebagai pesan umum di atas daftar.
+
+**3. Pendaftaran**:
+- **Full Training** (`/academy/apply/$slug`; `src/components/baruna/academy/apply-validation.ts`):
+  - tombol *Continue* tidak lagi mati tanpa penjelasan, tetapi menunjuk 11 isian wajib (termasuk format email dan tingkat bahasa Inggris);
+  - motivasi minimal 11 karakter (aturan lama) dan **maksimal 1.000**, karena server hanya menyimpan 1.000 karakter pertama (sebelumnya terpotong diam-diam);
+  - di langkah Dokumen, dokumen yang belum diunggah ditandai satu per satu.
+- **Course Offering** (`OfferingApplicationAction`): tombol *Ajukan pendaftaran* tidak lagi mati. Saat ditekan, dokumen yang belum diunggah ditandai merah ("belum diunggah") dan halaman menggulir ke sana.
+
+**Uji:**
+- `npm run test:form-validation` **128/128** (43 cek baru):
+  - modul: judul sama dengan aturan server untuk 6 panjang berbeda, kolom wajib, jam, nilai kelulusan, tiga jenis masalah kuis, hak cipta, pernyataan, langkah pertama yang salah;
+  - Tambah User: 15 kasus yang hasilnya di layar sama dengan skema server, pemetaan email terdaftar;
+  - Full Training: 11 isian wajib, kolom opsional tidak ditandai, email, batas motivasi 10/11/1.001.
+- Dicek di browser dengan akun uji super admin sementara (perannya dan akunnya dihapus sesudahnya): Tambah User kosong menandai 3 kolom dengan fokus ke Nama; setelah diisi benar tanda hilang; email yang sudah terdaftar ditandai di kolom Email.
+- Formulir modul dan Full Training tidak dicek di browser: keduanya butuh akun trainer atau pendaftar yang pernah ditolak, sehingga dicek lewat tes di atas.
+- `tsc` dan `npm run build` lulus. Lint: tidak ada masalah baru; masalah lama di `admin.users.tsx` dan `academy.apply.$slug.tsx` tetap sama jumlahnya.
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.

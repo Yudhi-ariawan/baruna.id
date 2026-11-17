@@ -26,6 +26,8 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
   const [uploads, setUploads] = useState<Record<string, Uploaded>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // After a submit attempt with documents missing, each missing row is marked.
+  const [tried, setTried] = useState(false);
 
   const statusQ = useQuery({
     queryKey: ["learning", "offering-application", offeringCode],
@@ -110,12 +112,15 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
               {requiredDocuments.map((r) => {
                 const fresh = uploads[r]?.fileName ?? recorded.get(r);
                 const name = fresh ?? existing.get(r);
+                const markMissing = tried && !name;
                 return (
-                  <label key={r} className="flex items-center justify-between gap-2">
+                  <label key={r} data-missing-doc={markMissing ? "1" : undefined}
+                    className={`flex items-center justify-between gap-2 ${markMissing ? "-mx-1 rounded-md bg-red-50 px-1 py-0.5 ring-1 ring-red-400" : ""}`}>
                     <span className="flex min-w-0 items-center gap-1.5">
-                      {name ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> : <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                      {name ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> : <FileText className={`h-3.5 w-3.5 shrink-0 ${markMissing ? "text-red-600" : "text-muted-foreground"}`} />}
                       <span className="font-medium">{r}</span>
                       {name ? <span className="truncate text-muted-foreground">· {name}</span> : null}
+                      {markMissing ? <span className="shrink-0 font-semibold text-red-700">belum diunggah</span> : null}
                       {fresh ? <span className="shrink-0 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800">belum dikirim</span> : null}
                     </span>
                     <span className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-marine px-2 py-0.5 font-semibold text-marine">
@@ -130,12 +135,23 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
               {uploadError ? <p className="text-red-700">{uploadError}</p> : null}
             </div>
           ) : null}
-          <button type="button" onClick={() => submitM.mutate()} disabled={submitM.isPending || uploading !== null || missing.length > 0}
+          <button type="button"
+            onClick={() => {
+              if (missing.length > 0) {
+                setTried(true);
+                setTimeout(() => document.querySelector<HTMLElement>("[data-missing-doc]")?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+                return;
+              }
+              submitM.mutate();
+            }}
+            disabled={submitM.isPending || uploading !== null}
             className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-marine px-3 py-2 text-sm font-semibold text-white shadow-soft hover:bg-marine/90 disabled:opacity-60">
             {submitM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {s?.status === "revision_requested" ? "Kirim ulang" : s?.status === "rejected" ? "Ajukan lagi" : "Ajukan pendaftaran"}
           </button>
-          {missing.length > 0 ? <p className="text-xs text-muted-foreground">Unggah dulu: {missing.join(", ")}.</p> : null}
+          {missing.length > 0 ? (
+            <p className={`text-xs ${tried ? "font-semibold text-red-700" : "text-muted-foreground"}`}>Unggah dulu: {missing.join(", ")}.</p>
+          ) : null}
         </>
       )}
       {submitM.isError ? <p className="text-xs text-red-700">{submitM.error instanceof Error ? submitM.error.message : String(submitM.error)}</p> : null}

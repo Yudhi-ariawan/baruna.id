@@ -1,14 +1,17 @@
 import { Section, Grid, Field, inp } from "./FormPrimitives";
+import { fieldErrorCls } from "@/components/baruna/forms/field-errors";
 import type { ModuleFormFields, UpdateField } from "./config";
 
 export function StepInfo({
   isId,
   formFields,
   updateField,
+  errors = {},
 }: {
   isId: boolean;
   formFields: ModuleFormFields;
   updateField: UpdateField;
+  errors?: Record<string, string>;
 }) {
   return (
       <Section
@@ -20,11 +23,11 @@ export function StepInfo({
         }
       >
         <Grid>
-          <Field label={isId ? "Judul Modul Pelatihan" : "Module Title"} required>
+          <Field label={isId ? "Judul Modul Pelatihan" : "Module Title"} required name="title" error={errors.title}>
             <input
               value={formFields.title}
               onChange={(e) => updateField("title", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.title)}
               required
               placeholder={
                 isId
@@ -33,11 +36,11 @@ export function StepInfo({
               }
             />
           </Field>
-          <Field label={isId ? "Topik / Bidang Kajian" : "Topic / Subject Area"} required>
+          <Field label={isId ? "Topik / Bidang Kajian" : "Topic / Subject Area"} required name="topic" error={errors.topic}>
             <input
               value={formFields.topic}
               onChange={(e) => updateField("topic", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.topic)}
               required
               placeholder={
                 isId
@@ -46,11 +49,11 @@ export function StepInfo({
               }
             />
           </Field>
-          <Field label={isId ? "Bidang Kompetensi" : "Competency Domain"} required>
+          <Field label={isId ? "Bidang Kompetensi" : "Competency Domain"} required name="competency" error={errors.competency}>
             <input
               value={formFields.competency}
               onChange={(e) => updateField("competency", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.competency)}
               required
               placeholder={
                 isId
@@ -59,11 +62,11 @@ export function StepInfo({
               }
             />
           </Field>
-          <Field label={isId ? "Format Pembelajaran" : "Delivery Format"} required>
+          <Field label={isId ? "Format Pembelajaran" : "Delivery Format"} required name="deliveryFormat" error={errors.deliveryFormat}>
             <select
               value={formFields.deliveryFormat}
               onChange={(e) => updateField("deliveryFormat", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.deliveryFormat)}
               required
             >
               <option value="Self-paced">Self-paced (Mandiri Online)</option>
@@ -78,21 +81,21 @@ export function StepInfo({
                 : "Estimated Learning Hours"
             }
             required
-          >
+           name="hours" error={errors.hours}>
             <input
               type="number"
               min={1}
               value={formFields.hours}
               onChange={(e) => updateField("hours", Number(e.target.value))}
-              className={inp}
+              className={inp + fieldErrorCls(errors.hours)}
               required
             />
           </Field>
-          <Field label={isId ? "Tingkat Kesulitan (Level)" : "Difficulty Level"} required>
+          <Field label={isId ? "Tingkat Kesulitan (Level)" : "Difficulty Level"} required name="level" error={errors.level}>
             <select
               value={formFields.level}
               onChange={(e) => updateField("level", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.level)}
               required
             >
               <option value="Introductory">Introductory (Pemula)</option>
@@ -100,19 +103,19 @@ export function StepInfo({
               <option value="Advanced">Advanced (Lanjutan)</option>
             </select>
           </Field>
-          <Field label={isId ? "Bahasa Pengantar" : "Instruction Language"} required>
+          <Field label={isId ? "Bahasa Pengantar" : "Instruction Language"} required name="language" error={errors.language}>
             <input
               value={formFields.language}
               onChange={(e) => updateField("language", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.language)}
               required
             />
           </Field>
-          <Field label={isId ? "Profil Target Peserta" : "Target Audience Profile"} required>
+          <Field label={isId ? "Profil Target Peserta" : "Target Audience Profile"} required name="targetParticipants" error={errors.targetParticipants}>
             <input
               value={formFields.targetParticipants}
               onChange={(e) => updateField("targetParticipants", e.target.value)}
-              className={inp}
+              className={inp + fieldErrorCls(errors.targetParticipants)}
               required
               placeholder={
                 isId
@@ -123,11 +126,11 @@ export function StepInfo({
           </Field>
         </Grid>
 
-        <Field label={isId ? "Ringkasan Modul (Deskripsi Singkat)" : "Module Summary"} required>
+        <Field label={isId ? "Ringkasan Modul (Deskripsi Singkat)" : "Module Summary"} required name="summary" error={errors.summary}>
           <textarea
             value={formFields.summary}
             onChange={(e) => updateField("summary", e.target.value)}
-            className={`${inp} min-h-[95px]`}
+            className={`${inp}${fieldErrorCls(errors.summary)} min-h-[95px]`}
             required
             placeholder={
               isId

@@ -16,6 +16,9 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { FieldError, FieldErrorSummary } from "@/components/baruna/forms/FieldError";
+import { fieldErrorCls, focusField } from "@/components/baruna/forms/field-errors";
+import { CREATE_USER_LABELS, createUserErrors, emailTakenMessage } from "@/components/admin/users/create-user-validation";
 import {
   FLOW_MANAGED_ROLES,
   assignUserRole,
@@ -584,6 +587,17 @@ function CreateUserDialog({
     "registered_user",
   ]);
   const [emailConfirm, setEmailConfirm] = useState(true);
+  // Per-field errors (same limits as the server), shown after the first attempt and
+  // updated while typing. A duplicate e-mail comes back from the server.
+  const [tried, setTried] = useState(false);
+  const [emailTaken, setEmailTaken] = useState<{ email: string; msg: string } | null>(null);
+  const allErrors = useMemo(() => {
+    const e = createUserErrors({ displayName, email, password, organization, jobTitle, phone, roles: selectedRoles });
+    if (!e.email && emailTaken && emailTaken.email === email.trim().toLowerCase()) e.email = emailTaken.msg;
+    return e;
+  }, [displayName, email, password, organization, jobTitle, phone, selectedRoles, emailTaken]);
+  const errors: Record<string, string> = tried ? allErrors : {};
+  const cls = (k: string) => `input-admin${fieldErrorCls(errors[k])}`;
 
   function toggleRole(role: AdminRoleCode) {
     setSelectedRoles((prev) =>
@@ -622,16 +636,28 @@ function CreateUserDialog({
       }
       onSuccess(created);
     },
-    onError: (error) => onError(messageOf(error)),
+    onError: (error) => {
+      const taken = emailTakenMessage(error instanceof Error ? error.message : "");
+      if (taken) {
+        setEmailTaken({ email: email.trim().toLowerCase(), msg: taken });
+        setTried(true);
+        setTimeout(() => focusField("email"), 60);
+        return;
+      }
+      onError(messageOf(error));
+    },
   });
 
   return (
     <Modal title="Create new user" onClose={onClose}>
       <form
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
-          if (selectedRoles.length === 0) {
-            onError("Please select at least one role for the user.");
+          const keys = Object.keys(allErrors);
+          if (keys.length) {
+            setTried(true);
+            setTimeout(() => focusField(keys[0]), 60);
             return;
           }
           mutation.mutate();
@@ -646,8 +672,10 @@ function CreateUserDialog({
               value={displayName}
               placeholder="e.g. Dr. Budi Santoso"
               onChange={(event) => setDisplayName(event.target.value)}
-              className="input-admin"
+              className={cls("displayName")}
+              data-field="displayName"
             />
+            <FieldError msg={errors.displayName} />
           </Field>
           <Field label="Email address *">
             <input
@@ -656,8 +684,10 @@ function CreateUserDialog({
               value={email}
               placeholder="e.g. user@baruna.id"
               onChange={(event) => setEmail(event.target.value)}
-              className="input-admin"
+              className={cls("email")}
+              data-field="email"
             />
+            <FieldError msg={errors.email} />
           </Field>
         </div>
 
@@ -669,8 +699,10 @@ function CreateUserDialog({
             value={password}
             placeholder="••••••••"
             onChange={(event) => setPassword(event.target.value)}
-            className="input-admin"
+            className={cls("password")}
+              data-field="password"
           />
+          <FieldError msg={errors.password} />
         </Field>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -679,24 +711,30 @@ function CreateUserDialog({
               value={organization}
               placeholder="e.g. BRIN / KKP"
               onChange={(event) => setOrganization(event.target.value)}
-              className="input-admin"
+              className={cls("organization")}
+              data-field="organization"
             />
+            <FieldError msg={errors.organization} />
           </Field>
           <Field label="Job title / Position">
             <input
               value={jobTitle}
               placeholder="e.g. Researcher / Lecturer"
               onChange={(event) => setJobTitle(event.target.value)}
-              className="input-admin"
+              className={cls("jobTitle")}
+              data-field="jobTitle"
             />
+            <FieldError msg={errors.jobTitle} />
           </Field>
           <Field label="Phone / WhatsApp">
             <input
               value={phone}
               placeholder="e.g. +62812345678"
               onChange={(event) => setPhone(event.target.value)}
-              className="input-admin"
+              className={cls("phone")}
+              data-field="phone"
             />
+            <FieldError msg={errors.phone} />
           </Field>
         </div>
 
@@ -712,7 +750,7 @@ function CreateUserDialog({
               Akun Anda hanya dapat membuat pengguna dengan peran Registered User. Peran lain diberikan oleh Super Admin.
             </p>
           ) : null}
-          <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3 max-h-44 overflow-y-auto p-1 border border-border/60 rounded-lg">
+          <div data-field="roles" className={`mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3 max-h-44 overflow-y-auto p-1 border border-border/60 rounded-lg${fieldErrorCls(errors.roles)}`}>
             {availableRoles.map((role) => {
               const checked = selectedRoles.includes(role);
               const locked = !canAssignRoles && role !== "registered_user";
@@ -740,6 +778,7 @@ function CreateUserDialog({
               );
             })}
           </div>
+          <FieldError msg={errors.roles} />
         </div>
 
         <label className="flex cursor-pointer items-center gap-2 pt-1 text-xs font-medium text-navy">
@@ -751,6 +790,12 @@ function CreateUserDialog({
           />
           <span>Auto-confirm email (user can sign in immediately without verification email)</span>
         </label>
+
+        <FieldErrorSummary
+          errors={errors}
+          labels={CREATE_USER_LABELS}
+          title={(n) => `Please fix ${n} field${n > 1 ? "s" : ""} marked in red (click to go to the field):`}
+        />
 
         <Actions busy={mutation.isPending} onCancel={onClose} submit="Create user" />
       </form>
