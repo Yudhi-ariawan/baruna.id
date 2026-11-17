@@ -1492,6 +1492,26 @@ Acuan: Slide 42 (LS-01), 43 (LS-02), 45 (LS-04), dan 49 (RACI baris 8: Admin Con
 
 ---
 
+## 2bi. Uji beban sederhana ke Supabase intern-update (17 Nov)
+
+**Tujuan:** menjawab KESIAPAN_RILIS bagian C nomor 2 ("banyak user bersamaan") sebelum pilot 20–50 pengguna.
+
+**Cara:** `npm run load-test -- --yes --users=50 --seconds=120` (`scripts/load-test.mjs`). Skrip hanya jalan dengan `--yes` karena memakai kuota project. 50 pengguna bersamaan selama 2 menit, jeda 0,5–1,5 detik antar-permintaan seperti orang membaca halaman:
+- 60% pengunjung tanpa login: katalog offering, modul publik, Knowledge Hub, direktori expert, angka beranda;
+- 40% peserta yang login (5 akun `tdd-load-*@example.test`): pengajuan, course, progres, sertifikat, kehadiran (`my_attendance`), tanda notifikasi. Semua lewat RLS seperti aplikasi.
+
+Akun uji dibuat dengan metadata lengkap dan dihapus di akhir. Sudah diperiksa: 0 akun tersisa.
+
+**Hasil (17 Nov, dari laptop):** 5.082 permintaan dalam 122 detik (±42 per detik), **error 0 (0%)**, tidak ada pembatasan (*rate limit*/429). Waktu respons rata-rata 167–187 ms per jenis permintaan, **p95 semua 299 ms**, p99 530 ms, paling lama 1,2 detik (Knowledge Hub, sesekali). Uji coba kecil sebelumnya (5 pengguna, 10 detik) juga 0 error.
+
+**Batas uji ini:** yang diukur adalah database dan API Supabase. Server aplikasi (fungsi server di hosting Lovable) dan pengiriman file besar tidak ikut diuji. Semua permintaan berasal dari satu laptop, jadi angka sudah termasuk jarak jaringan ke server Supabase.
+
+**Supavisor (port 6543):** tidak berlaku untuk kode sekarang. Aplikasi hanya memakai `@supabase/supabase-js` lewat HTTPS (REST/RPC), yang di sisi Supabase sudah memakai pooling sendiri. Tidak ada koneksi Postgres langsung (`postgres://`, `DATABASE_URL`, port 5432/6543) di `src`, `scripts`, maupun `.env.example`. Aturan ini baru berlaku bila kelak ada koneksi Postgres langsung.
+
+**Cadangan data:** tidak bisa diperiksa dari kode. Pemilik proyek perlu melihat Supabase Dashboard → Database → Backups untuk project intern-update dan `main` (paket gratis tidak punya cadangan harian otomatis yang bisa dipulihkan sendiri).
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.
