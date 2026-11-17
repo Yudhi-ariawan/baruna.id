@@ -21,6 +21,9 @@ import {
 import { Navbar } from "@/components/baruna/Navbar";
 import { TopicSelector } from "@/components/baruna/knowledge-hub/TopicSelector";
 import { LanguageSelect } from "@/components/baruna/forms/LanguageSelect";
+import { FieldError, FieldErrorSummary } from "@/components/baruna/forms/FieldError";
+import { fieldErrorCls, focusField } from "@/components/baruna/forms/field-errors";
+import { KH_SUBMIT_LABELS, firstKhStepWithErrors, khSubmitStepErrors, type KhFieldErrors } from "@/components/baruna/knowledge/submit-validation";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import { supabase } from "@/integrations/supabase/client";
 import { createKnowledgeResourceUpload, getKnowledgeContributorBootstrap, getKnowledgeResourceDraft, saveKnowledgeResourceDraft } from "@/lib/knowledge-hub/contribution.functions";
@@ -253,49 +256,28 @@ function SubmitResourcePage() {
   const set = <K extends keyof ResourceDraft>(key: K, value: ResourceDraft[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const canNext = useMemo(() => {
-    if (step === 1) return !!form.type;
-    if (step === 2) {
-      const baseOk = Boolean(
-        form.title.trim() &&
-          form.description.trim() &&
-          form.author.trim() &&
-          form.institution.trim() &&
-          form.country.trim() &&
-          form.year.trim() &&
-          form.language.trim() &&
-          form.keywords.trim() &&
-          form.topicCategory.trim(),
-      );
-      if (!baseOk) return false;
-      if (form.type === "Best Practice") {
-        const ps = form.practiceStructure ?? emptyBestPracticeStructure;
-        return Boolean(
-          ps.challenge.trim() &&
-            ps.context.trim() &&
-            ps.intervention.trim() &&
-            ps.steps.trim() &&
-            ps.results.trim() &&
-            ps.lessons.trim(),
-        );
-      }
-      return true;
-    }
-    if (step === 3) return !!form.file || !!form.externalUrl.trim();
-    if (step === 4) return form.declaration;
-    return true;
-  }, [step, form]);
+  // Per-field errors for the current step (wizard rules + the database's
+  // _kr_payload_problem). They show after the first "Continue" on that step, then
+  // update while typing.
+  const stepErrors = useMemo(() => khSubmitStepErrors(step, form), [step, form]);
+  const [triedStep, setTriedStep] = useState<number | null>(null);
+  const errors: KhFieldErrors = triedStep === step ? stepErrors : {};
+
+  const showStepErrors = (target: number, keys: string[]) => {
+    setStep(target);
+    setTriedStep(target);
+    setError(null);
+    setTimeout(() => focusField(keys[0]), 60);
+  };
 
   const goNext = () => {
-    if (!canNext) {
-      setError(
-        step === 2 && form.type === "Best Practice"
-          ? "Mohon lengkapi seluruh kolom wajib informasi dasar dan Struktur Praktik Terbaik (Best Practice) bertanda * sebelum melanjutkan."
-          : "Please complete the required fields before continuing.",
-      );
+    const keys = Object.keys(stepErrors);
+    if (keys.length) {
+      showStepErrors(step, keys);
       return;
     }
     setError(null);
+    setTriedStep(null);
     setStep((s) => Math.min(5, s + 1));
   };
   const goBack = () => {
@@ -304,6 +286,13 @@ function SubmitResourcePage() {
   };
 
   const persist = async (status: "draft" | "submitted") => {
+    if (status === "submitted") {
+      const pending = firstKhStepWithErrors(form);
+      if (pending) {
+        showStepErrors(pending.step, Object.keys(pending.errors));
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     const draft = { ...form, typeGroup: groupForType(form.type) };
@@ -477,12 +466,15 @@ function SubmitResourcePage() {
         )}
 
         <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
-          {step === 1 && <StepType form={form} set={set} isTrainer={bootstrap.data?.isTrainer} />}
-          {step === 2 && <StepInfo form={form} set={set} />}
-          {step === 3 && <StepFile form={form} set={set} />}
-          {step === 4 && <StepAccess form={form} set={set} />}
+          {step === 1 && <StepType form={form} set={set} isTrainer={bootstrap.data?.isTrainer} errors={errors} />}
+          {step === 2 && <StepInfo form={form} set={set} errors={errors} />}
+          {step === 3 && <StepFile form={form} set={set} errors={errors} />}
+          {step === 4 && <StepAccess form={form} set={set} errors={errors} />}
           {step === 5 && <StepReview form={form} />}
 
+          <div className="mt-4">
+            <FieldErrorSummary errors={errors} labels={KH_SUBMIT_LABELS} />
+          </div>
           {error && (
             <p className="mt-4 rounded-lg bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive">
               {error}
@@ -562,7 +554,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-marine focus:ring-1 focus:ring-marine";
 
-function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; isTrainer?: boolean }) {
+function StepType({ form, set, isTrainer, errors }: { form: ResourceDraft; set: SetFn; isTrainer?: boolean; errors: KhFieldErrors }) {
   const navigate = useNavigate();
   const quickTracks = [
     {
@@ -593,6 +585,9 @@ function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; i
       </p>
 
       {/* Quick-select cards for the 3 main tracks: Publication, Best Practice, Video */}
+      <div data-field="type">
+        <FieldError msg={errors.type} />
+      </div>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {quickTracks.map((qt) => {
           const isSelected =
@@ -690,39 +685,47 @@ function StepType({ form, set, isTrainer }: { form: ResourceDraft; set: SetFn; i
   );
 }
 
-function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
+function StepInfo({ form, set, errors }: { form: ResourceDraft; set: SetFn; errors: KhFieldErrors }) {
+  const ec = (k: string) => inputClass + fieldErrorCls(errors[k]);
   return (
     <div>
       <h2 className="font-display text-lg font-bold text-navy">Step 2 — Resource Information</h2>
       <p className="mt-1 text-sm text-muted-foreground">Tell the community about your resource.</p>
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
+        <div data-field="title" className="sm:col-span-2">
           <FieldLabel required>Title</FieldLabel>
-          <input className={inputClass} value={form.title} maxLength={160} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Tilapia Farming Manual" />
+          <input className={ec("title")} value={form.title} maxLength={160} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Tilapia Farming Manual" />
+          <FieldError msg={errors.title} />
         </div>
-        <div className="sm:col-span-2">
+        <div data-field="description" className="sm:col-span-2">
           <FieldLabel required>Description</FieldLabel>
-          <textarea className={`${inputClass} min-h-[110px] resize-y`} value={form.description} maxLength={1500} onChange={(e) => set("description", e.target.value)} placeholder="Summarise what the resource covers and who it is for." />
+          <textarea className={`${ec("description")} min-h-[110px] resize-y`} value={form.description} maxLength={1500} onChange={(e) => set("description", e.target.value)} placeholder="Summarise what the resource covers and who it is for." />
+          <FieldError msg={errors.description} />
         </div>
-        <div>
+        <div data-field="author">
           <FieldLabel required>Author</FieldLabel>
-          <input className={inputClass} value={form.author} maxLength={120} onChange={(e) => set("author", e.target.value)} />
+          <input className={ec("author")} value={form.author} maxLength={120} onChange={(e) => set("author", e.target.value)} />
+          <FieldError msg={errors.author} />
         </div>
-        <div>
+        <div data-field="institution">
           <FieldLabel required>Institution</FieldLabel>
-          <input className={inputClass} value={form.institution} maxLength={120} onChange={(e) => set("institution", e.target.value)} />
+          <input className={ec("institution")} value={form.institution} maxLength={120} onChange={(e) => set("institution", e.target.value)} />
+          <FieldError msg={errors.institution} />
         </div>
-        <div>
+        <div data-field="country">
           <FieldLabel required>Country</FieldLabel>
-          <input className={inputClass} value={form.country} maxLength={80} onChange={(e) => set("country", e.target.value)} placeholder="Your country" />
+          <input className={ec("country")} value={form.country} maxLength={80} onChange={(e) => set("country", e.target.value)} placeholder="Your country" />
+          <FieldError msg={errors.country} />
         </div>
-        <div>
+        <div data-field="year">
           <FieldLabel required>Year</FieldLabel>
-          <input className={inputClass} type="number" min={1980} max={2100} value={form.year} onChange={(e) => set("year", e.target.value)} />
+          <input className={ec("year")} type="number" min={1980} max={2100} value={form.year} onChange={(e) => set("year", e.target.value)} />
+          <FieldError msg={errors.year} />
         </div>
-        <div>
+        <div data-field="language">
           <FieldLabel required>Language</FieldLabel>
-          <LanguageSelect className={inputClass} value={form.language} onChange={(v) => set("language", v)} />
+          <LanguageSelect className={ec("language")} value={form.language} onChange={(v) => set("language", v)} />
+          <FieldError msg={errors.language} />
         </div>
         <div>
           <FieldLabel required>Resource Category</FieldLabel>
@@ -752,18 +755,21 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
             </div>
           </>
         )}
-        <div className="sm:col-span-2">
+        <div data-field="keywords" className="sm:col-span-2">
           <FieldLabel required>Keywords</FieldLabel>
-          <input className={inputClass} value={form.keywords} maxLength={200} onChange={(e) => set("keywords", e.target.value)} placeholder="Comma-separated, e.g. tilapia, hatchery, biofloc" />
+          <input className={ec("keywords")} value={form.keywords} maxLength={200} onChange={(e) => set("keywords", e.target.value)} placeholder="Comma-separated, e.g. tilapia, hatchery, biofloc" />
+          <FieldError msg={errors.keywords} />
         </div>
-        <div className="sm:col-span-2">
+        <div data-field="topicCategory" className="sm:col-span-2">
           <FieldLabel required>Topic Category</FieldLabel>
           <TopicSelector value={form.topicCategory} onChange={(t) => set("topicCategory", t)} />
+          <FieldError msg={errors.topicCategory} />
         </div>
       </div>
 
       {form.type === "Best Practice" && (
         <BestPracticeStructureForm
+          errors={errors}
           value={form.practiceStructure}
           onChange={(next) => set("practiceStructure", next)}
         />
@@ -796,7 +802,7 @@ function StepInfo({ form, set }: { form: ResourceDraft; set: SetFn }) {
   );
 }
 
-function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
+function StepFile({ form, set, errors }: { form: ResourceDraft; set: SetFn; errors: KhFieldErrors }) {
   const createUpload = useServerFn(createKnowledgeResourceUpload);
   const inputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -1078,7 +1084,7 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
       </div>
 
       {/* ── Section B: Dokumen Materi Utama (File Upload) ── */}
-      <div className="space-y-2">
+      <div className="space-y-2" data-field="file">
         <FieldLabel>
           {isVideoResourceType(form.type) ? "Berkas Video / Audio (MP4, WEBM, MP3)" : "Dokumen Materi Publikasi"}
         </FieldLabel>
@@ -1147,6 +1153,7 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
           </div>
         )}
         {err && <p className="text-sm font-medium text-destructive">{err}</p>}
+        <FieldError msg={errors.file} />
       </div>
 
       {/* ── Section C: Tautan Eksternal (Opsional) ── */}
@@ -1157,7 +1164,7 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
               ? "Tautan Video / Podcast Eksternal (YouTube, Vimeo, atau URL Streaming)"
               : "Tautan Eksternal / Repositori Online (Opsional)"}
           </FieldLabel>
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3">
+          <div data-field="externalUrl" className={`flex items-center gap-2 rounded-lg border border-border bg-background px-3${fieldErrorCls(errors.externalUrl)}`}>
             <Link2 className="h-4 w-4 text-muted-foreground" />
             <input
               className="w-full bg-transparent py-2.5 text-sm outline-none"
@@ -1170,6 +1177,7 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
               }
             />
           </div>
+          <FieldError msg={errors.externalUrl} />
         </div>
 
         {videoEmbedPreviewUrl && (
@@ -1196,7 +1204,7 @@ function StepFile({ form, set }: { form: ResourceDraft; set: SetFn }) {
   );
 }
 
-function StepAccess({ form, set }: { form: ResourceDraft; set: SetFn }) {
+function StepAccess({ form, set, errors }: { form: ResourceDraft; set: SetFn; errors: KhFieldErrors }) {
   return (
     <div>
       <h2 className="font-display text-lg font-bold text-navy">Step 4 — Access &amp; License</h2>
@@ -1222,12 +1230,13 @@ function StepAccess({ form, set }: { form: ResourceDraft; set: SetFn }) {
         })}
       </div>
 
-      <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 p-4">
+      <label data-field="declaration" className={`mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 p-4${fieldErrorCls(errors.declaration)}`}>
         <input type="checkbox" checked={form.declaration} onChange={(e) => set("declaration", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[hsl(var(--marine))]" />
         <span className="text-sm text-foreground/85">
           I confirm that I own the rights to this material or have permission to share it.
         </span>
       </label>
+      <FieldError msg={errors.declaration} />
     </div>
   );
 }

@@ -1543,6 +1543,25 @@ Akun uji dibuat dengan metadata lengkap dan dihapus di akhir. Sudah diperiksa: 0
 
 ---
 
+## 2bl. Kontribusi Knowledge Hub menandai isian yang salah (17 Nov)
+
+**Sebelumnya:** di `/knowledge-hub/submit-resource` tombol *Continue* hanya memberi satu pesan umum. Untuk Best Practice, keenam bagian wajib tidak diberi tanda bintang. Tiga aturan database (`_kr_payload_problem`) tidak dicek di layar, jadi baru gagal saat *Submit Resource*:
+- tautan eksternal harus diawali `http(s)://` tanpa spasi (`kr_external_url_invalid`);
+- judul maksimal 300 karakter;
+- tahun di luar 1980–2100 bisa diketik.
+
+**Sekarang** (pola sama dengan 2bj/2bk, pesan bahasa Indonesia seperti pesan server halaman ini):
+- Aturan per langkah di `src/components/baruna/knowledge/submit-validation.ts`. Kolom wajib wizard tetap sama. Ditambah aturan database: judul ≤300, wajib berkas atau tautan, tautan dengan pola yang sama dengan database (`^https?://\S+$`, maks. 2.000), topik, bahasa, dan enam bagian Best Practice. Tahun harus 4 angka, 1980–2100.
+- Kolom yang salah diberi garis merah dan pesan, ada ringkasan yang bisa diklik, dan kursor pindah ke kolom pertama.
+- Bagian Best Practice (`BestPracticeStructureForm`) kini memberi tanda `*` pada enam bagian wajib (Tantangan, Konteks, Intervensi, Tahapan, Hasil, Pelajaran). Pemangku kepentingan dan Replikasi tetap opsional, sesuai database.
+- *Submit Resource* kembali ke langkah pertama yang masih salah. Aturan database tidak berubah, jadi tidak ada migrasi.
+
+**Uji:** `npm run test:form-validation` **85/85** (27 cek baru untuk Knowledge Hub). Yang dicek: setiap aturan `_kr_payload_problem` di atas ditandai di layar; 5 contoh tautan salah ditandai dan 3 tautan benar diterima; pola tautan sama dengan database; Best Practice kosong menandai tepat enam bagian wajib; tahun salah; pernyataan hak; langkah pertama yang salah dipilih dengan benar.
+
+Dicek juga di browser lebar HP dengan akun uji sementara (dihapus sesudahnya). Best Practice di langkah 2 menandai 10 isian (judul, deskripsi, kata kunci, topik, enam bagian Best Practice), fokus ke judul, tanpa geser samping. Penulis, institusi, dan negara terisi otomatis dari akun. `tsc`, lint, dan `npm run build` lulus.
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.

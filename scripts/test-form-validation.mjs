@@ -94,5 +94,47 @@ for (const [k, n] of [["structuredLanguages", 21], ["structuredProjects", 31], [
 }
 ok("expert email salah ditandai di layar", all({ ...fullExpert, email: "budi@" }).includes("email"));
 ok("pesan ikut bahasa halaman", expertJoinStepErrors(1, emptyExpertApplication, false).fullName === "Enter your full name.");
+
+// ===== Knowledge Hub: Submit a Resource (CATATAN_PERBAIKAN 2bl) =====
+console.log("\n== Knowledge Hub: Submit a Resource ==");
+const { emptyResourceDraft, emptyBestPracticeStructure } = await jiti.import("@/lib/resources");
+const { khSubmitStepErrors, firstKhStepWithErrors, EXTERNAL_URL, BEST_PRACTICE_REQUIRED } = await jiti.import("@/components/baruna/knowledge/submit-validation");
+const khFull = {
+  ...emptyResourceDraft, type: "Research Report", typeGroup: "Publications", title: "Panduan Budidaya Nila", description: "Ringkasan.",
+  author: "Budi", institution: "BRIN", country: "Indonesia", year: "2025", language: "Indonesian", keywords: "nila, budidaya",
+  topicCategory: "Aquaculture", externalUrl: "https://doi.org/10.1/abc", declaration: true,
+};
+const khAll = (f) => [1, 2, 3, 4].flatMap((st) => Object.keys(khSubmitStepErrors(st, f)));
+ok("KH kosong: langkah 1 menandai jenis resource", "type" in khSubmitStepErrors(1, emptyResourceDraft));
+// (an empty draft already has this year and "English" as defaults)
+ok("KH kosong: langkah 2 menandai 7 kolom wajib, tahun dan bahasa bawaan tidak ditandai",
+  ["title", "description", "author", "institution", "country", "keywords", "topicCategory"].every((k) => k in khSubmitStepErrors(2, emptyResourceDraft)) &&
+  !("year" in khSubmitStepErrors(2, emptyResourceDraft)) && !("language" in khSubmitStepErrors(2, emptyResourceDraft)));
+ok("KH tahun dan bahasa dikosongkan: ditandai",
+  ["year", "language"].every((k) => k in khSubmitStepErrors(2, { ...emptyResourceDraft, year: "", language: "" })));
+ok("KH lengkap: tidak ada yang ditandai", firstKhStepWithErrors(khFull) === null);
+// The database rules (_kr_payload_problem) that the screen must catch first.
+ok("KH judul 301 karakter ditandai (database: kr_title_too_long)", khAll({ ...khFull, title: "a".repeat(301) }).includes("title"));
+ok("KH tanpa berkas dan tautan ditandai (kr_file_or_url_required)", khAll({ ...khFull, externalUrl: "" }).includes("file"));
+ok("KH berkas saja tanpa tautan: lolos", !khAll({ ...khFull, externalUrl: "", file: { name: "a.pdf", size: 1, type: "application/pdf", uploadedAt: "", storagePath: "users/x/a.pdf" } }).length);
+for (const bad of ["doi.org/10.1/abc", "www.youtube.com/watch?v=1", "https://a b.com", "ftp://x.org/a", "https://"]) {
+  ok(`KH tautan "${bad}" ditandai (kr_external_url_invalid)`, khAll({ ...khFull, externalUrl: bad }).includes("externalUrl"));
+}
+for (const good of ["https://doi.org/10.1/abc", "HTTP://contoh.go.id/a?b=1", "https://youtu.be/abc"]) {
+  ok(`KH tautan "${good}" diterima`, !khAll({ ...khFull, externalUrl: good }).includes("externalUrl"));
+}
+ok("KH pola tautan sama dengan database (^https?://[^\\s]+$, tanpa beda huruf besar)", EXTERNAL_URL.source === "^https?:\\/\\/\\S+$" && EXTERNAL_URL.flags.includes("i"));
+ok("KH tautan > 2000 karakter ditandai", khAll({ ...khFull, externalUrl: "https://x.org/" + "a".repeat(2000) }).includes("externalUrl"));
+ok("KH tanpa topik dan bahasa ditandai (kr_topic_required, kr_language_required)",
+  ["topicCategory", "language"].every((k) => khAll({ ...khFull, topicCategory: "", language: "" }).includes(k)));
+const bp = { ...khFull, type: "Best Practice", practiceStructure: { ...emptyBestPracticeStructure } };
+ok("KH Best Practice kosong: keenam bagian wajib ditandai (kr_best_practice_incomplete)",
+  BEST_PRACTICE_REQUIRED.every((k) => khAll(bp).includes(`ps.${k}`)) && !khAll(bp).includes("ps.stakeholders") && !khAll(bp).includes("ps.replication"));
+const bpFull = { ...bp, practiceStructure: Object.fromEntries(Object.keys(emptyBestPracticeStructure).map((k) => [k, "isi"])) };
+ok("KH Best Practice lengkap: lolos", firstKhStepWithErrors(bpFull) === null);
+ok("KH bagian Best Practice berisi spasi saja ditandai", khAll({ ...bpFull, practiceStructure: { ...bpFull.practiceStructure, lessons: "  " } }).includes("ps.lessons"));
+for (const y of ["1979", "2101", "25", "20a5"]) ok(`KH tahun "${y}" ditandai`, khAll({ ...khFull, year: y }).includes("year"));
+ok("KH tanpa centang pernyataan ditandai", khAll({ ...khFull, declaration: false }).includes("declaration"));
+ok("KH langkah pertama yang salah dipilih benar (tautan salah -> langkah 3)", firstKhStepWithErrors({ ...khFull, externalUrl: "doi.org" })?.step === 3);
 console.log(`\n${pass}/${pass + fail} lulus`);
 process.exit(fail ? 1 : 0);

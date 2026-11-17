@@ -1,9 +1,14 @@
 import { Sparkles, CheckCircle2 } from "lucide-react";
 import { emptyBestPracticeStructure, type BestPracticeStructure } from "@/lib/resources";
+import { FieldError } from "@/components/baruna/forms/FieldError";
+import { fieldErrorCls } from "@/components/baruna/forms/field-errors";
+import { BEST_PRACTICE_REQUIRED } from "./submit-validation";
 
 type BestPracticeStructureFormProps = {
   value?: BestPracticeStructure;
   onChange: (next: BestPracticeStructure) => void;
+  /** Field errors keyed "ps.<part>" (submit-validation); the six required parts get a mark. */
+  errors?: Record<string, string>;
 };
 
 const FIELDS: {
@@ -76,7 +81,8 @@ export function hasBestPracticeContent(structure?: Partial<BestPracticeStructure
   return Object.values(structure).some((val) => typeof val === "string" && val.trim().length > 0);
 }
 
-export function BestPracticeStructureForm({ value, onChange }: BestPracticeStructureFormProps) {
+export function BestPracticeStructureForm({ value, onChange, errors = {} }: BestPracticeStructureFormProps) {
+  const required = new Set<string>(BEST_PRACTICE_REQUIRED);
   const current: BestPracticeStructure = {
     ...emptyBestPracticeStructure,
     ...(value ?? {}),
@@ -113,16 +119,20 @@ export function BestPracticeStructureForm({ value, onChange }: BestPracticeStruc
 
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {FIELDS.map((field) => (
-          <div key={field.key} className="flex flex-col">
-            <label className="text-xs font-bold text-navy">{field.label}</label>
+          <div key={field.key} className="flex flex-col" data-field={`ps.${field.key}`}>
+            <label className="text-xs font-bold text-navy">
+              {field.label}
+              {required.has(field.key) && <span className="text-destructive"> *</span>}
+            </label>
             <span className="mt-0.5 text-[0.7rem] text-muted-foreground">{field.sublabel}</span>
             <textarea
               rows={field.rows ?? 2}
               value={current[field.key]}
               onChange={(e) => handleField(field.key, e.target.value)}
               placeholder={field.placeholder}
-              className="mt-1.5 w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs sm:text-sm text-navy placeholder:text-muted-foreground/60 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/15"
+              className={`mt-1.5 w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs sm:text-sm text-navy placeholder:text-muted-foreground/60 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/15${fieldErrorCls(errors[`ps.${field.key}`])}`}
             />
+            <FieldError msg={errors[`ps.${field.key}`]} />
           </div>
         ))}
       </div>
