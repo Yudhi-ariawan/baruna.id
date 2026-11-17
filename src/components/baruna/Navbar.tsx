@@ -160,13 +160,7 @@ export function Navbar() {
                 >
                   <div className="relative shrink-0">
                     <ProfileAvatar name={viewer.displayName} url={viewer.avatarUrl} />
-                    {revisionCount > 0 ? (
-                      <span className="absolute -top-1 -right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-extrabold text-white shadow-xs">
-                        {revisionCount}
-                      </span>
-                    ) : hasNotifications ? (
-                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-marine ring-2 ring-background" />
-                    ) : null}
+                    {/* Unread notifications are shown on the bell next to this menu. */}
                   </div>
                   <span className="hidden text-left leading-tight sm:block">
                     <span className="block max-w-20 2xl:max-w-28 truncate text-sm font-semibold text-navy">
@@ -182,46 +176,35 @@ export function Navbar() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="truncate">{viewer.displayName}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/notifications" className="flex items-center justify-between w-full">
-                    <span className="flex items-center gap-2">
-                      <Bell className="h-4 w-4" /> {t("header.notifications")}
-                    </span>
-                    {revisionCount > 0 ? (
-                      <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                        {revisionCount} {t("header.revisionRequired")}
-                      </span>
-                    ) : hasNotifications ? (
-                      <span className="h-2 w-2 rounded-full bg-marine" />
-                    ) : null}
-                  </Link>
-                </DropdownMenuItem>
+                {/* Notifications live on the bell next to this menu; an admin's dashboard is the Admin Portal. */}
                 <DropdownMenuItem asChild>
                   <Link to="/account/profile">
                     <UserRound className="h-4 w-4" /> {t("header.myProfile")}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to={dashboardUrl}>
-                    <LayoutDashboard className="h-4 w-4" /> {t("header.myDashboard")}
-                  </Link>
-                </DropdownMenuItem>
+                {!isAdmin ? (
+                  <DropdownMenuItem asChild>
+                    <Link to={dashboardUrl}>
+                      <LayoutDashboard className="h-4 w-4" /> {t("header.myDashboard")}
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem asChild>
                   <Link to="/knowledge-hub/my-contributions">
-                    <BookOpen className="h-4 w-4" /> Kontribusi Knowledge Hub
+                    <BookOpen className="h-4 w-4" /> {t("header.myContributions")}
                   </Link>
                 </DropdownMenuItem>
                 {isAdmin ? (
                   <DropdownMenuItem asChild>
                     <Link to="/admin">
-                      <UserCheck className="h-4 w-4" /> {t("welcome.openAdminConsole")}
+                      <UserCheck className="h-4 w-4" /> {t("header.adminPortal")}
                     </Link>
                   </DropdownMenuItem>
                 ) : null}
                 {canUseConsole ? (
                   <DropdownMenuItem asChild>
                     <Link to="/governance">
-                      <ClipboardCheck className="h-4 w-4" /> {t("header.approvalsGovernance")}
+                      <ClipboardCheck className="h-4 w-4" /> {t("header.curationConsole")}
                     </Link>
                   </DropdownMenuItem>
                 ) : null}
@@ -287,49 +270,44 @@ export function Navbar() {
                   {authState === "authenticated" && viewer ? (
                     <div className="space-y-1">
                       <Link
-                        to="/notifications"
-                        onClick={() => setOpen(false)}
-                        className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
-                      >
-                        <span className="flex items-center gap-3">
-                          <Bell className="h-5 w-5" /> {t("header.notifications")}
-                        </span>
-                        {revisionCount > 0 ? (
-                          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                            {revisionCount} {t("header.revisionRequired")}
-                          </span>
-                        ) : hasNotifications ? (
-                          <span className="h-2 w-2 rounded-full bg-marine" />
-                        ) : null}
-                      </Link>
-                      <Link
                         to="/account/profile"
                         onClick={() => setOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
                       >
                         <UserRound className="h-5 w-5" /> {t("header.myProfile")}
                       </Link>
-                      <Link
-                        to={dashboardUrl}
-                        onClick={() => setOpen(false)}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
-                      >
-                        <LayoutDashboard className="h-5 w-5" /> {t("header.myDashboard")}
-                      </Link>
+                      {!isAdmin ? (
+                        <Link
+                          to={dashboardUrl}
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
+                        >
+                          <LayoutDashboard className="h-5 w-5" /> {t("header.myDashboard")}
+                        </Link>
+                      ) : null}
                       <Link
                         to="/knowledge-hub/my-contributions"
                         onClick={() => setOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
                       >
-                        <BookOpen className="h-5 w-5" /> Kontribusi Knowledge Hub
+                        <BookOpen className="h-5 w-5" /> {t("header.myContributions")}
                       </Link>
+                      {isAdmin ? (
+                        <Link
+                          to="/admin"
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
+                        >
+                          <UserCheck className="h-5 w-5" /> {t("header.adminPortal")}
+                        </Link>
+                      ) : null}
                       {canUseConsole ? (
                         <Link
                           to="/governance"
                           onClick={() => setOpen(false)}
                           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-marine"
                         >
-                          <ClipboardCheck className="h-5 w-5" /> {t("header.approvalsGovernance")}
+                          <ClipboardCheck className="h-5 w-5" /> {t("header.curationConsole")}
                         </Link>
                       ) : null}
                       <button
