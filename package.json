@@ -60,7 +60,8 @@
     "test:console-badges": "node --env-file-if-exists=.env scripts/test-console-badges.mjs",
     "test:auth-log": "node --env-file-if-exists=.env scripts/test-auth-log.mjs",
     "test:offering-attendance": "node --env-file-if-exists=.env scripts/test-offering-attendance.mjs",
-    "load-test": "node --env-file-if-exists=.env scripts/load-test.mjs"
+    "load-test": "node --env-file-if-exists=.env scripts/load-test.mjs",
+    "test:form-validation": "node scripts/test-form-validation.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

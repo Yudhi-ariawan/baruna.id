@@ -1512,6 +1512,20 @@ Akun uji dibuat dengan metadata lengkap dan dihapus di akhir. Sudah diperiksa: 0
 
 ---
 
+## 2bj. Request a Training menandai isian yang salah (17 Nov)
+
+**Sebelumnya:** tombol *Next* hanya menampilkan satu pesan umum "Please complete all required fields", tanpa menunjuk kolomnya. Batas panjang dan format email baru diperiksa server saat kirim, sehingga pengguna bisa sampai langkah 6 lalu gagal dengan pesan yang sulit dipahami.
+
+**Sekarang** (pola sama dengan 2bc dan biodata 2bh):
+- Aturan per langkah di `src/components/baruna/academy/training-requests/validation.ts`. Kolom wajibnya sama dengan aturan wizard sebelumnya; batas panjang dan format email sama dengan skema server `TrainingRequestPayload`.
+- Saat *Next* ditekan dan ada yang salah: kolomnya diberi garis merah dan pesan, muncul ringkasan yang bisa diklik di atas tombol, dan kursor pindah ke kolom pertama. Pesan berubah langsung saat mengetik.
+- Saat *Submit*: bila draf (misalnya draf revisi atau draf yang dipulihkan setelah login) masih punya kolom salah, halaman kembali ke langkah tersebut dan menandainya, bukan mengirim lalu gagal.
+- Komponen bersama: `FieldErrorSummary` sekarang bisa diberi judul sendiri (halaman ini berbahasa Inggris); `focusField` dan `fieldErrorCls` di `src/components/baruna/forms/field-errors.ts`. Aturan server tidak berubah, jadi tidak ada migrasi.
+
+**Uji:** `npm run test:form-validation` **30/30**: form kosong, Individual (organisasi tidak wajib), email salah ditandai di layar dan juga ditolak server, draf lengkap lolos layar dan diterima server, setiap batas panjang (18 kolom) ditandai di layar sebelum ditolak server, sumber dana wajib hanya untuk *facilitated*, isian spasi saja dianggap kosong. Dicek di browser lebar HP (390 px): 5 kolom merah, fokus ke Full Name, ringkasan bisa diklik, tanpa geser samping. `tsc`, lint, dan `npm run build` lulus.
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.

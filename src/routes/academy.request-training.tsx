@@ -49,6 +49,13 @@ import { trainingRequestReference } from "@/lib/training-requests/workflow";
 import { usePresentationMode } from "@/lib/demoMode";
 import { LanguageSelect } from "@/components/baruna/forms/LanguageSelect";
 import { TrainingCategorySelect } from "@/components/baruna/forms/TrainingCategorySelect";
+import { FieldError, FieldErrorSummary } from "@/components/baruna/forms/FieldError";
+import { fieldErrorCls, focusField } from "@/components/baruna/forms/field-errors";
+import {
+  TRAINING_REQUEST_LABELS,
+  firstStepWithErrors,
+  trainingRequestStepErrors,
+} from "@/components/baruna/academy/training-requests/validation";
 
 const BARUNA_VENUE = "Denpasar, Bali, Indonesia";
 const DRAFT_STORAGE_KEY = "baruna:training-request-draft-v1";
@@ -139,18 +146,24 @@ function Field({
   required,
   children,
   hint,
+  name,
+  error,
 }: {
   label: string;
   required?: boolean;
   hint?: string;
+  /** Marks the field for focusField / the error summary. */
+  name?: string;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div data-field={name}>
       <label className={labelClass}>
         {label} {required && <span className="text-destructive">*</span>}
       </label>
       {children}
+      <FieldError msg={error} />
       {hint && <p className="mt-1 text-[0.7rem] text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -252,45 +265,27 @@ function RequestTrainingPage() {
   }, [draft.requesterType, approach, draft.participantCount]);
 
 
-  const stepComplete = useMemo(() => {
-    switch (step) {
-      case 1:
-        return !!(
-          draft.requesterType &&
-          draft.fullName.trim() &&
-          draft.email.trim() &&
-          draft.country.trim() &&
-          (draft.requesterType === "Individual" ||
-            (draft.organization.trim() && draft.organizationType))
-        );
-      case 2:
-        return !!(
-          draft.trainingTopic.trim() &&
-          draft.trainingCategory &&
-          draft.objectives.trim() &&
-          draft.needs.trim() &&
-          draft.currentCompetencyLevel &&
-          draft.desiredCompetencyLevel
-        );
-      case 3:
-        if (draft.requesterType === "Individual") return true;
-        return !!draft.targetAudience;
-      case 4:
-        return !!draft.preferredLearningApproach;
-      case 5:
-        if (!showFacilitatedFields) return true;
-        return !!draft.fundingPreference;
-      default:
-        return true;
-    }
-  }, [step, draft, showFacilitatedFields]);
+  // Per-field errors for the current step (same limits as the server schema). They
+  // show after the first "Next" on this step, then update while typing.
+  const stepErrors = useMemo(() => trainingRequestStepErrors(step, draft), [step, draft]);
+  const [triedStep, setTriedStep] = useState<number | null>(null);
+  const errors = triedStep === step ? stepErrors : {};
+  const cls = (k: keyof typeof stepErrors) => inputClass + fieldErrorCls(errors[k]);
+
+  const showStepErrors = (target: number, keys: string[]) => {
+    setTriedStep(target);
+    setError(null);
+    setTimeout(() => focusField(keys[0]), 60);
+  };
 
   const goNext = () => {
-    if (!stepComplete) {
-      setError("Please complete all required fields before continuing.");
+    const keys = Object.keys(stepErrors);
+    if (keys.length) {
+      showStepErrors(step, keys);
       return;
     }
     setError(null);
+    setTriedStep(null);
     setStep((s) => Math.min(6, s + 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -302,6 +297,12 @@ function RequestTrainingPage() {
 
   const submit = async () => {
     if (busy || submitInFlight.current) return;
+    const pending = firstStepWithErrors(draft);
+    if (pending) {
+      setStep(pending.step);
+      showStepErrors(pending.step, Object.keys(pending.errors));
+      return;
+    }
     submitInFlight.current = true;
     setBusy(true);
     setError(null);
@@ -614,7 +615,7 @@ function RequestTrainingPage() {
                 Step 1 — Requester Information
               </h2>
               <div className="mt-5 grid gap-4">
-                <Field label="Requester Type" required>
+                <Field label="Requester Type" required name="requesterType" error={errors.requesterType}>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {REQUESTER_TYPES.map((t) => {
                       const active = draft.requesterType === t;
@@ -638,16 +639,16 @@ function RequestTrainingPage() {
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Full Name" required>
+                <Field label="Full Name" required name="fullName" error={errors.fullName}>
                   <input
-                    className={inputClass}
+                    className={cls("fullName")}
                     value={draft.fullName}
                     onChange={(e) => set("fullName", e.target.value)}
                   />
                 </Field>
-                <Field label={isIndividual ? "Occupation" : "Position / Job Title"}>
+                <Field label={isIndividual ? "Occupation" : "Position / Job Title"} name="position" error={errors.position}>
                   <input
-                    className={inputClass}
+                    className={cls("position")}
                     value={draft.position}
                     onChange={(e) => set("position", e.target.value)}
                   />
@@ -655,16 +656,16 @@ function RequestTrainingPage() {
                 <Field
                   label={isIndividual ? "Affiliation (optional)" : "Organization"}
                   required={!isIndividual}
-                >
+                 name="organization" error={errors.organization}>
                   <input
-                    className={inputClass}
+                    className={cls("organization")}
                     value={draft.organization}
                     onChange={(e) => set("organization", e.target.value)}
                   />
                 </Field>
-                <Field label="Organization Type" required={!isIndividual}>
+                <Field label="Organization Type" required={!isIndividual} name="organizationType" error={errors.organizationType}>
                   <select
-                    className={inputClass}
+                    className={cls("organizationType")}
                     value={draft.organizationType}
                     onChange={(e) => set("organizationType", e.target.value)}
                   >
@@ -676,31 +677,31 @@ function RequestTrainingPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Country" required>
+                <Field label="Country" required name="country" error={errors.country}>
                   <input
-                    className={inputClass}
+                    className={cls("country")}
                     value={draft.country}
                     onChange={(e) => set("country", e.target.value)}
                   />
                 </Field>
-                <Field label="Email" required>
+                <Field label="Email" required name="email" error={errors.email}>
                   <input
                     type="email"
-                    className={inputClass}
+                    className={cls("email")}
                     value={draft.email}
                     onChange={(e) => set("email", e.target.value)}
                   />
                 </Field>
-                <Field label="Phone Number">
+                <Field label="Phone Number" name="phone" error={errors.phone}>
                   <input
-                    className={inputClass}
+                    className={cls("phone")}
                     value={draft.phone}
                     onChange={(e) => set("phone", e.target.value)}
                   />
                 </Field>
-                <Field label="Website (optional)">
+                <Field label="Website (optional)" name="website" error={errors.website}>
                   <input
-                    className={inputClass}
+                    className={cls("website")}
                     placeholder="https://"
                     value={draft.website}
                     onChange={(e) => set("website", e.target.value)}
@@ -715,59 +716,59 @@ function RequestTrainingPage() {
             <div>
               <h2 className="font-display text-lg font-bold text-navy">Step 2 — Training Need</h2>
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Training Topic" required>
+                <Field label="Training Topic" required name="trainingTopic" error={errors.trainingTopic}>
                   <input
-                    className={inputClass}
+                    className={cls("trainingTopic")}
                     value={draft.trainingTopic}
                     onChange={(e) => set("trainingTopic", e.target.value)}
                   />
                 </Field>
-                <Field label="Training Category" required>
+                <Field label="Training Category" required name="trainingCategory" error={errors.trainingCategory}>
                   <TrainingCategorySelect
-                    className={inputClass}
+                    className={cls("trainingCategory")}
                     value={draft.trainingCategory}
                     onChange={(v) => set("trainingCategory", v)}
                   />
                 </Field>
               </div>
               <div className="mt-4 grid gap-4">
-                <Field label="Training Objectives" required>
+                <Field label="Training Objectives" required name="objectives" error={errors.objectives}>
                   <textarea
                     rows={2}
-                    className={inputClass}
+                    className={cls("objectives")}
                     value={draft.objectives}
                     onChange={(e) => set("objectives", e.target.value)}
                   />
                 </Field>
-                <Field label="Describe your learning need / competency gap" required>
+                <Field label="Describe your learning need / competency gap" required name="needs" error={errors.needs}>
                   <textarea
                     rows={3}
-                    className={inputClass}
+                    className={cls("needs")}
                     value={draft.needs}
                     onChange={(e) => set("needs", e.target.value)}
                   />
                 </Field>
-                <Field label="Expected Learning Outcomes">
+                <Field label="Expected Learning Outcomes" name="outcomes" error={errors.outcomes}>
                   <textarea
                     rows={2}
-                    className={inputClass}
+                    className={cls("outcomes")}
                     value={draft.outcomes}
                     onChange={(e) => set("outcomes", e.target.value)}
                   />
                 </Field>
-                <Field label="Current challenges you or your organization face">
+                <Field label="Current challenges you or your organization face" name="challenges" error={errors.challenges}>
                   <textarea
                     rows={2}
-                    className={inputClass}
+                    className={cls("challenges")}
                     value={draft.challenges}
                     onChange={(e) => set("challenges", e.target.value)}
                   />
                 </Field>
               </div>
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field label="Current Competency" required>
+                <Field label="Current Competency" required name="currentCompetencyLevel" error={errors.currentCompetencyLevel}>
                   <select
-                    className={inputClass}
+                    className={cls("currentCompetencyLevel")}
                     value={draft.currentCompetencyLevel}
                     onChange={(e) => set("currentCompetencyLevel", e.target.value)}
                   >
@@ -779,9 +780,9 @@ function RequestTrainingPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Desired Competency" required>
+                <Field label="Desired Competency" required name="desiredCompetencyLevel" error={errors.desiredCompetencyLevel}>
                   <select
-                    className={inputClass}
+                    className={cls("desiredCompetencyLevel")}
                     value={draft.desiredCompetencyLevel}
                     onChange={(e) => set("desiredCompetencyLevel", e.target.value)}
                   >
@@ -793,9 +794,9 @@ function RequestTrainingPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Urgency">
+                <Field label="Urgency" name="urgency" error={errors.urgency}>
                   <select
-                    className={inputClass}
+                    className={cls("urgency")}
                     value={draft.urgency}
                     onChange={(e) => set("urgency", e.target.value)}
                   >
@@ -811,10 +812,10 @@ function RequestTrainingPage() {
                 <Field
                   label="Supporting explanation (optional)"
                   hint="Add any context that helps BARUNA understand the significance of this need."
-                >
+                 name="supportingExplanation" error={errors.supportingExplanation}>
                   <textarea
                     rows={2}
-                    className={inputClass}
+                    className={cls("supportingExplanation")}
                     value={draft.supportingExplanation}
                     onChange={(e) => set("supportingExplanation", e.target.value)}
                   />
@@ -842,9 +843,9 @@ function RequestTrainingPage() {
 
               <div className="mt-5 grid gap-4">
                 {!isIndividual && (
-                  <Field label="Who is this training intended for?" required>
+                  <Field label="Who is this training intended for?" required name="targetAudience" error={errors.targetAudience}>
                     <select
-                      className={inputClass}
+                      className={cls("targetAudience")}
                       value={draft.targetAudience}
                       onChange={(e) => set("targetAudience", e.target.value)}
                     >
@@ -859,9 +860,9 @@ function RequestTrainingPage() {
                 )}
                 {!isIndividual && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field label="Estimated number of participants">
+                    <Field label="Estimated number of participants" name="participantCount" error={errors.participantCount}>
                       <select
-                        className={inputClass}
+                        className={cls("participantCount")}
                         value={draft.participantCount}
                         onChange={(e) => set("participantCount", e.target.value)}
                       >
@@ -873,9 +874,9 @@ function RequestTrainingPage() {
                         ))}
                       </select>
                     </Field>
-                    <Field label="Organizational level">
+                    <Field label="Organizational level" name="organizationalLevel" error={errors.organizationalLevel}>
                       <input
-                        className={inputClass}
+                        className={cls("organizationalLevel")}
                         placeholder="e.g. national, provincial, community"
                         value={draft.organizationalLevel}
                         onChange={(e) => set("organizationalLevel", e.target.value)}
@@ -886,17 +887,17 @@ function RequestTrainingPage() {
                 <Field
                   label={isIndividual ? "About you as a learner" : "Participant profile"}
                   hint="Background, roles, prior experience, motivation."
-                >
+                 name="participantProfile" error={errors.participantProfile}>
                   <textarea
                     rows={3}
-                    className={inputClass}
+                    className={cls("participantProfile")}
                     value={draft.participantProfile}
                     onChange={(e) => set("participantProfile", e.target.value)}
                   />
                 </Field>
-                <Field label="Geographic context (optional)">
+                <Field label="Geographic context (optional)" name="geographicContext" error={errors.geographicContext}>
                   <input
-                    className={inputClass}
+                    className={cls("geographicContext")}
                     placeholder="e.g. Coastal East Africa, West African EEZ"
                     value={draft.geographicContext}
                     onChange={(e) => set("geographicContext", e.target.value)}
@@ -916,7 +917,8 @@ function RequestTrainingPage() {
                 Choose your preferred learning approach. BARUNA may recommend adjustments based on
                 the Training Needs Analysis.
               </p>
-              <div className="mt-5 grid gap-3">
+              <div className="mt-5 grid gap-3" data-field="preferredLearningApproach">
+                <FieldError msg={errors.preferredLearningApproach} />
                 {LEARNING_APPROACHES.map((a) => {
                   const active = draft.preferredLearningApproach === a.key;
                   return (
@@ -978,9 +980,9 @@ function RequestTrainingPage() {
               ) : (
                 <div className="mt-5 grid gap-4">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field label="Preferred delivery">
+                    <Field label="Preferred delivery" name="deliveryPreference" error={errors.deliveryPreference}>
                       <select
-                        className={inputClass}
+                        className={cls("deliveryPreference")}
                         value={draft.deliveryPreference}
                         onChange={(e) => set("deliveryPreference", e.target.value)}
                       >
@@ -992,9 +994,9 @@ function RequestTrainingPage() {
                         ))}
                       </select>
                     </Field>
-                    <Field label="Attendance format">
+                    <Field label="Attendance format" name="attendanceFormat" error={errors.attendanceFormat}>
                       <select
-                        className={inputClass}
+                        className={cls("attendanceFormat")}
                         value={draft.attendanceFormat}
                         onChange={(e) => set("attendanceFormat", e.target.value)}
                       >
@@ -1006,9 +1008,9 @@ function RequestTrainingPage() {
                         ))}
                       </select>
                     </Field>
-                    <Field label="Preferred duration">
+                    <Field label="Preferred duration" name="duration" error={errors.duration}>
                       <select
-                        className={inputClass}
+                        className={cls("duration")}
                         value={draft.duration}
                         onChange={(e) => set("duration", e.target.value)}
                       >
@@ -1020,17 +1022,17 @@ function RequestTrainingPage() {
                         ))}
                       </select>
                     </Field>
-                    <Field label="Preferred training period">
+                    <Field label="Preferred training period" name="trainingPeriod" error={errors.trainingPeriod}>
                       <input
-                        className={inputClass}
+                        className={cls("trainingPeriod")}
                         placeholder="e.g. September 2026"
                         value={draft.trainingPeriod}
                         onChange={(e) => set("trainingPeriod", e.target.value)}
                       />
                     </Field>
-                    <Field label="Preferred language">
+                    <Field label="Preferred language" name="language" error={errors.language}>
                       <LanguageSelect
-                        className={inputClass}
+                        className={cls("language")}
                         value={draft.language}
                         onChange={(v) => set("language", v)}
                         otherLabel="Other"
@@ -1049,9 +1051,9 @@ function RequestTrainingPage() {
                     label="Proposed Funding Source"
                     required
                     hint="Indicate how the requester expects the proposed training to be financed. This information is for analysis only and does not create a funding commitment by BARUNA."
-                  >
+                   name="fundingPreference" error={errors.fundingPreference}>
                     <select
-                      className={inputClass}
+                      className={cls("fundingPreference")}
                       value={draft.fundingPreference}
                       onChange={(e) => set("fundingPreference", e.target.value)}
                     >
@@ -1095,18 +1097,18 @@ function RequestTrainingPage() {
                   <Field
                     label="Requester's Existing or Proposed Partners"
                     hint="Optional. List institutions or partners that are already involved or proposed by the requester."
-                  >
+                   name="existingPartners" error={errors.existingPartners}>
                     <input
-                      className={inputClass}
+                      className={cls("existingPartners")}
                       value={draft.existingPartners}
                       onChange={(e) => set("existingPartners", e.target.value)}
                     />
                   </Field>
 
-                  <Field label="Additional remarks">
+                  <Field label="Additional remarks" name="remarks" error={errors.remarks}>
                     <textarea
                       rows={3}
-                      className={inputClass}
+                      className={cls("remarks")}
                       value={draft.remarks}
                       onChange={(e) => set("remarks", e.target.value)}
                     />
@@ -1229,6 +1231,13 @@ function RequestTrainingPage() {
           )}
 
 
+          <div className="mt-4">
+            <FieldErrorSummary
+              errors={errors}
+              labels={TRAINING_REQUEST_LABELS}
+              title={(n) => `Please fix ${n} field${n > 1 ? "s" : ""} marked in red (click to go to the field):`}
+            />
+          </div>
           {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}
 
           {/* Nav buttons */}
