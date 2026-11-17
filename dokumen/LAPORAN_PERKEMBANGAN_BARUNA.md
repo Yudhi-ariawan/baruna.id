@@ -362,3 +362,30 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 - Uji di HP dan uji manual Data Master dengan akun Operator murni belum dilakukan.
 
 **Pengujian:** Data Master lewat usulan 5/21 sebelum migrasi menjadi 21/21 sesudahnya. Penayangan 1/16 menjadi 16/16. Kehadiran dan pengalihan 3/14 menjadi 14/14. Validasi formulir 8/8. Semua 42 rangkaian uji lulus, `build` lulus, dan data uji dibersihkan. Uji manual alur Full Training ke Course Offering lulus sampai peserta melihat kehadirannya, dan datanya terbukti tersimpan di database, bukan di browser.
+
+---
+
+## 17/11/2026 (Selasa, 17 November 2026)
+
+**Yang dibuat**
+- **Semua formulir menandai isian yang salah tepat di kolomnya.** Biodata peserta, Request a Training, Become an Expert, kontribusi Knowledge Hub, pengajuan modul trainer, Tambah User, pendaftaran Full Training, dan pendaftaran Course Offering kini memberi garis merah dan pesan di kolom yang salah. Ringkasan di atas tombol bisa diklik untuk langsung menuju kolomnya, dan tombol tidak lagi mati tanpa penjelasan. Aturan di layar disamakan dengan aturan server dan database, sehingga isian yang lolos di layar juga diterima server.
+- **Permintaan Peran ditegakkan di database dan bisa dibatalkan.** Pengguna hanya bisa meminta lima peran kurasi untuk dirinya sendiri, tidak bisa meminta peran yang sudah dimiliki, dan tidak bisa mengirim permintaan ganda. Di Profil Saya kini ada tombol *Batalkan permintaan*.
+- **Uji beban 50 pengguna selama 2 menit** ke Supabase, campuran pengunjung tanpa login dan peserta yang login. Hasilnya 0 error dengan waktu respons p95 299 ms.
+- Rekomendasi di beranda (*Recommended for You*) bisa digeser dengan tombol panah, menu akun dirapikan tanpa item dobel, dan kartu di `/kesiapanrilis` diurutkan dari tanggal terbaru.
+
+**Yang diperbaiki**
+- **Semua halaman pas di layar HP.** Audit otomatis 113 halaman pada lebar 390 px menemukan 8 halaman yang melebar (misalnya Knowledge Hub sampai 756 px). Setelah diperbaiki, 0 dari 113 halaman melebar.
+- Celah yang ketemu saat merapikan formulir: pemegang hak cipta di pengajuan modul bertanda wajib tetapi tidak pernah dicek; kunci jawaban kuis yang menunjuk pilihan kosong diterima; motivasi Full Training lebih dari 1.000 karakter terpotong diam-diam; tautan Knowledge Hub tanpa `http(s)` diterima; email yang sudah terdaftar di Tambah User hanya memunculkan pesan umum. Semuanya sudah ditangani.
+- Kartu Full Training lama tidak lagi tampil dobel di halaman Training setelah programnya dialihkan ke Course Offering.
+
+**Pelajaran yang didapat**
+- Aturan di layar sebaiknya diuji terhadap skema server yang sama. Dengan begitu tidak ada isian yang lolos di layar lalu ditolak server dengan pesan teknis.
+- Audit tampilan HP lebih cepat dilakukan otomatis ke semua halaman sekaligus daripada dicek satu per satu.
+- Uji beban membuktikan kapasitas dengan angka, bukan perkiraan.
+
+**Kendala**
+- Formulir modul trainer dan Full Training belum dicek di browser, karena butuh akun trainer dan pendaftar yang pernah ditolak. Keduanya sudah dicek lewat uji otomatis.
+- Pengecekan cadangan data (backup) di Supabase Dashboard perlu dilakukan oleh pemilik proyek.
+- Sertifikat dan syarat lulus, data perjalanan/visa, pembayaran, serta notifikasi email masih menunggu keputusan mentor.
+
+**Pengujian:** Permintaan Peran 24/32 sebelum migrasi menjadi 32/32 sesudahnya, dan uji database 17/17. Validasi formulir 128/128. Audit HP 0/113 halaman melebar. Uji beban 50 pengguna dengan 0 error. `build` lulus, dan akun serta data uji dibersihkan. Diuji manual oleh saya: tampilan di HP dan dua perangkat, Data Master lewat usulan, Penayangan, Permintaan Peran, dan validasi biodata.
