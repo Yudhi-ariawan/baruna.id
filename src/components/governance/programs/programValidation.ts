@@ -20,7 +20,7 @@ export function cleanCode(v: string, mode: "upper" | "lower"): string {
 const CONTROL = /[\u0000-\u001f\u007f]/;
 
 /** Red border for a field that needs fixing. */
-export const errCls = (msg?: string) => (msg ? "border-red-400 bg-red-50/40 focus:outline-red-500" : "");
+export const errCls = (msg?: string) => (msg ? "border-red-400! bg-red-50/40 focus:outline-red-500" : "");
 const textOk = (v: string | null | undefined, min: number, max: number) => {
   const t = (v ?? "").trim();
   return t.length >= min && t.length <= max && !CONTROL.test(v ?? "");

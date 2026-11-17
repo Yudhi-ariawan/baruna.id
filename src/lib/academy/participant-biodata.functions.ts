@@ -5,7 +5,7 @@ import type { ParticipantBiodata } from "./participant-biodata.types";
 
 // Same limits as public._participant_biodata_problem (migration 20261020040000);
 // the database repeats every check, so a direct call cannot skip them.
-const BiodataInputSchema = z.object({
+export const BiodataInputSchema = z.object({
   nama: z.string().trim().min(2, "Nama wajib diisi").max(160),
   nip: z
     .string()

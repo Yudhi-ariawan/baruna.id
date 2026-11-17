@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,6 +16,8 @@ import {
   Camera,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FieldError, FieldErrorSummary } from "@/components/baruna/forms/FieldError";
+import { BiodataInputSchema } from "@/lib/academy/participant-biodata.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   saveParticipantBiodata,
@@ -161,8 +163,33 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
     setForm((prev) => ({ ...prev, [field]: val }));
   };
 
+  // Same rules as the server and the database (BiodataInputSchema); shown per field
+  // after the first attempt to save, then updated while typing.
+  const [tried, setTried] = useState(false);
+  const allErrors = useMemo(() => {
+    const res = BiodataInputSchema.safeParse(form);
+    const out: Record<string, string> = {};
+    if (!res.success) for (const issue of res.error.issues) {
+      const k = String(issue.path[0] ?? "");
+      if (k && !out[k]) out[k] = issue.message;
+    }
+    return out;
+  }, [form]);
+  const errors: Record<string, string> = tried ? allErrors : {};
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const keys = Object.keys(allErrors);
+    if (keys.length) {
+      setTried(true);
+      toast.error(`Perbaiki ${keys.length} isian bertanda merah.`);
+      setTimeout(() => {
+        const el = document.querySelector<HTMLElement>(`[data-field="${keys[0]}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        el?.focus();
+      }, 50);
+      return;
+    }
     mutation.mutate(form);
   };
 
@@ -303,8 +330,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
               value={form.nama}
               onChange={(e) => handleChange("nama", e.target.value)}
               placeholder="Contoh: Dr. Ir. Budi Santoso, M.Si. (Lengkap dengan gelar)"
-              className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+              className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.nama ? " border-red-400! bg-red-50/40" : ""}`} data-field="nama" aria-invalid={Boolean(errors.nama)}
             />
+            <FieldError msg={errors.nama} />
           </div>
 
           {/* 2. NIP */}
@@ -318,8 +346,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
               value={form.nip}
               onChange={(e) => handleChange("nip", e.target.value)}
               placeholder="Nomor Induk Pegawai 18 digit (atau NIK jika Non-ASN)"
-              className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+              className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.nip ? " border-red-400! bg-red-50/40" : ""}`} data-field="nip" aria-invalid={Boolean(errors.nip)}
             />
+            <FieldError msg={errors.nip} />
           </div>
 
           {/* 3 & 4. Tempat Lahir & Tanggal Lahir */}
@@ -334,8 +363,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 value={form.tempatLahir}
                 onChange={(e) => handleChange("tempatLahir", e.target.value)}
                 placeholder="Kota / Kabupaten tempat lahir"
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.tempatLahir ? " border-red-400! bg-red-50/40" : ""}`} data-field="tempatLahir" aria-invalid={Boolean(errors.tempatLahir)}
               />
+              <FieldError msg={errors.tempatLahir} />
             </div>
 
             <div className="space-y-1.5">
@@ -347,8 +377,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 required
                 value={form.tanggalLahir}
                 onChange={(e) => handleChange("tanggalLahir", e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.tanggalLahir ? " border-red-400! bg-red-50/40" : ""}`} data-field="tanggalLahir" aria-invalid={Boolean(errors.tanggalLahir)}
               />
+              <FieldError msg={errors.tanggalLahir} />
             </div>
           </div>
 
@@ -362,7 +393,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 required
                 value={form.jenisKelamin}
                 onChange={(e) => handleChange("jenisKelamin", e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.jenisKelamin ? " border-red-400! bg-red-50/40" : ""}`} data-field="jenisKelamin" aria-invalid={Boolean(errors.jenisKelamin)}
               >
                 <option value="">-- Pilih Jenis Kelamin --</option>
                 {JENIS_KELAMIN_OPTIONS.map((opt) => (
@@ -371,6 +402,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                   </option>
                 ))}
               </select>
+              <FieldError msg={errors.jenisKelamin} />
             </div>
 
             <div className="space-y-1.5">
@@ -381,7 +413,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 required
                 value={form.agama}
                 onChange={(e) => handleChange("agama", e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.agama ? " border-red-400! bg-red-50/40" : ""}`} data-field="agama" aria-invalid={Boolean(errors.agama)}
               >
                 <option value="">-- Pilih Agama/Kepercayaan --</option>
                 {AGAMA_OPTIONS.map((opt) => (
@@ -390,6 +422,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                   </option>
                 ))}
               </select>
+              <FieldError msg={errors.agama} />
             </div>
           </div>
 
@@ -405,8 +438,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 value={form.jabatan}
                 onChange={(e) => handleChange("jabatan", e.target.value)}
                 placeholder="Contoh: Pengelola Ekosistem Laut / Analis Kebijakan"
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.jabatan ? " border-red-400! bg-red-50/40" : ""}`} data-field="jabatan" aria-invalid={Boolean(errors.jabatan)}
               />
+              <FieldError msg={errors.jabatan} />
             </div>
 
             <div className="space-y-1.5">
@@ -417,7 +451,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 required
                 value={form.pangkatGolongan}
                 onChange={(e) => handleChange("pangkatGolongan", e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.pangkatGolongan ? " border-red-400! bg-red-50/40" : ""}`} data-field="pangkatGolongan" aria-invalid={Boolean(errors.pangkatGolongan)}
               >
                 <option value="">-- Pilih Pangkat / Golongan --</option>
                 {PANGKAT_GOLONGAN_OPTIONS.map((opt) => (
@@ -426,6 +460,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                   </option>
                 ))}
               </select>
+              <FieldError msg={errors.pangkatGolongan} />
             </div>
           </div>
 
@@ -439,7 +474,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 required
                 value={form.pendidikanTerakhir}
                 onChange={(e) => handleChange("pendidikanTerakhir", e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.pendidikanTerakhir ? " border-red-400! bg-red-50/40" : ""}`} data-field="pendidikanTerakhir" aria-invalid={Boolean(errors.pendidikanTerakhir)}
               >
                 <option value="">-- Pilih Pendidikan Terakhir --</option>
                 {PENDIDIKAN_TERAKHIR_OPTIONS.map((opt) => (
@@ -448,6 +483,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                   </option>
                 ))}
               </select>
+              <FieldError msg={errors.pendidikanTerakhir} />
             </div>
 
             <div className="space-y-1.5">
@@ -460,8 +496,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 value={form.noHp}
                 onChange={(e) => handleChange("noHp", e.target.value)}
                 placeholder="081234567890"
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.noHp ? " border-red-400! bg-red-50/40" : ""}`} data-field="noHp" aria-invalid={Boolean(errors.noHp)}
               />
+              <FieldError msg={errors.noHp} />
             </div>
           </div>
 
@@ -474,7 +511,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
               required
               value={form.unitEselon1}
               onChange={(e) => handleChange("unitEselon1", e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+              className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.unitEselon1 ? " border-red-400! bg-red-50/40" : ""}`} data-field="unitEselon1" aria-invalid={Boolean(errors.unitEselon1)}
             >
               <option value="">-- Pilih Unit Eselon I --</option>
               {UNIT_ESELON_1_OPTIONS.map((opt) => (
@@ -483,6 +520,7 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 </option>
               ))}
             </select>
+            <FieldError msg={errors.unitEselon1} />
           </div>
 
           {/* 12. Instansi/ Unit Kerja/ UPT */}
@@ -496,8 +534,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
               value={form.instansiUnitKerja}
               onChange={(e) => handleChange("instansiUnitKerja", e.target.value)}
               placeholder="Contoh: Balai Pelatihan dan Penyuluhan Perikanan (BPPP) Banyuwangi"
-              className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+              className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.instansiUnitKerja ? " border-red-400! bg-red-50/40" : ""}`} data-field="instansiUnitKerja" aria-invalid={Boolean(errors.instansiUnitKerja)}
             />
+            <FieldError msg={errors.instansiUnitKerja} />
           </div>
 
           {/* 13. Alamat Kantor */}
@@ -511,8 +550,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
               value={form.alamatKantor}
               onChange={(e) => handleChange("alamatKantor", e.target.value)}
               placeholder="Alamat lengkap instansi / kantor unit kerja"
-              className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+              className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.alamatKantor ? " border-red-400! bg-red-50/40" : ""}`} data-field="alamatKantor" aria-invalid={Boolean(errors.alamatKantor)}
             />
+            <FieldError msg={errors.alamatKantor} />
           </div>
 
           {/* 14 & 15. Provinsi & Kabupaten/Kota */}
@@ -527,8 +567,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 value={form.provinsi}
                 onChange={(e) => handleChange("provinsi", e.target.value)}
                 placeholder="Pilih atau ketik Provinsi"
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.provinsi ? " border-red-400! bg-red-50/40" : ""}`} data-field="provinsi" aria-invalid={Boolean(errors.provinsi)}
               />
+              <FieldError msg={errors.provinsi} />
               <datalist id="provinsi-list">
                 {PROVINSI_INDONESIA_OPTIONS.map((prov) => (
                   <option key={prov} value={prov} />
@@ -546,8 +587,9 @@ export function ParticipantBiodataForm({ initialData, redirect }: ParticipantBio
                 value={form.kabupatenKota}
                 onChange={(e) => handleChange("kabupatenKota", e.target.value)}
                 placeholder="Contoh: Kab. Banyuwangi / Kota Serang"
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine"
+                className={`w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-marine focus:ring-1 focus:ring-marine${errors.kabupatenKota ? " border-red-400! bg-red-50/40" : ""}`} data-field="kabupatenKota" aria-invalid={Boolean(errors.kabupatenKota)}
               />
+              <FieldError msg={errors.kabupatenKota} />
             </div>
           </div>
         </div>
