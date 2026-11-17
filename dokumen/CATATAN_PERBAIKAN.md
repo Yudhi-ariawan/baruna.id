@@ -1486,6 +1486,9 @@ Acuan: Slide 42 (LS-01), 43 (LS-02), 45 (LS-04), dan 49 (RACI baris 8: Admin Con
 - PGlite (`pgtest/role_request_guards.mjs`) **17/17**: bukti sebelum migrasi (peserta bisa mengajukan admin, permintaan ganda tersimpan); migrasi bisa diulang; admin, peran di luar daftar, dan revoke untuk diri sendiri ditolak; Operator boleh; kiriman kedua dan peran yang sudah dimiliki ditolak; indeks unik menolak sisipan langsung; admin untuk orang lain tetap bisa; peserta tidak bisa mengajukan untuk orang lain; batal hanya oleh pengaju dan tidak dua kali; boleh mengajukan lagi; audit.
 - `npm run test:role-requests` ditambah bagian 7 (8 cek, RPC dipanggil langsung tanpa aplikasi): admin dan revoke untuk diri sendiri ditolak; dua kiriman bersamaan hanya satu tersimpan; pembatalan oleh orang lain ditolak; pembatalan oleh pengaju lewat Profil Saya; batal dua kali ditolak; mengajukan lagi; peran yang sudah dimiliki ditolak.
   - **Sebelum migrasi (intern-update, 17 Nov): 24/32**, yaitu bagian 1–6 lulus dan kedelapan cek bagian 7 gagal.
+  - **Sesudah migrasi (dijalankan pemilik proyek, 17 Nov): 32/32.** Uji terkait juga lulus: `rbac`, `create-user`, `console-roles`, `console-decisions`, `console-badges`, `auth-log`, `participant-rpc`, `expert-role-lock`, `lifecycle`, `kh-roles`.
+
+**Formulir biodata peserta (17 Nov):** memakai pola validasi per kolom dari 2bc. Aturannya diambil dari `BiodataInputSchema`, sama dengan server. Setelah percobaan simpan pertama, setiap kolom yang salah diberi garis merah dan pesan, dan halaman menggulir ke kolom pertama. Komponen bersama `src/components/baruna/forms/FieldError.tsx` disiapkan untuk formulir publik lain.
 
 ---
 
