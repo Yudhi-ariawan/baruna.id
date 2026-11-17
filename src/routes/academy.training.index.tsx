@@ -32,15 +32,21 @@ import { academyImages } from "@/data/academy";
 import { expertImages } from "@/data/pages";
 import { featuredTrainingCard } from "@/data/training";
 import { listCatalogOfferings } from "@/lib/academy/catalog.functions";
+import { getFullTrainingReplacement } from "@/lib/academy/full-training-replacement.functions";
 import { PublishedOfferingsSection } from "@/components/baruna/academy/PublishedOfferings";
 
 export const Route = createFileRoute("/academy/training/")({
   loader: async () => {
-    const offerings = await listCatalogOfferings().catch((err) => {
-      console.warn("Could not load published course offerings:", err);
-      return [];
-    });
-    return { offerings: offerings.filter((o) => o.learningModel === "cohort_based") };
+    const [offerings, replacedBy] = await Promise.all([
+      listCatalogOfferings().catch((err) => {
+        console.warn("Could not load published course offerings:", err);
+        return [];
+      }),
+      // The old Full Training card is hidden once the program runs as a Course
+      // Offering (CATATAN_PERBAIKAN 2bb): that offering is already listed above.
+      getFullTrainingReplacement({ data: { slug: featuredTrainingCard.slug } }).catch(() => null),
+    ]);
+    return { offerings: offerings.filter((o) => o.learningModel === "cohort_based"), replacedBy };
   },
   head: () => ({
     meta: [
@@ -212,7 +218,8 @@ function TrainingCard({ t }: { t: TrainingItem }) {
 }
 
 function TrainingPage() {
-  const { offerings } = Route.useLoaderData();
+  const { offerings, replacedBy } = Route.useLoaderData();
+  const shown = replacedBy ? items.filter((t) => t.slug !== featuredTrainingCard.slug) : items;
   return (
     <AcademyShell
       active="training"
@@ -286,7 +293,7 @@ function TrainingPage() {
         <TabBar tabs={tabs} />
         <p className="text-sm text-muted-foreground">Showing 1–12 of 156 programs</p>
         <div className="space-y-4">
-          {items.map((t) => (
+          {shown.map((t) => (
             <TrainingCard key={t.title} t={t} />
           ))}
         </div>
