@@ -1616,6 +1616,12 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bp. Urutan tab Output Kurikulum ditambah satu dokumen (18 Nov)
+
+`src/lib/release/curriculum-outputs.ts`: daftar urutan presentasi ditambah `INVENTARIS_MENU_SUBMENU`, yang ditempatkan setelah Data & Content Inventory. Dokumen yang tidak ada di daftar tetap muncul otomatis di akhir. **Uji:** `tsc` dan `build` lulus; di browser terhadap hasil build, tab menampilkan 19 dokumen dengan urutan benar dan 0 error.
+
+---
+
 ## 2bo. Celah kritis TanStack Start ditutup (18 Nov)
 
 **Masalah:** `npm audit` melaporkan advisori **kritis** *unauthenticated reflected XSS in TanStack Start server-function responses* pada `@tanstack/start-server-core` 1.143.12–1.169.38. Yang terpasang `@tanstack/react-start` 1.168.57. Selain itu `seroval` ≤1.6.10 (dipakai untuk serialisasi data server function) punya beberapa advisori *high*: code/script injection dan DoS.
