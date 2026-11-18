@@ -1626,7 +1626,7 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 Tujuannya agar bulan-bulan berikutnya mudah dicari saat daftar bertambah panjang.
 
-**Uji:** `tsc`, lint, dan `build` lulus. Di browser terhadap hasil build pada layar 1440×768: daftar bisa digulir (`overflow-y: auto`), tetap di layar setelah halaman digulir jauh, dokumen aktif "Rekap Bulan 2" terlihat setelah pindah lewat *Berikutnya*, dan 0 error.
+**Uji:** `tsc`, lint, dan `build` lulus. Di browser terhadap hasil build pada layar 1440×768: daftar bisa digulir (`overflow-y: auto`), tetap di layar setelah halaman digulir jauh, dokumen aktif "Rekap Bulan 2" terlihat setelah pindah lewat *Berikutnya*, dan 0 error. Sudah diuji manual oleh pemilik proyek (18 Nov).
 
 ---
 
