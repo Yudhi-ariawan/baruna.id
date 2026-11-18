@@ -46,6 +46,6 @@ dokumen/*.pptx
 supabase/.temp/
 supabase/combined_migrations.sql
 
-# Dokumen magang pribadi: tidak ikut Git, disinkron lewat Google Drive
+# Dokumen magang pribadi: tidak ikut Git, disimpan terpisah
 dokumen/output/
 dokumen/roadmap/

@@ -25,7 +25,7 @@ Dokumen ini menjawab tiga pertanyaan:
 
 ### Folder pribadi (tidak ada di Git)
 
-`dokumen/output/` dan `dokumen/roadmap/` adalah dokumen magang pribadi. Keduanya dikecualikan lewat `.gitignore`, sehingga tidak ikut push, pull, atau clone, dan disinkronkan antar-perangkat lewat Google Drive. Di salinan repo yang tidak punya folder ini, tab *Output Kurikulum* di `/kesiapanrilis` kosong dengan sendirinya.
+`dokumen/output/` dan `dokumen/roadmap/` adalah dokumen magang pribadi. Keduanya dikecualikan lewat `.gitignore`, sehingga tidak ikut push, pull, atau clone repo ini, dan disimpan terpisah oleh pemiliknya. Di salinan repo yang tidak punya folder ini, tab *Output Kurikulum* di `/kesiapanrilis` kosong dengan sendirinya.
 
 ### Satu informasi, satu tempat
 
