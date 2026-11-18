@@ -25,6 +25,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
+import { CmsOrBuiltIn } from "@/components/cms/CmsRoutePage";
+import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages } from "@/data/pages";
@@ -45,8 +47,19 @@ export const Route = createFileRoute("/fellowship")({
     ],
     links: [{ rel: "canonical", href: "/fellowship" }],
   }),
-  component: FellowshipPage,
+  // A published CMS page with the address "fellowship" replaces the built-in content (CATATAN_PERBAIKAN 2br).
+  loader: () => loadCmsOverride("fellowship"),
+  staleTime: 60_000,
+  component: FellowshipRoute,
 });
+
+function FellowshipRoute() {
+  return (
+    <CmsOrBuiltIn page={Route.useLoaderData()}>
+      <FellowshipPage />
+    </CmsOrBuiltIn>
+  );
+}
 
 type Opp = {
   badge: string;

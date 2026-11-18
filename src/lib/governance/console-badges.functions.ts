@@ -48,6 +48,19 @@ export const getConsoleBadges = createServerFn({ method: "GET" })
       completions: () => head("course_completions").eq("status", "pending_review"),
       programs: () => head("academy_program_drafts").eq("status", "submitted"),
       masterData: () => head("master_data_change_requests").eq("status", "pending"),
+      // Drafts waiting for a decision, plus new submissions of forms marked "notify on submit"
+      // (a failed count, e.g. before the migration, hides the badge).
+      cms: () => cmsWork(),
+    };
+    const cmsWork = async () => {
+      const [drafts, subs] = await Promise.all([
+        head("cms_drafts").eq("status", "submitted"),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabaseAdmin as any).from("cms_form_submissions").select("id, cms_forms!inner(notify_on_submit)", { count: "exact", head: true })
+          .eq("status", "new").eq("cms_forms.notify_on_submit", true),
+      ]);
+      if (drafts.error || subs.error) return { count: null, error: drafts.error ?? subs.error };
+      return { count: (drafts.count ?? 0) + (subs.count ?? 0), error: null };
     };
     const keys = (Object.keys(queries) as ConsoleMenuKey[]).filter((k) => access.menus[k]?.read);
     const values = await Promise.all(keys.map((k) => countOf(queries[k]!())));

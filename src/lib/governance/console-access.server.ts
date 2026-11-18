@@ -13,6 +13,7 @@
 //   Permintaan Pelatihan  has_role(admin|management|qa_reviewer); decide = admin|management
 //   Program Academy       _program_can_manage (super_admin|admin|operator|approver); decide = _can_decide_review
 //   Persetujuan Kelulusan completion_overview (_can_decide_review|operator|reviewer); decide = _can_decide_review
+//   Konten Situs (CMS)    cms_overview (pengelola, reviewer kiriman, pemutus, publisher); decide = _can_decide_review
 // ============================================================================
 import type { ConsoleAccess } from "./console-access.functions";
 import { getGovernanceRoles } from "./governance-roles";
@@ -23,6 +24,9 @@ type Ctx = { supabase: any; userId: string };
 const PROGRAM_MANAGER_ROLES = ["super_admin", "admin", "operator", "approver"];
 const COMPLETION_READER_ROLES = ["operator", "reviewer"];
 const PUBLISHER_ROLES = ["publisher", "admin", "super_admin"];
+// cms_overview opens for content editors (manager roles), submission reviewers, deciders
+// and publishers (migration 20261118010000); the page itself shows what each may do.
+const CMS_ROLES = ["super_admin", "admin", "operator", "approver", "publisher", "reviewer"];
 
 export async function readConsoleAccess(context: Ctx): Promise<ConsoleAccess> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -91,6 +95,7 @@ export async function readConsoleAccess(context: Ctx): Promise<ConsoleAccess> {
         read: roles.some((r) => PUBLISHER_ROLES.includes(r)),
         decide: roles.some((r) => PUBLISHER_ROLES.includes(r)),
       },
+      cms: { read: roles.some((r) => CMS_ROLES.includes(r)), decide: canDecideReview },
     },
   };
 }

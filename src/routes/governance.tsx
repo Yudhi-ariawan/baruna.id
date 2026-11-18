@@ -15,6 +15,7 @@ import {
   UserCheck,
   Megaphone,
   CalendarCheck,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   ConsoleAccessDenied,
@@ -88,6 +89,8 @@ function consoleNav(access: ConsoleAccess, badges: ConsoleBadges = {}, adminBadg
   const live = items([
     // Slide 16: Publisher takes live content down temporarily and puts it back (2ba).
     menus.publishing.read && { label: "Penayangan", to: "/governance/publishing", icon: Megaphone },
+    // Kurikulum 3.1 / Slide 43: menu, pages and forms of the site without code changes (2br).
+    menus.cms?.read && { label: "Konten Situs (CMS)", to: "/governance/cms", icon: LayoutTemplate, badge: badges.cms },
   ]);
 
   const groups: ConsoleNavGroup[] = [

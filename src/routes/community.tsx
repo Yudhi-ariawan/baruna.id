@@ -22,6 +22,8 @@ import {
   Globe,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
+import { CmsOrBuiltIn } from "@/components/cms/CmsRoutePage";
+import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader, CategoryBadge } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages, expertImages } from "@/data/pages";
@@ -42,8 +44,19 @@ export const Route = createFileRoute("/community")({
     ],
     links: [{ rel: "canonical", href: "/community" }],
   }),
-  component: CommunityPage,
+  // A published CMS page with the address "community" replaces the built-in content (CATATAN_PERBAIKAN 2br).
+  loader: () => loadCmsOverride("community"),
+  staleTime: 60_000,
+  component: CommunityRoute,
 });
+
+function CommunityRoute() {
+  return (
+    <CmsOrBuiltIn page={Route.useLoaderData()}>
+      <CommunityPage />
+    </CmsOrBuiltIn>
+  );
+}
 
 const discussions = [
   { tag: "Question", author: "Dr. Andi Pratama", location: "Indonesia", time: "2 hours ago", title: "Best practices for community-based marine conservation?", excerpt: "Looking for examples of successful community-based approaches in protecting coral reefs.", comments: 12, likes: 24, avatar: expertImages[1] },

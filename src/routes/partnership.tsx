@@ -27,6 +27,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
+import { CmsOrBuiltIn } from "@/components/cms/CmsRoutePage";
+import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages } from "@/data/pages";
@@ -47,8 +49,19 @@ export const Route = createFileRoute("/partnership")({
     ],
     links: [{ rel: "canonical", href: "/partnership" }],
   }),
-  component: PartnershipPage,
+  // A published CMS page with the address "partnership" replaces the built-in content (CATATAN_PERBAIKAN 2br).
+  loader: () => loadCmsOverride("partnership"),
+  staleTime: 60_000,
+  component: PartnershipRoute,
 });
+
+function PartnershipRoute() {
+  return (
+    <CmsOrBuiltIn page={Route.useLoaderData()}>
+      <PartnershipPage />
+    </CmsOrBuiltIn>
+  );
+}
 
 type Opp = { badge: string; title: string; focus: string; partner: string; deadline: string; image: string };
 

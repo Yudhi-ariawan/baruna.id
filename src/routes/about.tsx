@@ -28,6 +28,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
+import { CmsOrBuiltIn } from "@/components/cms/CmsRoutePage";
+import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages } from "@/data/pages";
 import { useLanguage } from "@/lib/i18n";
@@ -47,8 +49,19 @@ export const Route = createFileRoute("/about")({
     ],
     links: [{ rel: "canonical", href: "/about" }],
   }),
-  component: AboutPage,
+  // A published CMS page with the address "about" replaces the built-in content (CATATAN_PERBAIKAN 2br).
+  loader: () => loadCmsOverride("about"),
+  staleTime: 60_000,
+  component: AboutRoute,
 });
+
+function AboutRoute() {
+  return (
+    <CmsOrBuiltIn page={Route.useLoaderData()}>
+      <AboutPage />
+    </CmsOrBuiltIn>
+  );
+}
 
 const values = [
   { letter: "B", title: "Build Capacity", desc: "Strengthening competencies, leadership, and professional talent to support the sustainable development of marine and fisheries sectors." },

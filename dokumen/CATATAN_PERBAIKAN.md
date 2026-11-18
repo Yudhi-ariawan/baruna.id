@@ -1616,7 +1616,7 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
-## 2br. Dynamic CMS: menu navigasi, halaman dari blok, dan formulir (18 Nov, kurikulum 3.1; sedang dikerjakan)
+## 2br. Dynamic CMS: menu navigasi, halaman dari blok, dan formulir (18 Nov, kurikulum 3.1)
 
 **Masalah:** isi menu Fellowship, Community, Partnership, About (dan Events) serta menu navigasi tertulis di kode (Slide 15 melarang hard-code). Admin tidak bisa mengubahnya tanpa programmer. Kurikulum 3.1 meminta admin bisa membuat menu, halaman, formulir, dan *content type* tanpa mengubah kode. Cakupan diputuskan pemilik proyek: CMS umum dulu, Events di sprint berikutnya.
 
@@ -1649,7 +1649,57 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 **Uji bagian 1:**
 - PGlite dengan migrasi asli dan fungsi bantu yang disalin dari migrasi proyek: **81/81** pada percobaan pertama (izin per peran, 11 kasus validasi blok, simpan serentak, alur setuju/tolak/minta revisi, stale, penayangan, 13 kasus formulir, menu, hak tabel/view). Migrasi juga aman dijalankan dua kali.
-- `npm run test:cms` ke database asli (matriks peran sebenarnya; tidak mengubah menu situs): 0/1 sebelum migrasi (view belum ada); hasil sesudah migrasi dicatat di bawah.
+- `npm run test:cms` ke database asli (matriks peran sebenarnya; tidak mengubah menu situs): 0/1 sebelum migrasi (view belum ada), **30/30** sesudah migrasi dijalankan pemilik proyek (18 Nov; Supabase menawarkan "Run and enable RLS" karena RLS diaktifkan lewat perulangan, hasilnya sama). Data uji dibersihkan; menu situs tidak berubah.
+
+**Bagian 2: aplikasi (tanpa migrasi baru)**
+- **Konsol Kurasi → Konten Tayang → "Konten Situs (CMS)"** (`/governance/cms`), dengan lencana jumlah draf yang menunggu keputusan:
+  - Terlihat untuk Super Admin, Admin, Operator, Approver, Publisher, dan Reviewer. Tombolnya mengikuti hak dari database: buat/sunting, putuskan, turunkan/tayangkan, arsip.
+  - Ringkasan berisi draf terbuka, menu navigasi, daftar halaman (beserta alamat publiknya), dan daftar formulir (beserta jumlah kiriman baru).
+  - Lencana menghitung draf yang menunggu keputusan **ditambah** kiriman baru dari formulir yang dicentang "Kiriman baru ikut dihitung di lencana" (`notify_on_submit`). Notifikasi email menyusul di S3.2.
+  - `src/routes/governance.cms.index.tsx`, `src/components/governance/cms/CmsLists.tsx`.
+- **Halaman draf** (`/governance/cms/<id>`):
+  - penyunting halaman blok (7 jenis blok, urutkan/hapus, dwibahasa Indonesia/Inggris);
+  - penyunting formulir (7 jenis kolom);
+  - penyunting menu (dua tingkat; tombol "Mulai dari menu bawaan (9 menu)");
+  - pratinjau memakai komponen publik yang sama;
+  - galat ditandai merah per kolom dengan ringkasan yang bisa diklik (aturan sama dengan database, `src/lib/cms/cms-validation.ts`);
+  - panel keputusan untuk pemutus: Setujui, Minta revisi, Tolak (catatan ≥5 karakter);
+  - tarik draf oleh penulis.
+- **Unggah gambar** lewat server: ukuran ≤2 MB, jenis diperiksa dari isi berkas (PNG/JPG/WebP), nama acak `cms/<uuid>.<ext>`. Hak sunting dicek ke draf sebelum unggah.
+- **Kiriman formulir** (`/governance/cms/forms/<id>`):
+  - tabel kiriman dengan filter status (Baru/Sudah ditinjau/Diarsipkan);
+  - **Ekspor CSV** (BOM UTF-8, pemisah `;` untuk Excel Indonesia; sel yang diawali `= + - @` diberi tanda petik agar tidak dijalankan sebagai rumus).
+- **Publik:**
+  - `/p/<alamat>`: halaman CMS; alamat tak dikenal → "Halaman tidak ditemukan".
+  - `/f/<alamat>`: formulir CMS. Pengunjung tanpa login diminta **Masuk** dulu (status login dari sumber yang sama dengan Navbar).
+  - `/about`, `/community`, `/fellowship`, `/partnership`: bila ada halaman CMS tayang dengan alamat bernama menu itu, isinya **menggantikan** isi bawaan; bila tidak ada, isi bawaan tetap tampil (`src/lib/cms/cms-override.ts`).
+  - Halaman pembuka Events tampil di `/p/events`, karena `/events` tetap pusat acara yang sudah ada sampai sprint Events.
+  - Teks *markdown* hanya mengizinkan paragraf, tebal, miring, daftar, dan tautan yang lolos aturan tautan (`CmsRichText`).
+- **Navbar** (`src/components/baruna/navbar/useSiteMenu.ts`):
+  - memakai menu CMS yang tayang bila ada; submenu tampil sebagai dropdown di desktop dan menjorok di HP;
+  - tautan eksternal dibuka di tab baru;
+  - bila menu CMS kosong, migrasi belum jalan, atau pembacaan gagal, kembali ke 9 menu bawaan;
+  - cache 5 menit (`staleTime`), jadi menu baru terlihat paling lambat 5 menit setelah disetujui.
+
+**Uji bagian 2:**
+- `tsc`, lint, dan `npm run build` lulus.
+- **Browser terhadap hasil build** ke database asli: **27/27** (3 di antaranya persiapan data). Akun sementara Operator, Approver, dan Registered User; halaman/formulir `tdd-ui-*`; semua dihapus sesudahnya, menu situs tidak diubah. Yang diperiksa:
+  - Operator membuka konsol CMS dan melihat draf terkirimnya, tanpa tombol keputusan untuk drafnya sendiri.
+  - Approver menekan **Setujui** di browser; status draf menjadi `approved`.
+  - Pengunjung membuka `/p/<alamat>`: blok teks, FAQ, dan formulir tampil, *markdown* tebal dirender, formulir meminta Masuk. Alamat tak dikenal menghasilkan 404.
+  - `/about`, `/community`, `/fellowship`, `/partnership` tetap berisi bawaan. Navbar tetap memakai menu bawaan.
+  - Registered User mengirim formulir di `/f/<alamat>`; isi tersimpan benar (teks dan centang).
+  - Approver melihat 1 baris kiriman, dan lencana menu "Konten Situs (CMS)" menghitungnya. Registered User tidak bisa membuka konsol CMS.
+  - 0 panggilan server function gagal.
+- **Temuan di luar CMS (sudah ada sebelumnya):** React *hydration error* #418 di semua halaman publik bila pengguna memilih bahasa Indonesia, termasuk Beranda dan About. Dengan bahasa Inggris atau tanpa pilihan: 0 error. Penyebabnya, `LanguageContext` membaca `localStorage` saat render pertama, sehingga teks server (Inggris) berbeda dengan teks browser (Indonesia). Halaman tetap tampil karena React merender ulang di browser. Dicatat sebagai ISS baru di Issue Register; perbaikannya terpisah.
+
+**Belum (sisa sprint S3.1 dari rancangan):**
+- jenis kolom **unggah berkas** di formulir CMS (butuh bucket privat dan tautan sementara seperti dokumen pendaftaran);
+- **isi resmi** halaman About/Community/Fellowship/Partnership diisi pengelola lewat CMS. Data contoh di kode (misalnya jumlah anggota komunitas) sengaja tidak dipindahkan;
+- cek duplikat Request a Training (FB-05);
+- aturan formulir CMS di `test:form-validation`;
+- uji tampilan HP;
+- uji manual oleh pemilik proyek.
 
 ---
 
@@ -1855,7 +1905,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
   | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
-  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 31 (setelah migrasi `20261118010000`) | 2br |
+  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 30 (setelah migrasi `20261118010000`) | 2br |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useSiteMenu } from "./navbar/useSiteMenu";
 
 const navItems: { key: TranslationKey; href: string; icon: LucideIcon }[] = [
   { key: "nav.home", href: "/", icon: Home },
@@ -58,7 +59,12 @@ export function Navbar() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { authState, viewer, signOut } = useHomeExperience();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  // CMS menu when one is approved (kurikulum 3.1, CATATAN_PERBAIKAN 2br); built-in menu otherwise.
+  const menu = useSiteMenu(
+    navItems.map(({ key, href, icon }) => ({ id: key, label: t(key), href, external: false, icon, children: [] })),
+    language,
+  );
   // From every active role (an expert can also be a reviewer), not only the primary one.
   const isAdmin = Boolean(viewer?.canUseAdminPortal);
   const canUseConsole = Boolean(viewer?.canUseCurationConsole);
@@ -100,27 +106,40 @@ export function Navbar() {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-0 2xl:gap-0.5 xl:flex" aria-label="Main">
-          {navItems.map(({ key, href, icon: Icon }) => {
-            const label = t(key);
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-            return (
-              <Link
-                key={key}
-                to={href}
-                className={`group flex flex-col items-center rounded-lg px-1.5 2xl:px-2 py-1 text-center transition-colors ${
-                  active ? "text-marine" : "text-foreground/75 hover:text-marine"
-                }`}
-              >
+          {menu.map(({ id, label, href, external, icon: Icon, children }) => {
+            const active = !external && (href === "/" ? pathname === "/" : pathname.startsWith(href));
+            const cls = `group flex flex-col items-center rounded-lg px-1.5 2xl:px-2 py-1 text-center transition-colors ${
+              active ? "text-marine" : "text-foreground/75 hover:text-marine"
+            }`;
+            const body = (
+              <>
                 <Icon className="h-4.5 w-4.5 2xl:h-5 2xl:w-5" strokeWidth={2} />
-                <span className="mt-0.5 whitespace-nowrap text-[0.67rem] 2xl:text-[0.7rem] font-semibold">
-                  {label}
+                <span className="mt-0.5 flex items-center gap-0.5 whitespace-nowrap text-[0.67rem] 2xl:text-[0.7rem] font-semibold">
+                  {label}{children.length ? <ChevronDown className="h-3 w-3" /> : null}
                 </span>
-                <span
-                  className={`mt-0.5 h-0.5 w-5 2xl:w-6 rounded-full transition-colors ${
-                    active ? "bg-marine" : "bg-transparent group-hover:bg-marine/40"
-                  }`}
-                />
-              </Link>
+                <span className={`mt-0.5 h-0.5 w-5 2xl:w-6 rounded-full transition-colors ${active ? "bg-marine" : "bg-transparent group-hover:bg-marine/40"}`} />
+              </>
+            );
+            if (children.length) {
+              return (
+                <DropdownMenu key={id}>
+                  <DropdownMenuTrigger className={cls}>{body}</DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuItem onSelect={() => (external ? window.open(href, "_blank", "noopener") : navigate({ to: href }))}>{label}</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {children.map((c) => (
+                      <DropdownMenuItem key={c.id} onSelect={() => (c.external ? window.open(c.href, "_blank", "noopener") : navigate({ to: c.href }))}>
+                        {c.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }
+            return external ? (
+              <a key={id} href={href} target="_blank" rel="noopener noreferrer" className={cls}>{body}</a>
+            ) : (
+              <Link key={id} to={href} className={cls}>{body}</Link>
             );
           })}
         </nav>
@@ -254,18 +273,19 @@ export function Navbar() {
                 <LanguageSwitcher variant="segmented" />
               </div>
               <nav className="flex flex-col gap-1" aria-label="Mobile">
-                {navItems.map(({ key, href, icon: Icon }) => (
-                  <Link
-                    key={key}
-                    to={href}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-marine"
-                    activeProps={{ className: "bg-muted text-marine" }}
-                  >
-                    <Icon className="h-5 w-5" />
-                    {t(key)}
-                  </Link>
-                ))}
+                {menu.flatMap(({ id, label, href, external, icon: Icon, children }) => {
+                  const cls = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-marine";
+                  const row = (key: string, text: string, to: string, ext: boolean, icon: ReactNode, extra = "") =>
+                    ext ? (
+                      <a key={key} href={to} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className={cls + extra}>{icon}{text}</a>
+                    ) : (
+                      <Link key={key} to={to} onClick={() => setOpen(false)} className={cls + extra} activeProps={{ className: "bg-muted text-marine" }}>{icon}{text}</Link>
+                    );
+                  return [
+                    row(id, label, href, external, <Icon className="h-5 w-5" />),
+                    ...children.map((c) => row(c.id, c.label, c.href, c.external, <span className="h-5 w-5" />, " pl-6 text-[13px]")),
+                  ];
+                })}
                 <div className="mt-4 border-t border-border pt-4">
                   {authState === "authenticated" && viewer ? (
                     <div className="space-y-1">

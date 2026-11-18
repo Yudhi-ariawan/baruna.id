@@ -88,6 +88,7 @@ import { Route as ExpertsRecognitionRouteImport } from './routes/experts.recogni
 import { Route as ExpertsRequestRouteImport } from './routes/experts.request'
 import { Route as ExpertsServicesRouteImport } from './routes/experts.services'
 import { Route as ExpertsTrainerApplicationRouteImport } from './routes/experts.trainer-application'
+import { Route as FSlugRouteImport } from './routes/f.$slug'
 import { Route as GovernanceIndexRouteImport } from './routes/governance.index'
 import { Route as GovernanceAttendanceRouteImport } from './routes/governance.attendance'
 import { Route as GovernanceCompletionsRouteImport } from './routes/governance.completions'
@@ -107,6 +108,7 @@ import { Route as KnowledgeHubSubmitResourceRouteImport } from './routes/knowled
 import { Route as MySubmissionsIndexRouteImport } from './routes/my-submissions.index'
 import { Route as MySubmissionsIdRouteImport } from './routes/my-submissions.$id'
 import { Route as MySubmissionsNewRouteImport } from './routes/my-submissions.new'
+import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as AcademyAlumniIndexRouteImport } from './routes/academy.alumni.index'
 import { Route as AcademyAlumniIdRouteImport } from './routes/academy.alumni.$id'
 import { Route as AcademyApplicationsIndexRouteImport } from './routes/academy.applications.index'
@@ -141,11 +143,14 @@ import { Route as ExpertsPortalReviewStatusRouteImport } from './routes/experts.
 import { Route as ExpertsPortalServiceRequestsRouteImport } from './routes/experts.portal.service-requests'
 import { Route as ExpertsPortalSubmitModuleRouteImport } from './routes/experts.portal.submit-module'
 import { Route as GovernanceAuditSubjectIdRouteImport } from './routes/governance.audit.$subjectId'
+import { Route as GovernanceCmsIndexRouteImport } from './routes/governance.cms.index'
+import { Route as GovernanceCmsDraftIdRouteImport } from './routes/governance.cms.$draftId'
 import { Route as GovernanceProgramsIndexRouteImport } from './routes/governance.programs.index'
 import { Route as GovernanceProgramsDraftIdRouteImport } from './routes/governance.programs.$draftId'
 import { Route as GovernanceSubjectIdRouteImport } from './routes/governance.subject.$id'
 import { Route as GovernanceSubjectsIdRouteImport } from './routes/governance.subjects.$id'
 import { Route as KnowledgeHubResourceIdRouteImport } from './routes/knowledge-hub_.resource.$id'
+import { Route as GovernanceCmsFormsFormIdRouteImport } from './routes/governance.cms.forms.$formId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -544,6 +549,11 @@ const ExpertsTrainerApplicationRoute =
     path: '/trainer-application',
     getParentRoute: () => ExpertsRoute,
   } as any)
+const FSlugRoute = FSlugRouteImport.update({
+  id: '/f/$slug',
+  path: '/f/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GovernanceIndexRoute = GovernanceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -641,6 +651,11 @@ const MySubmissionsNewRoute = MySubmissionsNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => MySubmissionsRoute,
+} as any)
+const PSlugRoute = PSlugRouteImport.update({
+  id: '/p/$slug',
+  path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AcademyAlumniIndexRoute = AcademyAlumniIndexRouteImport.update({
   id: '/alumni/',
@@ -828,6 +843,16 @@ const GovernanceAuditSubjectIdRoute =
     path: '/audit/$subjectId',
     getParentRoute: () => GovernanceRoute,
   } as any)
+const GovernanceCmsIndexRoute = GovernanceCmsIndexRouteImport.update({
+  id: '/cms/',
+  path: '/cms/',
+  getParentRoute: () => GovernanceRoute,
+} as any)
+const GovernanceCmsDraftIdRoute = GovernanceCmsDraftIdRouteImport.update({
+  id: '/cms/$draftId',
+  path: '/cms/$draftId',
+  getParentRoute: () => GovernanceRoute,
+} as any)
 const GovernanceProgramsIndexRoute = GovernanceProgramsIndexRouteImport.update({
   id: '/programs/',
   path: '/programs/',
@@ -854,6 +879,12 @@ const KnowledgeHubResourceIdRoute = KnowledgeHubResourceIdRouteImport.update({
   path: '/knowledge-hub/resource/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GovernanceCmsFormsFormIdRoute =
+  GovernanceCmsFormsFormIdRouteImport.update({
+    id: '/cms/forms/$formId',
+    path: '/cms/forms/$formId',
+    getParentRoute: () => GovernanceRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -931,6 +962,7 @@ export interface FileRoutesByFullPath {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
+  '/f/$slug': typeof FSlugRoute
   '/governance/attendance': typeof GovernanceAttendanceRoute
   '/governance/completions': typeof GovernanceCompletionsRoute
   '/governance/enrollments': typeof GovernanceEnrollmentsRoute
@@ -948,6 +980,7 @@ export interface FileRoutesByFullPath {
   '/knowledge-hub/submit-resource': typeof KnowledgeHubSubmitResourceRoute
   '/my-submissions/$id': typeof MySubmissionsIdRoute
   '/my-submissions/new': typeof MySubmissionsNewRoute
+  '/p/$slug': typeof PSlugRoute
   '/academy/': typeof AcademyIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/events/': typeof EventsIndexRoute
@@ -979,6 +1012,7 @@ export interface FileRoutesByFullPath {
   '/experts/portal/service-requests': typeof ExpertsPortalServiceRequestsRoute
   '/experts/portal/submit-module': typeof ExpertsPortalSubmitModuleRoute
   '/governance/audit/$subjectId': typeof GovernanceAuditSubjectIdRoute
+  '/governance/cms/$draftId': typeof GovernanceCmsDraftIdRoute
   '/governance/programs/$draftId': typeof GovernanceProgramsDraftIdRoute
   '/governance/subject/$id': typeof GovernanceSubjectIdRoute
   '/governance/subjects/$id': typeof GovernanceSubjectsIdRoute
@@ -992,7 +1026,9 @@ export interface FileRoutesByFullPath {
   '/academy/training-requests/': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training/': typeof AcademyTrainingIndexRoute
   '/experts/portal/': typeof ExpertsPortalIndexRoute
+  '/governance/cms/': typeof GovernanceCmsIndexRoute
   '/governance/programs/': typeof GovernanceProgramsIndexRoute
+  '/governance/cms/forms/$formId': typeof GovernanceCmsFormsFormIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -1061,6 +1097,7 @@ export interface FileRoutesByTo {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
+  '/f/$slug': typeof FSlugRoute
   '/governance/attendance': typeof GovernanceAttendanceRoute
   '/governance/completions': typeof GovernanceCompletionsRoute
   '/governance/enrollments': typeof GovernanceEnrollmentsRoute
@@ -1078,6 +1115,7 @@ export interface FileRoutesByTo {
   '/knowledge-hub/submit-resource': typeof KnowledgeHubSubmitResourceRoute
   '/my-submissions/$id': typeof MySubmissionsIdRoute
   '/my-submissions/new': typeof MySubmissionsNewRoute
+  '/p/$slug': typeof PSlugRoute
   '/academy': typeof AcademyIndexRoute
   '/admin': typeof AdminIndexRoute
   '/events': typeof EventsIndexRoute
@@ -1109,6 +1147,7 @@ export interface FileRoutesByTo {
   '/experts/portal/service-requests': typeof ExpertsPortalServiceRequestsRoute
   '/experts/portal/submit-module': typeof ExpertsPortalSubmitModuleRoute
   '/governance/audit/$subjectId': typeof GovernanceAuditSubjectIdRoute
+  '/governance/cms/$draftId': typeof GovernanceCmsDraftIdRoute
   '/governance/programs/$draftId': typeof GovernanceProgramsDraftIdRoute
   '/governance/subject/$id': typeof GovernanceSubjectIdRoute
   '/governance/subjects/$id': typeof GovernanceSubjectsIdRoute
@@ -1122,7 +1161,9 @@ export interface FileRoutesByTo {
   '/academy/training-requests': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training': typeof AcademyTrainingIndexRoute
   '/experts/portal': typeof ExpertsPortalIndexRoute
+  '/governance/cms': typeof GovernanceCmsIndexRoute
   '/governance/programs': typeof GovernanceProgramsIndexRoute
+  '/governance/cms/forms/$formId': typeof GovernanceCmsFormsFormIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1201,6 +1242,7 @@ export interface FileRoutesById {
   '/experts/request': typeof ExpertsRequestRoute
   '/experts/services': typeof ExpertsServicesRoute
   '/experts/trainer-application': typeof ExpertsTrainerApplicationRoute
+  '/f/$slug': typeof FSlugRoute
   '/governance/attendance': typeof GovernanceAttendanceRoute
   '/governance/completions': typeof GovernanceCompletionsRoute
   '/governance/enrollments': typeof GovernanceEnrollmentsRoute
@@ -1218,6 +1260,7 @@ export interface FileRoutesById {
   '/knowledge-hub_/submit-resource': typeof KnowledgeHubSubmitResourceRoute
   '/my-submissions/$id': typeof MySubmissionsIdRoute
   '/my-submissions/new': typeof MySubmissionsNewRoute
+  '/p/$slug': typeof PSlugRoute
   '/academy/': typeof AcademyIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/events/': typeof EventsIndexRoute
@@ -1249,6 +1292,7 @@ export interface FileRoutesById {
   '/experts/portal/service-requests': typeof ExpertsPortalServiceRequestsRoute
   '/experts/portal/submit-module': typeof ExpertsPortalSubmitModuleRoute
   '/governance/audit/$subjectId': typeof GovernanceAuditSubjectIdRoute
+  '/governance/cms/$draftId': typeof GovernanceCmsDraftIdRoute
   '/governance/programs/$draftId': typeof GovernanceProgramsDraftIdRoute
   '/governance/subject/$id': typeof GovernanceSubjectIdRoute
   '/governance/subjects/$id': typeof GovernanceSubjectsIdRoute
@@ -1262,7 +1306,9 @@ export interface FileRoutesById {
   '/academy/training-requests/': typeof AcademyTrainingRequestsIndexRoute
   '/academy/training/': typeof AcademyTrainingIndexRoute
   '/experts/portal/': typeof ExpertsPortalIndexRoute
+  '/governance/cms/': typeof GovernanceCmsIndexRoute
   '/governance/programs/': typeof GovernanceProgramsIndexRoute
+  '/governance/cms/forms/$formId': typeof GovernanceCmsFormsFormIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1342,6 +1388,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/experts/trainer-application'
+    | '/f/$slug'
     | '/governance/attendance'
     | '/governance/completions'
     | '/governance/enrollments'
@@ -1359,6 +1406,7 @@ export interface FileRouteTypes {
     | '/knowledge-hub/submit-resource'
     | '/my-submissions/$id'
     | '/my-submissions/new'
+    | '/p/$slug'
     | '/academy/'
     | '/admin/'
     | '/events/'
@@ -1390,6 +1438,7 @@ export interface FileRouteTypes {
     | '/experts/portal/service-requests'
     | '/experts/portal/submit-module'
     | '/governance/audit/$subjectId'
+    | '/governance/cms/$draftId'
     | '/governance/programs/$draftId'
     | '/governance/subject/$id'
     | '/governance/subjects/$id'
@@ -1403,7 +1452,9 @@ export interface FileRouteTypes {
     | '/academy/training-requests/'
     | '/academy/training/'
     | '/experts/portal/'
+    | '/governance/cms/'
     | '/governance/programs/'
+    | '/governance/cms/forms/$formId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1472,6 +1523,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/experts/trainer-application'
+    | '/f/$slug'
     | '/governance/attendance'
     | '/governance/completions'
     | '/governance/enrollments'
@@ -1489,6 +1541,7 @@ export interface FileRouteTypes {
     | '/knowledge-hub/submit-resource'
     | '/my-submissions/$id'
     | '/my-submissions/new'
+    | '/p/$slug'
     | '/academy'
     | '/admin'
     | '/events'
@@ -1520,6 +1573,7 @@ export interface FileRouteTypes {
     | '/experts/portal/service-requests'
     | '/experts/portal/submit-module'
     | '/governance/audit/$subjectId'
+    | '/governance/cms/$draftId'
     | '/governance/programs/$draftId'
     | '/governance/subject/$id'
     | '/governance/subjects/$id'
@@ -1533,7 +1587,9 @@ export interface FileRouteTypes {
     | '/academy/training-requests'
     | '/academy/training'
     | '/experts/portal'
+    | '/governance/cms'
     | '/governance/programs'
+    | '/governance/cms/forms/$formId'
   id:
     | '__root__'
     | '/'
@@ -1611,6 +1667,7 @@ export interface FileRouteTypes {
     | '/experts/request'
     | '/experts/services'
     | '/experts/trainer-application'
+    | '/f/$slug'
     | '/governance/attendance'
     | '/governance/completions'
     | '/governance/enrollments'
@@ -1628,6 +1685,7 @@ export interface FileRouteTypes {
     | '/knowledge-hub_/submit-resource'
     | '/my-submissions/$id'
     | '/my-submissions/new'
+    | '/p/$slug'
     | '/academy/'
     | '/admin/'
     | '/events/'
@@ -1659,6 +1717,7 @@ export interface FileRouteTypes {
     | '/experts/portal/service-requests'
     | '/experts/portal/submit-module'
     | '/governance/audit/$subjectId'
+    | '/governance/cms/$draftId'
     | '/governance/programs/$draftId'
     | '/governance/subject/$id'
     | '/governance/subjects/$id'
@@ -1672,7 +1731,9 @@ export interface FileRouteTypes {
     | '/academy/training-requests/'
     | '/academy/training/'
     | '/experts/portal/'
+    | '/governance/cms/'
     | '/governance/programs/'
+    | '/governance/cms/forms/$formId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1702,9 +1763,11 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardUserRoute: typeof DashboardUserRoute
+  FSlugRoute: typeof FSlugRoute
   KnowledgeHubTypeRoute: typeof KnowledgeHubTypeRoute
   KnowledgeHubMyContributionsRoute: typeof KnowledgeHubMyContributionsRoute
   KnowledgeHubSubmitResourceRoute: typeof KnowledgeHubSubmitResourceRoute
+  PSlugRoute: typeof PSlugRoute
   KnowledgeHubResourceIdRoute: typeof KnowledgeHubResourceIdRoute
 }
 
@@ -2263,6 +2326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExpertsTrainerApplicationRouteImport
       parentRoute: typeof ExpertsRoute
     }
+    '/f/$slug': {
+      id: '/f/$slug'
+      path: '/f/$slug'
+      fullPath: '/f/$slug'
+      preLoaderRoute: typeof FSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/governance/': {
       id: '/governance/'
       path: '/'
@@ -2395,6 +2465,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/my-submissions/new'
       preLoaderRoute: typeof MySubmissionsNewRouteImport
       parentRoute: typeof MySubmissionsRoute
+    }
+    '/p/$slug': {
+      id: '/p/$slug'
+      path: '/p/$slug'
+      fullPath: '/p/$slug'
+      preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/academy/alumni/': {
       id: '/academy/alumni/'
@@ -2634,6 +2711,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GovernanceAuditSubjectIdRouteImport
       parentRoute: typeof GovernanceRoute
     }
+    '/governance/cms/': {
+      id: '/governance/cms/'
+      path: '/cms'
+      fullPath: '/governance/cms/'
+      preLoaderRoute: typeof GovernanceCmsIndexRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
+    '/governance/cms/$draftId': {
+      id: '/governance/cms/$draftId'
+      path: '/cms/$draftId'
+      fullPath: '/governance/cms/$draftId'
+      preLoaderRoute: typeof GovernanceCmsDraftIdRouteImport
+      parentRoute: typeof GovernanceRoute
+    }
     '/governance/programs/': {
       id: '/governance/programs/'
       path: '/programs'
@@ -2668,6 +2759,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/knowledge-hub/resource/$id'
       preLoaderRoute: typeof KnowledgeHubResourceIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/governance/cms/forms/$formId': {
+      id: '/governance/cms/forms/$formId'
+      path: '/cms/forms/$formId'
+      fullPath: '/governance/cms/forms/$formId'
+      preLoaderRoute: typeof GovernanceCmsFormsFormIdRouteImport
+      parentRoute: typeof GovernanceRoute
     }
   }
 }
@@ -2935,10 +3033,13 @@ interface GovernanceRouteChildren {
   GovernanceTrainingNeedsRoute: typeof GovernanceTrainingNeedsRoute
   GovernanceIndexRoute: typeof GovernanceIndexRoute
   GovernanceAuditSubjectIdRoute: typeof GovernanceAuditSubjectIdRoute
+  GovernanceCmsDraftIdRoute: typeof GovernanceCmsDraftIdRoute
   GovernanceProgramsDraftIdRoute: typeof GovernanceProgramsDraftIdRoute
   GovernanceSubjectIdRoute: typeof GovernanceSubjectIdRoute
   GovernanceSubjectsIdRoute: typeof GovernanceSubjectsIdRoute
+  GovernanceCmsIndexRoute: typeof GovernanceCmsIndexRoute
   GovernanceProgramsIndexRoute: typeof GovernanceProgramsIndexRoute
+  GovernanceCmsFormsFormIdRoute: typeof GovernanceCmsFormsFormIdRoute
 }
 
 const GovernanceRouteChildren: GovernanceRouteChildren = {
@@ -2956,10 +3057,13 @@ const GovernanceRouteChildren: GovernanceRouteChildren = {
   GovernanceTrainingNeedsRoute: GovernanceTrainingNeedsRoute,
   GovernanceIndexRoute: GovernanceIndexRoute,
   GovernanceAuditSubjectIdRoute: GovernanceAuditSubjectIdRoute,
+  GovernanceCmsDraftIdRoute: GovernanceCmsDraftIdRoute,
   GovernanceProgramsDraftIdRoute: GovernanceProgramsDraftIdRoute,
   GovernanceSubjectIdRoute: GovernanceSubjectIdRoute,
   GovernanceSubjectsIdRoute: GovernanceSubjectsIdRoute,
+  GovernanceCmsIndexRoute: GovernanceCmsIndexRoute,
   GovernanceProgramsIndexRoute: GovernanceProgramsIndexRoute,
+  GovernanceCmsFormsFormIdRoute: GovernanceCmsFormsFormIdRoute,
 }
 
 const GovernanceRouteWithChildren = GovernanceRoute._addFileChildren(
@@ -3009,9 +3113,11 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardUserRoute: DashboardUserRoute,
+  FSlugRoute: FSlugRoute,
   KnowledgeHubTypeRoute: KnowledgeHubTypeRoute,
   KnowledgeHubMyContributionsRoute: KnowledgeHubMyContributionsRoute,
   KnowledgeHubSubmitResourceRoute: KnowledgeHubSubmitResourceRoute,
+  PSlugRoute: PSlugRoute,
   KnowledgeHubResourceIdRoute: KnowledgeHubResourceIdRoute,
 }
 export const routeTree = rootRouteImport
