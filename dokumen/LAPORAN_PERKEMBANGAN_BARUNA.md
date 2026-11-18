@@ -389,3 +389,25 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 - Sertifikat dan syarat lulus, data perjalanan/visa, pembayaran, serta notifikasi email masih menunggu keputusan mentor.
 
 **Pengujian:** Permintaan Peran 24/32 sebelum migrasi menjadi 32/32 sesudahnya, dan uji database 17/17. Validasi formulir 128/128. Audit HP 0/113 halaman melebar. Uji beban 50 pengguna dengan 0 error. `build` lulus, dan akun serta data uji dibersihkan. Diuji manual oleh saya: tampilan di HP dan dua perangkat, Data Master lewat usulan, Penayangan, Permintaan Peran, dan validasi biodata.
+
+---
+
+## 18/11/2026 (Rabu, 18 November 2026)
+
+**Yang dibuat**
+- **Rencana kerja mengikuti kurikulum magang.** Kurikulum 6 bulan (mulai 21 September 2026) dipecah menjadi rencana harian, dan dokumen output Bulan 1 disusun dari slide, kode, dan database.
+- **Tab Output Kurikulum di `/kesiapanrilis`.** Dokumen kurikulum bisa dipresentasikan langsung dari halaman ini: daftar per bulan, tombol sebelumnya/berikutnya, dan diagram yang tergambar. Dengan begitu tidak perlu membuka berkas satu per satu.
+- **Peta dokumen dan cara kerja (`dokumen/README.md`).** Isinya dokumen mana yang menjadi patokan untuk apa, urutan kerja setiap fitur, dan ritme kerja mingguan mengikuti roadmap.
+
+**Yang diperbaiki**
+- Pembagian 51 slide di README disesuaikan dengan isi slide (misalnya Academy Slide 19–28, bukan 11–25).
+
+**Pelajaran yang didapat**
+- Struktur database sebaiknya dibaca langsung dari database, bukan disusun dari ingatan. Dengan cara ini ketahuan ada 6 objek database yang dibuat di luar berkas migrasi.
+- Angka ringkasan dalam dokumen perlu dihitung ulang dari tabelnya. Tiga angka yang awalnya keliru ketemu dengan cara ini.
+
+**Kendala**
+- `npm audit` menemukan celah keamanan **kritis** di TanStack Start yang sudah ada sejak sebelumnya. Perbaikannya berupa pembaruan versi, yang perlu dikerjakan tersendiri dengan uji penuh.
+- 6 objek database yang dibuat di luar migrasi perlu dibuatkan migrasi penyalin sebelum database `main` atau produksi dibangun.
+
+**Pengujian:** `tsc` dan `build` lulus, termasuk saat folder dokumen kurikulum tidak ada (kondisi repo bersama). Tab baru dicek di browser terhadap hasil build: diagram tergambar, tampilan HP benar, 0 error, dan isi dokumen tidak ikut terkirim ke browser sebelum login.
