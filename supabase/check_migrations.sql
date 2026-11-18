@@ -315,7 +315,13 @@ WITH checks(no, migration, ok) AS (
   (79, '20261117010000_role_request_guards',
       EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cancel_rbac_role_change')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'request_rbac_role_change' AND prosrc LIKE '%role_not_requestable%')
-      AND to_regclass('public.rbac_role_change_requests_one_pending') IS NOT NULL)
+      AND to_regclass('public.rbac_role_change_requests_one_pending') IS NOT NULL),
+  (80, '20261118010000_dynamic_cms',
+      to_regclass('public.cms_drafts') IS NOT NULL
+      AND to_regclass('public.cms_pages_public_v') IS NOT NULL
+      AND to_regclass('public.cms_menu_public_v') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cms_draft_decide')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cms_form_submission_list'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

@@ -1616,6 +1616,43 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2br. Dynamic CMS: menu navigasi, halaman dari blok, dan formulir (18 Nov, kurikulum 3.1; sedang dikerjakan)
+
+**Masalah:** isi menu Fellowship, Community, Partnership, About (dan Events) serta menu navigasi tertulis di kode (Slide 15 melarang hard-code). Admin tidak bisa mengubahnya tanpa programmer. Kurikulum 3.1 meminta admin bisa membuat menu, halaman, formulir, dan *content type* tanpa mengubah kode. Cakupan diputuskan pemilik proyek: CMS umum dulu, Events di sprint berikutnya.
+
+**Bagian 1: fondasi database (migrasi `20261118010000_dynamic_cms.sql`, pengecek baris 80)**
+- **Tabel tayang:**
+  - `cms_pages` (halaman dari blok, status `published`/`on_hold`/`archived`);
+  - `cms_forms` (definisi kolom formulir, status `published`/`closed`/`archived`);
+  - `cms_menu_items` (menu dan submenu dua tingkat).
+- **Riwayat versi:** `cms_page_versions`, `cms_form_versions`, `cms_menu_versions`.
+- **Kiriman formulir:** `cms_form_submissions` (Data Pribadi).
+- **Draf:** satu tabel `cms_drafts` untuk ketiga jenis, mengikuti pola `academy_program_drafts` (2ai).
+- **View publik:** `cms_pages_public_v`, `cms_forms_public_v`, `cms_menu_public_v` (hanya yang tayang/aktif; anak menu dari induk nonaktif ikut tersembunyi). Tabel sendiri tidak bisa dibaca atau ditulis langsung.
+- **Hak akses:**
+  - **Penyunting** = izin `<menu>.update` **ditambah** peran pengelola (Operator, Approver, Publisher, Admin, Super Admin). Izin `about.update` saja tidak cukup karena juga dimiliki Registered User (Slide 16 "terbatas").
+  - **Pemutus** = `_can_decide_review`, dan bukan pembuat atau pengaju draf.
+  - **Menu navigasi** (berlaku seluruh situs) = `governance.manage` (Admin, Super Admin) untuk menyunting dan memutuskan, oleh orang yang berbeda.
+  - **Turunkan/tayangkan lagi** = `_can_publish`; **arsip** = pemutus; alasan wajib.
+  - **Membaca kiriman formulir** = pemutus, atau Reviewer menu itu.
+- **Validasi isi di database:**
+  - 7 jenis blok (`banner`, `text`, `cards`, `cta`, `faq`, `form`, `links`) beserta batas panjang teks dan jumlah item;
+  - tautan hanya `https://` atau alamat internal (`javascript:`, `http://`, dan `//host` ditolak);
+  - gambar hanya unggahan CMS di bucket `knowledge-module-covers/cms/` yang benar-benar ada (≤2 MB);
+  - slug halaman yang bernama menu (mis. `about`) hanya untuk menu itu;
+  - kode galat blok membawa nomor blok (mis. `cms_block_url_invalid:3`).
+- **Formulir:**
+  - 7 jenis kolom (`text`, `textarea`, `email`, `number`, `date`, `select`, `checkbox`);
+  - kiriman wajib login, dicek terhadap definisi kolom, dan dibatasi per pengguna per hari (dengan kunci agar kiriman serentak tetap dihitung).
+- **Keamanan dua perangkat:** simpan draf memakai cek `updated_at`; persetujuan menolak bila isi tayang berubah sejak draf dibuat (`cms_stale`); satu draf terbuka per halaman/formulir dan satu draf menu sekaligus.
+- **Semua langkah tercatat** lewat `log_governance_event`.
+
+**Uji bagian 1:**
+- PGlite dengan migrasi asli dan fungsi bantu yang disalin dari migrasi proyek: **81/81** pada percobaan pertama (izin per peran, 11 kasus validasi blok, simpan serentak, alur setuju/tolak/minta revisi, stale, penayangan, 13 kasus formulir, menu, hak tabel/view). Migrasi juga aman dijalankan dua kali.
+- `npm run test:cms` ke database asli (matriks peran sebenarnya; tidak mengubah menu situs): 0/1 sebelum migrasi (view belum ada); hasil sesudah migrasi dicatat di bawah.
+
+---
+
 ## 2bq. Daftar samping tab Output Kurikulum bisa digulir (18 Nov, permintaan pemilik proyek)
 
 `src/components/release/CurriculumOutputsView.tsx`:
@@ -1781,6 +1818,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261116040000_full_training_replacement.sql` (Full Training lama dialihkan ke Course Offering pengganti; menggantikan `course_enrollment_apply`, jalankan setelah `20261111020000`). Lihat bagian 2bb.
 - `20261116050000_auth_event_log.sql` (Log Autentikasi: tabel `auth_event_log` dan trigger di `auth.users` dan `auth.sessions`). Lihat bagian 2bg. **Sudah dijalankan di intern-update (16 Nov).**
 - `20261117010000_role_request_guards.sql` (Permintaan Peran: hanya lima peran kurasi untuk diri sendiri, tanpa permintaan ganda, bisa dibatalkan). Lihat bagian 2bh. Jalankan setelah `20261021080000`. Kode branch ini tetap jalan sebelum migrasi (tombol batal memberi pesan bahwa migrasi belum dijalankan).
+- `20261118010000_dynamic_cms.sql` (Dynamic CMS: menu navigasi, halaman dari blok, formulir, draf yang disetujui orang lain, kiriman formulir). Lihat bagian 2br. Jalankan setelah `20261116020000` (memakai `_can_publish`) dan `20261104020000` (bucket sampul). Halaman dan Navbar tetap memakai tampilan lama selama migrasi belum dijalankan atau belum ada isi CMS yang tayang. Pengecek: baris 80.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1817,7 +1855,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
   | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
-  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | | | |
+  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 31 (setelah migrasi `20261118010000`) | 2br |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.
