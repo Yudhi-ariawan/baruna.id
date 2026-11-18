@@ -23,6 +23,10 @@ Dokumen ini menjawab tiga pertanyaan:
 | **Output kurikulum per bulan** | `output/bulan-N/` (indeks Bulan 1: `DOKUMEN_PEMETAAN_KONDISI.md`), tampil di tab *Output Kurikulum* `/kesiapanrilis` | Sesuai topik minggu itu |
 | Arsip (tidak diubah lagi) | `AUDIT_PERAN.md`, `LAPORAN_AUDIT_DAN_MITIGASI_BOM_WAKTU.md`, `RANCANGAN_KONSOL_GOVERNANCE.md` | – |
 
+### Folder pribadi (tidak ada di Git)
+
+`dokumen/output/` dan `dokumen/roadmap/` adalah dokumen magang pribadi. Keduanya dikecualikan lewat `.gitignore`, sehingga tidak ikut push, pull, atau clone, dan disinkronkan antar-perangkat lewat Google Drive. Di salinan repo yang tidak punya folder ini, tab *Output Kurikulum* di `/kesiapanrilis` kosong dengan sendirinya.
+
 ### Satu informasi, satu tempat
 
 Supaya satu perubahan tidak perlu ditulis berkali-kali:

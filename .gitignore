@@ -45,3 +45,7 @@ dokumen/*.pptx
 # Supabase CLI internal cache & scratch dumps
 supabase/.temp/
 supabase/combined_migrations.sql
+
+# Dokumen magang pribadi: tidak ikut Git, disinkron lewat Google Drive
+dokumen/output/
+dokumen/roadmap/
