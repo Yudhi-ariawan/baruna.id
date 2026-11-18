@@ -1616,6 +1616,28 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bo. Celah kritis TanStack Start ditutup (18 Nov)
+
+**Masalah:** `npm audit` melaporkan advisori **kritis** *unauthenticated reflected XSS in TanStack Start server-function responses* pada `@tanstack/start-server-core` 1.143.12–1.169.38. Yang terpasang `@tanstack/react-start` 1.168.57. Selain itu `seroval` ≤1.6.10 (dipakai untuk serialisasi data server function) punya beberapa advisori *high*: code/script injection dan DoS.
+
+**Perubahan (tanpa perubahan kode aplikasi dan tanpa migrasi):**
+- `@tanstack/react-start` ^1.167.50 → **^1.169.4** (rilis 22 Okt; membawa `start-server-core` **1.169.45**);
+- `@tanstack/react-router` → **^1.170.46**; `@tanstack/router-plugin` → **^1.168.48** (versi pasangan yang diminta `start-plugin-core` 1.171.55);
+- ikut terbarui: `seroval` 1.6.7 → **1.8.2**, `vite` → 8.3.8, `source-map-js` → 1.2.2 (lewat `npm update`, masih dalam rentang `package.json`);
+- `@lovable.dev/vite-tanstack-config` 2.8.1 menerima `@tanstack/react-start >=1.100.0`, jadi konfigurasi Lovable tidak berubah.
+- `npm audit fix --omit=dev` **sengaja tidak dijalankan**: pratinjaunya menghapus paket pengembangan (efek `--omit=dev`).
+
+**Hasil audit:** kritis 5 → **0**; *high* tersisa 13 (ISS-33 di Issue Register):
+- `zod` 3 (<4.6.6): kehabisan memori pada koleksi yang sangat besar. Relevan karena `zod` dipakai memvalidasi input server function. Perbaikannya butuh migrasi ke `zod` 4 (versi besar).
+- Alat build dan dev (`picomatch`, `tinyglobby`, `fdir`, `unplugin`, `@tanstack/router-*`, `vite` dev server di Windows). Tidak berjalan saat aplikasi melayani pengguna; npm hanya menawarkan "perbaikan" berupa turun ke versi lama.
+
+**Uji:**
+- `tsc` dan `npm run build` lulus; `routeTree.gen.ts` hasil generator baru isinya sama (hanya akhir baris).
+- `test:form-validation` 128/128, `test:lifecycle` 14/14 (peserta 7, trainer 7), `test:kh-roles` 20/20, `test:rbac` 820 cek.
+- Browser terhadap hasil build (server lokal), dengan akun super admin sementara yang dihapus sesudahnya: 6 halaman publik (`/`, `/academy`, `/knowledge-hub`, `/experts`, `/search`, `/kesiapanrilis`) dan 6 halaman login (`/dashboard`, `/admin`, `/admin/users` dengan 29 baris pengguna, `/governance`, `/notifications`, `/admin/audit`) tampil tanpa kotak error; **83 panggilan server function berhasil, 0 gagal**; 0 error halaman. Login dan tab Output Kurikulum `/kesiapanrilis` tetap berjalan (8/8 diagram).
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.
