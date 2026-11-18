@@ -5,11 +5,15 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ClipboardCheck, FileText, KanbanSquare, Loader2, Lock, LogOut } from "lucide-react";
+import { ClipboardCheck, FileText, GraduationCap, KanbanSquare, Loader2, Lock, LogOut } from "lucide-react";
 import { getReleaseReadiness } from "@/lib/release/release-readiness.functions";
 import type { ReadinessBoard } from "@/lib/release/readiness-board";
+import type { CurriculumDoc } from "@/lib/release/curriculum-outputs";
 import { ReadinessBoardView } from "@/components/release/ReadinessBoardView";
 import { ReleaseMarkdown } from "@/components/release/ReleaseMarkdown";
+import { CurriculumOutputsView } from "@/components/release/CurriculumOutputsView";
+
+type View = "board" | "document" | "outputs";
 
 export const Route = createFileRoute("/kesiapanrilis")({
   head: () => ({ meta: [{ title: "Kesiapan Rilis — BARUNA" }, { name: "robots", content: "noindex, nofollow" }] }),
@@ -20,15 +24,15 @@ function ReleaseReadinessPage() {
   const fetchFn = useServerFn(getReleaseReadiness);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [doc, setDoc] = useState<{ markdown: string; board: ReadinessBoard } | null>(null);
-  const [view, setView] = useState<"board" | "document">("board");
+  const [doc, setDoc] = useState<{ markdown: string; board: ReadinessBoard; outputs: CurriculumDoc[] } | null>(null);
+  const [view, setView] = useState<View>("board");
   const login = useMutation({
     mutationFn: () => fetchFn({ data: { username: username.trim(), password } }),
     onSuccess: (res) => { setDoc(res); setPassword(""); },
   });
 
   if (doc) {
-    const tab = (key: "board" | "document", label: string, Icon: typeof FileText) => (
+    const tab = (key: View, label: string, Icon: typeof FileText) => (
       <button type="button" onClick={() => setView(key)} aria-pressed={view === key}
         className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${view === key ? "bg-white text-navy" : "bg-white/15 hover:bg-white/25"}`}>
         <Icon className="h-3.5 w-3.5" /> {label}
@@ -41,6 +45,7 @@ function ReleaseReadinessPage() {
           <div className="flex flex-wrap items-center gap-2">
             {tab("board", "Papan", KanbanSquare)}
             {tab("document", "Dokumen lengkap", FileText)}
+            {tab("outputs", `Output Kurikulum (${doc.outputs.length})`, GraduationCap)}
             <button type="button" onClick={() => { setDoc(null); setUsername(""); setView("board"); }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/25">
               <LogOut className="h-3.5 w-3.5" /> Keluar
@@ -49,6 +54,8 @@ function ReleaseReadinessPage() {
         </div>
         {view === "board" ? (
           <ReadinessBoardView board={doc.board} />
+        ) : view === "outputs" ? (
+          <CurriculumOutputsView docs={doc.outputs} />
         ) : (
           <article className="mx-auto max-w-4xl rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-8">
             <ReleaseMarkdown>{doc.markdown}</ReleaseMarkdown>

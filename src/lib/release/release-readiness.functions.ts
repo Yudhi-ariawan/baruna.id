@@ -7,12 +7,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { parseReadiness, type ReadinessBoard } from "./readiness-board";
+import { toCurriculumDocs, type CurriculumDoc } from "./curriculum-outputs";
 
 export const getReleaseReadiness = createServerFn({ method: "POST" })
   .validator((input) =>
     z.object({ username: z.string().min(1).max(100), password: z.string().min(1).max(200) }).parse(input),
   )
-  .handler(async ({ data }): Promise<{ markdown: string; board: ReadinessBoard }> => {
+  .handler(async ({ data }): Promise<{ markdown: string; board: ReadinessBoard; outputs: CurriculumDoc[] }> => {
     const user = process.env.RELEASE_PAGE_USER;
     const pass = process.env.RELEASE_PAGE_PASSWORD;
     if (!user || !pass) {
@@ -27,5 +28,12 @@ export const getReleaseReadiness = createServerFn({ method: "POST" })
       throw new Error("Username atau password salah.");
     }
     const { default: markdown } = await import("../../../dokumen/KESIAPAN_RILIS.md?raw");
-    return { markdown, board: parseReadiness(markdown) };
+    // Curriculum outputs (dokumen/output/bulan-N/*.md); read here, after the check, like the report.
+    const loaders = import.meta.glob("../../../dokumen/output/bulan-*/*.md", { query: "?raw", import: "default" }) as Record<
+      string,
+      () => Promise<string>
+    >;
+    const files: Record<string, string> = {};
+    await Promise.all(Object.entries(loaders).map(async ([path, load]) => { files[path] = await load(); }));
+    return { markdown, board: parseReadiness(markdown), outputs: toCurriculumDocs(files) };
   });

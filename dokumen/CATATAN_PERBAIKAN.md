@@ -1595,6 +1595,27 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bn. Output kurikulum Bulan 1 dan tab "Output Kurikulum" di /kesiapanrilis (18 Nov)
+
+**Dokumen:** 18 berkas di `dokumen/output/bulan-1/` memuat ke-22 output kurikulum Bulan 1 (indeksnya `DOKUMEN_PEMETAAN_KONDISI.md`). ERD, Data Dictionary, dan Role-Permission Matrix dibuat dari skema asli intern-update yang dibaca lewat spesifikasi API database dengan service key (hanya baca). Temuan yang dicatat di Initial Issue Register:
+- 6 objek database dibuat di luar migrasi repo (ISS-01);
+- peran `admin` tidak memegang approve/publish (ISS-11);
+- batas Nginx 20 MB (ISS-12).
+
+**Halaman `/kesiapanrilis`:** tab baru **Output Kurikulum** menampilkan semua dokumen `dokumen/output/bulan-N/*.md` per bulan. Ada daftar di samping (dropdown di HP), tombol Sebelumnya/Berikutnya, diagram Mermaid yang tergambar, dan tautan di dalam dokumen yang bisa diklik (misalnya daftar tabel di Data Dictionary).
+- Berkas baru dikenali otomatis (`import.meta.glob`), jadi output bulan berikutnya cukup disimpan di `dokumen/output/bulan-N/`.
+- Isi dokumen dibaca di server **setelah** pemeriksaan login, sama dengan laporan kesiapan. Sudah dicek: teks dokumen tidak ada di bundle browser (0 temuan), hanya di server.
+- Kode: `src/lib/release/curriculum-outputs.ts`, `src/components/release/CurriculumOutputsView.tsx`, `MermaidDiagram.tsx`; `ReleaseMarkdown.tsx` mendapat blok mermaid, `pre`, dan anchor.
+- Dependensi baru **`mermaid@12.2.0`**, dimuat sebagai chunk terpisah hanya saat dokumen berdiagram dibuka. Versi 11.x/12.0–12.1 tidak dipakai karena punya celah yang diketahui (`npm audit`); 12.2.0 bersih.
+
+**Temuan `npm audit` (sudah ada sebelumnya, tidak terkait perubahan ini):** `@tanstack/react-start` 1.167 / `@tanstack/start-server-core` ≤1.169.38 punya advisori **kritis**, *unauthenticated reflected XSS in server-function responses*. Ditambah `seroval` dan `vite` (high). Dicatat sebagai ISS-32. Pembaruan TanStack Start perlu dikerjakan tersendiri dengan uji penuh.
+
+**Uji:**
+- `tsc` dan `npm run build` lulus.
+- Dicek di browser terhadap hasil build (server lokal): login lalu tab "Output Kurikulum (18)"; urutan dimulai dari Dokumen Pemetaan Kondisi; ERD menggambar 8/8 diagram; tautan `#t-course_offerings` di Data Dictionary melompat ke tabelnya; lebar 390 px memakai dropdown tanpa halaman melebar; 0 error konsol.
+
+---
+
 ## 2ac. Pelengkap catatan: perubahan yang belum tercatat (audit dokumen 2 Nov)
 
 Hasil pencocokan riwayat GitHub `intern-update` (12–23 Okt) dengan catatan ini. Yang di bawah sudah ada di kode, tetapi sebelumnya belum dicatat.
