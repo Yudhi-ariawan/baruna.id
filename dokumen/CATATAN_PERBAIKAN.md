@@ -1616,6 +1616,20 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bq. Daftar samping tab Output Kurikulum bisa digulir (18 Nov, permintaan pemilik proyek)
+
+`src/components/release/CurriculumOutputsView.tsx`:
+- Daftar dokumen di layar lebar kini setinggi layar (`max-h: 100vh − 2rem`) dan bisa digulir sendiri, sambil tetap menempel saat isi dokumen digulir.
+- Judul bulan menempel di atas daftar saat digulir.
+- Dokumen yang sedang dibuka otomatis digulir agar terlihat, termasuk saat berpindah dengan tombol Sebelumnya/Berikutnya.
+- Tampilan HP tetap memakai dropdown.
+
+Tujuannya agar bulan-bulan berikutnya mudah dicari saat daftar bertambah panjang.
+
+**Uji:** `tsc`, lint, dan `build` lulus. Di browser terhadap hasil build pada layar 1440×768: daftar bisa digulir (`overflow-y: auto`), tetap di layar setelah halaman digulir jauh, dokumen aktif "Rekap Bulan 2" terlihat setelah pindah lewat *Berikutnya*, dan 0 error.
+
+---
+
 ## 2bp. Urutan tab Output Kurikulum ditambah satu dokumen (18 Nov)
 
 `src/lib/release/curriculum-outputs.ts`: daftar urutan presentasi ditambah `INVENTARIS_MENU_SUBMENU`, yang ditempatkan setelah Data & Content Inventory. Dokumen yang tidak ada di daftar tetap muncul otomatis di akhir. **Uji:** `tsc` dan `build` lulus; di browser terhadap hasil build, tab menampilkan 19 dokumen dengan urutan benar dan 0 error.
