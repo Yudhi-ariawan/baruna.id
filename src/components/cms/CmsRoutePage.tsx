@@ -1,13 +1,41 @@
 // Public frame for CMS content: the normal site shell around a published page or form.
+// A /p/<slug> page gets the sidebar of its menu (CATATAN_PERBAIKAN 2bt).
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/baruna/page/PageShell";
-import type { CmsPublicPage } from "@/lib/cms/cms-types";
+import { CalendarDays, Globe, Handshake, Home, Info, MessagesSquare, type LucideIcon } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
+import { CMS_DOMAIN_LABEL, type CmsDomain, type CmsPublicPage } from "@/lib/cms/cms-types";
 import { CmsPageView } from "./CmsPageView";
+import { useCmsDomainPages } from "./useCmsDomainPages";
 
+const DOMAIN_ICON: Record<CmsDomain, LucideIcon> = {
+  about: Info, community: MessagesSquare, fellowship: Globe, partnership: Handshake, events: CalendarDays,
+};
+/** Where "back to the menu" goes: the menu's own page (Events: its event hub). */
+const DOMAIN_HOME: Record<CmsDomain, string> = {
+  about: "/about", community: "/community", fellowship: "/fellowship", partnership: "/partnership", events: "/events",
+};
+
+/** A page at /p/<slug>: framed by a sidebar of its menu, listing the menu's other CMS pages. */
 export function CmsRoutePage({ page }: { page: CmsPublicPage }) {
+  const { language } = useLanguage();
+  const others = useCmsDomainPages(page.domain);
+  const id = language === "id";
+  const label = CMS_DOMAIN_LABEL[page.domain];
   return (
-    <PageShell sidebar={null} cta={null}>
+    <PageShell
+      sidebar={{
+        icon: DOMAIN_ICON[page.domain],
+        title: label,
+        subtitle: id ? `Halaman di menu ${label}.` : `Pages of the ${label} menu.`,
+        sections: [{
+          label: id ? "Halaman" : "Pages",
+          items: [{ label: id ? `Halaman utama ${label}` : `${label} main page`, icon: Home, to: DOMAIN_HOME[page.domain] }, ...others],
+        }],
+      }}
+      cta={null}
+    >
       <CmsPageView page={page} />
     </PageShell>
   );

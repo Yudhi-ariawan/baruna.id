@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { CmsFramedContent } from "@/components/cms/CmsRoutePage";
+import { useCmsSidebarSection } from "@/components/cms/useCmsDomainPages";
 import type { CmsPublicPage } from "@/lib/cms/cms-types";
 import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
@@ -83,6 +84,8 @@ const galleryImages = [courseImages[3], courseImages[6], courseImages[1], course
 
 function AboutPage({ cms }: { cms?: CmsPublicPage | null }) {
   const { t } = useLanguage();
+  // Published CMS pages of this menu, listed in the sidebar (CATATAN_PERBAIKAN 2bt).
+  const cmsPages = useCmsSidebarSection("about");
 
   const aboutMenu = [
     { label: t("sidebar.overview"), icon: Home, active: true },
@@ -126,6 +129,7 @@ function AboutPage({ cms }: { cms?: CmsPublicPage | null }) {
         subtitle: "Discover the inspiration, purpose, and values behind BARUNA and how we create impact together.",
         sections: [
           { label: "About BARUNA", items: aboutMenu },
+          ...cmsPages,
           { label: "Platform", items: platform },
           { label: "Resources", items: resources },
         ],

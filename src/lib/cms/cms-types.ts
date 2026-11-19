@@ -125,6 +125,15 @@ export type CmsPublicPage = {
   id: string; domain: CmsDomain; slug: string; title_id: string; title_en: string | null; summary_id: string | null; summary_en: string | null;
   blocks: CmsBlock[]; version: number; published_at: string; updated_at: string;
 };
+/** A published page in lists (sidebars, search); text_* only when asked for. */
+export type CmsPageListItem = {
+  id: string; domain: CmsDomain; slug: string; title_id: string; title_en: string | null; summary_id: string | null; summary_en: string | null;
+  text_id?: string; text_en?: string;
+};
+/** Public address of a CMS page: the menu's own page for its landing slug, otherwise /p/<slug>. */
+export function cmsPagePath(p: { domain: CmsDomain; slug: string }): string {
+  return p.slug === p.domain ? CMS_LANDING_PATH[p.domain] : `/p/${p.slug}`;
+}
 export type CmsPublicForm = {
   id: string; domain: CmsDomain; slug: string; title_id: string; title_en: string | null; description_id: string | null; description_en: string | null;
   fields: CmsField[]; max_per_user_per_day: number; version: number;

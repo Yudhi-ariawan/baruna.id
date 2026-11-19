@@ -6,7 +6,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { cmsErrorText } from "./cms-errors";
-import type { CmsPublicForm, CmsPublicMenuItem, CmsPublicPage } from "./cms-types";
+import { CMS_DOMAINS, type CmsBlock, type CmsPageListItem, type CmsPublicForm, type CmsPublicMenuItem, type CmsPublicPage } from "./cms-types";
+import { cmsBlocksText } from "./cms-search";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
@@ -26,6 +27,27 @@ export const getPublicCmsPage = createServerFn({ method: "GET" })
       return error ? null : ((row as CmsPublicPage | null) ?? null);
     } catch {
       return null;
+    }
+  });
+
+/** Published pages without their blocks: for the menu sidebars ("Halaman lain") and,
+ *  with `withText`, for the site search (block text flattened, capped per page). */
+export const listPublicCmsPages = createServerFn({ method: "GET" })
+  .validator((d) => z.object({ domain: z.enum(CMS_DOMAINS).nullable(), withText: z.boolean() }).parse(d))
+  .handler(async ({ data }): Promise<CmsPageListItem[]> => {
+    try {
+      let q = (await publicDb()).from("cms_pages_public_v")
+        .select(data.withText ? "id, domain, slug, title_id, title_en, summary_id, summary_en, blocks" : "id, domain, slug, title_id, title_en, summary_id, summary_en")
+        .order("title_id").limit(200);
+      if (data.domain) q = q.eq("domain", data.domain);
+      const { data: rows, error } = await q;
+      if (error) return [];
+      return ((rows ?? []) as Array<CmsPageListItem & { blocks?: CmsBlock[] }>).map(({ blocks, ...p }) => ({
+        ...p,
+        ...(data.withText ? cmsBlocksText(blocks ?? []) : {}),
+      }));
+    } catch {
+      return [];
     }
   });
 

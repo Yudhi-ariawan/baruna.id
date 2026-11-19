@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { CmsFramedContent } from "@/components/cms/CmsRoutePage";
+import { useCmsSidebarSection } from "@/components/cms/useCmsDomainPages";
 import type { CmsPublicPage } from "@/lib/cms/cms-types";
 import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Banner } from "@/components/baruna/page/Banner";
@@ -89,6 +90,8 @@ const memberAvatars = [...expertImages, pageImages.userAvatar, ...expertImages].
 
 function CommunityPage({ cms }: { cms?: CmsPublicPage | null }) {
   const { t } = useLanguage();
+  // Published CMS pages of this menu, listed in the sidebar (CATATAN_PERBAIKAN 2bt).
+  const cmsPages = useCmsSidebarSection("community");
 
   const mainMenu = [
     { label: t("sidebar.communityHome"), icon: Home, active: true },
@@ -119,6 +122,7 @@ function CommunityPage({ cms }: { cms?: CmsPublicPage | null }) {
         subtitle: "Connect, collaborate, and share knowledge with marine and fisheries professionals worldwide.",
         sections: [
           { label: "Main Menu", items: mainMenu },
+          ...cmsPages,
           { label: "Explore", items: explore },
           { label: "My Activity", items: myActivity },
         ],

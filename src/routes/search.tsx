@@ -9,6 +9,7 @@ import {
   Users,
   CalendarDays,
   Handshake,
+  LayoutTemplate,
   Sparkles,
   X,
 } from "lucide-react";
@@ -28,6 +29,8 @@ import { getKnowledgeHubOverview } from "@/lib/knowledge-hub/knowledge-hub.funct
 import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
 import { listPublicExperts } from "@/lib/experts/directory.functions";
 import { useLanguage } from "@/lib/i18n";
+import { listPublicCmsPages } from "@/lib/cms/cms-public.functions";
+import { cmsSearchHits } from "@/lib/cms/cms-search";
 
 function buildHref(pattern: string, params?: Record<string, string>) {
   if (!params) return pattern;
@@ -50,7 +53,7 @@ export const Route = createFileRoute("/search")({
   component: SearchPage,
 });
 
-type SearchCategory = "all" | "knowledge-hub" | "courses" | "experts" | "events" | "community";
+type SearchCategory = "all" | "knowledge-hub" | "courses" | "experts" | "events" | "community" | "pages";
 
 type Hit = {
   id: string;
@@ -68,7 +71,7 @@ type Hit = {
 function SearchPage() {
   const [q, setQ] = useState("");
   const [activeCategory, setActiveCategory] = useState<SearchCategory>("all");
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -78,7 +81,7 @@ function SearchPage() {
       if (initialQ) setQ(initialQ);
       if (
         initialCat &&
-        ["all", "knowledge-hub", "courses", "experts", "events", "community"].includes(initialCat)
+        ["all", "knowledge-hub", "courses", "experts", "events", "community", "pages"].includes(initialCat)
       ) {
         setActiveCategory(initialCat);
       }
@@ -108,6 +111,15 @@ function SearchPage() {
     queryFn: () => listExpertsFn(),
     staleTime: 30_000,
     gcTime: 300_000,
+  });
+
+  // Published CMS pages (titles, summaries, block text), CATATAN_PERBAIKAN 2bt.
+  const listCmsPagesFn = useServerFn(listPublicCmsPages);
+  const { data: cmsPages } = useQuery({
+    queryKey: ["global-search", "cms-pages"],
+    queryFn: () => listCmsPagesFn({ data: { domain: null, withText: true } }),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
   });
 
   const isLoadingLive = khLoading || modulesLoading || expertsLoading;
@@ -188,6 +200,9 @@ function SearchPage() {
         isLive: true,
       });
     }
+
+    // 3b. Live CMS pages
+    items.push(...cmsSearchHits(cmsPages ?? [], language));
 
     // 4. Static / Demo Catalog Fallbacks (deduplicated against live DB)
     for (const e of DEMO_EXPERTS) {
@@ -300,7 +315,7 @@ function SearchPage() {
     }
 
     return items;
-  }, [publishedModules, khOverview, dbExperts, t]);
+  }, [publishedModules, khOverview, dbExperts, cmsPages, language, t]);
 
   const queryMatchedItems = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -323,6 +338,7 @@ function SearchPage() {
       experts: 0,
       events: 0,
       community: 0,
+      pages: 0,
     };
     for (const item of queryMatchedItems) {
       counts[item.category] += 1;
@@ -348,6 +364,7 @@ function SearchPage() {
     { id: "experts", label: "Experts", icon: Users },
     { id: "events", label: "Events", icon: CalendarDays },
     { id: "community", label: "Partners", icon: Handshake },
+    { id: "pages", label: language === "id" ? "Halaman situs" : "Site pages", icon: LayoutTemplate },
   ];
 
   return (

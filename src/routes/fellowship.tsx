@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
 import { CmsFramedContent } from "@/components/cms/CmsRoutePage";
+import { useCmsSidebarSection } from "@/components/cms/useCmsDomainPages";
 import type { CmsPublicPage } from "@/lib/cms/cms-types";
 import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Banner } from "@/components/baruna/page/Banner";
@@ -86,6 +87,8 @@ const partners = [
 
 function FellowshipPage({ cms }: { cms?: CmsPublicPage | null }) {
   const { t } = useLanguage();
+  // Published CMS pages of this menu, listed in the sidebar (CATATAN_PERBAIKAN 2bt).
+  const cmsPages = useCmsSidebarSection("fellowship");
 
   const overview = [
     { label: t("sidebar.overview"), icon: LayoutGrid, active: true },
@@ -132,6 +135,7 @@ function FellowshipPage({ cms }: { cms?: CmsPublicPage | null }) {
         subtitle: "Discover opportunities, connect globally, and grow through fellowships and exchange programs.",
         sections: [
           { label: "Overview", items: overview },
+          ...cmsPages,
           { label: "Explore Programs", items: explore },
           { label: "Resources", items: resources },
         ],

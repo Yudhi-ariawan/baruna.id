@@ -1616,6 +1616,31 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bt. Halaman CMS bisa ditemukan pengunjung: sidebar menu dan pencarian situs (19 Nov, kurikulum 3.1)
+
+**Masalah (pertanyaan pemilik proyek, 19 Nov):** halaman CMS di `/p/<alamat>` hanya bisa ditemukan bila seseorang memasang tautannya, yaitu lewat menu navigasi, tautan di halaman lain, atau alamat yang dibagikan. Halaman itu tidak muncul di sidebar menunya dan tidak ikut dicari oleh `/search`, yang hanya mencari Knowledge Hub, modul, dan Expert.
+
+**Perubahan (tanpa migrasi; membaca view publik `cms_pages_public_v` yang sudah ada):**
+- `listPublicCmsPages` (`cms-public.functions.ts`): daftar halaman tayang (judul dan ringkasan) per menu, paling banyak 200. Untuk pencarian, ditambah teks blok yang diratakan: judul bagian, isi, kartu, tanya-jawab, keterangan foto, dan label tautan, tanpa tanda *markdown*, maksimal 3.000 karakter per bahasa (`cms-search.ts`).
+- **Sidebar menu:** About, Community, Fellowship, dan Partnership mendapat bagian **"Halaman lain"** tepat di bawah bagian pertamanya, berisi halaman CMS tayang milik menu itu (`useCmsSidebarSection`). Bagian ini tidak muncul bila menu belum punya halaman tambahan, dan halaman utama menu (alamat `about` dan sejenisnya) tidak ikut didaftar.
+- **Halaman `/p/<alamat>`** kini punya sidebar menunya: tautan ke halaman utama menu (untuk Events: pusat acara `/events`) dan halaman CMS lain di menu yang sama, dengan halaman yang sedang dibuka ditandai.
+- **Pencarian situs** `/search` mendapat kategori **"Halaman situs"**. Halaman CMS ditemukan dari judul, ringkasan, atau kata di dalam bloknya, misalnya jawaban tanya-jawab.
+- Cache 5 menit (`staleTime`), sehingga halaman yang baru disetujui muncul di sidebar dan pencarian paling lambat 5 menit kemudian.
+
+**Uji:**
+- `tsc`, lint, dan `npm run build` lulus.
+- Browser terhadap hasil build, dengan halaman About sementara yang dibuat Operator, disetujui Approver, lalu dihapus: **10/10**.
+  - Sidebar `/about` menampilkan "Halaman lain" berisi tautan ke halaman itu, dan isi About bawaan tetap utuh.
+  - Klik tautan itu membuka `/p/<alamat>`, yang punya sidebar About dengan tautan kembali.
+  - Halaman milik About tidak muncul di Community, Fellowship, maupun Partnership.
+  - `/search` menemukan halaman itu dari satu kata di jawaban tanya-jawab, di kategori "Halaman situs".
+  - Tidak ada error baru.
+- Uji browser CMS sebelumnya 27/27. Satu pemeriksaannya disesuaikan, karena halaman uji sementara kini wajar muncul di sidebar About. `test:form-validation` 142/142.
+
+**Perlu diingat:** halaman uji yang dibuat saat uji manual (misalnya `uji-halaman`) kini terlihat oleh semua pengunjung di sidebar About. Turunkan atau arsipkan halaman itu setelah selesai menguji.
+
+---
+
 ## 2bs. CMS: blok Teks + gambar dan Galeri, isi CMS di dalam bingkai menu, baris baru tetap baris baru (19 Nov, kurikulum 3.1)
 
 **Masalah (dari uji manual pemilik proyek, 19 Nov):**
