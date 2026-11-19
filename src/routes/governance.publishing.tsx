@@ -10,6 +10,7 @@ import {
   type PublicationItem,
   type PublicationKind,
 } from "@/lib/governance/publishing.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 // Penayangan (Slide 16, Publisher; CATATAN_PERBAIKAN 2ba). Approval still publishes
 // (Slide 21); here the Publisher (or Admin) takes live content down temporarily, with
@@ -73,7 +74,7 @@ function PublishingPage() {
       </div>
 
       {q.isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat…</p>
+        <LoadingSkeleton />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
       ) : items.length === 0 ? (

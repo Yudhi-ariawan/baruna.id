@@ -17,6 +17,7 @@ import {
 import { listUsers } from "@/lib/admin/users.functions";
 import { listAdminExpertApplications, type AdminExpertItem } from "@/lib/admin/experts.functions";
 import { listAdminModuleSubmissions, type AdminModuleItem } from "@/lib/admin/modules.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -226,7 +227,7 @@ function AdminOverviewPage() {
             </div>
 
             {expertsQuery.isLoading ? (
-              <p className="text-xs text-muted-foreground py-4">Memuat antrean pengajuan pakar…</p>
+              <LoadingSkeleton label="Memuat antrean pengajuan pakar…" />
             ) : pendingExpertApps.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
                 <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500 mb-2" />
@@ -280,7 +281,7 @@ function AdminOverviewPage() {
             </div>
 
             {modulesQuery.isLoading ? (
-              <p className="text-xs text-muted-foreground py-4">Memuat antrean modul…</p>
+              <LoadingSkeleton label="Memuat antrean modul…" />
             ) : pendingModules.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
                 <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500 mb-2" />

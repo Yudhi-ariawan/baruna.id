@@ -15,6 +15,7 @@ import {
   type CompletionItem,
   type CompletionStatus,
 } from "@/lib/academy/completions.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/completions")({
   head: () => ({ meta: [{ title: "Persetujuan Kelulusan — Konsol Kurasi" }, { name: "robots", content: "noindex,nofollow" }] }),
@@ -100,7 +101,7 @@ function CompletionsPage() {
       </div>
 
       {q.isError ? <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{q.error instanceof Error ? q.error.message : String(q.error)}</p> : null}
-      {q.isLoading ? <p className="text-sm text-muted-foreground">Memuat…</p> : null}
+      {q.isLoading ? <LoadingSkeleton /> : null}
       {!q.isLoading && !q.isError && items.length === 0 ? <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Tidak ada data pada tab ini.</p> : null}
 
       {canDecide && tab !== "approved" && pageSelectable.length > 0 ? (

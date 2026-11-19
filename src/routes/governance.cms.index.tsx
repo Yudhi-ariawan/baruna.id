@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getCmsOverview } from "@/lib/cms/cms.functions";
 import { CmsCreate, CmsDrafts, CmsForms, CmsMenu, CmsPages } from "@/components/governance/cms/CmsLists";
 import { CMS_QUERY_KEY } from "@/components/governance/cms/cmsLabels";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/cms/")({
   head: () => ({ meta: [{ title: "Konten Situs (CMS) — Konsol Kurasi BARUNA" }] }),
@@ -22,7 +23,7 @@ function CmsOverviewPage() {
           menjadi draf, lalu tayang setelah disetujui orang lain (Slide 13). Halaman menu yang belum punya isi CMS tetap memakai isi bawaannya.
         </p>
       </header>
-      {q.isLoading ? <p className="text-sm text-muted-foreground">Memuat…</p> : null}
+      {q.isLoading ? <LoadingSkeleton /> : null}
       {q.isError ? <p className="text-sm text-destructive">{(q.error as Error).message}</p> : null}
       {q.data ? (
         <>

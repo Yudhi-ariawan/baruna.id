@@ -19,6 +19,7 @@ import { DraftDecisionPanel } from "@/components/governance/programs/DraftDecisi
 import { DRAFT_STATUS, KIND_LABEL, PROGRAMS_QUERY_KEY, fmtDate } from "@/components/governance/programs/programLabels";
 import { cleanCode, courseFieldErrors, fieldLabel, offeringFieldErrors, type FieldErrors } from "@/components/governance/programs/programValidation";
 import type { CoursePayload, OfferingPayload } from "@/lib/academy/programs.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/programs/$draftId")({
   head: () => ({ meta: [{ title: "Draf Program — Konsol Kurasi BARUNA" }] }),
@@ -38,7 +39,7 @@ function DraftPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Program Academy
       </Link>
       {draftQ.isLoading || overviewQ.isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat…</p>
+        <LoadingSkeleton />
       ) : draftQ.isError || overviewQ.isError ? (
         <p className="text-sm text-destructive">{((draftQ.error ?? overviewQ.error) as Error).message}</p>
       ) : draftQ.data && overviewQ.data ? (

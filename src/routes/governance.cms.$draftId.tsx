@@ -14,6 +14,7 @@ import { FormDraftForm } from "@/components/governance/cms/FormDraftForm";
 import { MenuDraftForm } from "@/components/governance/cms/MenuDraftForm";
 import { CmsDecisionPanel } from "@/components/governance/cms/CmsDecisionPanel";
 import { CMS_QUERY_KEY, DRAFT_STATUS, KIND_LABEL, cmsDraftKey, fmtDate } from "@/components/governance/cms/cmsLabels";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/cms/$draftId")({
   head: () => ({ meta: [{ title: "Draf Konten — Konsol Kurasi BARUNA" }] }),
@@ -32,7 +33,7 @@ function CmsDraftPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Konten Situs (CMS)
       </Link>
       {draftQ.isLoading || overviewQ.isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat…</p>
+        <LoadingSkeleton />
       ) : draftQ.isError || overviewQ.isError ? (
         <p className="text-sm text-destructive">{((draftQ.error ?? overviewQ.error) as Error).message}</p>
       ) : draftQ.data && overviewQ.data ? (

@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Info, Save, Timer } from "lucide-react";
 import { listSlaPolicies, updateSlaPolicy } from "@/lib/governance/workflow-sla.functions";
 import { formatHoursId, type SlaPolicy } from "@/lib/training-requests/workflow";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 // Slide 13: "setiap langkah dapat memiliki SLA". Targets live in
 // workflow_sla_policies; only an administrator changes them (set_workflow_sla_policy).
@@ -50,7 +51,7 @@ function SlaPage() {
       </div>
 
       {q.isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat…</p>
+        <LoadingSkeleton />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
       ) : (q.data?.policies ?? []).length === 0 ? (

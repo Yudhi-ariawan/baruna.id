@@ -13,6 +13,7 @@ import {
   type AttendanceOverview,
   type AttendanceStatus,
 } from "@/lib/learning/attendance.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 // Kehadiran (Slide 23 PB-ACA-04: Operator "Catat Kehadiran"; CATATAN_PERBAIKAN 2bb).
 // Sessions of a cohort Course Offering and one status per enrolled participant.
@@ -70,7 +71,7 @@ function OfferingAttendance({ offeringId }: { offeringId: string }) {
   });
   const removeSession = useMutation({ mutationFn: (id: string) => deleteSessionFn({ data: { id } }), onSuccess: () => { setSessionId(null); refresh(); } });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Memuat…</p>;
+  if (q.isLoading) return <LoadingSkeleton />;
   if (q.isError) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
   const data = q.data!;
   const current = data.sessions.find((s) => s.id === sessionId) ?? null;

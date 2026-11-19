@@ -7,6 +7,7 @@ import { listMyReviewQueue } from "@/lib/governance/governance.functions";
 import { listTrainingNeedStages } from "@/lib/governance/workflow-sla.functions";
 import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
 import { StageSlaLine } from "@/components/governance/WorkflowStatus";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 // Request a Training (Slide 12): the only submission kind that still uses the
 // generic review flow — admin/approver assign a reviewer, the reviewer gives a
@@ -80,7 +81,7 @@ function TrainingNeedsPage() {
           <UserCheck className="h-4 w-4 text-marine" /> Ditugaskan kepada saya
         </h2>
         {mineQ.isLoading ? (
-          <p className="text-sm text-muted-foreground">Memuat…</p>
+          <LoadingSkeleton />
         ) : mineQ.isError ? (
           <p className="text-sm text-destructive">{(mineQ.error as Error).message}</p>
         ) : assigned.length === 0 ? (
@@ -125,7 +126,7 @@ function TrainingNeedsPage() {
             <ClipboardList className="h-4 w-4 text-marine" /> Semua permintaan pelatihan
           </h2>
           {allQ.isLoading ? (
-            <p className="text-sm text-muted-foreground">Memuat…</p>
+            <LoadingSkeleton />
           ) : allQ.isError ? (
             <p className="text-sm text-destructive">{(allQ.error as Error).message}</p>
           ) : (allQ.data ?? []).length === 0 ? (

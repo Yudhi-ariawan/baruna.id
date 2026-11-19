@@ -1616,6 +1616,28 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bv. Konsol Kurasi dan Portal Admin memperbarui sendiri, skeleton shimmer saat memuat (19 Nov, permintaan pemilik proyek)
+
+**Masalah (uji manual pemilik proyek, 19 Nov):** setelah satu akun bertindak (misalnya Operator mengirim draf atau peserta mengirim formulir), akun lain di jendela atau perangkat lain harus menekan muat ulang supaya daftarnya berubah. Lencana di sidebar sudah segar sendiri (30 detik dan saat jendela aktif kembali), tetapi isi halaman mengikuti pengaturan umum aplikasi: data dianggap segar 2 menit dan tidak dimuat ulang saat jendela aktif kembali (`refetchOnWindowFocus: false`). Selama memuat, halaman hanya menampilkan teks "Memuat…".
+
+**Perubahan (tanpa migrasi):**
+- `src/router.tsx`: semua data dengan kunci `["governance", …]` (Konsol Kurasi) dan `["admin", …]` (Portal Admin dan antrean konsol yang memakai kunci admin) kini:
+  - dianggap segar 10 detik;
+  - dimuat ulang saat jendela aktif kembali;
+  - dimuat ulang tiap 30 detik selama tab terlihat (tidak berjalan di tab yang tersembunyi).
+
+  Pengaturan per halaman yang sudah ada tetap berlaku. Halaman publik dan data master (`["master", …]`, dipakai daftar pilihan formulir publik) tetap memakai cache lama, sesuai aturan AGENTS.md nomor 5 agar Supabase tidak menerima lonjakan permintaan. Konsol hanya dipakai sedikit orang, jadi tambahan permintaannya kecil.
+- **Skeleton shimmer:** `LoadingSkeleton` dan `LoadingTableRow` (`src/components/baruna/console/LoadingSkeleton.tsx`) beserta animasi `.skeleton-shimmer` di `styles.css` menggantikan teks "Memuat…" di 24 tempat pada 22 halaman konsol dan admin. Teks tetap ada untuk pembaca layar (`role="status"`). Animasi berhenti bila pengguna memilih *reduce motion* di sistem operasinya.
+
+**Uji:**
+- `tsc` dan `npm run build` lulus. Lint tidak menambah temuan baru; error di `admin.users.tsx` dan `governance.enrollments.tsx` sudah ada sebelumnya.
+- Browser terhadap hasil build: **4/4**.
+  - Skeleton shimmer tampil saat halaman Konten Situs (CMS) memuat.
+  - Halaman milik Approver yang dibiarkan terbuka menampilkan draf yang baru dikirim Operator dari tempat lain dalam **24 detik**, tanpa muat ulang.
+- Uji browser CMS lama tetap lulus. Satu-satunya selisih adalah lencana yang menghitung 2 (diharapkan 1), karena kiriman `uji-form` dari uji manual pemilik proyek masih berstatus "Baru". Hitungan itu benar.
+
+---
+
 ## 2bu. Formulir CMS: pratinjau dan daftar pilihan tanpa baris kosong (19 Nov, temuan uji manual)
 
 **Masalah (uji manual pemilik proyek, 19 Nov):**

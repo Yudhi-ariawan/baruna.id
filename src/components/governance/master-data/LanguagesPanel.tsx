@@ -11,6 +11,7 @@ import {
   setMasterLanguageActive,
   type MasterLanguage,
 } from "@/lib/governance/languages.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 const QUERY_KEY = ["governance", "master-data", "languages"];
 const input = "mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-sm disabled:bg-slate-50";
@@ -38,7 +39,7 @@ export function LanguagesPanel() {
         </p>
       </div>
       {q.isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat…</p>
+        <LoadingSkeleton />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
       ) : (

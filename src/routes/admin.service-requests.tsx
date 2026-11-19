@@ -12,6 +12,7 @@ import {
   ADMIN_SERVICE_REQUEST_FILTERS,
   listAdminServiceRequests,
 } from "@/lib/admin/service-requests.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/admin/service-requests")({
   head: () => ({
@@ -128,7 +129,7 @@ function AdminServiceRequestsPage() {
 
       <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-2xs">
         {query.isLoading ? (
-          <p className="py-16 text-center text-sm text-muted-foreground">Memuat permintaan…</p>
+          <LoadingSkeleton rows={4} label="Memuat permintaan…" />
         ) : query.isError ? (
           <p className="p-6 text-center text-sm text-destructive">{query.error instanceof Error ? query.error.message : "Gagal memuat permintaan."}</p>
         ) : items.length === 0 ? (

@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Download } from "lucide-react";
 import { exportCmsSubmissionsCsv, listCmsSubmissions, markCmsSubmission } from "@/lib/cms/cms.functions";
 import { CMS_QUERY_KEY, fmtDate } from "@/components/governance/cms/cmsLabels";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/cms/forms/$formId")({
   head: () => ({ meta: [{ title: "Kiriman Formulir — Konsol Kurasi BARUNA" }] }),
@@ -63,7 +64,7 @@ function SubmissionsPage() {
           </button>
         </div>
       </header>
-      {q.isLoading ? <p className="text-sm text-muted-foreground">Memuat…</p> : null}
+      {q.isLoading ? <LoadingSkeleton /> : null}
       {q.isError ? <p className="text-sm text-destructive">{(q.error as Error).message}</p> : null}
       {csvM.isError || markM.isError ? <p className="text-xs text-destructive">{((csvM.error ?? markM.error) as Error).message}</p> : null}
       {q.data && !q.data.rows.length ? <p className="text-sm text-muted-foreground">Belum ada kiriman{filter ? " dengan status ini" : ""}.</p> : null}

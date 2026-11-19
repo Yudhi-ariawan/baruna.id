@@ -9,6 +9,7 @@ import {
   withdrawReviewRecord,
   declareConflict,
 } from "@/lib/governance/governance.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/subject/$id")({
   component: SubjectPage,
@@ -87,7 +88,7 @@ function SubjectPage() {
     onError: (e: Error) => setMsg(e.message),
   });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.isLoading) return <LoadingSkeleton />;
   if (q.error) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
   if (!q.data?.subject) return <p className="text-sm">Subject not found or not visible.</p>;
 

@@ -12,6 +12,7 @@ import {
   OfferingList,
 } from "@/components/governance/programs/ProgramLists";
 import { PROGRAMS_QUERY_KEY } from "@/components/governance/programs/programLabels";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 // PB-ACA-01/02 (Slide 20-21): Master Course, Master Module and Course Offering are
 // prepared as drafts and become live only after a different approver approves.
@@ -58,7 +59,7 @@ function ProgramsPage() {
       </div>
 
       {q.isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat…</p>
+        <LoadingSkeleton />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
       ) : q.data ? (

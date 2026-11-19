@@ -6,6 +6,7 @@ import { GraduationCap, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrainerApplicationReview } from "@/components/admin/trainer-applications/TrainerApplicationReview";
 import { listAdminTrainerApplications } from "@/lib/admin/trainer-applications.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/admin/trainer-applications")({
   head: () => ({
@@ -68,7 +69,7 @@ function AdminTrainerApplicationsPage() {
       </div>
 
       {query.isLoading ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">Memuat pengajuan…</p>
+        <LoadingSkeleton rows={4} label="Memuat pengajuan…" />
       ) : query.isError ? (
         <p className="rounded-xl bg-destructive/10 p-5 text-sm text-destructive">{query.error instanceof Error ? query.error.message : "Gagal memuat pengajuan."}</p>
       ) : query.data?.items.length ? (

@@ -9,6 +9,7 @@ import {
   type LearnerFlag,
   type LearnerProgressRow,
 } from "@/lib/admin/learning-progress.functions";
+import { LoadingTableRow } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/learning-progress")({
   head: () => ({
@@ -139,7 +140,7 @@ function LearningProgressPage() {
             </tr>
           </thead>
           <tbody>
-            {query.isLoading && <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">Memuat…</td></tr>}
+            {query.isLoading && <LoadingTableRow colSpan={7} />}
             {data?.rows.map((r) => <LearnerRow key={`${r.userId}-${r.courseId}`} row={r} />)}
             {data && data.rows.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">Tidak ada peserta yang sesuai filter.</td></tr>

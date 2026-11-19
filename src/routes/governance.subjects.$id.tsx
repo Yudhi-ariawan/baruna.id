@@ -8,6 +8,7 @@ import { TrainingNeedDecisionPanel } from "@/components/governance/TrainingNeedD
 import { useConsoleAccess } from "@/components/baruna/console/useConsoleAccess";
 import { StatusHistoryPanel } from "@/components/governance/WorkflowStatus";
 import { VersionHistory } from "@/components/governance/VersionHistory";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/subjects/$id")({
   component: SubjectDetail,
@@ -29,7 +30,7 @@ function SubjectDetail() {
     queryFn: () => fn({ data: { id } }),
   });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.isLoading) return <LoadingSkeleton />;
   if (q.error) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
   if (!q.data) return <p className="text-sm">Subject not found.</p>;
 

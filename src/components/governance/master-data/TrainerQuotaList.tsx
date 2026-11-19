@@ -13,6 +13,7 @@ import {
   type TrainerLevelCode,
   type TrainerQuotaRow,
 } from "@/lib/governance/master-data.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 const LABEL: Record<TrainerLevelCode, string> = {
   certified: "Certified",
@@ -50,7 +51,7 @@ export function TrainerQuotaList({ total, draft }: { total: number; draft: Parti
       {open ? (
         <div className="border-t border-border p-3">
           {q.isLoading ? (
-            <p className="text-xs text-muted-foreground">Memuat…</p>
+            <LoadingSkeleton rows={2} />
           ) : q.isError ? (
             <p className="text-xs text-destructive">{(q.error as Error).message}</p>
           ) : rows.length === 0 ? (

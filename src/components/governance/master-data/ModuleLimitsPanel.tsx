@@ -15,6 +15,7 @@ import {
   type TrainerLevelCode,
 } from "@/lib/governance/master-data.functions";
 import { TrainerQuotaList } from "./TrainerQuotaList";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 const LABEL: Record<TrainerLevelCode, string> = {
   certified: "Certified",
@@ -43,7 +44,7 @@ export function ModuleLimitsPanel() {
       </div>
       {notice ? <p className={`text-xs ${notice.ok ? "text-emerald-700" : "text-destructive"}`}>{notice.text}</p> : null}
       {q.isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat…</p>
+        <LoadingSkeleton />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
       ) : q.data ? (

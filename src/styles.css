@@ -256,9 +256,27 @@
   animation: login-icon-glow 2.8s ease-in-out infinite;
 }
 
+/* Loading placeholder with a light sweeping across (skeleton shimmer). */
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-marine) 7%, transparent) 25%,
+    color-mix(in oklab, var(--color-marine) 15%, transparent) 50%,
+    color-mix(in oklab, var(--color-marine) 7%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-learning-float,
-  .animate-login-glow {
+  .animate-login-glow,
+  .skeleton-shimmer {
     animation: none;
   }
 }

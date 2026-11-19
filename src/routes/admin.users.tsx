@@ -40,6 +40,7 @@ import type {
   AdminRoleCode,
   AdminUser,
 } from "@/lib/admin/users.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/admin/users")({
   component: UsersPage,
@@ -339,7 +340,7 @@ function UsersPage() {
         </div>
 
         {usersQuery.isLoading ? (
-          <div className="p-12 text-center text-sm text-muted-foreground">Memuat data pengguna…</div>
+          <LoadingSkeleton rows={5} label="Memuat data pengguna…" className="p-4" />
         ) : null}
         {usersQuery.isError ? (
           <div className="p-12 text-center text-sm text-red-600">{messageOf(usersQuery.error)}</div>

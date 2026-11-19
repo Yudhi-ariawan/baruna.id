@@ -11,6 +11,7 @@ import { LanguagesPanel } from "@/components/governance/master-data/LanguagesPan
 import { TrainingCategoriesPanel } from "@/components/governance/master-data/TrainingCategoriesPanel";
 import { MasterChangeRequestsPanel } from "@/components/governance/master-data/MasterChangeRequestsPanel";
 import { Toaster } from "@/components/baruna/Toaster";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 // Slide 16: Approver and Admin have full access to the Experts and Academy domains;
 // Operators read everything and propose changes that another Approver/Admin approves
@@ -36,7 +37,7 @@ function MasterDataPage() {
         </p>
       </div>
       {q.isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat…</p>
+        <LoadingSkeleton />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
       ) : q.data ? (

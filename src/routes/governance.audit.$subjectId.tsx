@@ -5,6 +5,7 @@ import {
   exportGovernanceAuditCsv,
   listGovernanceAudit,
 } from "@/lib/governance/governance.functions";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 
 export const Route = createFileRoute("/governance/audit/$subjectId")({
   component: AuditPage,
@@ -34,7 +35,7 @@ function AuditPage() {
     },
   });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.isLoading) return <LoadingSkeleton />;
   if (q.error) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
   const rows = q.data ?? [];
 
