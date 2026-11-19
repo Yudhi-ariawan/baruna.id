@@ -126,7 +126,22 @@ export function pageErrors(p: CmsPagePayload, opts: { isNew: boolean; usedSlugs:
   return e;
 }
 
-export function formErrors(f: CmsFormPayload, opts: { isNew: boolean; usedSlugs: string[] }): CmsFieldErrors {
+/** Choice lists as typed (one per line) become clean lists: blank lines and spaces
+ *  around a choice are dropped; non-choice fields carry no list. Used before the
+ *  checks below and before a form draft is saved, so an empty line never fails. */
+export function cleanFormPayload(f: CmsFormPayload): CmsFormPayload {
+  return {
+    ...f,
+    fields: f.fields.map((fd) =>
+      fd.type === "select"
+        ? { ...fd, options: (fd.options ?? []).map((o) => o.trim()).filter(Boolean) }
+        : { ...fd, options: undefined },
+    ),
+  };
+}
+
+export function formErrors(raw: CmsFormPayload, opts: { isNew: boolean; usedSlugs: string[] }): CmsFieldErrors {
+  const f = cleanFormPayload(raw);
   const e: CmsFieldErrors = {};
   if (opts.isNew) {
     if (!slugOk(f.slug)) e.slug = "Alamat: 2–80 huruf kecil, angka, dan tanda hubung (mis. daftar-fellowship).";
@@ -151,7 +166,9 @@ export function formErrors(f: CmsFormPayload, opts: { isNew: boolean; usedSlugs:
     if (fd.type === "select") {
       const opts2 = (fd.options ?? []).map((o) => o.trim());
       if (opts2.length < 2 || opts2.length > 30 || opts2.some((o) => !o || o.length > 100) || new Set(opts2).size !== opts2.length) {
-        e[k("options")] = "Isi 2–30 pilihan berbeda, satu per baris.";
+        e[k("options")] = new Set(opts2).size !== opts2.length
+          ? "Ada pilihan yang sama. Setiap pilihan harus berbeda."
+          : "Isi 2–30 pilihan (maksimal 100 karakter), satu per baris.";
       }
     }
     if (fd.max_length != null && (!["text", "textarea"].includes(fd.type) || fd.max_length < 1 || fd.max_length > 5000)) {

@@ -234,5 +234,13 @@ ok("CMS galeri lengkap diterima", Object.keys(pe([{ type: "gallery", items: [{ i
 ok("CMS teks: baris setelah daftar menjadi paragraf sendiri", cmsMarkdownLines("- satu\n- dua\nKunjungi kami.") === "- satu\n- dua\n\nKunjungi kami.");
 ok("CMS teks: dua baris biasa tetap dua baris", cmsMarkdownLines("Baris satu\nBaris dua") === "Baris satu  \nBaris dua");
 ok("CMS teks: lanjutan menjorok tetap di poin daftar", cmsMarkdownLines("- poin\n  lanjutan") === "- poin\n  lanjutan");
+const { formErrors, cleanFormPayload } = await jiti.import("@/lib/cms/cms-validation");
+const cmsForm = (options) => ({ domain: "about", slug: "uji-form", title_id: "Formulir Uji", title_en: "", description_id: "", description_en: "", notify_on_submit: true, max_per_user_per_day: 3,
+  fields: [{ key: "instansi", label_id: "Instansi", type: "select", required: false, options }] });
+const fe = (options) => formErrors(cmsForm(options), { isNew: true, usedSlugs: [] });
+ok("CMS formulir: baris kosong di awal/akhir daftar pilihan tidak membuat error", !("field.0.options" in fe(["", "KKP", "Pemerintah daerah", "Lainnya", ""])));
+ok("CMS formulir: pilihan disimpan tanpa baris kosong dan spasi", JSON.stringify(cleanFormPayload(cmsForm(["", " KKP ", "Lainnya", ""])).fields[0].options) === JSON.stringify(["KKP", "Lainnya"]));
+ok("CMS formulir: kurang dari 2 pilihan ditandai", "field.0.options" in fe(["KKP", ""]));
+ok("CMS formulir: pilihan kembar ditandai dengan pesan yang tepat", /sama/.test(fe(["KKP", "KKP"])["field.0.options"] ?? ""));
 console.log(`\n${pass}/${pass + fail} lulus`);
 process.exit(fail ? 1 : 0);

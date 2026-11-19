@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Save, Send, Undo2 } from "lucide-react";
 import { getCmsDraft, getCmsOverview, saveCmsDraft, submitCmsDraft, withdrawCmsDraft } from "@/lib/cms/cms.functions";
 import { cmsErrorText } from "@/lib/cms/cms-errors";
-import { formErrors, menuErrors, pageErrors, type CmsFieldErrors } from "@/lib/cms/cms-validation";
+import { cleanFormPayload, formErrors, menuErrors, pageErrors, type CmsFieldErrors } from "@/lib/cms/cms-validation";
 import type { CmsDraft, CmsFormPayload, CmsMenuPayload, CmsOverview, CmsPagePayload, CmsPayload } from "@/lib/cms/cms-types";
 import { FieldErrorSummary } from "@/components/baruna/forms/FieldError";
 import { focusField } from "@/components/baruna/forms/field-errors";
@@ -78,7 +78,9 @@ function DraftEditor({ draft, overview }: { draft: CmsDraft; overview: CmsOvervi
     void qc.invalidateQueries({ queryKey: cmsDraftKey(draft.id) });
     void qc.invalidateQueries({ queryKey: CMS_QUERY_KEY });
   };
-  const saveM = useMutation({ mutationFn: () => save({ data: { id: draft.id, payload, expectedUpdatedAt: draft.updatedAt } }), onSuccess: refresh });
+  // A form is saved with clean choice lists (blank lines dropped), the same lists the checks above saw.
+  const toSave = draft.kind === "form" ? cleanFormPayload(payload as CmsFormPayload) : payload;
+  const saveM = useMutation({ mutationFn: () => save({ data: { id: draft.id, payload: toSave, expectedUpdatedAt: draft.updatedAt } }), onSuccess: refresh });
   const submitM = useMutation({
     mutationFn: async () => {
       const keys = Object.keys(allErrors);
@@ -87,7 +89,7 @@ function DraftEditor({ draft, overview }: { draft: CmsDraft; overview: CmsOvervi
         setTimeout(() => focusField(keys[0]), 50);
         throw new Error(`Perbaiki ${keys.length} isian bertanda merah dulu.`);
       }
-      if (dirty) await save({ data: { id: draft.id, payload, expectedUpdatedAt: draft.updatedAt } });
+      if (dirty) await save({ data: { id: draft.id, payload: toSave, expectedUpdatedAt: draft.updatedAt } });
       await submit({ data: { id: draft.id } });
     },
     onSettled: refresh,

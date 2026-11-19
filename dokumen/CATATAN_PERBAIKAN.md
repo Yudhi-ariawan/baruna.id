@@ -1616,6 +1616,21 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bu. Formulir CMS: pratinjau dan daftar pilihan tanpa baris kosong (19 Nov, temuan uji manual)
+
+**Masalah (uji manual pemilik proyek, 19 Nov):**
+- Saat jenis kolom diganti menjadi "Pilihan", kotak pilihan terisi dua baris kosong. Pilihan yang diketik ("KKP", "Pemerintah daerah", "Lainnya") turun ke baris kedua, dan kolom ditandai merah "Isi 2–30 pilihan berbeda", padahal isinya benar.
+- Penyunting formulir tidak punya tombol **Pratinjau**, padahal penyunting halaman punya.
+
+**Perubahan (tanpa migrasi):**
+- Kotak pilihan dimulai kosong. Baris kosong dan spasi di sekitar pilihan diabaikan saat diperiksa dan dibuang saat draf disimpan atau dikirim (`cleanFormPayload` di `cms-validation.ts`, dipakai di `governance.cms.$draftId.tsx`), sehingga database selalu menerima daftar yang bersih.
+- Pilihan kembar kini mendapat pesan sendiri: "Ada pilihan yang sama".
+- Tombol **Pratinjau** di penyunting formulir menampilkan formulir dengan komponen yang sama dengan yang dilihat pengunjung. Tombol Kirim di pratinjau tidak aktif.
+
+**Uji:** `tsc`, lint, dan `build` lulus. `test:form-validation` **146/146**, termasuk 4 cek baru: baris kosong di awal dan akhir daftar tidak menimbulkan error, pilihan tersimpan tanpa baris kosong dan spasi, kurang dari 2 pilihan ditandai, dan pilihan kembar ditandai dengan pesan yang tepat.
+
+---
+
 ## 2bt. Halaman CMS bisa ditemukan pengunjung: sidebar menu dan pencarian situs (19 Nov, kurikulum 3.1)
 
 **Masalah (pertanyaan pemilik proyek, 19 Nov):** halaman CMS di `/p/<alamat>` hanya bisa ditemukan bila seseorang memasang tautannya, yaitu lewat menu navigasi, tautan di halaman lain, atau alamat yang dibagikan. Halaman itu tidak muncul di sidebar menunya dan tidak ikut dicari oleh `/search`, yang hanya mencari Knowledge Hub, modul, dan Expert.

@@ -1,4 +1,8 @@
 // Form Builder: address, title, description, daily limit, and the list of fields.
+import { useState } from "react";
+import { Eye, Pencil } from "lucide-react";
+import { cleanFormPayload } from "@/lib/cms/cms-validation";
+import { CmsFormView } from "@/components/cms/CmsFormView";
 import { CMS_DOMAIN_LABEL, CMS_FIELD_TYPES, CMS_FIELD_TYPE_LABEL, type CmsField, type CmsFieldType, type CmsFormPayload } from "@/lib/cms/cms-types";
 import { FieldError } from "@/components/baruna/forms/FieldError";
 import { fieldErrorCls } from "@/components/baruna/forms/field-errors";
@@ -10,10 +14,33 @@ type Props = { value: CmsFormPayload; onChange: (f: CmsFormPayload) => void; err
 const newField = (n: number): CmsField => ({ key: `kolom_${n}`, label_id: "", label_en: "", help_id: "", help_en: "", type: "text", required: false });
 
 export function FormDraftForm({ value: f, onChange, errors, disabled, isNew }: Props) {
+  const [preview, setPreview] = useState(false);
   const setFields = (fields: CmsField[]) => onChange({ ...f, fields });
+  const head = (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-xs text-muted-foreground">Menu pemilik: <b className="text-navy">{CMS_DOMAIN_LABEL[f.domain]}</b></p>
+      <button type="button" onClick={() => setPreview((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-navy hover:bg-muted">
+        {preview ? <><Pencil className="h-3.5 w-3.5" /> Kembali menyunting</> : <><Eye className="h-3.5 w-3.5" /> Pratinjau</>}
+      </button>
+    </div>
+  );
+  if (preview) {
+    // Same component visitors see; the send button is off in preview.
+    const c = cleanFormPayload(f);
+    return (
+      <div className="space-y-4">
+        {head}
+        <div className="mx-auto max-w-2xl rounded-2xl border border-dashed border-marine/40 bg-slate-50/60 p-5">
+          <CmsFormView preview form={{ id: "pratinjau", version: 0, domain: c.domain, slug: c.slug || "pratinjau", title_id: c.title_id, title_en: c.title_en || null,
+            description_id: c.description_id || null, description_en: c.description_en || null, fields: c.fields, max_per_user_per_day: c.max_per_user_per_day }} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">Menu pemilik: <b className="text-navy">{CMS_DOMAIN_LABEL[f.domain]}</b></p>
+      {head}
       <CmsText label="Alamat formulir (slug)" required value={f.slug} field="slug" error={errors.slug} maxLength={80} disabled={disabled || !isNew}
         onChange={(v) => onChange({ ...f, slug: v.toLowerCase() })}
         hint={isNew ? `Tampil di /f/${f.slug || "alamat"}, dan bisa dipasang di halaman lewat blok Formulir.` : "Alamat tidak bisa diubah setelah tayang."} />
@@ -55,7 +82,7 @@ export function FormDraftForm({ value: f, onChange, errors, disabled, isNew }: P
                   onChange={(v) => set({ key: v.toLowerCase() })} hint="Untuk judul kolom di CSV (mis. nama_instansi)." />
                 <label className="block text-xs font-semibold text-navy" data-field={k("type")}>
                   Jenis
-                  <select value={fd.type} disabled={disabled} onChange={(e) => set({ type: e.target.value as CmsFieldType, options: e.target.value === "select" ? (fd.options ?? ["", ""]) : undefined, max_length: null })}
+                  <select value={fd.type} disabled={disabled} onChange={(e) => set({ type: e.target.value as CmsFieldType, options: e.target.value === "select" ? (fd.options ?? []) : undefined, max_length: null })}
                     className="mt-1 w-full rounded-lg border border-border bg-white px-2.5 py-1.5 text-sm">
                     {CMS_FIELD_TYPES.map((tp) => <option key={tp} value={tp}>{CMS_FIELD_TYPE_LABEL[tp]}</option>)}
                   </select>
