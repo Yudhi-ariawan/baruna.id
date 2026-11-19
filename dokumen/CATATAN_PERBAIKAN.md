@@ -1616,6 +1616,35 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bw. Uji manual CMS: formulir lulus; menu "Tentang BARUNA" sempat hilang lalu dipulihkan (19 Nov)
+
+**A. Formulir (uji manual pemilik proyek): lulus** setelah perbaikan 2bu (Pratinjau, daftar pilihan tanpa baris kosong). Formulir `uji-form` dibuat Operator, disetujui Approver, tampil di `/f/uji-form`, dan kiriman pengguna masuk ke database (berstatus "Baru" dan dihitung lencana menu CMS).
+
+**B. Menu navigasi: temuan, bukan bug kode.**
+
+Riwayat versi menu (jam seperti tampil di konsol, WITA):
+
+| Versi | Waktu | Isi |
+| --- | --- | --- |
+| v1 | 11.09 | 9 menu bawaan, terakhir **Tentang BARUNA** → `/about` |
+| v2 | 11.18 | Kolom label dan alamat **Menu 9** diganti menjadi "Halaman Uji" → `/p/uji-halaman`, bukan ditambah lewat tombol **+ Submenu**. Akibatnya "About BARUNA" di Navbar berganti menjadi "Test Page" dan tidak ada dropdown. |
+| v3 | 14.49 | Saat langkah B4 (kembalikan), Menu 9 dihapus seluruhnya. Karena isinya sudah "Halaman Uji", yang hilang adalah posisi About BARUNA. Navbar tinggal 8 menu. |
+| v4 | 15.00 | **Dipulihkan:** isi persis sama dengan v1 |
+
+- **Cara pemulihan:** lewat alur biasa (draf → kirim → disetujui Admin lain) dengan dua akun Admin sementara yang langsung dihapus sesudahnya. Karena itu v4 tampil di Riwayat versi tanpa nama penyetuju. Tidak ada tabel yang diubah langsung.
+- **Pemeriksaan:** isi halaman `/about` tidak pernah berubah, karena tidak ada halaman CMS beralamat `about` yang menimpanya. Setelah pemulihan, `/about` kembali menampilkan Mission & Vision dan Core Values, dan beranda kembali memuat tautan `/about`.
+- **Editor submenu sudah dipastikan bekerja:** dengan akun Admin sementara di browser, menekan **+ Submenu** di Menu 9 lalu Simpan draf menyimpan `children` dengan benar. Draf ujinya dihapus, dan menu situs tidak berubah.
+
+**Pelajaran / usulan (belum dikerjakan):** editor menu tidak memberi peringatan bila sebuah draf menghapus atau mengganti tautan ke halaman utama bawaan (`/about`, `/academy`, dan seterusnya). Usulan:
+- tampilkan ringkasan perbedaan di panel keputusan, misalnya "Dihapus: Tentang BARUNA (/about)";
+- beri peringatan sebelum Kirim bila halaman utama hilang dari menu.
+
+Dengan begitu, Admin yang menyetujui bisa menangkap kesalahan seperti v2 dan v3.
+
+**Sisa uji:** halaman `uji-halaman` masih tayang, jadi muncul di "Halaman lain" pada sidebar About. Arsipkan setelah uji submenu selesai (langkah C).
+
+---
+
 ## 2bv. Konsol Kurasi dan Portal Admin memperbarui sendiri, skeleton shimmer saat memuat (19 Nov, permintaan pemilik proyek)
 
 **Masalah (uji manual pemilik proyek, 19 Nov):** setelah satu akun bertindak (misalnya Operator mengirim draf atau peserta mengirim formulir), akun lain di jendela atau perangkat lain harus menekan muat ulang supaya daftarnya berubah. Lencana di sidebar sudah segar sendiri (30 detik dan saat jendela aktif kembali), tetapi isi halaman mengikuti pengaturan umum aplikasi: data dianggap segar 2 menit dan tidak dimuat ulang saat jendela aktif kembali (`refetchOnWindowFocus: false`). Selama memuat, halaman hanya menampilkan teks "Memuat…".
