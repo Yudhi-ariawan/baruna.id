@@ -27,7 +27,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
-import { CmsOrBuiltIn } from "@/components/cms/CmsRoutePage";
+import { CmsFramedContent } from "@/components/cms/CmsRoutePage";
+import type { CmsPublicPage } from "@/lib/cms/cms-types";
 import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
@@ -57,9 +58,7 @@ export const Route = createFileRoute("/partnership")({
 
 function PartnershipRoute() {
   return (
-    <CmsOrBuiltIn page={Route.useLoaderData()}>
-      <PartnershipPage />
-    </CmsOrBuiltIn>
+    <PartnershipPage cms={Route.useLoaderData()} />
   );
 }
 
@@ -80,7 +79,7 @@ const highlights = [
 
 const keyPartners = ["SEAFDEC", "FAO", "UNEP", "WorldFish", "Australian Government", "University of Queensland"];
 
-function PartnershipPage() {
+function PartnershipPage({ cms }: { cms?: CmsPublicPage | null }) {
   const { t } = useLanguage();
 
   const mainMenu = [
@@ -140,6 +139,8 @@ function PartnershipPage() {
         button: "Become a Partner",
       }}
     >
+      {/* A published CMS page with this menu's address replaces the content, inside the same frame (CATATAN_PERBAIKAN 2bs). */}
+      <CmsFramedContent page={cms}>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -258,6 +259,7 @@ function PartnershipPage() {
           </div>
         </div>
       </div>
+      </CmsFramedContent>
     </PageShell>
   );
 }

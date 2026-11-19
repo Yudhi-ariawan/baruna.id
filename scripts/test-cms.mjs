@@ -4,7 +4,7 @@
  *
  * It WRITES test data (accounts @example.test, one page "tdd-cms-<stamp>", one form
  * "tdd-form-<stamp>" and its submissions, drafts, audit rows) and removes it at the end
- * (audit rows stay). The site menu is NOT changed: menu approval is covered by the local
+ * (audit rows stay), and one test image cms/<stamp>.png in knowledge-module-covers. The site menu is NOT changed: menu approval is covered by the local
  * PGlite test; here only its permissions and validation are checked.
  * Run: npm run test:cms
  */
@@ -22,6 +22,7 @@ const anon = createClient(URL_, ANON, { auth: { persistSession: false } });
 const stamp = Date.now();
 const PASSWORD = "TddCms!2026#";
 const PAGE_SLUG = `tdd-cms-${stamp}`, FORM_SLUG = `tdd-form-${stamp}`;
+const TEST_IMAGE = `cms/${"0".repeat(19)}${String(stamp).padStart(13, "0")}.png`;
 const created = [];
 let passed = 0;
 const failures = [];
@@ -52,6 +53,7 @@ const save = async (p, id, payload) => p.c.rpc("cms_draft_save", { _draft_id: id
 const decide = async (p, id, decision, note = null) => p.c.rpc("cms_draft_decide", { _draft_id: id, _decision: decision, _note: note, _expected_updated_at: await updatedAt(id) });
 
 async function cleanup() {
+  await svc.storage.from("knowledge-module-covers").remove([TEST_IMAGE]);
   const { data: forms } = await svc.from("cms_forms").select("id").like("slug", `tdd-form-${stamp}%`);
   for (const f of forms ?? []) await svc.from("cms_form_submissions").delete().eq("form_id", f.id);
   await svc.from("cms_forms").delete().like("slug", `tdd-form-${stamp}%`);
@@ -162,6 +164,35 @@ try {
     check(/cms_menu_external_mismatch/.test(errOf(r)), "tautan https:// wajib ditandai eksternal");
     r = await adm.c.rpc("cms_draft_withdraw", { _draft_id: m1 });
     check(!r.error, "draf menu uji ditarik (menu situs tidak berubah)");
+  }
+
+  console.log("\n[7] Blok Teks + gambar dan Galeri (migrasi 20261119010000)");
+  // A real 1x1 PNG in the CMS folder of the bucket, as the upload function would store it.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  const up = await svc.storage.from("knowledge-module-covers").upload(TEST_IMAGE, png, { contentType: "image/png", upsert: true });
+  check(!up.error, `gambar uji terunggah${up.error ? " — " + up.error.message : ""}`);
+  r = await op.c.rpc("cms_draft_open", { _kind: "page", _target_id: null, _domain: "about" });
+  const d7 = r.data;
+  const mediaPage = (blocks) => ({ domain: "about", slug: `${PAGE_SLUG}-media`, title_id: "Uji Blok Gambar", title_en: "", summary_id: "", summary_en: "", blocks });
+  await save(op, d7, mediaPage([{ type: "media", heading_id: "Inspirasi", body_id: "Teks di samping gambar." }]));
+  r = await op.c.rpc("cms_draft_submit", { _draft_id: d7 });
+  if (/cms_block_type_invalid/.test(errOf(r))) {
+    check(false, "blok baru dikenali database — jalankan migrasi 20261119010000_cms_media_gallery_blocks.sql");
+  } else {
+    check(/cms_block_image_required:1/.test(errOf(r)), "teks+gambar tanpa gambar ditolak");
+    await save(op, d7, mediaPage([{ type: "gallery", items: Array.from({ length: 9 }, () => ({ image: TEST_IMAGE })) }]));
+    r = await op.c.rpc("cms_draft_submit", { _draft_id: d7 });
+    check(/cms_block_items_invalid:1/.test(errOf(r)), "galeri lebih dari 8 foto ditolak");
+    await save(op, d7, mediaPage([
+      { type: "media", heading_id: "Inspirasi", body_id: "Teks di samping gambar.", image: TEST_IMAGE, image_side: "left" },
+      { type: "gallery", heading_id: "Galeri", items: [{ image: TEST_IMAGE, caption_id: "Laut" }, { image: TEST_IMAGE }] },
+    ]));
+    r = await op.c.rpc("cms_draft_submit", { _draft_id: d7 });
+    check(!r.error, `teks+gambar dan galeri dengan gambar asli diterima${r.error ? " — " + r.error.message : ""}`);
+    r = await decide(appr, d7, "approve");
+    check(!r.error, "Approver menyetujui halaman bergambar");
+    r = await anon.from("cms_pages_public_v").select("blocks").eq("slug", `${PAGE_SLUG}-media`);
+    check(r.data?.[0]?.blocks?.map((b) => b.type).join(",") === "media,gallery", "pengunjung melihat blok teks+gambar dan galeri");
   }
 } catch (e) {
   if (e.message !== "migration_missing") { failures.push(`exception: ${e.message}`); console.log("  FAIL exception:", e.message); }

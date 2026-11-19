@@ -213,5 +213,26 @@ ok("Full Training email salah ditandai", "email" in applyFormErrors({ ...pFull, 
 ok("Full Training motivasi 10 karakter ditandai (aturan lama: lebih dari 10)", "motivation" in applyFormErrors(pFull, prFull, "Basic", "a".repeat(10)));
 ok("Full Training motivasi 11 karakter diterima", !("motivation" in applyFormErrors(pFull, prFull, "Basic", "a".repeat(11))));
 ok("Full Training motivasi 1.001 karakter ditandai (server menyimpan maks. 1.000)", "motivation" in applyFormErrors(pFull, prFull, "Basic", "a".repeat(1001)));
+// ---- Dynamic CMS (CATATAN_PERBAIKAN 2br, 2bs): screen rules = database rules of _cms_block_problem
+console.log("\n== Dynamic CMS ==");
+const { pageErrors, urlOk } = await jiti.import("@/lib/cms/cms-validation");
+const { cmsMarkdownLines } = await jiti.import("@/lib/cms/cms-markdown");
+const IMG = "cms/" + "b".repeat(32) + ".png";
+const cmsPage = (blocks) => ({ domain: "about", slug: "uji-halaman", title_id: "Halaman Uji", title_en: "", summary_id: "", summary_en: "", blocks });
+const pe = (blocks) => pageErrors(cmsPage(blocks), { isNew: true, usedSlugs: [], formSlugs: [] });
+ok("CMS: halaman tanpa blok ditandai", "blocks" in pe([]));
+ok("CMS: tautan javascript: di tombol ajakan ditandai", "block.0.url" in pe([{ type: "cta", title_id: "Ayo", button_id: "Klik", url: "javascript:alert(1)" }]));
+ok("CMS: tautan http:// (tanpa s) ditolak, https:// dan /academy diterima", !urlOk("http://kkp.go.id") && urlOk("https://kkp.go.id") && urlOk("/academy"));
+ok("CMS: slug menu lain (community) untuk menu About ditandai", "slug" in pageErrors({ ...cmsPage([{ type: "text", body_id: "Isi" }]), slug: "community" }, { isNew: true, usedSlugs: [], formSlugs: [] }));
+ok("CMS teks+gambar: tanpa gambar ditandai di kolom gambar", "block.0.image" in pe([{ type: "media", body_id: "Isi", image: null }]));
+ok("CMS teks+gambar: tanpa isi ditandai", "block.0.body_id" in pe([{ type: "media", body_id: "", image: IMG }]));
+ok("CMS teks+gambar lengkap diterima", Object.keys(pe([{ type: "media", body_id: "Isi", image: IMG, image_side: "left" }])).length === 0);
+ok("CMS galeri: > 8 foto ditandai", "block.0.items" in pe([{ type: "gallery", items: Array.from({ length: 9 }, () => ({ image: IMG })) }]));
+ok("CMS galeri: foto tanpa gambar ditandai", "block.0.items.1.image" in pe([{ type: "gallery", items: [{ image: IMG }, { image: null }] }]));
+ok("CMS galeri: keterangan 161 karakter ditandai", "block.0.items.0.caption_id" in pe([{ type: "gallery", items: [{ image: IMG, caption_id: "x".repeat(161) }] }]));
+ok("CMS galeri lengkap diterima", Object.keys(pe([{ type: "gallery", items: [{ image: IMG, caption_id: "Laut" }, { image: IMG }] }])).length === 0);
+ok("CMS teks: baris setelah daftar menjadi paragraf sendiri", cmsMarkdownLines("- satu\n- dua\nKunjungi kami.") === "- satu\n- dua\n\nKunjungi kami.");
+ok("CMS teks: dua baris biasa tetap dua baris", cmsMarkdownLines("Baris satu\nBaris dua") === "Baris satu  \nBaris dua");
+ok("CMS teks: lanjutan menjorok tetap di poin daftar", cmsMarkdownLines("- poin\n  lanjutan") === "- poin\n  lanjutan");
 console.log(`\n${pass}/${pass + fail} lulus`);
 process.exit(fail ? 1 : 0);

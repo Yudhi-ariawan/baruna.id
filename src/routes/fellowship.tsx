@@ -25,7 +25,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
-import { CmsOrBuiltIn } from "@/components/cms/CmsRoutePage";
+import { CmsFramedContent } from "@/components/cms/CmsRoutePage";
+import type { CmsPublicPage } from "@/lib/cms/cms-types";
 import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Banner } from "@/components/baruna/page/Banner";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
@@ -55,9 +56,7 @@ export const Route = createFileRoute("/fellowship")({
 
 function FellowshipRoute() {
   return (
-    <CmsOrBuiltIn page={Route.useLoaderData()}>
-      <FellowshipPage />
-    </CmsOrBuiltIn>
+    <FellowshipPage cms={Route.useLoaderData()} />
   );
 }
 
@@ -85,7 +84,7 @@ const partners = [
   { name: "CTI-CFF", country: "Coral Triangle Initiative" },
 ];
 
-function FellowshipPage() {
+function FellowshipPage({ cms }: { cms?: CmsPublicPage | null }) {
   const { t } = useLanguage();
 
   const overview = [
@@ -145,6 +144,8 @@ function FellowshipPage() {
         button: "Partner With Us",
       }}
     >
+      {/* A published CMS page with this menu's address replaces the content, inside the same frame (CATATAN_PERBAIKAN 2bs). */}
+      <CmsFramedContent page={cms}>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -268,6 +269,7 @@ function FellowshipPage() {
           </div>
         </div>
       </div>
+      </CmsFramedContent>
     </PageShell>
   );
 }

@@ -3,6 +3,7 @@
 // kept only when it is an internal path or https:// (same rule as the database).
 import ReactMarkdown from "react-markdown";
 import { urlOk } from "@/lib/cms/cms-validation";
+import { cmsMarkdownLines } from "@/lib/cms/cms-markdown";
 
 const ALLOWED = ["p", "strong", "em", "ul", "ol", "li", "a", "br"];
 
@@ -25,7 +26,7 @@ export function CmsRichText({ text, className = "" }: { text: string; className?
             ),
         }}
       >
-        {text}
+        {cmsMarkdownLines(text)}
       </ReactMarkdown>
     </div>
   );

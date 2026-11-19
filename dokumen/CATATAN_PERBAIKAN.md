@@ -1616,6 +1616,32 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bs. CMS: blok Teks + gambar dan Galeri, isi CMS di dalam bingkai menu, baris baru tetap baris baru (19 Nov, kurikulum 3.1)
+
+**Masalah (dari uji manual pemilik proyek, 19 Nov):**
+- Halaman CMS tampak jauh lebih sederhana daripada halaman About bawaan. Belum ada cara menaruh teks di samping gambar (seperti pembuka About) atau menampilkan deretan foto (seperti di bawah "The Inspiration").
+- Bila halaman CMS beralamat `about` tayang, seluruh halaman diganti, sehingga sidebar About dan banner penutup ikut hilang.
+- Baris yang diketik tepat setelah daftar menyatu dengan poin terakhir ("poin kedua Kunjungi Academy"), dan dua baris tanpa baris kosong digabung menjadi satu. Ini aturan *markdown* biasa, tetapi membingungkan pengelola yang bukan programmer.
+
+**Perubahan:**
+- **Migrasi `20261119010000_cms_media_gallery_blocks.sql`** (pengecek baris 81): fungsi pemeriksa blok `_cms_block_problem` diganti utuh dengan dua jenis blok tambahan. Aturan tujuh blok lama tidak berubah, dan tidak ada perubahan tabel.
+  - **Teks + gambar** (`media`): judul bagian opsional, isi wajib (≤5.000 karakter), **gambar wajib**, dan letak gambar kiri atau kanan.
+  - **Galeri** (`gallery`): 1–8 foto; setiap foto wajib bergambar, dengan keterangan opsional ≤160 karakter.
+  - Gambar keduanya mengikuti aturan yang sama dengan blok lain: unggahan CMS yang benar-benar ada, PNG/JPG/WebP, maksimal 2 MB. Kode galat baru `cms_block_image_required` membawa nomor blok.
+- **Editor** (`BlockEditor.tsx`): kedua blok muncul di pilihan blok, lengkap dengan unggah gambar, letak gambar, dan urutan/hapus foto. Aturan layar sama dengan database (`cms-validation.ts`).
+- **Tampilan** (`CmsBlocks.tsx`): Teks + gambar berupa panel dua kolom seperti pembuka About (di HP gambar turun ke bawah teks). Galeri berupa 4 foto berjajar di layar lebar dan 2 di HP.
+- **Bingkai menu:** About, Community, Fellowship, dan Partnership kini menampilkan halaman CMS **di dalam bingkainya sendiri**, sehingga sidebar dan banner penutup tetap ada; hanya isi tengahnya yang diganti (`CmsFramedContent`). Tanpa halaman CMS, isi bawaan tetap tampil seperti sebelumnya.
+- **Baris baru** (`src/lib/cms/cms-markdown.ts`, dipakai `CmsRichText`): baris setelah daftar menjadi paragraf sendiri, daftar setelah teks menjadi daftar sendiri, dan dua baris berurutan tetap dua baris. Baris yang menjorok tetap menjadi lanjutan poin. Isi yang sudah tersimpan tidak perlu diubah; tampilannya langsung mengikuti aturan baru.
+
+**Uji:**
+- PGlite dengan kedua migrasi asli: **90/90** (81 lama + 9 baru: teks+gambar tanpa gambar, gambar luar, tanpa isi, letak gambar salah, galeri kosong, lebih dari 8 foto, foto tanpa gambar, keterangan terlalu panjang, dan halaman bergambar tayang dengan 8 blok). Migrasi aman dijalankan dua kali.
+- `test:form-validation` **142/142** (14 cek CMS baru: aturan layar halaman, tautan, kedua blok baru, dan aturan baris baru).
+- `test:cms` ke database asli: 29/30 sebelum migrasi baru. Satu-satunya yang gagal adalah cek "blok baru dikenali database", yang memang menunggu migrasi. Bagian [7] baru mengunggah gambar uji sungguhan lalu menghapusnya.
+- `tsc`, lint, dan `npm run build` lulus. Uji browser terhadap hasil build **27/27**. Halaman `uji-halaman` buatan pemilik proyek kini menampilkan "Kunjungi Academy." sebagai paragraf sendiri, dan `/about` bawaan tetap utuh (sidebar dan Core Values).
+- Belum diuji di browser: bingkai menu dengan halaman CMS `about` yang tayang (agar About di database bersama tidak berubah tanpa persetujuan pemilik proyek), serta kedua blok baru (menunggu migrasi).
+
+---
+
 ## 2br. Dynamic CMS: menu navigasi, halaman dari blok, dan formulir (18 Nov, kurikulum 3.1)
 
 **Masalah:** isi menu Fellowship, Community, Partnership, About (dan Events) serta menu navigasi tertulis di kode (Slide 15 melarang hard-code). Admin tidak bisa mengubahnya tanpa programmer. Kurikulum 3.1 meminta admin bisa membuat menu, halaman, formulir, dan *content type* tanpa mengubah kode. Cakupan diputuskan pemilik proyek: CMS umum dulu, Events di sprint berikutnya.
@@ -1697,7 +1723,6 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 - jenis kolom **unggah berkas** di formulir CMS (butuh bucket privat dan tautan sementara seperti dokumen pendaftaran);
 - **isi resmi** halaman About/Community/Fellowship/Partnership diisi pengelola lewat CMS. Data contoh di kode (misalnya jumlah anggota komunitas) sengaja tidak dipindahkan;
 - cek duplikat Request a Training (FB-05);
-- aturan formulir CMS di `test:form-validation`;
 - uji tampilan HP;
 - uji manual oleh pemilik proyek.
 
@@ -1869,6 +1894,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261116050000_auth_event_log.sql` (Log Autentikasi: tabel `auth_event_log` dan trigger di `auth.users` dan `auth.sessions`). Lihat bagian 2bg. **Sudah dijalankan di intern-update (16 Nov).**
 - `20261117010000_role_request_guards.sql` (Permintaan Peran: hanya lima peran kurasi untuk diri sendiri, tanpa permintaan ganda, bisa dibatalkan). Lihat bagian 2bh. Jalankan setelah `20261021080000`. Kode branch ini tetap jalan sebelum migrasi (tombol batal memberi pesan bahwa migrasi belum dijalankan).
 - `20261118010000_dynamic_cms.sql` (Dynamic CMS: menu navigasi, halaman dari blok, formulir, draf yang disetujui orang lain, kiriman formulir). Lihat bagian 2br. Jalankan setelah `20261116020000` (memakai `_can_publish`) dan `20261104020000` (bucket sampul). Halaman dan Navbar tetap memakai tampilan lama selama migrasi belum dijalankan atau belum ada isi CMS yang tayang. Pengecek: baris 80.
+- `20261119010000_cms_media_gallery_blocks.sql` (blok halaman **Teks + gambar** dan **Galeri**; hanya mengganti fungsi pemeriksa blok `_cms_block_problem`, tanpa perubahan tabel). Lihat bagian 2bs. Jalankan setelah `20261118010000`. Sebelum dijalankan, kedua blok baru ditolak saat draf dikirim; blok lama tidak terpengaruh. Pengecek: baris 81.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -1905,7 +1931,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
   | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
-  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 30 (setelah migrasi `20261118010000`) | 2br |
+  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 30 (setelah migrasi `20261118010000`); +5 setelah `20261119010000` | 2br, 2bs |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

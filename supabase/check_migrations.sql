@@ -321,7 +321,9 @@ WITH checks(no, migration, ok) AS (
       AND to_regclass('public.cms_pages_public_v') IS NOT NULL
       AND to_regclass('public.cms_menu_public_v') IS NOT NULL
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cms_draft_decide')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cms_form_submission_list'))
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cms_form_submission_list')),
+  (81, '20261119010000_cms_media_gallery_blocks',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_cms_block_problem' AND prosrc LIKE '%cms_block_image_required%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

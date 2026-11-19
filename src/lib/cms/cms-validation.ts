@@ -53,6 +53,23 @@ function block(errors: CmsFieldErrors, b: CmsBlock, i: number, formSlugs: string
       text(errors, k("body_id"), b.body_id, 1, 5000, "Isi teks");
       text(errors, k("body_en"), b.body_en, 0, 5000, "Isi teks (Inggris)");
       break;
+    case "media":
+      text(errors, k("heading_id"), b.heading_id, 0, 160, "Judul bagian");
+      text(errors, k("body_id"), b.body_id, 1, 5000, "Isi teks");
+      text(errors, k("body_en"), b.body_en, 0, 5000, "Isi teks (Inggris)");
+      if (!b.image) errors[k("image")] = "Gambar wajib diunggah.";
+      else image(k("image"), b.image);
+      break;
+    case "gallery":
+      text(errors, k("heading_id"), b.heading_id, 0, 160, "Judul bagian");
+      if (b.items.length < 1 || b.items.length > 8) errors[k("items")] = "Foto harus 1–8.";
+      b.items.forEach((p, j) => {
+        if (!p.image) errors[k(`items.${j}.image`)] = "Gambar wajib diunggah.";
+        else image(k(`items.${j}.image`), p.image);
+        text(errors, k(`items.${j}.caption_id`), p.caption_id, 0, 160, "Keterangan");
+        text(errors, k(`items.${j}.caption_en`), p.caption_en, 0, 160, "Keterangan (Inggris)");
+      });
+      break;
     case "cards":
       text(errors, k("heading_id"), b.heading_id, 0, 160, "Judul bagian");
       if (b.items.length < 1 || b.items.length > 12) errors[k("items")] = "Kartu harus 1–12.";

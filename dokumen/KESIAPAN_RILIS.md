@@ -11,7 +11,7 @@ Halaman `/kesiapanrilis` menampilkan dokumen ini sebagai papan: bagian A (butir 
 Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
 "Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
 
-Status pemeriksaan terakhir (17 Nov, laptop): semua migrasi sampai `20261117010000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 80 baris; migrasi CMS `20261118010000` sudah dijalankan pemilik proyek (18 Nov). `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
+Status pemeriksaan terakhir (17 Nov, laptop): semua migrasi sampai `20261117010000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 81 baris; migrasi CMS `20261118010000` sudah dijalankan pemilik proyek (18 Nov), sedangkan `20261119010000` (blok Teks + gambar dan Galeri) menunggu dijalankan. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
@@ -64,7 +64,13 @@ Status pemeriksaan terakhir (17 Nov, laptop): semua migrasi sampai `202611170100
   - Sekarang: di Konsol Kurasi → **Konten Situs (CMS)**, Operator/Approver/Publisher/Admin membuat **halaman** dari blok (banner, teks, kartu, ajakan, FAQ, formulir, tautan) dan **formulir** (7 jenis kolom). Admin menyusun **menu navigasi** dua tingkat. Semua perubahan menjadi draf yang tayang setelah disetujui orang **lain**. Publisher bisa menurunkan dan menayangkan lagi. Kiriman formulir (wajib login, dibatasi per hari) dibaca pengelola dan bisa diekspor ke CSV.
   - Halaman yang belum punya isi CMS tetap memakai isi bawaannya. Bila menu CMS belum ada, Navbar tetap memakai 9 menu bawaan.
   - Aturan dijaga di database: tautan berbahaya ditolak, gambar diperiksa isinya (≤2 MB), dan simpanan dari dua perangkat tidak saling menimpa.
-  - Bukti: PGlite 81/81; `test:cms` 30/30 sesudah migrasi (0/1 sebelum); uji browser terhadap hasil build 27/27, termasuk Approver menekan Setujui, pengunjung membuka halaman, dan pengguna mengirim formulir. Belum diuji manual.
+  - Bukti: PGlite 81/81; `test:cms` 30/30 sesudah migrasi (0/1 sebelum); uji browser terhadap hasil build 27/27, termasuk Approver menekan Setujui, pengunjung membuka halaman, dan pengguna mengirim formulir. Sudah diuji manual oleh pemilik proyek (19 Nov): Operator membuat halaman `uji-halaman` dengan teks dan tanya-jawab, Approver menyetujui, dan halaman tampil di `/p/uji-halaman`.
+  - **Lanjutan 19 Nov (CATATAN_PERBAIKAN 2bs), dari temuan uji manual:**
+    - dua blok baru: **Teks + gambar** (seperti pembuka About) dan **Galeri** (1–8 foto);
+    - halaman CMS About/Community/Fellowship/Partnership tampil **di dalam bingkai menunya**, sehingga sidebar dan banner penutup tetap ada;
+    - baris yang diketik tetap tampil sebagai baris baru.
+
+    Butuh migrasi `20261119010000`. Bukti: PGlite 90/90, `test:form-validation` 142/142, uji browser 27/27.
 - **Output kurikulum Bulan 1 lengkap dan bisa dipresentasikan dari halaman ini (18 Nov, CATATAN_PERBAIKAN 2bn):** ke-22 output Bulan 1 ada di `dokumen/output/bulan-1/`. Isinya antara lain Feature Gap Matrix (86 butir dari 51 slide), ERD dan Data Dictionary dari skema asli, Role-Permission Matrix (80/80 sel sama dengan Slide 16), Requirement List, User Story, Business Rules, Issue Register, dan Backlog. Semuanya bisa dibuka di tab **Output Kurikulum** di halaman ini, lengkap dengan diagram yang tergambar dan tautan antar-bagian. Dokumen baru di `dokumen/output/bulan-N/` muncul otomatis. Dicek di browser terhadap hasil build: 18 dokumen, 8/8 diagram ERD tergambar, tampilan HP memakai dropdown, isi dokumen tidak ikut terkirim ke browser sebelum login. Sudah diuji manual oleh pemilik proyek (18 Nov): tab Output Kurikulum, diagram ERD, inventaris menu, dan tautan klasifikasi di Data Dictionary.
 - **Semua formulir kini menandai isian yang salah (17 Nov, CATATAN_PERBAIKAN 2bm):** pengajuan modul trainer, Tambah User, dan pendaftaran Full Training/Course Offering menyusul Request a Training, Become an Expert, dan Knowledge Hub. Ikut ditutup:
   - Pemegang Hak Cipta yang bertanda wajib kini benar-benar dicek;

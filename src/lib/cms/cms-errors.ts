@@ -32,6 +32,7 @@ const ERRORS: Record<string, string> = {
   cms_block_title_invalid: "Judul blok belum diisi atau terlalu panjang.",
   cms_block_text_invalid: "Teks blok belum diisi atau terlalu panjang.",
   cms_block_image_invalid: "Gambar tidak ditemukan. Unggah ulang (PNG/JPG/WebP, maksimal 2 MB).",
+  cms_block_image_required: "Gambar wajib diunggah (PNG/JPG/WebP, maksimal 2 MB).",
   cms_block_stats_invalid: "Angka banner: maksimal 4, masing-masing berisi label dan nilai.",
   cms_block_items_invalid: "Isian di dalam blok belum lengkap atau jumlahnya di luar batas.",
   cms_block_url_invalid: "Tautan harus diawali https:// atau / (alamat di BARUNA).",

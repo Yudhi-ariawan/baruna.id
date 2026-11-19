@@ -28,7 +28,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
-import { CmsOrBuiltIn } from "@/components/cms/CmsRoutePage";
+import { CmsFramedContent } from "@/components/cms/CmsRoutePage";
+import type { CmsPublicPage } from "@/lib/cms/cms-types";
 import { loadCmsOverride } from "@/lib/cms/cms-override";
 import { Panel, SectionHeader } from "@/components/baruna/page/primitives";
 import { pageImages, courseImages } from "@/data/pages";
@@ -57,9 +58,7 @@ export const Route = createFileRoute("/about")({
 
 function AboutRoute() {
   return (
-    <CmsOrBuiltIn page={Route.useLoaderData()}>
-      <AboutPage />
-    </CmsOrBuiltIn>
+    <AboutPage cms={Route.useLoaderData()} />
   );
 }
 
@@ -82,7 +81,7 @@ const roadmap = [
 
 const galleryImages = [courseImages[3], courseImages[6], courseImages[1], courseImages[5]];
 
-function AboutPage() {
+function AboutPage({ cms }: { cms?: CmsPublicPage | null }) {
   const { t } = useLanguage();
 
   const aboutMenu = [
@@ -140,6 +139,8 @@ function AboutPage() {
         href: "/auth",
       }}
     >
+      {/* A published CMS page with this menu's address replaces the content, inside the same frame (CATATAN_PERBAIKAN 2bs). */}
+      <CmsFramedContent page={cms}>
       <div className="space-y-6">
         <Panel className="overflow-hidden p-0">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -247,6 +248,7 @@ function AboutPage() {
           </div>
         </div>
       </div>
+      </CmsFramedContent>
     </PageShell>
   );
 }

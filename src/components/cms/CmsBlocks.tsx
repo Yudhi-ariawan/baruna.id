@@ -54,6 +54,44 @@ export function CmsBlocks({ blocks, forms, preview = false }: { blocks: CmsBlock
                 <CmsRichText text={t(b.body_id, b.body_en)} />
               </section>
             );
+          case "media": {
+            const img = cmsImageUrl(b.image);
+            const left = b.image_side === "left";
+            const heading = t(b.heading_id, b.heading_en);
+            return (
+              <section key={i} className="overflow-hidden rounded-3xl border border-border bg-card shadow-soft">
+                <div className="grid grid-cols-1 lg:grid-cols-2">
+                  <div className={`space-y-3 p-6 sm:p-8 ${left ? "lg:order-2" : ""}`}>
+                    {heading ? <h2 className="font-display text-2xl font-bold text-navy">{heading}</h2> : null}
+                    <CmsRichText text={t(b.body_id, b.body_en)} className="text-muted-foreground" />
+                  </div>
+                  {img ? (
+                    <div className={`relative min-h-[220px] ${left ? "lg:order-1" : ""}`}>
+                      <img src={img} alt={heading} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            );
+          }
+          case "gallery":
+            return (
+              <section key={i} className="space-y-3">
+                {t(b.heading_id, b.heading_en) ? <h2 className="font-display text-xl font-bold text-navy">{t(b.heading_id, b.heading_en)}</h2> : null}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  {b.items.map((p, j) => {
+                    const img = cmsImageUrl(p.image);
+                    const caption = t(p.caption_id, p.caption_en);
+                    return img ? (
+                      <figure key={j} className="space-y-1.5">
+                        <img src={img} alt={caption} loading="lazy" className="h-32 w-full rounded-xl object-cover sm:h-36" />
+                        {caption ? <figcaption className="text-xs text-muted-foreground">{caption}</figcaption> : null}
+                      </figure>
+                    ) : null;
+                  })}
+                </div>
+              </section>
+            );
           case "cards":
             return (
               <section key={i} className="space-y-3">

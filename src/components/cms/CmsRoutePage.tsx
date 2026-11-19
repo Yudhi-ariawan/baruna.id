@@ -13,9 +13,11 @@ export function CmsRoutePage({ page }: { page: CmsPublicPage }) {
   );
 }
 
-/** A built-in menu page that a published CMS page with the same address replaces. */
-export function CmsOrBuiltIn({ page, children }: { page: CmsPublicPage | null | undefined; children: ReactNode }) {
-  return page ? <CmsRoutePage page={page} /> : <>{children}</>;
+/** Content of a built-in menu page (About, Community, Fellowship, Partnership): the
+ *  published CMS page with the menu's address when there is one, otherwise the
+ *  built-in content. The page keeps its own frame (sidebar and closing banner). */
+export function CmsFramedContent({ page, children }: { page: CmsPublicPage | null | undefined; children: ReactNode }) {
+  return page ? <CmsPageView page={page} /> : <>{children}</>;
 }
 
 export function CmsShell({ children }: { children: ReactNode }) {

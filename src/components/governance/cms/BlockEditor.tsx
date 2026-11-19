@@ -1,9 +1,15 @@
 // Fields of one page block (content types of kurikulum 3.1). Keys of the error map
 // follow cms-validation: "block.<i>.<field>" and "block.<i>.items.<j>.<field>".
-import type { CmsBlock, CmsCard, CmsFaqItem, CmsLink, CmsStat } from "@/lib/cms/cms-types";
+import type { CmsBlock, CmsCard, CmsFaqItem, CmsLink, CmsPhoto, CmsStat } from "@/lib/cms/cms-types";
 import { CmsBilingual, CmsImage, CmsText, RowTools } from "./CmsInputs";
 import { moveItem, setAt } from "./cmsLabels";
 import { FieldError } from "@/components/baruna/forms/FieldError";
+
+const FORMAT_HINT = (
+  <p className="text-[11px] text-muted-foreground">
+    Format: **tebal**, *miring*, baris diawali "- " untuk daftar, [teks](https://alamat) atau [teks](/academy) untuk tautan. Setiap baris baru tetap tampil sebagai baris baru.
+  </p>
+);
 
 type Props = {
   block: CmsBlock; index: number; onChange: (b: CmsBlock) => void; errors: Record<string, string>; disabled: boolean;
@@ -58,9 +64,55 @@ export function BlockEditor({ block: b, index, onChange, errors, disabled, draft
         <div className="space-y-3">
           {bi("Judul bagian (opsional)", "heading", false, false, 160)}
           {bi("Isi", "body", true, true, 5000)}
-          <p className="text-[11px] text-muted-foreground">Format: **tebal**, *miring*, baris diawali "- " untuk daftar, [teks](https://alamat) untuk tautan.</p>
+          {FORMAT_HINT}
         </div>
       );
+    case "media":
+      return (
+        <div className="space-y-3">
+          {bi("Judul bagian (opsional)", "heading", false, false, 160)}
+          {bi("Isi", "body", true, true, 5000)}
+          {FORMAT_HINT}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
+            <CmsImage draftId={draftId} value={b.image} onChange={(p) => onChange({ ...b, image: p })} field={k("image")} error={err("image")} disabled={disabled} />
+            <label className="block text-xs font-semibold text-navy">
+              Letak gambar
+              <select value={b.image_side ?? "right"} disabled={disabled} onChange={(e) => onChange({ ...b, image_side: e.target.value as "left" | "right" })}
+                className="mt-1 block rounded-lg border border-border bg-white px-2.5 py-1.5 text-sm">
+                <option value="right">Kanan teks</option>
+                <option value="left">Kiri teks</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      );
+    case "gallery": {
+      const setItems = (items: CmsPhoto[]) => onChange({ ...b, items });
+      return (
+        <div className="space-y-3">
+          {bi("Judul bagian (opsional)", "heading", false, false, 160)}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-field={k("items")}>
+            {b.items.map((p, j) => {
+              const pk = (f: string) => k(`items.${j}.${f}`);
+              const set = (patch: Partial<CmsPhoto>) => setItems(setAt(b.items, j, { ...p, ...patch }));
+              return (
+                <div key={j} className="space-y-2 rounded-xl border border-border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between"><span className="text-xs font-semibold text-navy">Foto {j + 1}</span>
+                    <RowTools disabled={disabled} onUp={j > 0 ? () => setItems(moveItem(b.items, j, j - 1)) : undefined}
+                      onDown={j < b.items.length - 1 ? () => setItems(moveItem(b.items, j, j + 1)) : undefined}
+                      onRemove={() => setItems(b.items.filter((_, x) => x !== j))} /></div>
+                  <CmsImage draftId={draftId} value={p.image} onChange={(v) => set({ image: v })} field={pk("image")} error={errors[pk("image")]} disabled={disabled} />
+                  <CmsBilingual label="Keterangan (opsional)" field={pk("caption")} errors={errors} idValue={p.caption_id} enValue={p.caption_en}
+                    onId={(v) => set({ caption_id: v })} onEn={(v) => set({ caption_en: v })} disabled={disabled} maxLength={160} />
+                </div>
+              );
+            })}
+          </div>
+          {addBtn("Foto", () => setItems([...b.items, { image: null, caption_id: "", caption_en: "" }]), 8, b.items.length)}
+          <FieldError msg={err("items")} />
+        </div>
+      );
+    }
     case "cards": {
       const setItems = (items: CmsCard[]) => onChange({ ...b, items });
       return (

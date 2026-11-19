@@ -29,10 +29,13 @@ export type CmsStat = { label_id: string; label_en?: string; value: string };
 export type CmsCard = { title_id: string; title_en?: string; text_id?: string; text_en?: string; image?: string | null; url?: string };
 export type CmsFaqItem = { q_id: string; q_en?: string; a_id: string; a_en?: string };
 export type CmsLink = { label_id: string; label_en?: string; url: string };
+export type CmsPhoto = { image: string | null; caption_id?: string; caption_en?: string };
 
 export type CmsBlock =
   | { type: "banner"; title_id: string; title_en?: string; text_id?: string; text_en?: string; image?: string | null; stats?: CmsStat[] }
   | { type: "text"; heading_id?: string; heading_en?: string; body_id: string; body_en?: string }
+  | { type: "media"; heading_id?: string; heading_en?: string; body_id: string; body_en?: string; image: string | null; image_side?: "left" | "right" }
+  | { type: "gallery"; heading_id?: string; heading_en?: string; items: CmsPhoto[] }
   | { type: "cards"; heading_id?: string; heading_en?: string; items: CmsCard[] }
   | { type: "cta"; title_id: string; title_en?: string; text_id?: string; text_en?: string; button_id: string; button_en?: string; url: string }
   | { type: "faq"; heading_id?: string; heading_en?: string; items: CmsFaqItem[] }
@@ -43,6 +46,8 @@ export type CmsBlockType = CmsBlock["type"];
 export const CMS_BLOCK_LABEL: Record<CmsBlockType, { label: string; hint: string }> = {
   banner: { label: "Banner", hint: "Judul besar, teks pendek, gambar, dan sampai 4 angka" },
   text: { label: "Teks", hint: "Judul bagian dan paragraf (tebal, miring, daftar, tautan)" },
+  media: { label: "Teks + gambar", hint: "Judul dan paragraf di samping satu gambar (gambar di kiri atau kanan)" },
+  gallery: { label: "Galeri", hint: "1–8 foto berjajar, masing-masing dengan keterangan opsional" },
   cards: { label: "Kartu", hint: "1–12 kartu berisi judul, teks, gambar, dan tautan" },
   cta: { label: "Tombol ajakan", hint: "Judul, teks, dan satu tombol menuju halaman lain" },
   faq: { label: "Tanya-jawab", hint: "1–20 pasang pertanyaan dan jawaban" },
@@ -54,6 +59,8 @@ export function emptyBlock(type: CmsBlockType): CmsBlock {
   switch (type) {
     case "banner": return { type, title_id: "", title_en: "", text_id: "", text_en: "", image: null, stats: [] };
     case "text": return { type, heading_id: "", heading_en: "", body_id: "", body_en: "" };
+    case "media": return { type, heading_id: "", heading_en: "", body_id: "", body_en: "", image: null, image_side: "right" };
+    case "gallery": return { type, heading_id: "", heading_en: "", items: [{ image: null, caption_id: "", caption_en: "" }] };
     case "cards": return { type, heading_id: "", heading_en: "", items: [{ title_id: "", title_en: "", text_id: "", text_en: "", image: null, url: "" }] };
     case "cta": return { type, title_id: "", title_en: "", text_id: "", text_en: "", button_id: "", button_en: "", url: "" };
     case "faq": return { type, heading_id: "", heading_en: "", items: [{ q_id: "", q_en: "", a_id: "", a_en: "" }] };
