@@ -1636,7 +1636,11 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 **Uji:**
 - PGlite dengan kedua migrasi asli: **90/90** (81 lama + 9 baru: teks+gambar tanpa gambar, gambar luar, tanpa isi, letak gambar salah, galeri kosong, lebih dari 8 foto, foto tanpa gambar, keterangan terlalu panjang, dan halaman bergambar tayang dengan 8 blok). Migrasi aman dijalankan dua kali.
 - `test:form-validation` **142/142** (14 cek CMS baru: aturan layar halaman, tautan, kedua blok baru, dan aturan baris baru).
-- `test:cms` ke database asli: 29/30 sebelum migrasi baru. Satu-satunya yang gagal adalah cek "blok baru dikenali database", yang memang menunggu migrasi. Bagian [7] baru mengunggah gambar uji sungguhan lalu menghapusnya.
+- `test:cms` ke database asli: 29/30 sebelum migrasi baru. Satu-satunya yang gagal adalah cek "blok baru dikenali database", yang memang menunggu migrasi. **34/34** sesudah migrasi dijalankan pemilik proyek (19 Nov). Bagian [7] baru mengunggah gambar uji sungguhan lalu menghapusnya.
+- Browser terhadap hasil build, dengan halaman uji sementara (Operator membuat, Approver menyetujui, lalu semua dihapus): **15/15**.
+  - Layar lebar: 5 gambar termuat, gambar di kiri teks sesuai pilihan, 4 foto galeri dalam satu baris, keterangan foto tampil, baris sesudah daftar menjadi paragraf sendiri.
+  - Lebar HP (390 px): gambar turun ke bawah teks, galeri 2 baris berisi 2 foto, halaman tidak melebar.
+  - 0 error halaman, selain #418 lama (ISS-34).
 - `tsc`, lint, dan `npm run build` lulus. Uji browser terhadap hasil build **27/27**. Halaman `uji-halaman` buatan pemilik proyek kini menampilkan "Kunjungi Academy." sebagai paragraf sendiri, dan `/about` bawaan tetap utuh (sidebar dan Core Values).
 - Belum diuji di browser: bingkai menu dengan halaman CMS `about` yang tayang (agar About di database bersama tidak berubah tanpa persetujuan pemilik proyek), serta kedua blok baru (menunggu migrasi).
 
@@ -1931,7 +1935,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `enrollment-concurrency` | 15 | 2aw | `enrollment-uploads`* | 15 (setelah migrasi `20261111010000`) | 2aw |
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
   | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
-  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 30 (setelah migrasi `20261118010000`); +5 setelah `20261119010000` | 2br, 2bs |
+  | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 34 (setelah migrasi `20261118010000`, `20261119010000`) | 2br, 2bs |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

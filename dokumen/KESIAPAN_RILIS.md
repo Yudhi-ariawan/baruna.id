@@ -11,7 +11,7 @@ Halaman `/kesiapanrilis` menampilkan dokumen ini sebagai papan: bagian A (butir 
 Fondasinya jauh lebih kuat dari 17 Oktober: aturan penting kini dijaga di database, bukan hanya di tampilan.
 "Vibe coding" bukan alasannya; alasannya adalah apa yang belum dibuktikan (bagian C).
 
-Status pemeriksaan terakhir (17 Nov, laptop): semua migrasi sampai `20261117010000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 81 baris; migrasi CMS `20261118010000` sudah dijalankan pemilik proyek (18 Nov), sedangkan `20261119010000` (blok Teks + gambar dan Galeri) menunggu dijalankan. `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
+Status pemeriksaan terakhir (17 Nov, laptop): semua migrasi sampai `20261117010000` sudah dijalankan di intern-update, kecuali `20261008030000`/`040000` (email kontak expert, menunggu keputusan; CATATAN_PERBAIKAN 2ac). Pengecek `check_migrations.sql` sekarang 81 baris; migrasi CMS `20261118010000` sudah dijalankan pemilik proyek (18 Nov), begitu juga `20261119010000` (blok Teks + gambar dan Galeri, 19 Nov). `tsc`, `build`, dan semua uji langsung lulus (daftar di CATATAN_PERBAIKAN bagian 4); 0 akun uji tertinggal. Database `main` belum dicek.
 
 ## A. Sudah diperbaiki
 
@@ -70,7 +70,7 @@ Status pemeriksaan terakhir (17 Nov, laptop): semua migrasi sampai `202611170100
     - halaman CMS About/Community/Fellowship/Partnership tampil **di dalam bingkai menunya**, sehingga sidebar dan banner penutup tetap ada;
     - baris yang diketik tetap tampil sebagai baris baru.
 
-    Butuh migrasi `20261119010000`. Bukti: PGlite 90/90, `test:form-validation` 142/142, uji browser 27/27.
+    Migrasi `20261119010000` sudah dijalankan (19 Nov). Bukti: PGlite 90/90, `test:cms` 34/34, `test:form-validation` 142/142, uji browser 27/27 ditambah 15/15 untuk tampilan blok baru di layar lebar dan HP.
 - **Output kurikulum Bulan 1 lengkap dan bisa dipresentasikan dari halaman ini (18 Nov, CATATAN_PERBAIKAN 2bn):** ke-22 output Bulan 1 ada di `dokumen/output/bulan-1/`. Isinya antara lain Feature Gap Matrix (86 butir dari 51 slide), ERD dan Data Dictionary dari skema asli, Role-Permission Matrix (80/80 sel sama dengan Slide 16), Requirement List, User Story, Business Rules, Issue Register, dan Backlog. Semuanya bisa dibuka di tab **Output Kurikulum** di halaman ini, lengkap dengan diagram yang tergambar dan tautan antar-bagian. Dokumen baru di `dokumen/output/bulan-N/` muncul otomatis. Dicek di browser terhadap hasil build: 18 dokumen, 8/8 diagram ERD tergambar, tampilan HP memakai dropdown, isi dokumen tidak ikut terkirim ke browser sebelum login. Sudah diuji manual oleh pemilik proyek (18 Nov): tab Output Kurikulum, diagram ERD, inventaris menu, dan tautan klasifikasi di Data Dictionary.
 - **Semua formulir kini menandai isian yang salah (17 Nov, CATATAN_PERBAIKAN 2bm):** pengajuan modul trainer, Tambah User, dan pendaftaran Full Training/Course Offering menyusul Request a Training, Become an Expert, dan Knowledge Hub. Ikut ditutup:
   - Pemegang Hak Cipta yang bertanda wajib kini benar-benar dicek;
