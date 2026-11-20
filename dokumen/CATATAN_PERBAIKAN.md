@@ -1665,6 +1665,15 @@ Catatan: `live-notifications` sempat gagal satu cek (dashboard menerima halaman 
 - Bagian ini tidak tampil bila akun belum pernah membuat permintaan.
 - Datanya sama dengan My Requests (`listMyExpertServiceRequests`, kunci query yang sama), dimuat ulang saat jendela aktif kembali.
 - Sidebar dashboard mendapat tautan **Permintaan Expert**. Tanpa migrasi.
+- **Sidebar Academy "Perjalanan Saya"** (permintaan pemilik proyek, 20 Nov):
+  - Ditambah menu **Permintaan Expert Saya** (`/experts/my-requests`).
+  - Setiap menu (Pendaftaran, Pembelajaran, Permohonan Pelatihan, Permintaan Expert) kini memuat **angka milik akun yang login**. Angkanya oranye bila ada yang menunggu tindakan pemilik akun: pendaftaran diminta perbaikan, permohonan pelatihan diminta revisi, atau permintaan expert diminta info.
+  - Angka diambil lewat `useMyJourneyCounts` dengan fungsi server dan kunci query yang sama dengan halaman tujuannya, jadi tidak ada permintaan ganda.
+  - Tamu dan mode presentasi tidak memuat apa pun.
+  - Dicek di browser dengan akun sementara:
+    - akun dengan 2 permintaan (1 diminta info) mendapat angka oranye **2**;
+    - akun tanpa data dan tamu tidak mendapat angka;
+    - 0 error.
 - Dicek di browser terhadap dev server dengan akun sementara: bagian tampil dengan status "Diajukan" dan "Pilihan Anda: trainerok (ditinjau tim dulu)"; lebar 390 px tidak melebar; 0 error.
 
 **Belum dibangun (butir Slide 38, dicatat untuk tahap berikutnya):**

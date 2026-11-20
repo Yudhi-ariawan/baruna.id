@@ -187,6 +187,8 @@ export const id: TranslationSchema = {
     myApplications: "Pendaftaran Saya",
     myLearning: "Pembelajaran Saya",
     myTrainingRequests: "Permohonan Pelatihan Saya",
+    myExpertRequests: "Permintaan Expert Saya",
+    needsYourAction: "Perlu tindakan Anda",
     browse: "Jelajahi",
     byCategory: "Berdasarkan Kategori",
     learningPathways: "Alur Pembelajaran",

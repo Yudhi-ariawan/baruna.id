@@ -15,9 +15,11 @@ import {
   Users,
   Network,
   Layers,
+  Handshake,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
+import { useMyJourneyCounts } from "./useMyJourneyCounts";
 import { categories } from "@/data/categories";
 import { pathways } from "@/data/pathways";
 import { useLanguage } from "@/lib/i18n";
@@ -40,7 +42,8 @@ export type AcademyActive =
   | "alumni-network"
   | "my-applications"
   | "my-learning"
-  | "my-training-requests";
+  | "my-training-requests"
+  | "my-expert-requests";
 
 type NavLink = {
   keyName: string;
@@ -159,7 +162,11 @@ export function AcademySidebar({
     { keyName: "sidebar.myApplications", defaultLabel: "My Applications", key: "my-applications", to: "/academy/applications", icon: FileText },
     { keyName: "sidebar.myLearning", defaultLabel: "My Learning", key: "my-learning", to: "/academy/learn", icon: CheckCircle2 },
     { keyName: "sidebar.myTrainingRequests", defaultLabel: "My Training Requests", key: "my-training-requests", to: "/academy/training-requests", icon: ClipboardList },
+    // Expert service requests (Slide 38) live under /experts, but belong to the same journey.
+    { keyName: "sidebar.myExpertRequests", defaultLabel: "My Expert Requests", key: "my-expert-requests", to: "/experts/my-requests", icon: Handshake },
   ];
+  // Figures of the signed-in account (none for visitors).
+  const journey = useMyJourneyCounts();
 
   const isProgramsActive =
     current === "programs-multi" || programLinks.some((p) => p.key === current);
@@ -290,18 +297,31 @@ export function AcademySidebar({
               {t("sidebar.myJourney")}
             </p>
           </li>
-          {myJourneyLinks.map((l) => (
-            <li key={l.key}>
-              <Link
-                to={l.to}
-                onClick={onNavigate}
-                className={`${topLink} ${current === l.key ? activeCls : idle}`}
-              >
-                <l.icon className="h-4 w-4 shrink-0" />
-                <span className="flex-1">{t(l.keyName, l.defaultLabel)}</span>
-              </Link>
-            </li>
-          ))}
+          {myJourneyLinks.map((l) => {
+            const fig = journey[l.key as keyof typeof journey];
+            return (
+              <li key={l.key}>
+                <Link
+                  to={l.to}
+                  onClick={onNavigate}
+                  className={`${topLink} ${current === l.key ? activeCls : idle}`}
+                >
+                  <l.icon className="h-4 w-4 shrink-0" />
+                  <span className="flex-1">{t(l.keyName, l.defaultLabel)}</span>
+                  {fig && fig.count > 0 ? (
+                    <span
+                      title={fig.attention > 0 ? t("sidebar.needsYourAction", "Needs your action") : undefined}
+                      className={`min-w-5 shrink-0 rounded-full px-1.5 text-center text-[11px] font-bold leading-5 ${
+                        fig.attention > 0 ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {fig.count}
+                    </span>
+                  ) : null}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
         <div className="my-3 border-t border-border" />

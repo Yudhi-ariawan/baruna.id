@@ -185,6 +185,8 @@ export const en = {
     myApplications: "My Applications",
     myLearning: "My Learning",
     myTrainingRequests: "My Training Requests",
+    myExpertRequests: "My Expert Requests",
+    needsYourAction: "Needs your action",
     browse: "Browse",
     byCategory: "By Category",
     learningPathways: "Learning Pathways",
