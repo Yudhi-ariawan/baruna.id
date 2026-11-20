@@ -1,4 +1,4 @@
-# Laporan Perkembangan BARUNA (14 Oktober – 5 November 2026)
+# Laporan Perkembangan BARUNA (14 Oktober – 20 November 2026)
 
 Branch `intern-update`. Acuan: 51 slide proses bisnis. Rincian teknis per perbaikan ada di `CATATAN_PERBAIKAN.md`.
 Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 2026; di Windows tertulis 11/4/2026).
@@ -398,9 +398,11 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 - **Rencana kerja mengikuti kurikulum magang.** Kurikulum 6 bulan (mulai 21 September 2026) dipecah menjadi rencana harian, dan dokumen output Bulan 1 disusun dari slide, kode, dan database.
 - **Tab Output Kurikulum di `/kesiapanrilis`.** Dokumen kurikulum bisa dipresentasikan langsung dari halaman ini: daftar per bulan, tombol sebelumnya/berikutnya, dan diagram yang tergambar. Dengan begitu tidak perlu membuka berkas satu per satu.
 - **Peta dokumen dan cara kerja (`dokumen/README.md`).** Isinya dokumen mana yang menjadi patokan untuk apa, urutan kerja setiap fitur, dan ritme kerja mingguan mengikuti roadmap.
+- **Dynamic CMS (lebih cepat dari jadwal 23–27 Nov).** Admin kini bisa mengelola menu Navbar, membuat halaman di `/p/<alamat>`, dan membuat formulir di `/f/<alamat>` tanpa programmer. Alurnya: Operator membuat draf, Approver menyetujui, lalu isi tayang. Kiriman formulir bisa difilter dan diekspor ke CSV.
 
 **Yang diperbaiki**
 - Pembagian 51 slide di README disesuaikan dengan isi slide (misalnya Academy Slide 19–28, bukan 11–25).
+- **Celah keamanan kritis TanStack Start ditutup** dengan pembaruan ke versi 1.169.4, pada hari yang sama celah itu ditemukan. Sudah diuji manual.
 
 **Pelajaran yang didapat**
 - Struktur database sebaiknya dibaca langsung dari database, bukan disusun dari ingatan. Dengan cara ini ketahuan ada 6 objek database yang dibuat di luar berkas migrasi.
@@ -410,4 +412,46 @@ Format tanggal di laporan ini: **tanggal/bulan/tahun** (04/11/2026 = 4 November 
 - `npm audit` menemukan celah keamanan **kritis** di TanStack Start yang sudah ada sejak sebelumnya. Perbaikannya berupa pembaruan versi, yang perlu dikerjakan tersendiri dengan uji penuh.
 - 6 objek database yang dibuat di luar migrasi perlu dibuatkan migrasi penyalin sebelum database `main` atau produksi dibangun.
 
-**Pengujian:** `tsc` dan `build` lulus, termasuk saat folder dokumen kurikulum tidak ada (kondisi repo bersama). Tab baru dicek di browser terhadap hasil build: diagram tergambar, tampilan HP benar, 0 error, dan isi dokumen tidak ikut terkirim ke browser sebelum login.
+**Pengujian:** `tsc` dan `build` lulus, termasuk saat folder dokumen kurikulum tidak ada (kondisi repo bersama). Tab baru dicek di browser terhadap hasil build: diagram tergambar, tampilan HP benar, 0 error, dan isi dokumen tidak ikut terkirim ke browser sebelum login. CMS: uji database 81/81, `test:cms` 30/30, uji browser 27/27.
+
+---
+
+## 19/11/2026 (Kamis, 19 November 2026)
+
+**Yang dibuat**
+- **Blok baru di halaman CMS:** *Teks + gambar* dan *Galeri*. Isi halaman CMS kini tampil di dalam bingkai menunya, dengan sidebar yang sama seperti halaman lain.
+- **Halaman CMS bisa ditemukan.** Halaman CMS kini muncul di sidebar menunya dan di pencarian situs.
+- **Konsol Kurasi dan Portal Admin memperbarui sendiri.** Antrean dimuat ulang tiap 30 detik dan saat jendela aktif kembali, jadi tindakan akun lain terlihat tanpa menekan muat ulang. Saat memuat, konsol menampilkan *skeleton shimmer*.
+
+**Yang diperbaiki**
+- Pratinjau formulir di editor kini sama dengan tampilan pengunjung, dan daftar pilihan tidak lagi menyimpan baris kosong.
+- **Menu "Tentang BARUNA" sempat hilang** dari Navbar setelah uji coba editor menu. Menu dipulihkan ke isi aslinya lewat alur persetujuan CMS (versi 4 = versi 1). Usulan pencegahan dicatat di backlog: peringatan bila tautan halaman utama terhapus.
+
+**Pelajaran yang didapat**
+- Uji manual menemukan hal yang tidak tertangkap uji otomatis, misalnya menu penting yang bisa terhapus tanpa peringatan.
+- Perubahan data tayang sebaiknya dipulihkan lewat alur resmi (draf → setuju), bukan diubah langsung di database, agar riwayatnya tetap tercatat.
+
+**Pengujian:** `test:cms` 34/34 sesudah migrasi `20261119010000`, validasi formulir 142/142, `build` lulus. Diuji manual oleh saya: membuat halaman `uji-halaman` dan formulir `uji-form`, menyetujui, mengisi formulir, dan melihat kiriman masuk.
+
+---
+
+## 20/11/2026 (Jumat, 20 November 2026)
+
+**Yang dibuat**
+- **Penugasan Expert dibuka lagi (Slide 38).** Pengguna bisa meminta expert, lalu tim BARUNA meninjau, meminta info, mencocokkan, dan menugaskan expert. Expert kemudian menerima, bertanya, atau menolak dengan alasan. Saat selesai, satu riwayat fasilitasi tercatat di profil expert.
+- **Permintaan expert terlihat di dashboard peserta** beserta statusnya, dengan pertanyaan yang perlu dijawab diletakkan paling atas. Sidebar Academy *Perjalanan Saya* kini menampilkan angka milik akun yang login, oranye bila ada yang perlu ditindaklanjuti.
+- **Notifikasi di setiap langkah Penugasan Expert.** Admin diberi tahu saat ada permintaan baru, jawaban pemohon, serta expert menerima atau menolak. Pemohon mendapat tanda terima. Setelah menekan tombol, setiap pihak melihat pesan tentang siapa yang diberi tahu dan langkah berikutnya.
+- **Skeleton shimmer di seluruh situs** saat memuat, menggantikan teks "Loading…" di sekitar 50 tempat, termasuk saat berpindah halaman.
+
+**Yang diperbaiki**
+- **Celah alur dari Slide 38:** dulu expert yang dipilih pemohon bisa langsung menerima permintaan tanpa ditinjau tim BARUNA. Kini expert baru melihat permintaan setelah ditugaskan admin. Penolakan expert juga tidak lagi menutup permintaan, tetapi mengembalikannya ke tim untuk dicarikan expert lain.
+
+**Pelajaran yang didapat**
+- Fitur lama perlu dicocokkan ulang dengan slide sebelum dibuka. Celah tinjauan admin ditemukan dengan cara ini, dan uji otomatis membuktikannya (19/45 sebelum perbaikan).
+- Notifikasi dan pesan setelah tindakan sama pentingnya dengan fungsinya, agar pengguna tahu apa yang terjadi dan apa langkah berikutnya.
+- *Skeleton* untuk perpindahan halaman sempat membuat semua halaman error di server. Kesalahan ini tertangkap karena halaman diperiksa sebelum commit.
+
+**Kendala**
+- Butir lanjutan Slide 38 (catatan ketersediaan expert, daftar kandidat, konversi ke expert draft, penyetuju terpisah) menunggu arahan mentor.
+
+**Pengujian:** `test:service-requests` 19/45 sebelum migrasi `20261120010000` menjadi 45/45 sesudahnya; `test:service-request-notifications` 10/10; uji expert, siklus utama, Knowledge Hub, notifikasi, dan lencana lulus; `build` lulus. Diuji manual oleh saya: 10 langkah Penugasan Expert sesuai, dari kirim permintaan sampai selesai. Permintaan uji SR-2026-EDF9F78B disimpan sebagai bukti.
