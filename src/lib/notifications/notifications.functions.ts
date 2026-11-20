@@ -296,6 +296,12 @@ const REQUESTER_EVENT_COPY: Record<string, EventCopy> = {
   cancel: { type: "rejected", title: "Permintaan layanan dibatalkan", body: "Permintaan Anda dibatalkan oleh admin. Lihat alasannya pada riwayat aktivitas." },
 };
 
+const EXPERT_DECLINED_COPY: EventCopy = {
+  type: "info",
+  title: "Expert berhalangan, tim mencarikan expert lain",
+  body: "Expert yang ditugaskan tidak dapat memenuhi permintaan Anda. Tim BARUNA sedang mencarikan expert lain.",
+};
+
 const EXPERT_EVENT_COPY: Record<string, EventCopy> = {
   assign: { type: "revision_requested", title: "Permintaan layanan baru untuk Anda", body: "Admin menugaskan permintaan layanan kepada Anda. Mohon terima, tolak, atau minta informasi." },
   reply: { type: "revision_requested", title: "Pemohon membalas permintaan informasi", body: "Pemohon sudah memberikan informasi tambahan. Mohon tinjau dan tanggapi." },
@@ -328,6 +334,8 @@ async function buildServiceRequestNotifications(userId: string): Promise<RawNoti
           .from("expert_service_requests")
           .select("id, request_number")
           .in("target_expert_id", expertIds)
+          // Slide 38: a request is the expert's only once an admin assigned it.
+          .not("assigned_at", "is", null)
           .order("updated_at", { ascending: false })
           .limit(50)
       : Promise.resolve({ data: [] as { id: string; request_number: string }[] }),
@@ -350,7 +358,8 @@ async function buildServiceRequestNotifications(userId: string): Promise<RawNoti
     const message = ev.message?.trim();
     // The requester hears about what admin/expert did; their own actions are not news to them.
     if (requesterReqs.has(ev.request_id) && ev.actor_role !== "requester") {
-      const copy = REQUESTER_EVENT_COPY[ev.action];
+      // An expert's decline only sends the request back to the team (migration 20261120010000).
+      const copy = ev.actor_role === "expert" && ev.action === "decline" ? EXPERT_DECLINED_COPY : REQUESTER_EVENT_COPY[ev.action];
       if (copy) {
         raw.push({
           id: `sre-req-${ev.id}`,

@@ -323,7 +323,10 @@ WITH checks(no, migration, ok) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cms_draft_decide')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'cms_form_submission_list')),
   (81, '20261119010000_cms_media_gallery_blocks',
-      EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_cms_block_problem' AND prosrc LIKE '%cms_block_image_required%'))
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = '_cms_block_problem' AND prosrc LIKE '%cms_block_image_required%')),
+  (82, '20261120010000_expert_assignment_review_gate',
+      EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trainer_service_request_respond' AND prosrc LIKE '%decline_reason_required%')
+      AND EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'expert_service_requests_target_read' AND qual LIKE '%assigned_at%'))
 )
 SELECT no, migration,
        CASE WHEN ok THEN 'OK' ELSE 'BELUM DIJALANKAN' END AS status

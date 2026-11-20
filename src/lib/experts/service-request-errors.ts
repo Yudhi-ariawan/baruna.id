@@ -9,6 +9,7 @@ const FRIENDLY: Array<[RegExp, string]> = [
   [/request_not_awaiting_information/, "Permintaan ini tidak sedang menunggu informasi dari Anda."],
   [/request_not_cancellable/, "Permintaan yang sudah selesai atau ditolak tidak dapat dibatalkan."],
   [/request_not_found/, "Permintaan tidak ditemukan atau Anda tidak memiliki akses."],
+  [/decline_reason_required/, "Tuliskan alasan menolak (minimal 5 karakter) agar tim BARUNA bisa mencarikan expert lain."],
   [/(reply_message_required|info_request_message_required|message_required)/, "Pesan wajib diisi (minimal 5 karakter)."],
   [/message_too_long|reply_message_too_long|note_too_long/, "Pesan terlalu panjang (maksimal 2.000 karakter)."],
   [/cannot_process_own_request/, "Anda tidak dapat memproses permintaan yang Anda ajukan sendiri."],

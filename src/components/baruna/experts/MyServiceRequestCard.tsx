@@ -103,6 +103,7 @@ export function MyServiceRequestCard({
 
       <div className="mt-3 text-xs text-muted-foreground">
         Created {formatDate(r.createdAt)} · Assigned Expert: <strong className="text-navy">{r.assignedExpert || "To be matched by BARUNA"}</strong>
+        {!r.assignedExpert && r.preferredExpert ? <> · Your choice: <strong className="text-navy">{r.preferredExpert}</strong> (reviewed by BARUNA first)</> : null}
       </div>
 
       {r.status !== "draft" && !closed && (

@@ -10,7 +10,7 @@ import type { ConsoleMenuKey } from "./console-access.functions";
 // readable through RLS; access is checked first (readConsoleAccess / users.read).
 
 export type ConsoleBadges = Partial<Record<ConsoleMenuKey, number>>;
-export type AdminBadges = { accessRequests?: number; trainerApplications?: number };
+export type AdminBadges = { accessRequests?: number; trainerApplications?: number; serviceRequests?: number };
 
 /** review_subjects still in the review chain (same as the "Menunggu" tabs). */
 const OPEN_REVIEW = ["pending", "under_review", "decision_pending"];
@@ -76,9 +76,13 @@ export const getAdminBadges = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<AdminBadges> => {
     await requirePermission(context, "users.read");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [accessRequests, trainerApplications] = await Promise.all([
+    const [accessRequests, trainerApplications, serviceRequests] = await Promise.all([
       countOf(supabaseAdmin.from("rbac_role_change_requests").select("id", { count: "exact", head: true }).eq("status", "pending")),
       countOf(supabaseAdmin.from("expert_trainer_applications").select("id", { count: "exact", head: true }).eq("status", "submitted")),
+      // Penugasan Expert (Slide 38): requests waiting for an admin step (check, match, assign,
+      // or reassign after an expert declined). Requests waiting for the expert or requester are not counted.
+      countOf(supabaseAdmin.from("expert_service_requests").select("id", { count: "exact", head: true })
+        .in("status", ["submitted", "under_review", "expert_matching"])),
     ]);
-    return { accessRequests, trainerApplications };
+    return { accessRequests, trainerApplications, serviceRequests };
   });

@@ -60,7 +60,8 @@ export function ServiceRequestActionPanel({
   const openFile = useServerFn(getServiceRequestFileUrl);
   const [action, setAction] = useState<AdminServiceAction | null>(null);
   const [message, setMessage] = useState("");
-  const [expertId, setExpertId] = useState<string | null>(null);
+  // The requester's choice is preselected; the admin still decides (Slide 38).
+  const [expertId, setExpertId] = useState<string | null>(r.assignedAt ? null : r.targetExpertId ?? null);
   const [expertSearch, setExpertSearch] = useState("");
   const values = r.payload.values ?? {};
   const [completion, setCompletion] = useState({
@@ -162,6 +163,7 @@ export function ServiceRequestActionPanel({
 
         <p className="text-xs text-muted-foreground">
           Expert ditugaskan: <strong className="text-navy">{r.assignedExpert || "Belum ada"}</strong>
+          {!r.assignedExpert && r.preferredExpert ? <> · Pilihan pemohon: <strong className="text-navy">{r.preferredExpert}</strong> (belum melihat permintaan ini)</> : null}
           {r.facilitationHistoryId && " · Tercatat di riwayat fasilitasi"}
         </p>
 

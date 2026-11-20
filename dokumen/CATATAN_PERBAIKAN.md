@@ -29,7 +29,7 @@ Standar teknis: `dokumen/ENGINEERING_STANDARDS.md` (bagian 7, 8).
 ### Modularisasi
 - `experts.portal.submit-module.tsx` dipecah dari 1.518 menjadi 516 baris. Langkah form, stepper, bar tombol, banner revisi, dan layar sukses menjadi komponen di `src/components/baruna/experts/submit-module/`; logika upload dan pembacaan draf pindah ke `src/lib/experts/`. Perilaku tidak berubah.
 
-> Catatan: fitur Penugasan Expert saat ini disembunyikan sementara karena alurnya masih dibahas.
+> Catatan: fitur Penugasan Expert sempat disembunyikan (20 Okt) dan **dibuka lagi 20 Nov** dengan gerbang tinjau-sebelum-aktif sesuai Slide 38 (bagian 2bx).
 
 ---
 
@@ -1616,6 +1616,46 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bx. Penugasan Expert dibuka lagi, dengan tinjauan admin sebelum penugasan aktif (20 Nov, Slide 38 PB-EXP-03)
+
+**Latar:** fitur ini disembunyikan sejak 20 Okt (commit `bc0ea02`). Menu admin dihapus dan tombol kirim di `/experts/request` dimatikan. Tabel dan RPC-nya sudah ada sejak migrasi `20261014040000`. Pemilik proyek meminta fitur ini dibuka lagi dan diuji manual (20 Nov).
+
+**Temuan saat dibandingkan dengan Slide 38:** aturan utama slide menyebut *"review dan persetujuan sebelum penugasan aktif"*, dan keputusan menutup permintaan ada di jalur Review ("Layak ditindaklanjuti? Tidak → Tutup Assignment dengan Alasan"). Kode lama melanggar keduanya:
+- Permintaan yang dikirim dari profil expert (`/experts/request?expert=<slug>`) langsung tersimpan dengan expert tujuan. Expert itu bisa melihat dan **menerima** permintaan di portalnya sebelum tim BARUNA memeriksanya. Uji otomatis membuktikannya: "expert pilihan tidak bisa langsung menerima (diterima!)".
+- Penolakan expert menutup seluruh permintaan (status `declined`), padahal tim seharusnya bisa mencarikan expert lain.
+
+**Perubahan:**
+- **Migrasi `20261120010000_expert_assignment_review_gate.sql`** (pengecek baris 82; mengganti 4 fungsi dan 2 policy, tanpa perubahan tabel):
+  - Expert yang dipilih pemohon menjadi **pilihan**, bukan penugasan. Expert baru bisa melihat permintaan (RLS baris dan riwayat, daftar portal) dan menjawabnya setelah admin menekan **Tugaskan Expert** (`assigned_at` terisi).
+  - Expert hanya menjawab dari status *Menunggu Expert* (`expert_contacted`) atau *Diminta Informasi*.
+  - **Tolak oleh expert** wajib beralasan (≥5 karakter). Permintaan kembali ke *Pencocokan* tanpa expert, sehingga admin menugaskan expert lain atau menolak dengan alasan. Klik tolak dua kali tidak error.
+  - Daftar admin dan My Requests membedakan `preferredExpert` (pilihan pemohon) dari `assignedExpert` (ditugaskan). Filter dan angka *Belum Ada Expert* kini berarti "belum ditugaskan".
+- **Menu Portal Admin → Verifikasi & Kurasi → Penugasan Expert** dimunculkan lagi. Lencananya menghitung permintaan yang menunggu tindakan admin: Diajukan, Ditinjau, atau Pencocokan (termasuk yang dikembalikan expert). Lencana itu ikut dijumlahkan di tautan "Portal Admin" pada Konsol Kurasi.
+- **`/experts/request`:** tombol *Submit Request* dan *Save Draft* aktif lagi, dengan keterangan bahwa tim BARUNA memeriksa permintaan dulu dan expert dihubungi setelah penugasan disetujui.
+- **Portal expert** (`/experts/portal/service-requests`): tombol Tolak membuka kotak alasan, dan teks halaman menjelaskan bahwa permintaan datang dari penugasan admin.
+- **Panel Kelola (admin):** expert pilihan pemohon ditampilkan dan sudah terpilih saat admin membuka *Tugaskan Expert*. Admin tetap yang memutuskan.
+- **Notifikasi:**
+  - Pemohon mendapat "Expert berhalangan, tim mencarikan expert lain" saat expert menolak, bukan "permintaan ditolak".
+  - Expert hanya menerima notifikasi untuk permintaan yang sudah ditugaskan kepadanya.
+
+**Uji:** `npm run test:service-requests` (baru, 45 pengecekan). Skrip ini menjalankan alur Slide 38 lengkap dengan akun sementara (pemohon, admin, dua expert-trainer, pengguna lain), lalu menghapus semuanya:
+- permintaan dengan expert pilihan;
+- cek kelengkapan dan balasan pemohon;
+- pencocokan dan penugasan;
+- expert bertanya, menolak, lalu ditugaskan ke expert lain yang menerima;
+- terjadwal dan selesai, dengan tepat satu baris riwayat fasilitasi;
+- penjagaan: data lama dari tab lain, konflik kepentingan, hak baca, dan penolakan admin.
+
+Sebelum migrasi: **19/45**. `tsc` lulus.
+
+**Belum dibangun (butir Slide 38, dicatat untuk tahap berikutnya):**
+- *Availability Record* (validasi ketersediaan): sekarang hanya ada angka penugasan aktif per expert di daftar pilihan.
+- *Recommendation Record / Candidate Assignment*: daftar kandidat yang diusulkan sebelum ditugaskan.
+- *Konversi ke Expert Draft* bila tidak ada expert yang cocok.
+- Penyetuju terpisah dari admin yang menugaskan: sekarang penugasan oleh admin dianggap sebagai persetujuan, lalu expert menerima atau menolak.
+
+---
+
 ## 2bw. Uji manual CMS: formulir lulus; menu "Tentang BARUNA" sempat hilang lalu dipulihkan (19 Nov)
 
 **A. Formulir (uji manual pemilik proyek): lulus** setelah perbaikan 2bu (Pratinjau, daftar pilihan tanpa baris kosong). Formulir `uji-form` dibuat Operator, disetujui Approver, tampil di `/f/uji-form`, dan kiriman pengguna masuk ke database (berstatus "Baru" dan dihitung lencana menu CMS).
@@ -1990,6 +2030,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261117010000_role_request_guards.sql` (Permintaan Peran: hanya lima peran kurasi untuk diri sendiri, tanpa permintaan ganda, bisa dibatalkan). Lihat bagian 2bh. Jalankan setelah `20261021080000`. Kode branch ini tetap jalan sebelum migrasi (tombol batal memberi pesan bahwa migrasi belum dijalankan).
 - `20261118010000_dynamic_cms.sql` (Dynamic CMS: menu navigasi, halaman dari blok, formulir, draf yang disetujui orang lain, kiriman formulir). Lihat bagian 2br. Jalankan setelah `20261116020000` (memakai `_can_publish`) dan `20261104020000` (bucket sampul). Halaman dan Navbar tetap memakai tampilan lama selama migrasi belum dijalankan atau belum ada isi CMS yang tayang. Pengecek: baris 80.
 - `20261119010000_cms_media_gallery_blocks.sql` (blok halaman **Teks + gambar** dan **Galeri**; hanya mengganti fungsi pemeriksa blok `_cms_block_problem`, tanpa perubahan tabel). Lihat bagian 2bs. Jalankan setelah `20261118010000`. Sebelum dijalankan, kedua blok baru ditolak saat draf dikirim; blok lama tidak terpengaruh. Pengecek: baris 81.
+- `20261120010000_expert_assignment_review_gate.sql` (Penugasan Expert: expert baru melihat dan menjawab permintaan setelah **ditugaskan admin**; penolakan expert wajib beralasan dan mengembalikan permintaan ke Pencocokan; daftar membedakan expert pilihan pemohon dan expert yang ditugaskan). Mengganti 4 fungsi dan 2 policy, tanpa perubahan tabel. Lihat bagian 2bx. Jalankan setelah `20261014040000` dan `20261014060000`. **Wajib sebelum fitur dipakai:** tanpa migrasi ini, expert pilihan pemohon bisa langsung menerima permintaan tanpa ditinjau. Pengecek: baris 82.
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -2027,10 +2068,11 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
   | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
   | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 34 (setelah migrasi `20261118010000`, `20261119010000`) | 2br, 2bs |
+  | `service-requests` | 45 (setelah migrasi `20261120010000`; 19/45 sebelum) | 2bx | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.
-- Belum diuji manual di browser dengan akun nyata: alur penugasan Expert (fitur disembunyikan sementara), pendaftaran Peserta, pipeline modul Trainer, dan fitur 22–23 Okt (pembaruan profil expert, pembaruan Knowledge Hub, riwayat versi, Tambah User, Data Master).
+- Belum diuji manual di browser dengan akun nyata: alur penugasan Expert (dibuka lagi 20 Nov, bagian 2bx; uji manual menyusul), pendaftaran Peserta, pipeline modul Trainer, dan fitur 22–23 Okt (pembaruan profil expert, pembaruan Knowledge Hub, riwayat versi, Tambah User, Data Master).
 
 ---
 

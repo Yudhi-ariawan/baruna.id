@@ -86,7 +86,10 @@ export type ServiceRequest = {
   createdAt: string;
   updatedAt: string;
   targetExpertId?: string | null;
+  /** Set only after an admin assigned the request (Slide 38: approval before the assignment is active). */
   assignedExpert?: string | null;
+  /** Expert the requester asked for, while not yet assigned. */
+  preferredExpert?: string | null;
   targetExpertSlug?: string | null;
   completedAt?: string | null;
   events?: ServiceRequestEvent[];

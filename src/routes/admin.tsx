@@ -1,7 +1,7 @@
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ClipboardCheck, GraduationCap, History, KeyRound, LayoutDashboard, LogIn, ShieldAlert, Users } from "lucide-react";
+import { ClipboardCheck, GraduationCap, History, Inbox, KeyRound, LayoutDashboard, LogIn, ShieldAlert, Users } from "lucide-react";
 import { getAdminAccess } from "@/lib/admin/users.functions";
 import { getGovernanceConsoleAccess, hasConsoleAccess } from "@/lib/governance/console-access.functions";
 import {
@@ -77,6 +77,8 @@ function adminNav(canReadAudit: boolean, badges: AdminBadges = {}, curationBadge
         // Total of the curation queues, so admins see waiting work from here too.
         { label: "Konsol Kurasi", to: "/governance", icon: ClipboardCheck, badge: curationBadge },
         { label: "Kualifikasi Trainer", to: "/admin/trainer-applications", icon: GraduationCap, badge: badges.trainerApplications },
+        // Slide 38 (PB-EXP-03): review, match and assign expert service requests.
+        { label: "Penugasan Expert", to: "/admin/service-requests", icon: Inbox, badge: badges.serviceRequests },
       ],
     },
   ];

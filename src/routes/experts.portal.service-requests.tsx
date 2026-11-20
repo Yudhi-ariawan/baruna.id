@@ -18,8 +18,8 @@ export const Route = createFileRoute("/experts/portal/service-requests")({ head:
 
 const STYLES: Record<string, string> = { confirmed: "bg-eco-community/15 text-eco-community", scheduled: "bg-marine/15 text-marine", under_review: "bg-badge-workshop/15 text-badge-workshop", expert_contacted: "bg-accent/25 text-accent-foreground", declined: "bg-destructive/10 text-destructive" };
 
-// Must match the states trainer_service_request_respond accepts.
-const RESPONDABLE = new Set(["submitted", "under_review", "expert_matching", "expert_contacted", "information_requested"]);
+// Must match the states trainer_service_request_respond accepts (migration 20261120010000).
+const RESPONDABLE = new Set(["expert_contacted", "information_requested"]);
 
 type Action = "accept" | "request_info" | "decline";
 
@@ -43,7 +43,7 @@ function ServiceRequestsPortal() {
     try {
       await respond({ data: { requestId, action, message } });
       ok = true;
-      toast.success(action === "accept" ? "Permintaan diterima." : action === "decline" ? "Permintaan ditolak." : "Permintaan informasi tambahan dikirim.");
+      toast.success(action === "accept" ? "Permintaan diterima." : action === "decline" ? "Permintaan dikembalikan ke tim BARUNA." : "Permintaan informasi tambahan dikirim.");
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Gagal memproses permintaan.");
     } finally {
@@ -53,21 +53,24 @@ function ServiceRequestsPortal() {
     }
     return ok;
   };
-  return <PageShell sidebar={{ ...EXPERTS_SIDEBAR_META, title: "Trainer Portal", subtitle: "Incoming Expert Services.", sections: trainerPortalNav("/experts/portal/service-requests") }} cta={{ icon: Inbox, title: "Secure request workflow", description: "Every response is recorded in the audit trail.", button: "Back to Dashboard", href: "/experts/portal" }}><div className="space-y-6"><div><h1 className="font-display text-3xl font-extrabold text-navy">Service Requests</h1><p className="mt-2 text-sm text-muted-foreground">Requests sent directly to your expert profile or assigned to you by BARUNA administrators.</p></div>{query.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Loading service requests…</p> : query.isError ? <p className="rounded-xl bg-destructive/10 p-5 text-sm text-destructive">Unable to load trainer service requests.</p> : query.data?.length ? <ul className="space-y-3">{query.data.map((r) => <RequestItem key={r.id} request={r} busy={pendingId === r.id} disabled={pendingId !== null} onAction={act} />)}</ul> : <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center"><Inbox className="mx-auto h-8 w-8 text-marine" /><p className="mt-3 font-display text-lg font-bold text-navy">No incoming requests</p><p className="mt-1 text-sm text-muted-foreground">Directed service requests will appear here.</p></div>}</div></PageShell>;
+  return <PageShell sidebar={{ ...EXPERTS_SIDEBAR_META, title: "Trainer Portal", subtitle: "Incoming Expert Services.", sections: trainerPortalNav("/experts/portal/service-requests") }} cta={{ icon: Inbox, title: "Secure request workflow", description: "Every response is recorded in the audit trail.", button: "Back to Dashboard", href: "/experts/portal" }}><div className="space-y-6"><div><h1 className="font-display text-3xl font-extrabold text-navy">Service Requests</h1><p className="mt-2 text-sm text-muted-foreground">Requests assigned to you by BARUNA administrators after review. If you decline, the request goes back to the team to find another expert.</p></div>{query.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Loading service requests…</p> : query.isError ? <p className="rounded-xl bg-destructive/10 p-5 text-sm text-destructive">Unable to load trainer service requests.</p> : query.data?.length ? <ul className="space-y-3">{query.data.map((r) => <RequestItem key={r.id} request={r} busy={pendingId === r.id} disabled={pendingId !== null} onAction={act} />)}</ul> : <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center"><Inbox className="mx-auto h-8 w-8 text-marine" /><p className="mt-3 font-display text-lg font-bold text-navy">No incoming requests</p><p className="mt-1 text-sm text-muted-foreground">Directed service requests will appear here.</p></div>}</div></PageShell>;
 }
 
 function RequestItem({ request: r, busy, disabled, onAction }: { request: ServiceRequest; busy: boolean; disabled: boolean; onAction: (id: string, action: Action, message?: string) => Promise<boolean> }) {
   const openFile = useServerFn(getServiceRequestFileUrl);
-  const [asking, setAsking] = useState(false);
-  const [question, setQuestion] = useState("");
-  const sendQuestion = async () => {
-    if (question.trim().length < 5) {
-      toast.error("Tuliskan informasi yang Anda butuhkan (minimal 5 karakter).");
+  // "info": question to the requester; "decline": reason for the BARUNA team.
+  const [mode, setMode] = useState<"info" | "decline" | null>(null);
+  const [text, setText] = useState("");
+  const toggle = (m: "info" | "decline") => { setMode((cur) => (cur === m ? null : m)); setText(""); };
+  const send = async () => {
+    if (!mode) return;
+    if (text.trim().length < 5) {
+      toast.error(mode === "info" ? "Tuliskan informasi yang Anda butuhkan (minimal 5 karakter)." : "Tuliskan alasan menolak (minimal 5 karakter).");
       return;
     }
-    if (await onAction(r.id, "request_info", question.trim())) {
-      setAsking(false);
-      setQuestion("");
+    if (await onAction(r.id, mode === "info" ? "request_info" : "decline", text.trim())) {
+      setMode(null);
+      setText("");
     }
   };
   const values = r.payload.values ?? {}; const topic = values.eventName || values.trainingTitle || values.subjectArea || values.objective || values.technicalIssue || "Expert service request"; const date = values.eventDate || values.trainingDates || values.completionDate || values.timeline || "Date to be agreed"; const place = values.eventFormat || values.deliveryMode || values.country || "To be agreed";
@@ -109,18 +112,22 @@ function RequestItem({ request: r, busy, disabled, onAction }: { request: Servic
       {RESPONDABLE.has(r.status) && (
         <div className="mt-3 flex flex-wrap gap-2">
           <button disabled={disabled} onClick={() => void onAction(r.id, "accept")} className="rounded-lg bg-marine px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{busy ? "Processing…" : "Accept"}</button>
-          {r.status !== "information_requested" && (
-            <button disabled={disabled} onClick={() => setAsking((v) => !v)} className="rounded-lg border border-border px-4 py-1.5 text-xs font-semibold text-navy disabled:opacity-60">Request info</button>
+          {r.status === "expert_contacted" && (
+            <button disabled={disabled} onClick={() => toggle("info")} className="rounded-lg border border-border px-4 py-1.5 text-xs font-semibold text-navy disabled:opacity-60">Request info</button>
           )}
-          <button disabled={disabled} onClick={() => { if (window.confirm("Decline this request?")) void onAction(r.id, "decline"); }} className="rounded-lg border border-destructive/40 px-4 py-1.5 text-xs font-semibold text-destructive disabled:opacity-60">Decline</button>
+          <button disabled={disabled} onClick={() => toggle("decline")} className="rounded-lg border border-destructive/40 px-4 py-1.5 text-xs font-semibold text-destructive disabled:opacity-60">Decline</button>
         </div>
       )}
-      {asking && (
+      {mode && (
         <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
-          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={2000} rows={3} placeholder="What information do you need from the requester?" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-marine/30" />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={3}
+            placeholder={mode === "info" ? "What information do you need from the requester?" : "Why can't you take this request? (sent to the BARUNA team, who will find another expert)"}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-marine/30" />
           <div className="mt-2 flex justify-end gap-2">
-            <button type="button" onClick={() => setAsking(false)} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground">Cancel</button>
-            <button type="button" disabled={disabled} onClick={() => void sendQuestion()} className="rounded-lg bg-navy px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{busy ? "Sending…" : "Send Question"}</button>
+            <button type="button" onClick={() => setMode(null)} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground">Cancel</button>
+            <button type="button" disabled={disabled} onClick={() => void send()} className={`rounded-lg px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60 ${mode === "decline" ? "bg-destructive" : "bg-navy"}`}>
+              {busy ? "Sending…" : mode === "info" ? "Send Question" : "Decline"}
+            </button>
           </div>
         </div>
       )}

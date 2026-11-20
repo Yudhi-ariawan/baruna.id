@@ -24,6 +24,7 @@
     "test:admin-module-revision": "node --env-file-if-exists=.env scripts/test-admin-module-revision.mjs",
     "test:knowledge-update": "node --env-file-if-exists=.env scripts/test-knowledge-update.mjs",
     "test:expert-profile-update": "node --env-file-if-exists=.env scripts/test-expert-profile-update.mjs",
+    "test:service-requests": "node --env-file-if-exists=.env scripts/test-service-requests.mjs",
     "test:version-history": "node --env-file-if-exists=.env scripts/test-version-history.mjs",
     "test:trainer-choice": "node --env-file-if-exists=.env scripts/test-trainer-choice.mjs",
     "test:create-user": "node --env-file-if-exists=.env scripts/test-create-user.mjs",

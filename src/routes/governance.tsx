@@ -148,7 +148,7 @@ function GovernanceLayout() {
       brandTitle="BARUNA Kurasi"
       brandSubtitle="Konsol Review & Persetujuan"
       sectionLabel="Konsol Kurasi"
-      navGroups={consoleNav(accessQuery.data!, badges, badgeTotal([adminBadges?.accessRequests, adminBadges?.trainerApplications]))}
+      navGroups={consoleNav(accessQuery.data!, badges, badgeTotal([adminBadges?.accessRequests, adminBadges?.trainerApplications, adminBadges?.serviceRequests]))}
       user={currentUser}
       onSignOut={signOut}
     >

@@ -21,6 +21,9 @@ const Respond = RequestId.extend({
 }).refine((v) => v.action !== "request_info" || (v.message?.length ?? 0) >= 5, {
   message: "Tuliskan informasi yang Anda butuhkan dari pemohon (minimal 5 karakter).",
   path: ["message"],
+}).refine((v) => v.action !== "decline" || (v.message?.length ?? 0) >= 5, {
+  message: "Tuliskan alasan menolak (minimal 5 karakter).",
+  path: ["message"],
 });
 const ModuleSubmission = z.object({
   draftId: z.string().uuid().optional(),
