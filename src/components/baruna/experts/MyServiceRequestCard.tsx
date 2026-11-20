@@ -48,13 +48,13 @@ export function MyServiceRequestCard({
   const question = r.status === "information_requested" ? latestInfoRequest(r.events) : null;
   const files = Object.entries(r.payload.files ?? {});
 
-  const run = async (fn: () => Promise<unknown>, success: string) => {
+  const run = async (fn: () => Promise<unknown>, success: string, description?: string) => {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     try {
       await fn();
-      toast.success(success);
+      toast.success(success, description ? { description, duration: 7000 } : undefined);
       setMessage("");
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Gagal memproses permintaan.");
@@ -70,13 +70,25 @@ export function MyServiceRequestCard({
       toast.error("Tuliskan jawaban minimal 5 karakter.");
       return;
     }
-    void run(() => reply({ data: { requestId: r.id, message: message.trim() } }), "Jawaban terkirim.");
+    // The question came from the expert when it was asked after the assignment.
+    const toExpert = question?.actorRole === "expert";
+    void run(
+      () => reply({ data: { requestId: r.id, message: message.trim() } }),
+      "Jawaban terkirim",
+      toExpert
+        ? "Expert mendapat notifikasi dan akan melanjutkan. Langkah berikutnya diberitahukan di lonceng."
+        : "Tim BARUNA mendapat notifikasi dan akan melanjutkan. Langkah berikutnya diberitahukan di lonceng.",
+    );
   };
 
   const cancelRequest = () => {
     const reason = window.prompt("Alasan pembatalan (opsional):", "");
     if (reason === null) return;
-    void run(() => cancel({ data: { requestId: r.id, reason: reason.trim() || undefined } }), "Permintaan dibatalkan.");
+    void run(
+      () => cancel({ data: { requestId: r.id, reason: reason.trim() || undefined } }),
+      "Permintaan dibatalkan",
+      "Tim BARUNA (dan expert, bila sudah ditugaskan) mendapat notifikasi.",
+    );
   };
 
   const open = async (fileKey: string) => {

@@ -44,7 +44,13 @@ function ServiceRequestsPortal() {
     try {
       await respond({ data: { requestId, action, message } });
       ok = true;
-      toast.success(action === "accept" ? "Permintaan diterima." : action === "decline" ? "Permintaan dikembalikan ke tim BARUNA." : "Permintaan informasi tambahan dikirim.");
+      // Say who was told and what happens next.
+      const next = {
+        accept: ["Permintaan diterima", "Pemohon dan admin BARUNA mendapat notifikasi. Admin akan menandai jadwal kegiatan."],
+        decline: ["Permintaan dikembalikan ke tim BARUNA", "Admin mendapat notifikasi beserta alasan Anda dan akan mencarikan expert lain."],
+        request_info: ["Pertanyaan dikirim ke pemohon", "Anda mendapat notifikasi di lonceng saat pemohon menjawab."],
+      }[action];
+      toast.success(next[0], { description: next[1], duration: 7000 });
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Gagal memproses permintaan.");
     } finally {

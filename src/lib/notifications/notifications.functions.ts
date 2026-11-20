@@ -15,6 +15,7 @@ import {
   buildModuleUpdateNotifications,
 } from "./learning-notifications.server";
 import { buildRoleRequestNotifications } from "./access-notifications.server";
+import { buildServiceRequestAdminNotifications } from "./service-request-admin-notifications.server";
 
 export type InAppNotification = {
   id: string;
@@ -306,6 +307,7 @@ const EXPERT_EVENT_COPY: Record<string, EventCopy> = {
   assign: { type: "revision_requested", title: "Permintaan layanan baru untuk Anda", body: "Admin menugaskan permintaan layanan kepada Anda. Mohon terima, tolak, atau minta informasi." },
   reply: { type: "revision_requested", title: "Pemohon membalas permintaan informasi", body: "Pemohon sudah memberikan informasi tambahan. Mohon tinjau dan tanggapi." },
   cancel: { type: "info", title: "Permintaan layanan dibatalkan", body: "Permintaan yang ditugaskan kepada Anda telah dibatalkan." },
+  decline: { type: "info", title: "Permintaan layanan ditutup admin", body: "Admin menutup permintaan yang ditugaskan kepada Anda; tidak perlu tindakan." },
   schedule: { type: "info", title: "Kegiatan dijadwalkan", body: "Admin menjadwalkan kegiatan untuk permintaan layanan Anda." },
   complete: { type: "approved", title: "Permintaan layanan ditandai selesai", body: "Kegiatan Anda dicatat selesai dan masuk riwayat fasilitasi." },
 };
@@ -356,7 +358,22 @@ async function buildServiceRequestNotifications(userId: string): Promise<RawNoti
   for (const ev of events ?? []) {
     const number = requesterReqs.get(ev.request_id) ?? expertReqs.get(ev.request_id) ?? "";
     const message = ev.message?.trim();
-    // The requester hears about what admin/expert did; their own actions are not news to them.
+    // Receipt for the requester's own submission, so the bell confirms it reached BARUNA.
+    if (requesterReqs.has(ev.request_id) && ev.actor_role === "requester" && ev.action === "submit") {
+      raw.push({
+        id: `sre-req-${ev.id}`,
+        subjectId: `sr-${ev.request_id}`,
+        type: "info",
+        title: `Permintaan expert terkirim (${number})`,
+        body: "Tim BARUNA akan memeriksa permintaan Anda, lalu mencocokkan dan menugaskan expert. Setiap langkah akan diberitahukan di sini.",
+        subjectKind: "service_request",
+        subjectTitle: number,
+        targetUrl: "/experts/my-requests",
+        createdAt: ev.created_at,
+        actorName: "Sistem BARUNA",
+      });
+    }
+    // The requester hears about what admin/expert did; their other actions are not news to them.
     if (requesterReqs.has(ev.request_id) && ev.actor_role !== "requester") {
       // An expert's decline only sends the request back to the team (migration 20261120010000).
       const copy = ev.actor_role === "expert" && ev.action === "decline" ? EXPERT_DECLINED_COPY : REQUESTER_EVENT_COPY[ev.action];
@@ -441,8 +458,14 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       (await hasGovernanceRole(context.supabase, context.userId, "admin")) ||
       (await hasGovernanceRole(context.supabase, context.userId, "management"));
 
+    // Penugasan Expert items go to the admins who run that console (same rule as its RPCs).
+    const isServiceAdmin = async () => {
+      const { data, error } = await context.supabase.rpc("_is_service_admin", { _user_id: context.userId });
+      return !error && Boolean(data);
+    };
+
     // A failure in one source must not hide the others.
-    const [review, services, trainerApps, statusSteps, assignments, staff, moduleUpdates, completions, enrollments, roleRequests, reads] = await Promise.all([
+    const [review, services, trainerApps, statusSteps, assignments, staff, moduleUpdates, completions, enrollments, roleRequests, serviceAdmin, reads] = await Promise.all([
       buildReviewNotifications(context.userId).catch(() => ({ raw: [] as RawNotif[], legacyReadIds: [] as string[] })),
       buildServiceRequestNotifications(context.userId).catch(() => [] as RawNotif[]),
       buildTrainerApplicationNotifications(context.userId).catch(() => [] as RawNotif[]),
@@ -455,6 +478,9 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       buildCompletionNotifications(context.userId).catch(() => [] as RawNotif[]),
       buildEnrollmentDecisionNotifications(context.userId).catch(() => [] as RawNotif[]),
       buildRoleRequestNotifications(context.userId).catch(() => [] as RawNotif[]),
+      isServiceAdmin()
+        .then((yes) => (yes ? buildServiceRequestAdminNotifications(context.userId) : []))
+        .catch(() => [] as RawNotif[]),
       supabaseAdmin
         .from("notification_reads")
         .select("notification_id")
@@ -478,6 +504,7 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       ...completions,
       ...enrollments,
       ...roleRequests,
+      ...serviceAdmin,
     ];
     rawNotifications.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),

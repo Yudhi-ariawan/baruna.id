@@ -178,7 +178,7 @@ function RequestExpertPage() {
           <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
             {submitted === "draft"
               ? "Your request has been saved as a draft. You can finish and submit it any time from My Requests."
-              : "Thank you! Your request is now in the workflow: Submitted → Under Review → Expert Matching → Confirmed → Completed. Track its progress in My Requests."}
+              : "Thank you! Your request is now in the workflow: Submitted → Under Review → Expert Matching → Confirmed → Completed. Every step is announced in your notifications (bell icon) and on your dashboard."}
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link

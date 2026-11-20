@@ -42,6 +42,18 @@ const ACTION_LABEL: Record<AdminServiceAction, string> = {
 };
 
 const MESSAGE_REQUIRED = new Set<AdminServiceAction>(["request_info", "decline", "cancel"]);
+
+/** Toast after each action: the new state, who received a notification, the next step. */
+const AFTER_ACTION: Record<AdminServiceAction, (expert: string | null) => { title: string; description: string }> = {
+  review: () => ({ title: "Status: Ditinjau", description: "Pemohon mendapat notifikasi. Berikutnya: minta info bila kurang, atau Mulai Pencocokan." }),
+  matching: () => ({ title: "Status: Pencocokan expert", description: "Pemohon mendapat notifikasi. Berikutnya: pilih expert lewat Tugaskan Expert." }),
+  assign: (expert) => ({ title: `Diteruskan ke ${expert ?? "expert"}`, description: "Expert dan pemohon mendapat notifikasi. Tunggu expert menerima, bertanya, atau menolak." }),
+  request_info: () => ({ title: "Pertanyaan dikirim ke pemohon", description: "Status: Menunggu Info. Anda mendapat notifikasi di lonceng saat pemohon menjawab." }),
+  schedule: () => ({ title: "Status: Terjadwal", description: "Pemohon dan expert mendapat notifikasi. Setelah kegiatan berjalan, pilih Selesai & Catat Riwayat." }),
+  complete: () => ({ title: "Selesai dan tercatat", description: "Riwayat fasilitasi expert bertambah. Pemohon dan expert mendapat notifikasi." }),
+  decline: () => ({ title: "Permintaan ditolak", description: "Pemohon mendapat notifikasi beserta alasan Anda." }),
+  cancel: () => ({ title: "Permintaan dibatalkan", description: "Pemohon (dan expert, bila sudah ditugaskan) mendapat notifikasi beserta alasan Anda." }),
+};
 const LABEL_KEYS: Record<string, string> = {
   eventName: "Nama kegiatan", trainingTitle: "Judul pelatihan", subjectArea: "Bidang", objective: "Tujuan",
   technicalIssue: "Isu teknis", organization: "Organisasi", country: "Negara", eventDate: "Tanggal",
@@ -63,6 +75,7 @@ export function ServiceRequestActionPanel({
   const [message, setMessage] = useState("");
   // The requester's choice is preselected; the admin still decides (Slide 38).
   const [expertId, setExpertId] = useState<string | null>(r.assignedAt ? null : r.targetExpertId ?? null);
+  const [expertName, setExpertName] = useState<string | null>(r.assignedAt ? null : r.preferredExpert ?? null);
   const [expertSearch, setExpertSearch] = useState("");
   const values = r.payload.values ?? {};
   const [completion, setCompletion] = useState({
@@ -110,7 +123,9 @@ export function ServiceRequestActionPanel({
               : undefined,
         },
       });
-      toast.success(`${ACTION_LABEL[action]}: berhasil.`);
+      // Say what happens next and who was told, so the admin is never left guessing.
+      const next = AFTER_ACTION[action](expertName);
+      toast.success(next.title, { description: next.description, duration: 7000 });
       await onChanged();
       onClose();
     } catch (cause) {
@@ -183,7 +198,7 @@ export function ServiceRequestActionPanel({
               ))}
             </div>
 
-            {action === "assign" && <ExpertPicker selected={expertId} onSelect={setExpertId} search={expertSearch} onSearch={setExpertSearch} />}
+            {action === "assign" && <ExpertPicker selected={expertId} onSelect={(id, name) => { setExpertId(id); setExpertName(name); }} search={expertSearch} onSearch={setExpertSearch} />}
 
             {action === "complete" && (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -229,7 +244,7 @@ function Field({ label, value, onChange, type = "text", className = "" }: { labe
   );
 }
 
-function ExpertPicker({ selected, onSelect, search, onSearch }: { selected: string | null; onSelect: (id: string) => void; search: string; onSearch: (v: string) => void }) {
+function ExpertPicker({ selected, onSelect, search, onSearch }: { selected: string | null; onSelect: (id: string, name: string) => void; search: string; onSearch: (v: string) => void }) {
   const list = useServerFn(listAssignableExperts);
   const term = useDebounced(search.trim().toLowerCase(), 350);
   const query = useQuery({
@@ -251,7 +266,7 @@ function ExpertPicker({ selected, onSelect, search, onSearch }: { selected: stri
           <p className="p-3 text-xs text-destructive">{query.error instanceof Error ? query.error.message : "Gagal memuat expert."}</p>
         ) : query.data?.length ? (
           query.data.map((e) => (
-            <button key={e.id} type="button" onClick={() => onSelect(e.id)} className={`flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-xs transition ${selected === e.id ? "border-navy bg-navy/5" : "border-border hover:bg-muted"}`}>
+            <button key={e.id} type="button" onClick={() => onSelect(e.id, e.name)} className={`flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-xs transition ${selected === e.id ? "border-navy bg-navy/5" : "border-border hover:bg-muted"}`}>
               <UserCheck className={`mt-0.5 h-4 w-4 shrink-0 ${selected === e.id ? "text-navy" : "text-muted-foreground"}`} />
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold text-navy">{e.name}</span>

@@ -1616,6 +1616,37 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2bz. Penugasan Expert: notifikasi untuk admin dan pesan "apa selanjutnya" setelah setiap tindakan (20 Nov, uji manual pemilik proyek)
+
+**Masalah (uji manual, 20 Nov):** pengguna bingung setiap kali ada tindakan.
+- Admin tidak pernah mendapat notifikasi lonceng untuk Penugasan Expert, misalnya saat permintaan baru masuk, pemohon menjawab, atau expert menerima/menolak. Admin hanya melihat angka di sidebar.
+- Pemohon tidak mendapat konfirmasi di lonceng setelah mengirim permintaan.
+- Expert tidak diberi tahu bila admin menutup permintaan yang sudah ditugaskan kepadanya.
+- Pesan setelah tombol ditekan terlalu umum, misalnya "Mulai Review: berhasil.", tanpa menjelaskan siapa yang diberi tahu dan langkah berikutnya.
+
+**Perubahan (tanpa migrasi; semua dibaca dari log `expert_service_request_events`):**
+- **Notifikasi admin** (`service-request-admin-notifications.server.ts`). Penerimanya mengikuti aturan yang sama dengan RPC konsol (`_is_service_admin`: admin/super admin). Isinya:
+  - *Permintaan expert baru*;
+  - *Pemohon menjawab pertanyaan Anda* (hanya bila yang bertanya admin, bukan expert);
+  - *Expert menerima penugasan*;
+  - *Expert menolak penugasan* (dengan alasannya);
+  - *Pemohon membatalkan permintaan*.
+
+  Setiap notifikasi menautkan ke `/admin/service-requests`. Permintaan milik admin itu sendiri tidak ikut, karena harus diproses admin lain.
+- **Pemohon:** mendapat tanda terima *Permintaan expert terkirim* yang menjelaskan alurnya. Layar sukses kini menyebut bahwa setiap langkah diberitahukan di lonceng dan dashboard.
+- **Expert:** mendapat *Permintaan layanan ditutup admin* bila admin menolak permintaan yang sudah ditugaskan kepadanya.
+- **Pesan setelah tindakan:** judul plus keterangan, tampil 7 detik, menyebut status baru, siapa yang menerima notifikasi, dan langkah berikutnya:
+  - **admin:** delapan tindakan, misalnya "Diteruskan ke <nama expert>. Expert dan pemohon mendapat notifikasi. Tunggu expert menerima, bertanya, atau menolak.";
+  - **expert:** terima, tanya, tolak;
+  - **pemohon:** jawab (menyebut tim atau expert, sesuai siapa yang bertanya) dan batal.
+
+**Uji:**
+- `npm run test:service-request-notifications` (baru, memanggil aplikasi): **10/10**. Lonceng pemohon, admin, dan expert diperiksa lewat alur nyata: kirim, minta info, jawab, tugaskan, tolak, tugaskan ulang, terima. Notifikasi khusus admin tidak bocor ke pemohon maupun expert.
+- `test:service-requests` 45/45, `test:live-notifications` 14/14.
+- `tsc`, lint, dan `build` lulus.
+
+---
+
 ## 2by. Skeleton shimmer di seluruh situs saat memuat (20 Nov, permintaan pemilik proyek)
 
 **Masalah:** skeleton shimmer baru dipakai di Konsol Kurasi dan Portal Admin (2bv). Halaman lain masih menampilkan teks "Loading…/Memuat…" atau ikon berputar selagi data dimuat, di sekitar 50 tempat. Contohnya dashboard peserta, profil, Trainer Portal, My Requests, Knowledge Hub, formulir pilihan (bahasa, kategori, topik, bidang keahlian), dialog konsol, dan pemeriksaan sesi.
@@ -2125,6 +2156,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
   | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 34 (setelah migrasi `20261118010000`, `20261119010000`) | 2br, 2bs |
   | `service-requests` | 45 (setelah migrasi `20261120010000`; 19/45 sebelum) | 2bx | `console-badges`* | 8 | 2bf, 2bx |
+  | `service-request-notifications`* | 10 | 2bz | | | |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

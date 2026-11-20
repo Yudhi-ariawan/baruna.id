@@ -76,6 +76,13 @@ Status pemeriksaan terakhir (17 Nov, laptop): semua migrasi sampai `202611170100
     - **Formulir:** sudah diuji manual oleh pemilik proyek (19 Nov) dan lulus setelah perbaikan 2bu. `uji-form` dibuat, disetujui, dan diisi, lalu kirimannya masuk dan dihitung lencana CMS.
     - **Menu navigasi:** menu "Tentang BARUNA" sempat hilang. Di v2 label dan alamat Menu 9 diganti, padahal seharusnya ditambah Submenu, lalu di v3 Menu 9 dihapus. Menu dipulihkan sebagai v4 (sama dengan v1) lewat alur draf dan persetujuan. Isi `/about` tidak berubah.
     - **Masih perlu:** uji ulang dropdown submenu, dan peringatan di editor bila tautan halaman utama terhapus (usulan).
+- **Penugasan Expert: notifikasi di setiap langkah (20 Nov, CATATAN_PERBAIKAN 2bz):**
+  - **Admin** kini mendapat notifikasi lonceng saat permintaan baru masuk, pemohon menjawab, expert menerima atau menolak, dan pemohon membatalkan.
+  - **Pemohon** mendapat tanda terima saat mengirim.
+  - **Expert** diberi tahu bila permintaannya ditutup admin.
+  - Setelah menekan tombol, semua pihak melihat pesan yang menjelaskan siapa yang diberi tahu dan langkah berikutnya.
+  - Bukti: `test:service-request-notifications` 10/10, `test:service-requests` 45/45.
+  - Belum diuji manual.
 - **Skeleton shimmer di seluruh situs (20 Nov, CATATAN_PERBAIKAN 2by):**
   - Saat data dimuat, semua halaman kini menampilkan bentuk abu-abu berkilau seperti di dashboard admin, menggantikan teks "Loading…/Memuat…" di sekitar 50 tempat. Contohnya dashboard peserta, profil, Trainer Portal, permintaan expert, Knowledge Hub, dropdown formulir, dan pemeriksaan sesi.
   - Perpindahan halaman yang lambat juga menampilkan skeleton dengan Navbar.
