@@ -20,6 +20,7 @@ import { PageShell } from "@/components/baruna/page/PageShell";
 import { RequireAuth } from "@/components/baruna/auth/RequireAuth";
 import { TrainerKnowledgePublicationsCard } from "@/components/baruna/experts/TrainerKnowledgePublicationsCard";
 import { MyLearningOverview } from "@/components/baruna/dashboard/MyLearningOverview";
+import { MyServiceRequestsCard } from "@/components/baruna/dashboard/MyServiceRequestsCard";
 import { getPublishedModulesCatalog } from "@/lib/learning/learning.functions";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import { useLanguage } from "@/lib/i18n";
@@ -148,6 +149,7 @@ function DashboardPage() {
                 { label: isId ? "Pendaftaran" : "Applications", to: "/academy/applications" },
                 { label: isId ? "Pembelajaran Saya" : "My Learning", to: "/academy/learn" },
                 { label: isId ? "Sertifikat" : "Certificates", to: "/academy/certification" },
+                { label: isId ? "Permintaan Expert" : "Expert Requests", to: "/experts/my-requests" },
                 { label: isId ? "Disimpan" : "Saved", to: "/saved" },
               ],
             },
@@ -231,6 +233,11 @@ function DashboardPage() {
 
         <div className="mt-6">
           <MyLearningOverview isId={isId} />
+        </div>
+
+        {/* Expert service requests (Slide 38); hidden when there are none. */}
+        <div className="mt-6 empty:hidden">
+          <MyServiceRequestsCard isId={isId} />
         </div>
 
         <div className="mt-6">

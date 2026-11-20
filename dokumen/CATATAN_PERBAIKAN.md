@@ -1655,6 +1655,18 @@ Uji lain sesudah migrasi:
 
 Catatan: `live-notifications` sempat gagal satu cek (dashboard menerima halaman HTML). Penyebabnya dev server yang sedang memuat ulang modul setelah kode berubah; pemanggilan langsung dan dua kali uji ulang lulus. Uji yang memanggil aplikasi (bertanda *) hanya bisa dijalankan terhadap `npm run dev`, karena ID server function di hasil build berbeda.
 
+**Lanjutan dari uji manual (20 Nov):** peserta yang sudah mengirim permintaan tidak melihatnya di `/dashboard`, karena dashboard hanya membaca pendaftaran pelatihan, belajar, dan sertifikat.
+- Dashboard kini punya bagian **Permintaan Expert** (`MyServiceRequestsCard`). Isinya:
+  - sampai 5 permintaan, yang perlu jawaban peserta diletakkan paling atas;
+  - nomor, jenis, judul, dan status dalam bahasa halaman;
+  - expert yang ditugaskan, atau expert pilihan peserta dengan keterangan "ditinjau tim dulu";
+  - untuk status *Perlu jawaban Anda*: pertanyaan tim atau expert dan tombol **Jawab sekarang**;
+  - tautan **Lihat semua** dan **Ajukan permintaan expert baru**.
+- Bagian ini tidak tampil bila akun belum pernah membuat permintaan.
+- Datanya sama dengan My Requests (`listMyExpertServiceRequests`, kunci query yang sama), dimuat ulang saat jendela aktif kembali.
+- Sidebar dashboard mendapat tautan **Permintaan Expert**. Tanpa migrasi.
+- Dicek di browser terhadap dev server dengan akun sementara: bagian tampil dengan status "Diajukan" dan "Pilihan Anda: trainerok (ditinjau tim dulu)"; lebar 390 px tidak melebar; 0 error.
+
 **Belum dibangun (butir Slide 38, dicatat untuk tahap berikutnya):**
 - *Availability Record* (validasi ketersediaan): sekarang hanya ada angka penugasan aktif per expert di daftar pilihan.
 - *Recommendation Record / Candidate Assignment*: daftar kandidat yang diusulkan sebelum ditugaskan.
