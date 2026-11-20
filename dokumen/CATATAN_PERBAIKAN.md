@@ -1646,7 +1646,14 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 - terjadwal dan selesai, dengan tepat satu baris riwayat fasilitasi;
 - penjagaan: data lama dari tab lain, konflik kepentingan, hak baca, dan penolakan admin.
 
-Sebelum migrasi: **19/45**. `tsc` lulus.
+Sebelum migrasi: **19/45**. **Sesudah migrasi (dijalankan pemilik proyek, 20 Nov): 45/45.**
+
+Uji lain sesudah migrasi:
+- lulus: `expert-rpc` 64/64, `expert-role-lock` 10/10, `lifecycle`, `kh-roles` 20/20, `live-notifications` 14/14;
+- `console-badges` **8/8**: ujinya diperbarui karena sejak 2br reviewer juga mendapat lencana CMS, dan kini ada cek lencana Penugasan Expert;
+- `tsc`, lint, dan `build` lulus.
+
+Catatan: `live-notifications` sempat gagal satu cek (dashboard menerima halaman HTML). Penyebabnya dev server yang sedang memuat ulang modul setelah kode berubah; pemanggilan langsung dan dua kali uji ulang lulus. Uji yang memanggil aplikasi (bertanda *) hanya bisa dijalankan terhadap `npm run dev`, karena ID server function di hasil build berbeda.
 
 **Belum dibangun (butir Slide 38, dicatat untuk tahap berikutnya):**
 - *Availability Record* (validasi ketersediaan): sekarang hanya ada angka penugasan aktif per expert di daftar pilihan.
@@ -2030,7 +2037,7 @@ Migrasi terbaru yang dibutuhkan kode di branch ini (selain yang lebih lama, sesu
 - `20261117010000_role_request_guards.sql` (Permintaan Peran: hanya lima peran kurasi untuk diri sendiri, tanpa permintaan ganda, bisa dibatalkan). Lihat bagian 2bh. Jalankan setelah `20261021080000`. Kode branch ini tetap jalan sebelum migrasi (tombol batal memberi pesan bahwa migrasi belum dijalankan).
 - `20261118010000_dynamic_cms.sql` (Dynamic CMS: menu navigasi, halaman dari blok, formulir, draf yang disetujui orang lain, kiriman formulir). Lihat bagian 2br. Jalankan setelah `20261116020000` (memakai `_can_publish`) dan `20261104020000` (bucket sampul). Halaman dan Navbar tetap memakai tampilan lama selama migrasi belum dijalankan atau belum ada isi CMS yang tayang. Pengecek: baris 80.
 - `20261119010000_cms_media_gallery_blocks.sql` (blok halaman **Teks + gambar** dan **Galeri**; hanya mengganti fungsi pemeriksa blok `_cms_block_problem`, tanpa perubahan tabel). Lihat bagian 2bs. Jalankan setelah `20261118010000`. Sebelum dijalankan, kedua blok baru ditolak saat draf dikirim; blok lama tidak terpengaruh. Pengecek: baris 81.
-- `20261120010000_expert_assignment_review_gate.sql` (Penugasan Expert: expert baru melihat dan menjawab permintaan setelah **ditugaskan admin**; penolakan expert wajib beralasan dan mengembalikan permintaan ke Pencocokan; daftar membedakan expert pilihan pemohon dan expert yang ditugaskan). Mengganti 4 fungsi dan 2 policy, tanpa perubahan tabel. Lihat bagian 2bx. Jalankan setelah `20261014040000` dan `20261014060000`. **Wajib sebelum fitur dipakai:** tanpa migrasi ini, expert pilihan pemohon bisa langsung menerima permintaan tanpa ditinjau. Pengecek: baris 82.
+- `20261120010000_expert_assignment_review_gate.sql` (Penugasan Expert: expert baru melihat dan menjawab permintaan setelah **ditugaskan admin**; penolakan expert wajib beralasan dan mengembalikan permintaan ke Pencocokan; daftar membedakan expert pilihan pemohon dan expert yang ditugaskan). Mengganti 4 fungsi dan 2 policy, tanpa perubahan tabel. Lihat bagian 2bx. Jalankan setelah `20261014040000` dan `20261014060000`. **Wajib sebelum fitur dipakai:** tanpa migrasi ini, expert pilihan pemohon bisa langsung menerima permintaan tanpa ditinjau. Pengecek: baris 82. **Sudah dijalankan di intern-update (20 Nov).**
 
 Tanpa migrasi yang sesuai, fitur terkait menampilkan pesan error yang jelas (bukan data rusak). Migrasi sebaiknya dijalankan **sebelum atau bersamaan** dengan merge. `20261015020000` memindahkan kunci jawaban kuis; kode lama belum bisa menilai kuis modul yang baru ditayangkan setelah migrasi itu.
 
@@ -2068,7 +2075,7 @@ Setelah merge: jalankan `npm run build`, lalu uji dengan **dua akun berbeda** (a
   | `full-training-documents`* | 19 (setelah migrasi `20261111020000`) | 2ax | `live-notifications`* | 14 (setelah migrasi `20261111030000`) | 2ay |
   | `master-data-requests`* | 21 (setelah migrasi `20261116010000`) | 2az | `publication-hold`* | 16 (setelah migrasi `20261116020000`) | 2ba |
   | `offering-attendance`* | 14 (setelah migrasi `20261116030000`, `040000`) | 2bb | `cms` | 34 (setelah migrasi `20261118010000`, `20261119010000`) | 2br, 2bs |
-  | `service-requests` | 45 (setelah migrasi `20261120010000`; 19/45 sebelum) | 2bx | | | |
+  | `service-requests` | 45 (setelah migrasi `20261120010000`; 19/45 sebelum) | 2bx | `console-badges`* | 8 | 2bf, 2bx |
 
   \* memanggil aplikasi yang berjalan (`APP_BASE_URL` di `.env`, atau `npm run dev` untuk fitur yang belum di-deploy).
 - Setiap perbaikan database juga diuji dulu di Postgres lokal (PGlite) dengan migrasi asli; jumlah ceknya ada di bagian masing-masing.

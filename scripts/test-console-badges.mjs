@@ -73,6 +73,10 @@ async function expected() {
     completions: await count(head("course_completions").eq("status", "pending_review")),
     programs: await count(head("academy_program_drafts").eq("status", "submitted")),
     masterData: await count(head("master_data_change_requests").eq("status", "pending")),
+    // Konten Situs (CMS, 2br): drafts waiting for a decision + new submissions of "notify" forms.
+    cms: await count(head("cms_drafts").eq("status", "submitted")) +
+      await count(svc.from("cms_form_submissions").select("id, cms_forms!inner(notify_on_submit)", { count: "exact", head: true })
+        .eq("status", "new").eq("cms_forms.notify_on_submit", true)),
   };
 }
 
@@ -85,7 +89,7 @@ try {
   console.log("1. Angka sama dengan antrean");
   const exp = await expected();
   let r = await getFn(superA.token, "getConsoleBadges");
-  check(r.data && Object.keys(exp).every((k) => r.data[k] === exp[k]), `super admin: kedelapan antrean cocok (${JSON.stringify(r.data ?? r.error).slice(0, 160)} vs ${JSON.stringify(exp)})`);
+  check(r.data && Object.keys(exp).every((k) => r.data[k] === exp[k]), `super admin: kesembilan antrean cocok (${JSON.stringify(r.data ?? r.error).slice(0, 160)} vs ${JSON.stringify(exp)})`);
 
   console.log("2. Hanya menu yang boleh dibuka");
   r = await getFn(reviewer.token, "getConsoleBadges");
@@ -105,6 +109,9 @@ try {
   const before = r.data?.accessRequests;
   const pendingNow = await count(head("rbac_role_change_requests").eq("status", "pending"));
   check(before === pendingNow, `angka Permintaan Akses cocok (${before} vs ${pendingNow})`);
+  // Penugasan Expert (2bx): requests waiting for an admin step.
+  const srNow = await count(head("expert_service_requests").in("status", ["submitted", "under_review", "expert_matching"]));
+  check(r.data?.serviceRequests === srNow, `angka Penugasan Expert cocok (${r.data?.serviceRequests} vs ${srNow})`);
   const req = await user.c.rpc("request_rbac_role_change", { _target_user_id: user.id, _role_code: "reviewer", _action: "grant", _reason: "Uji angka sidebar untuk permintaan akses baru." });
   check(!req.error, `permintaan uji dibuat (${req.error?.message ?? "ok"})`);
   r = await getFn(superA.token, "getAdminBadges");
