@@ -1735,6 +1735,8 @@ Catatan: `live-notifications` sempat gagal satu cek (dashboard menerima halaman 
     - 0 error.
 - Dicek di browser terhadap dev server dengan akun sementara: bagian tampil dengan status "Diajukan" dan "Pilihan Anda: trainerok (ditinjau tim dulu)"; lebar 390 px tidak melebar; 0 error.
 
+**Uji manual pemilik proyek (20 Nov): 10 langkah lulus.** Langkahnya: kirim permintaan dengan expert pilihan, lihat di dashboard, admin meninjau, meminta info, pemohon menjawab, admin menugaskan, expert bertanya atau menolak, tugaskan ulang, terjadwal, lalu selesai. Langkah 3–10 dijalankan sesudah notifikasi 2bz ditambahkan.
+
 **Belum dibangun (butir Slide 38, dicatat untuk tahap berikutnya):**
 - *Availability Record* (validasi ketersediaan): sekarang hanya ada angka penugasan aktif per expert di daftar pilihan.
 - *Recommendation Record / Candidate Assignment*: daftar kandidat yang diusulkan sebelum ditugaskan.
