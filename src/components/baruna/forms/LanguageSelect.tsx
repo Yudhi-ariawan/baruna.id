@@ -2,6 +2,7 @@
 // longer offered (deactivated, or a free-text value from before the list) stays
 // visible and marked, so nothing is replaced without the user noticing.
 import { matchLanguage, useLanguageOptions } from "@/lib/master/useLanguageOptions";
+import { FieldSkeleton } from "@/components/baruna/loading/Skeletons";
 
 type Props = {
   value: string;
@@ -13,7 +14,7 @@ type Props = {
 
 export function LanguageSelect({ value, onChange, className, otherLabel }: Props) {
   const q = useLanguageOptions();
-  if (q.isLoading) return <p className="text-xs text-muted-foreground">Memuat daftar bahasa…</p>;
+  if (q.isLoading) return <FieldSkeleton label="Memuat daftar bahasa…" />;
   if (q.isError) return <p className="text-xs text-destructive">{(q.error as Error).message}</p>;
 
   const options = q.data ?? [];

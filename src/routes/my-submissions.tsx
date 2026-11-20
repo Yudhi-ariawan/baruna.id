@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { PageSkeleton } from "@/components/baruna/loading/Skeletons";
 
 export const Route = createFileRoute("/my-submissions")({
   head: () => ({
@@ -26,7 +27,7 @@ function MySubmissionsShell() {
     });
   }, [navigate]);
 
-  if (!ready) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (!ready) return <div className="mx-auto max-w-4xl px-6 py-8"><PageSkeleton label="Loading…" withStats={false} /></div>;
   if (!signedIn) return null;
 
   return (

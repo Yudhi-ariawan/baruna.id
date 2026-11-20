@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, FileText, Loader2, RotateCcw, Send, Upload } from "lucide-react";
+import { LinesSkeleton } from "@/components/baruna/loading/Skeletons";
 import {
   getMyCourseEnrollmentStatus,
   submitCourseEnrollmentApplication,
@@ -55,7 +56,7 @@ export function FullTrainingRevision({ courseId, courseTitle, fallbackNotes, isI
   });
 
   const s = statusQ.data;
-  if (statusQ.isLoading) return <p className="mt-2 text-xs text-muted-foreground">{isId ? "Memuat…" : "Loading…"}</p>;
+  if (statusQ.isLoading) return <LinesSkeleton className="mt-2" lines={2} label={isId ? "Memuat…" : "Loading…"} />;
   if (statusQ.isError) {
     return <p className="mt-2 text-xs text-red-700">{statusQ.error instanceof Error ? statusQ.error.message : String(statusQ.error)}</p>;
   }

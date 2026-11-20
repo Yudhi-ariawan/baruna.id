@@ -4,6 +4,7 @@
 // value the request already has but that is no longer offered stays visible.
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { FieldSkeleton } from "@/components/baruna/loading/Skeletons";
 
 // training_category_taxonomy is not in the generated types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,7 +27,7 @@ export function TrainingCategorySelect({ value, onChange, className }: { value: 
     staleTime: 10 * 60_000,
     gcTime: 60 * 60_000,
   });
-  if (q.isLoading) return <p className="text-xs text-muted-foreground">Loading categories…</p>;
+  if (q.isLoading) return <FieldSkeleton label="Loading categories…" />;
   if (q.isError) return <p className="text-xs text-destructive">{(q.error as Error).message}</p>;
 
   const options = q.data ?? [];

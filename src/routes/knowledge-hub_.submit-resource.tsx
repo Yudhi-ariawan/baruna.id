@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { PageSkeleton } from "@/components/baruna/loading/Skeletons";
 import { TopicSelector } from "@/components/baruna/knowledge-hub/TopicSelector";
 import { LanguageSelect } from "@/components/baruna/forms/LanguageSelect";
 import { FieldError, FieldErrorSummary } from "@/components/baruna/forms/FieldError";
@@ -312,7 +313,7 @@ function SubmitResourcePage() {
   };
 
   if (authState === "loading" || (authState === "authenticated" && bootstrap.isLoading)) {
-    return <div className="min-h-screen bg-background"><Navbar /><main className="mx-auto max-w-2xl px-4 py-20 text-center text-sm text-muted-foreground">Checking contributor access…</main></div>;
+    return <div className="min-h-screen bg-background"><Navbar /><main className="mx-auto max-w-2xl px-4 py-8"><PageSkeleton label="Checking contributor access…" withStats={false} /></main></div>;
   }
   if (bootstrap.isError) {
     return (

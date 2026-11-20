@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMyCourseEnrollmentStatus } from "@/lib/learning/enrollment-application.functions";
 import { AlertCircle, Lock } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
+import { PageSkeleton } from "@/components/baruna/loading/Skeletons";
 import { LMS_MODULES, type LmsModule } from "@/data/lms";
 import { useApplication } from "@/lib/application";
 import { masterByCode, type MasterModule } from "@/data/masterModules";
@@ -196,10 +197,9 @@ function DynamicModuleRoom({ moduleId, userId }: { moduleId: string; userId: str
 
   if (isLoading) {
     return (
-      <AccessNotice
-        title="Memuat Materi Pelatihan"
-        message="Materi sedang disiapkan untuk akun Anda."
-      />
+      <AcademyShell active="self-paced">
+        <PageSkeleton label="Memuat materi pelatihan…" withStats={false} className="my-4" />
+      </AcademyShell>
     );
   }
   if (error || !content) {

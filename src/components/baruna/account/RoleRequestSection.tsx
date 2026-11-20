@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, KeyRound, Loader2, Send } from "lucide-react";
 import { cancelRoleRequest, getMyRoleRequests, submitRoleRequest } from "@/lib/account/role-requests.functions";
+import { LinesSkeleton } from "@/components/baruna/loading/Skeletons";
 import {
   REASON_MAX,
   REASON_MIN,
@@ -77,7 +78,7 @@ export function RoleRequestSection() {
       </div>
 
       {q.isLoading ? (
-        <p className="mt-4 text-sm text-muted-foreground">{isId ? "Memuat…" : "Loading…"}</p>
+        <LinesSkeleton className="mt-4" lines={3} label={isId ? "Memuat…" : "Loading…"} />
       ) : q.isError ? (
         <p className="mt-4 text-sm text-destructive">{(q.error as Error).message}</p>
       ) : (

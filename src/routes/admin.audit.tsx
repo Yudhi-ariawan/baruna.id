@@ -6,6 +6,7 @@ import { History, Loader2, Search } from "lucide-react";
 import { listAuditTrail } from "@/lib/admin/audit-trail.functions";
 import { AUDIT_SOURCES, SOURCE_LABEL, type AuditEntry, type AuditSource } from "@/lib/admin/audit-labels";
 import { AuditEntryRow } from "@/components/admin/audit/AuditEntryRow";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 
 // Jejak Audit (Slide 42 LS-01, 43 LS-02, 45 LS-04; Slide 49 RACI baris 8: Admin
 // Console menjalankan audit trail). Read-only; the server checks audit.read.
@@ -143,7 +144,7 @@ function AuditTrailPage() {
       </form>
 
       {q.isLoading ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Memuat jejak audit…</p>
+        <ListSkeleton rows={5} label="Memuat jejak audit…" />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message === "forbidden" ? "Akun Anda tidak memiliki izin membaca audit." : (q.error as Error).message}</p>
       ) : items.length === 0 ? (

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMasterKhTopics, saveMasterKhTopic, setMasterKhTopicActive } from "@/lib/governance/kh-topics.functions";
 import { TaxonomyMasterPanel } from "./TaxonomyMasterPanel";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 
 const QUERY_KEY = ["governance", "master-data", "kh-topics"];
 
@@ -17,9 +18,11 @@ export function KhTopicsPanel() {
     return (
       <section className="rounded-2xl border border-border bg-white p-5">
         <h2 className="font-display text-lg font-bold text-navy">Topik Knowledge Hub</h2>
-        <p className={`mt-1 text-sm ${q.isError ? "text-destructive" : "text-muted-foreground"}`}>
-          {q.isError ? (q.error as Error).message : "Memuat…"}
-        </p>
+        {q.isError ? (
+          <p className="mt-1 text-sm text-destructive">{(q.error as Error).message}</p>
+        ) : (
+          <ListSkeleton rows={3} className="mt-3" label="Memuat topik…" />
+        )}
       </section>
     );
   }

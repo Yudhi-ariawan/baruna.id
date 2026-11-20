@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, Clock } from "lucide-react";
 import { getSubjectStatusHistory } from "@/lib/governance/workflow-sla.functions";
+import { LinesSkeleton } from "@/components/baruna/loading/Skeletons";
 import { STAGE_LABEL_ID, formatHoursId, type WorkflowStage } from "@/lib/training-requests/workflow";
 
 const STATUS_ID: Record<string, string> = {
@@ -45,7 +46,7 @@ export function StatusHistoryPanel({ subjectId }: { subjectId: string }) {
     queryFn: () => fn({ data: { subjectId } }),
     staleTime: 15_000,
   });
-  if (q.isLoading) return <p className="text-xs text-muted-foreground">Memuat riwayat…</p>;
+  if (q.isLoading) return <LinesSkeleton lines={3} label="Memuat riwayat…" />;
   if (q.isError) return <p className="text-xs text-destructive">{(q.error as Error).message}</p>;
   const rows = q.data ?? [];
   if (!rows.length) return <p className="text-xs text-muted-foreground">Belum ada riwayat status.</p>;

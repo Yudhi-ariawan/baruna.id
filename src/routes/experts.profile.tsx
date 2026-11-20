@@ -15,6 +15,7 @@ import {
   FileText,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { PageSkeleton } from "@/components/baruna/loading/Skeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { listMyExpertApplications } from "@/lib/experts/application.functions";
 import type { ExpertApplicationStatus } from "@/lib/experts/application.types";
@@ -79,8 +80,8 @@ function MyExpertProfilePage() {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <main className="mx-auto max-w-4xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-          Loading your expert application…
+        <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+          <PageSkeleton label="Loading your expert application…" withStats={false} />
         </main>
       </div>
     );

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { RoutePendingSkeleton } from "@/components/baruna/loading/RoutePendingSkeleton";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -40,7 +41,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }, [navigate]);
 
   if (!authenticated) {
-    return <div className="p-10 text-sm text-muted-foreground">Checking your session…</div>;
+    // The guarded page draws its own Navbar, so the skeleton keeps one too.
+    return <RoutePendingSkeleton label="Memeriksa sesi Anda…" withStats />;
   }
 
   return children;

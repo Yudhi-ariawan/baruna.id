@@ -8,6 +8,7 @@ import {
   type MyCourseProgress,
 } from "@/lib/learning/my-learning.functions";
 import { FullTrainingRevision } from "@/components/baruna/learning/FullTrainingRevision";
+import { PanelSkeleton, StatsSkeleton } from "@/components/baruna/loading/Skeletons";
 
 /**
  * Participant learning summary, read from the database only:
@@ -24,7 +25,14 @@ export function MyLearningOverview({ isId }: { isId: boolean }) {
   });
 
   if (query.isLoading) {
-    return <p className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">{isId ? "Memuat data pembelajaran…" : "Loading your learning data…"}</p>;
+    const label = isId ? "Memuat data pembelajaran…" : "Loading your learning data…";
+    return (
+      <div className="space-y-6">
+        <StatsSkeleton label={label} />
+        <PanelSkeleton lines={4} label={label} />
+        <PanelSkeleton lines={2} label={label} />
+      </div>
+    );
   }
   if (query.isError || !query.data) {
     return (

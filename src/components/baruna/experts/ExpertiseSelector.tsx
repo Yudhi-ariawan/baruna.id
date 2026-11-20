@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check } from "lucide-react";
 import { getExpertiseOptions } from "@/lib/experts/expertise-options.functions";
+import { ChipsSkeleton } from "@/components/baruna/loading/Skeletons";
 
 const norm = (v: string) => v.trim().replace(/\s+/g, " ").toLowerCase();
 
@@ -21,7 +22,7 @@ export function ExpertiseSelector({
   const q = useQuery({ queryKey: ["experts", "expertise-options"], queryFn: () => fn(), staleTime: 5 * 60_000 });
 
   if (q.isLoading) {
-    return <p className="text-xs text-muted-foreground">{isId ? "Memuat daftar bidang…" : "Loading areas…"}</p>;
+    return <ChipsSkeleton label={isId ? "Memuat daftar bidang…" : "Loading areas…"} />;
   }
   if (q.isError) return <p className="text-xs text-destructive">{(q.error as Error).message}</p>;
 

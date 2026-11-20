@@ -2,8 +2,9 @@ import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-r
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { ChevronRight, ArrowLeft, LoaderCircle, ShieldAlert } from "lucide-react";
+import { ChevronRight, ArrowLeft, ShieldAlert } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
+import { PageSkeleton, PanelSkeleton } from "@/components/baruna/loading/Skeletons";
 import { ParticipantBiodataForm } from "@/components/baruna/academy/ParticipantBiodataForm";
 import { getMyParticipantBiodata } from "@/lib/academy/participant-biodata.functions";
 import { useEffect, useState } from "react";
@@ -52,9 +53,7 @@ function DaftarPesertaPage() {
   if (!authChecked) {
     return (
       <AcademyShell active="overview">
-        <div className="flex h-64 items-center justify-center">
-          <LoaderCircle className="h-8 w-8 animate-spin text-marine" />
-        </div>
+        <PageSkeleton label="Memeriksa sesi Anda…" withStats={false} className="mx-auto max-w-3xl" />
       </AcademyShell>
     );
   }
@@ -107,8 +106,9 @@ function DaftarPesertaPage() {
         </Link>
 
         {isLoading ? (
-          <div className="flex h-64 items-center justify-center rounded-2xl border border-border bg-card">
-            <LoaderCircle className="h-8 w-8 animate-spin text-marine" />
+          <div className="space-y-4">
+            <PanelSkeleton lines={5} label="Memuat formulir biodata…" />
+            <PanelSkeleton lines={4} label="Memuat formulir biodata…" />
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-700">

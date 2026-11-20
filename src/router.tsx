@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { RoutePendingSkeleton } from "./components/baruna/loading/RoutePendingSkeleton";
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
@@ -41,6 +42,11 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Skeleton while a page loader runs longer than 400 ms (kept at least 300 ms so it
+    // does not flash); fast navigations show nothing extra.
+    defaultPendingComponent: RoutePendingSkeleton,
+    defaultPendingMs: 400,
+    defaultPendingMinMs: 300,
   });
 
   return router;

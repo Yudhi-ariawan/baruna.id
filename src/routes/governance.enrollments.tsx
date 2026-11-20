@@ -6,6 +6,7 @@ import { usePagedList } from "@/lib/governance/usePagedList";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 import {
   Search,
   CheckCircle2,
@@ -194,10 +195,7 @@ function AdminEnrollmentsPage() {
       {/* Table Section */}
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
         {isLoading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground">
-            <Clock className="mx-auto h-6 w-6 animate-spin text-marine mb-2" />
-            Memuat data permohonan pendaftaran...
-          </div>
+          <LoadingSkeleton rows={4} className="p-4" label="Memuat data permohonan pendaftaran…" />
         ) : items.length === 0 ? (
           <div className="p-12 text-center text-xs text-muted-foreground">
             <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground/60 mb-2" />

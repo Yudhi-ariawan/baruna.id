@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import {
   Search as SearchIcon,
   ArrowRight,
@@ -477,7 +478,12 @@ function SearchPage() {
         {/* Results List */}
         <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden">
           <ul className="divide-y divide-border">
-            {filteredHits.length === 0 && (
+            {filteredHits.length === 0 && isLoadingLive && (
+              <li className="p-4">
+                <ListSkeleton rows={3} label="Syncing live catalog…" />
+              </li>
+            )}
+            {filteredHits.length === 0 && !isLoadingLive && (
               <li className="p-8 text-center">
                 <p className="text-sm font-semibold text-navy">{t("search.noResults")}</p>
                 <p className="mt-1 text-xs text-muted-foreground">

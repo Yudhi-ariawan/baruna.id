@@ -8,6 +8,7 @@ import {
   submitMyDraftForReview,
   withdrawMyDraft,
 } from "@/lib/governance/governance-ops.functions";
+import { PanelSkeleton } from "@/components/baruna/loading/Skeletons";
 
 export const Route = createFileRoute("/my-submissions/$id")({
   component: DraftDetail,
@@ -83,7 +84,7 @@ function DraftDetail() {
     onError: (e: Error) => setMsg(e.message),
   });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.isLoading) return <PanelSkeleton lines={5} label="Loading…" />;
   if (q.error) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
   if (!q.data) return <p className="text-sm text-muted-foreground">Draft not found.</p>;
 

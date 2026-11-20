@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/baruna/page/PageShell";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
 import type { TrainerPortalBootstrap } from "@/lib/experts/portal-services.types";
@@ -324,9 +325,7 @@ function ReviewStatusPage() {
 
         {/* Content Area */}
         {q.isLoading ? (
-          <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
-            Memuat data pengajuan modul...
-          </div>
+          <ListSkeleton rows={3} label="Memuat data pengajuan modul…" />
         ) : filteredDrafts.length ? (
           <div className="space-y-6">
             {filteredDrafts.map((d) => {

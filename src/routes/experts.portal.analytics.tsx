@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { BarChart3, Users, TrendingUp, Star, CheckCircle2, BookOpen } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
+import { RoutePendingSkeleton } from "@/components/baruna/loading/RoutePendingSkeleton";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import { formatUsp } from "@/lib/trainerModules";
 import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
@@ -29,7 +31,7 @@ function AnalyticsPage() {
     .filter((m) => ["approved", "published"].includes(m.status))
     .reduce((n, m) => n + (m.hours ?? 0), 0);
 
-  if (q.isLoading) return <p className="p-10 text-sm text-muted-foreground">Loading learner statistics…</p>;
+  if (q.isLoading) return <RoutePendingSkeleton label="Loading learner statistics…" withStats />;
   if (!t) return <p className="p-10 text-sm text-muted-foreground">Learner statistics are unavailable.</p>;
   const max = Math.max(0, ...countries.map((r) => r.participants));
   const rate = summary.data?.totals.completionRate;
@@ -67,7 +69,7 @@ function AnalyticsPage() {
           {summary.isError ? (
             <p className="mt-4 text-sm text-destructive">{summary.error instanceof Error ? summary.error.message : "Statistics could not be loaded."}</p>
           ) : summary.isLoading ? (
-            <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+            <ListSkeleton rows={3} className="mt-4" label="Loading…" />
           ) : (summary.data?.modules.length ?? 0) === 0 ? (
             <p className="mt-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">You have no published module yet.</p>
           ) : (

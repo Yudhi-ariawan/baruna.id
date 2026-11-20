@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { UserRound } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { PanelSkeleton } from "@/components/baruna/loading/Skeletons";
 import { AvatarManager } from "@/components/baruna/account/AvatarManager";
 import { ProfileIdentityForm } from "@/components/baruna/account/ProfileIdentityForm";
 import { AccountSecuritySection } from "@/components/baruna/account/AccountSecuritySection";
@@ -53,8 +54,9 @@ function AccountProfilePage() {
         </div>
 
         {profileQuery.isLoading ? (
-          <div className="mt-8 rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
-            {isId ? "Memuat profil Anda…" : "Loading your profile…"}
+          <div className="mt-8 space-y-6">
+            <PanelSkeleton lines={4} label={isId ? "Memuat profil Anda…" : "Loading your profile…"} />
+            <PanelSkeleton lines={3} label={isId ? "Memuat profil Anda…" : "Loading your profile…"} />
           </div>
         ) : profileQuery.isError || !profileQuery.data ? (
           <div className="mt-8 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">

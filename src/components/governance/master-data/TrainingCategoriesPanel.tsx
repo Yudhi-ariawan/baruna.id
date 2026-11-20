@@ -8,6 +8,7 @@ import {
   setMasterTrainingCategoryActive,
 } from "@/lib/governance/training-categories.functions";
 import { TaxonomyMasterPanel } from "./TaxonomyMasterPanel";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 
 const QUERY_KEY = ["governance", "master-data", "training-categories"];
 
@@ -21,9 +22,11 @@ export function TrainingCategoriesPanel() {
     return (
       <section className="rounded-2xl border border-border bg-white p-5">
         <h2 className="font-display text-lg font-bold text-navy">Kategori Pelatihan</h2>
-        <p className={`mt-1 text-sm ${q.isError ? "text-destructive" : "text-muted-foreground"}`}>
-          {q.isError ? (q.error as Error).message : "Memuat…"}
-        </p>
+        {q.isError ? (
+          <p className="mt-1 text-sm text-destructive">{(q.error as Error).message}</p>
+        ) : (
+          <ListSkeleton rows={3} className="mt-3" label="Memuat kategori…" />
+        )}
       </section>
     );
   }

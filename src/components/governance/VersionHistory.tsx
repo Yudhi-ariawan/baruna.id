@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronDown, ChevronRight, History } from "lucide-react";
 import { getContentVersionHistory } from "@/lib/governance/version-history.functions";
+import { LinesSkeleton } from "@/components/baruna/loading/Skeletons";
 
 const fmt = (iso: string) => new Date(iso).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 const SOURCE_LABEL = {
@@ -36,7 +37,7 @@ export function VersionHistory({ subjectId, defaultOpen = false }: { subjectId: 
       {open ? (
         <div className="mt-2">
           {q.isLoading ? (
-            <p className="text-muted-foreground">Memuat riwayat versi…</p>
+            <LinesSkeleton lines={2} label="Memuat riwayat versi…" />
           ) : q.isError ? (
             <p className="text-destructive">{(q.error as Error).message}</p>
           ) : !q.data?.supported ? (

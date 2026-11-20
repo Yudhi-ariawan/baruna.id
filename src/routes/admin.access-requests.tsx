@@ -2,7 +2,8 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { KeyRound, Loader2 } from "lucide-react";
+import { KeyRound } from "lucide-react";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import { listAccessRequests } from "@/lib/admin/role-requests.functions";
 import { AccessRequestCard } from "@/components/admin/access-requests/AccessRequestCard";
 
@@ -49,7 +50,7 @@ function AccessRequestsPage() {
       </div>
 
       {q.isLoading ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</p>
+        <ListSkeleton rows={3} label="Memuat permintaan akses…" />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
       ) : (q.data?.items ?? []).length === 0 ? (

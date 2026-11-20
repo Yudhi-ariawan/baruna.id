@@ -22,6 +22,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { PageShell } from "@/components/baruna/page/PageShell";
+import { PageSkeleton } from "@/components/baruna/loading/Skeletons";
 import { trainerPortalNav, EXPERTS_SIDEBAR_META } from "@/data/expertsNav";
 import { LEVEL_LABEL, formatUsp } from "@/lib/trainerModules";
 import { useTrainerPortal } from "@/lib/experts/useTrainerPortal";
@@ -161,10 +162,7 @@ function PortalDashboard() {
           sections: trainerPortalNav("/experts/portal"),
         }}
       >
-        <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-          <Clock className="mx-auto h-8 w-8 text-marine animate-spin" />
-          <p className="mt-3 text-sm text-muted-foreground">Memuat dashboard pengajar…</p>
-        </div>
+        <PageSkeleton label="Memuat dashboard pengajar…" />
       </PageShell>
     );
   }

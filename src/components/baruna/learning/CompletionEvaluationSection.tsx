@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Info } from "lucide-react";
 import { barunaToast } from "@/lib/downloads";
+import { PanelSkeleton } from "@/components/baruna/loading/Skeletons";
 import {
   useCompletionEvaluationForm,
   useStartCompletionEvaluation,
@@ -46,7 +47,7 @@ export function CompletionEvaluationSection({ enrolmentId }: { enrolmentId: stri
       </p>
     );
   }
-  if (formQ.isLoading) return <p className="text-sm text-muted-foreground">Loading evaluation…</p>;
+  if (formQ.isLoading) return <PanelSkeleton lines={4} label="Loading evaluation…" />;
   if (!data) return <p className="text-sm text-muted-foreground">Evaluation unavailable.</p>;
 
   const state = data.state;

@@ -43,6 +43,7 @@ import {
 import { barunaToast } from "@/lib/downloads";
 import { CompletionEvaluationSection } from "@/components/baruna/learning/CompletionEvaluationSection";
 import { CompletionStatusPanel } from "@/components/baruna/learning/CompletionStatusPanel";
+import { SkeletonBar } from "@/components/baruna/loading/Skeletons";
 import { OfferingApplicationAction } from "@/components/baruna/learning/OfferingApplicationAction";
 import { MyAttendanceSection } from "@/components/baruna/learning/MyAttendanceSection";
 import { CertificateSheetActions } from "@/components/baruna/learning/CertificateSheetActions";
@@ -230,7 +231,7 @@ export function LearningDashboard({ offering }: { offering: OfferingWithModules 
                 {completedModules} of {totalModules} modules
               </div>
               {authLoading || detailQ.isLoading ? (
-                <div className="mt-3 text-xs text-muted-foreground">Loading…</div>
+                <div role="status" className="mt-3"><span className="sr-only">Loading…</span><SkeletonBar className="h-9 w-full rounded-lg" /></div>
               ) : !user ? (
                 <Link
                   to="/auth"

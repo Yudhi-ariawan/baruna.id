@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import {
   Bookmark,
   ArrowRight,
@@ -222,9 +223,7 @@ function SavedPage() {
             </div>
 
             {khLoading && savedKhIds.length > 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-                Loading your bookmarked resources...
-              </div>
+              <ListSkeleton rows={Math.min(3, savedKhIds.length)} label="Loading your bookmarked resources…" />
             ) : savedKhResources.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
                 <Bookmark className="mx-auto h-8 w-8 text-muted-foreground/50" />

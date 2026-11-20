@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { listMyDrafts } from "@/lib/governance/governance-ops.functions";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 
 export const Route = createFileRoute("/my-submissions/")({
   component: MySubmissionsIndex,
@@ -11,7 +12,7 @@ function MySubmissionsIndex() {
   const fn = useServerFn(listMyDrafts);
   const q = useQuery({ queryKey: ["my-submissions", "list"], queryFn: () => fn() });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.isLoading) return <ListSkeleton rows={3} label="Loading…" />;
   if (q.error) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
   const rows = q.data ?? [];
 

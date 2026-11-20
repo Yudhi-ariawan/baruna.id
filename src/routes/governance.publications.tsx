@@ -4,6 +4,7 @@ import { usePagedList } from "@/lib/governance/usePagedList";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 import {
   Archive,
   FileText,
@@ -266,10 +267,7 @@ function AdminPublicationsPage() {
 
         {/* Content Table / Cards */}
         {query.isLoading ? (
-          <div className="rounded-xl border border-border bg-white p-12 text-center text-xs text-muted-foreground">
-            <RefreshCw className="mx-auto h-6 w-6 animate-spin text-marine mb-2" />
-            Memuat daftar pengajuan publikasi...
-          </div>
+          <LoadingSkeleton rows={4} label="Memuat daftar pengajuan publikasi…" />
         ) : filteredItems.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-white p-12 text-center">
             <FileText className="mx-auto h-8 w-8 text-muted-foreground/60 mb-2" />

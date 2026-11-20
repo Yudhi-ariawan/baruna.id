@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Plus, ClipboardList, Inbox, LogIn } from "lucide-react";
 import { AcademyShell } from "@/components/baruna/academy/AcademyShell";
 import { AcademyHeader } from "@/components/baruna/academy/ui";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import { StageBadge } from "@/components/baruna/academy/training-requests/shared";
 import { formatDateTime, localToSummary } from "@/components/baruna/academy/training-requests/view-model";
 import { listMyTrainingRequests } from "@/lib/training-requests/my-requests.functions";
@@ -104,9 +105,7 @@ function TrainingRequestsPage() {
             </Link>
           </div>
         ) : loading ? (
-          <p className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
-            Loading your training requests…
-          </p>
+          <ListSkeleton rows={3} label="Loading your training requests…" />
         ) : query.isError ? (
           <p className="rounded-xl bg-destructive/10 p-5 text-sm text-destructive">
             Unable to load your training requests. {(query.error as Error).message}

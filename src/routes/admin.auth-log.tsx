@@ -4,6 +4,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, LogIn, Search, ShieldCheck } from "lucide-react";
 import { listAuthEvents } from "@/lib/admin/auth-log.functions";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import { AUTH_EVENTS, AUTH_EVENT_INFO, describeDevice, type AuthEvent, type AuthLogEntry } from "@/lib/admin/auth-log.shared";
 
 // Log Autentikasi (Slide 42, LS-01 output "Authentication Log"): who signed in or
@@ -135,7 +136,7 @@ function AuthLogPage() {
       </form>
 
       {q.isLoading ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Memuat log…</p>
+        <ListSkeleton rows={5} label="Memuat log…" />
       ) : q.isError ? (
         <p className="text-sm text-destructive">{(q.error as Error).message === "forbidden" ? "Akun Anda tidak memiliki izin membaca log." : (q.error as Error).message}</p>
       ) : items.length === 0 ? (

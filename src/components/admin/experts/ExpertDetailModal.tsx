@@ -17,8 +17,8 @@ import {
   CheckCircle2,
   RotateCcw,
   XCircle,
-  RefreshCw,
 } from "lucide-react";
+import { PanelSkeleton, SkeletonBar } from "@/components/baruna/loading/Skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -188,7 +188,7 @@ export function ExpertDetailModal({
               </span>
               <div>
                 <DialogTitle className="text-base sm:text-xl font-bold text-navy leading-snug">
-                  {isLoading ? "Memuat data kandidat..." : detail?.applicantName}
+                  {isLoading ? <SkeletonBar className="h-6 w-56" /> : detail?.applicantName}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
                   {detail?.jobTitle
@@ -202,9 +202,9 @@ export function ExpertDetailModal({
         </DialogHeader>
 
         {isLoading || !detail ? (
-          <div className="py-16 text-center text-sm text-muted-foreground">
-            <RefreshCw className="mx-auto h-6 w-6 animate-spin text-marine" />
-            <p className="mt-2">Mengambil berkas dan kelengkapan kandidat...</p>
+          <div className="space-y-4 py-4">
+            <PanelSkeleton lines={4} label="Mengambil berkas dan kelengkapan kandidat…" />
+            <PanelSkeleton lines={3} label="Mengambil berkas dan kelengkapan kandidat…" />
           </div>
         ) : (
           <>

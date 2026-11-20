@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Clock, GraduationCap, Loader2, ShieldAlert, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, GraduationCap, ShieldAlert, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/baruna/Navbar";
+import { PanelSkeleton } from "@/components/baruna/loading/Skeletons";
 import { TrainerApplicationForm } from "@/components/baruna/experts/TrainerApplicationForm";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveUserId } from "@/lib/authSession";
@@ -50,7 +51,7 @@ function TrainerApplicationPage() {
   };
 
   const body = (() => {
-    if (query.isLoading) return <Notice icon={Loader2} spin title="Checking your eligibility…" />;
+    if (query.isLoading) return <PanelSkeleton lines={4} label="Checking your eligibility…" />;
     if (query.isError) return <Notice icon={ShieldAlert} title="Unable to load your trainer status" text={query.error instanceof Error ? query.error.message : undefined} />;
     const state = query.data;
     if (state === null || state === undefined) {
@@ -114,10 +115,10 @@ function TrainerApplicationPage() {
   );
 }
 
-function Notice({ icon: Icon, title, text, action, spin, children }: { icon: React.ElementType; title: string; text?: string; action?: { label: string; to: string }; spin?: boolean; children?: React.ReactNode }) {
+function Notice({ icon: Icon, title, text, action, children }: { icon: React.ElementType; title: string; text?: string; action?: { label: string; to: string }; children?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-border bg-card px-6 py-12 text-center shadow-soft">
-      <span className="grid h-14 w-14 place-items-center rounded-full bg-marine/10 text-marine"><Icon className={`h-7 w-7 ${spin ? "animate-spin" : ""}`} /></span>
+      <span className="grid h-14 w-14 place-items-center rounded-full bg-marine/10 text-marine"><Icon className="h-7 w-7" /></span>
       <h2 className="mt-4 font-display text-xl font-bold text-navy">{title}</h2>
       {text && <p className="mt-2 max-w-lg text-sm text-muted-foreground">{text}</p>}
       {action && <Link to={action.to} className="mt-5 rounded-xl bg-marine px-5 py-2.5 text-sm font-semibold text-white hover:bg-navy">{action.label}</Link>}

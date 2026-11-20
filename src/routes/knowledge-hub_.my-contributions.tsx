@@ -19,6 +19,7 @@ import {
   Video,
 } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import { useHomeExperience } from "@/components/baruna/home-experience";
 import {
   listMyKnowledgeContributions,
@@ -430,10 +431,7 @@ function MyContributionsPage() {
 
         <div className="mt-6 space-y-4">
           {query.isLoading ? (
-            <div className="rounded-2xl border border-border bg-card p-12 text-center text-xs text-muted-foreground">
-              <RefreshCw className="mx-auto h-6 w-6 animate-spin text-marine mb-2" />
-              Memuat data kontribusi Anda dari sistem...
-            </div>
+            <ListSkeleton rows={3} label="Memuat data kontribusi Anda…" />
           ) : contributions.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
               <Globe className="mx-auto h-8 w-8 text-marine" />

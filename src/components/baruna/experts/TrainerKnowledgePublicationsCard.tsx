@@ -18,6 +18,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import { listMyKnowledgeContributions, type KnowledgeContributionItem } from "@/lib/knowledge-hub/contribution.functions";
 
 function formatDate(dateStr: string) {
@@ -146,9 +147,7 @@ export function TrainerKnowledgePublicationsCard({
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center text-xs text-muted-foreground">
-          Memuat daftar kontribusi Knowledge Hub Anda…
-        </div>
+        <ListSkeleton rows={2} className="py-4" label="Memuat daftar kontribusi Knowledge Hub Anda…" />
       ) : items.length === 0 ? (
         <div className="py-10 text-center">
           <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />

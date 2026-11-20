@@ -13,7 +13,6 @@ import {
   ZoomIn,
   ZoomOut,
   X,
-  RefreshCw,
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -217,9 +216,9 @@ export function DocumentViewerModal({
         {/* Viewer Content Area */}
         <div className="flex-1 w-full h-full relative overflow-hidden bg-slate-950 flex items-center justify-center">
           {isBlobLoading ? (
-            <div className="flex flex-col items-center gap-2 text-slate-400">
-              <RefreshCw className="h-7 w-7 animate-spin text-marine" />
-              <p className="text-xs">Menyiapkan pratinjau dokumen...</p>
+            <div role="status" className="flex h-full w-full max-w-3xl p-6">
+              <span className="sr-only">Menyiapkan pratinjau dokumen…</span>
+              <div className="skeleton-shimmer h-full w-full rounded-lg opacity-60" />
             </div>
           ) : (
             <>

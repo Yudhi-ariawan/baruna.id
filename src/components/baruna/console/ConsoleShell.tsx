@@ -2,6 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { ChevronRight, ExternalLink, LogOut, Menu, ShieldAlert, ShieldCheck, User, X, type LucideIcon } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ConsoleUser } from "./useConsoleSession";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 
 export interface ConsoleNavItem {
   label: string;
@@ -213,17 +214,31 @@ export function ConsoleShell({
   );
 }
 
+/** Console-shaped skeleton (sidebar + content) while access is checked. */
 export function ConsoleLoading({ message }: { message: string }) {
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-50 text-sm text-muted-foreground">
-      <div className="flex flex-col items-center gap-3">
-        <span className="rounded-2xl bg-navy p-3 text-white shadow-md animate-pulse">
-          <ShieldCheck className="h-7 w-7" />
-        </span>
-        <p className="font-semibold text-navy">{message}</p>
-      </div>
+    <div role="status" aria-live="polite" className="flex h-screen bg-slate-50">
+      <span className="sr-only">{message}</span>
+      <aside className="hidden w-72 shrink-0 flex-col gap-3 border-r border-border bg-white p-5 lg:flex">
+        <div className="flex items-center gap-3">
+          <SkeletonBar className="h-10 w-10 rounded-xl" />
+          <div className="flex-1 space-y-2"><SkeletonBar className="h-3.5 w-2/3" /><SkeletonBar className="h-3 w-1/2" /></div>
+        </div>
+        <div className="mt-4 space-y-2.5">
+          {Array.from({ length: 9 }, (_, i) => <SkeletonBar key={i} className={`h-8 ${i % 3 === 0 ? "w-1/3" : "w-full"}`} />)}
+        </div>
+      </aside>
+      <main className="flex-1 space-y-6 p-6">
+        <SkeletonBar className="h-6 w-48" />
+        <p className="flex items-center gap-2 text-xs font-semibold text-navy/70"><ShieldCheck className="h-4 w-4" /> {message}</p>
+        <LoadingSkeleton rows={4} label={message} />
+      </main>
     </div>
   );
+}
+
+function SkeletonBar({ className }: { className?: string }) {
+  return <div aria-hidden className={`skeleton-shimmer rounded-md ${className ?? ""}`} />;
 }
 
 export function ConsoleAccessDenied({

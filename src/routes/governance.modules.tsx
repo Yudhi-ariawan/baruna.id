@@ -6,6 +6,8 @@ import { ReadOnlyReviewNotice } from "@/components/baruna/console/ReadOnlyReview
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
+import { PanelSkeleton } from "@/components/baruna/loading/Skeletons";
 import {
   Archive,
   ArchiveRestore,
@@ -327,10 +329,7 @@ function AdminModulesPage() {
       {/* Main Content Area: Responsive Mobile Cards + Desktop Table */}
       <div className="rounded-2xl border border-border bg-white shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-muted-foreground">
-            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-marine mb-2" />
-            Memuat daftar pengajuan modul...
-          </div>
+          <LoadingSkeleton rows={4} className="p-4" label="Memuat daftar pengajuan modul…" />
         ) : modules.length === 0 ? (
           <div className="py-16 px-4 text-center">
             <BookOpen className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
@@ -657,9 +656,9 @@ function ModuleDetailModal({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl w-[96vw] sm:w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 md:p-8">
         {isLoading || !detail ? (
-          <div className="py-24 text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-marine mb-3" />
-            <p className="text-sm font-semibold text-navy">Memuat rincian pengajuan modul...</p>
+          <div className="space-y-4 py-4">
+            <PanelSkeleton lines={4} label="Memuat rincian pengajuan modul…" />
+            <PanelSkeleton lines={3} label="Memuat rincian pengajuan modul…" />
           </div>
         ) : (
           <>

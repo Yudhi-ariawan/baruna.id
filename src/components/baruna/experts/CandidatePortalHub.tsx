@@ -27,6 +27,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PageSkeleton } from "@/components/baruna/loading/Skeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { listMyExpertApplications } from "@/lib/experts/application.functions";
 import type { ExpertApplicationStatus, ExpertApplicationDocument } from "@/lib/experts/application.types";
@@ -70,9 +71,8 @@ export function CandidatePortalHub({ userDisplayName }: { userDisplayName?: stri
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-muted-foreground sm:px-6">
-        <Clock3 className="mx-auto h-8 w-8 animate-spin text-marine" />
-        <p className="mt-3">Memeriksa status pengajuan expert Anda…</p>
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        <PageSkeleton label="Memeriksa status pengajuan expert Anda…" withStats={false} />
       </div>
     );
   }

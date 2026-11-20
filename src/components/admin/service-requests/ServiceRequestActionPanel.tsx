@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ServiceRequestTimeline } from "@/components/baruna/experts/ServiceRequestTimeline";
+import { ListSkeleton } from "@/components/baruna/loading/Skeletons";
 import { REQUEST_TYPE_CONFIG, formatDate } from "@/lib/experts";
 import { serviceRequestStatusText } from "@/lib/experts/portal-services.types";
 import { getServiceRequestFileUrl } from "@/lib/experts/service-request-files.functions";
@@ -245,7 +246,7 @@ function ExpertPicker({ selected, onSelect, search, onSearch }: { selected: stri
       <p className="text-[11px] text-muted-foreground">Hanya expert dengan status trainer aktif yang ditampilkan, karena hanya mereka yang memiliki kotak masuk permintaan.</p>
       <div className="max-h-56 space-y-1 overflow-y-auto">
         {query.isLoading ? (
-          <p className="p-3 text-xs text-muted-foreground">Memuat expert…</p>
+          <ListSkeleton rows={3} label="Memuat expert…" />
         ) : query.isError ? (
           <p className="p-3 text-xs text-destructive">{query.error instanceof Error ? query.error.message : "Gagal memuat expert."}</p>
         ) : query.data?.length ? (

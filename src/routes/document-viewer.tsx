@@ -10,7 +10,6 @@ import {
   RotateCw,
   ZoomIn,
   ZoomOut,
-  RefreshCw,
   ArrowLeft,
   ShieldCheck,
 } from "lucide-react";
@@ -205,9 +204,10 @@ function DocumentViewerPage() {
       {/* Main Preview Area */}
       <main className="flex-1 w-full h-full relative overflow-hidden bg-slate-950 flex items-center justify-center">
         {isBlobLoading ? (
-          <div className="flex flex-col items-center gap-3 text-slate-400">
-            <RefreshCw className="h-8 w-8 animate-spin text-marine" />
-            <p className="text-sm font-medium">Memuat dan mendekode dokumen...</p>
+          // Page-shaped placeholder on the dark viewer background.
+          <div role="status" className="flex h-full w-full max-w-3xl flex-col gap-3 p-6">
+            <span className="sr-only">Memuat dan mendekode dokumen…</span>
+            <div className="skeleton-shimmer h-full w-full rounded-lg opacity-60" />
           </div>
         ) : (
           <>

@@ -41,6 +41,7 @@ import type {
   AdminUser,
 } from "@/lib/admin/users.functions";
 import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
+import { LinesSkeleton } from "@/components/baruna/loading/Skeletons";
 
 export const Route = createFileRoute("/admin/users")({
   component: UsersPage,
@@ -1222,7 +1223,7 @@ function UserDialog({
           <section>
             <SectionTitle icon={<Clock3 className="h-4 w-4" />} text="Access history" />
             {history.isLoading ? (
-              <p className="text-xs text-muted-foreground">Loading history…</p>
+              <LinesSkeleton lines={3} label="Loading history…" />
             ) : null}
             <div className="space-y-2">
               {((history.data ?? []) as AdminAuditEvent[]).map((event) => (

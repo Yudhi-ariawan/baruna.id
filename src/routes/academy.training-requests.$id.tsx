@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, PencilLine, RotateCcw } from "lucide-react";
 import { Navbar } from "@/components/baruna/Navbar";
+import { PageSkeleton } from "@/components/baruna/loading/Skeletons";
 import { StageBadge } from "@/components/baruna/academy/training-requests/shared";
 import { formatDateTime, localToDetail } from "@/components/baruna/academy/training-requests/view-model";
 import { RequestTimeline } from "@/components/baruna/academy/training-requests/RequestTimeline";
@@ -47,7 +48,7 @@ function TrainingRequestDetailPage() {
   };
 
   if (!presentation && (authLoading || (user && UUID.test(id) && query.isLoading))) {
-    return <Shell><p className="py-16 text-center text-sm text-muted-foreground">Loading training request…</p></Shell>;
+    return <Shell><PageSkeleton label="Loading training request…" withStats={false} className="py-6" /></Shell>;
   }
 
   if (!request) {

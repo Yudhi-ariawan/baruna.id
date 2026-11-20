@@ -4,6 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getKhTopicOptions } from "@/lib/knowledge-hub/topic-options.functions";
+import { ChipsSkeleton } from "@/components/baruna/loading/Skeletons";
 
 const norm = (v: string) => v.trim().replace(/\s+/g, " ").toLowerCase();
 
@@ -16,7 +17,7 @@ export function TopicSelector({ value, onChange }: { value: string; onChange: (t
     gcTime: 30 * 60_000,
   });
 
-  if (q.isLoading) return <p className="text-xs text-muted-foreground">Memuat daftar topik…</p>;
+  if (q.isLoading) return <ChipsSkeleton label="Memuat daftar topik…" />;
   if (q.isError) return <p className="text-xs text-destructive">{(q.error as Error).message}</p>;
 
   const options = q.data ?? [];

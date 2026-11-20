@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Clock, FileText, Loader2, RotateCcw, Send, Upload, XCircle } from "lucide-react";
+import { SkeletonBar } from "@/components/baruna/loading/Skeletons";
 import {
   getMyCourseEnrollmentStatus,
   submitCourseEnrollmentApplication,
@@ -63,7 +64,7 @@ export function OfferingApplicationAction({ offeringCode, title, requiredDocumen
   };
 
   const s = statusQ.data;
-  if (statusQ.isLoading) return <div className="mt-3 text-xs text-muted-foreground">Memeriksa pendaftaran…</div>;
+  if (statusQ.isLoading) return <div role="status" className="mt-3"><span className="sr-only">Memeriksa pendaftaran…</span><SkeletonBar className="h-10 w-full rounded-xl" /></div>;
   if (statusQ.isError) return <p className="mt-3 text-xs text-red-700">{statusQ.error instanceof Error ? statusQ.error.message : String(statusQ.error)}</p>;
 
   if (s?.status === "pending") {

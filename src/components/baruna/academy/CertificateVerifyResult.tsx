@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ShieldAlert, ShieldCheck } from "lucide-react";
 import { verifyCertificate } from "@/lib/learning/learning.functions";
+import { SkeletonBar } from "@/components/baruna/loading/Skeletons";
 
 /**
  * Looks the certificate number up in the database (public RPC verify_certificate).
@@ -19,7 +20,17 @@ export function CertificateVerifyResult({ number }: { number: string }) {
 
   if (isLoading) {
     return (
-      <Box tone="neutral" icon={<Loader2 className="h-6 w-6 animate-spin" />} title="Memeriksa sertifikat..." number={number} />
+      <div role="status" className="rounded-2xl border-2 border-border bg-card p-5 shadow-soft sm:p-6">
+        <span className="sr-only">Memeriksa sertifikat…</span>
+        <div className="flex items-start gap-3.5">
+          <SkeletonBar className="h-12 w-12 shrink-0 rounded-xl" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <SkeletonBar className="h-3 w-40" />
+            <SkeletonBar className="h-5 w-2/3" />
+            <SkeletonBar className="h-3 w-1/2" />
+          </div>
+        </div>
+      </div>
     );
   }
   if (isError) {

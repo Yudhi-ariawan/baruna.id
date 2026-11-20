@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { LoadingSkeleton } from "@/components/baruna/console/LoadingSkeleton";
 import {
   Archive,
   ArchiveRestore,
@@ -286,10 +287,7 @@ function AdminExpertsPage() {
       {/* Main Content Area: Responsive Mobile Cards + Desktop Table */}
       <div className="rounded-2xl border border-border bg-white shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-muted-foreground">
-            <RefreshCw className="h-6 w-6 animate-spin mx-auto text-marine mb-2" />
-            Memuat data permohonan expert...
-          </div>
+          <LoadingSkeleton rows={4} className="p-4" label="Memuat data permohonan expert…" />
         ) : applications.length === 0 ? (
           <div className="py-16 px-4 text-center">
             <FileText className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />

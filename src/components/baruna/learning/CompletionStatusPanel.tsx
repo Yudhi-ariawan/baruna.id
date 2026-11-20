@@ -3,6 +3,7 @@
 // status and downloads; the decision is taken in the console).
 import { CheckCircle2, Clock, RotateCcw } from "lucide-react";
 import { eligibilityReasonText } from "@/lib/learning/learning.functions";
+import { LinesSkeleton } from "@/components/baruna/loading/Skeletons";
 
 type Eligibility = {
   eligible: boolean;
@@ -16,7 +17,7 @@ type Eligibility = {
 
 export function CompletionStatusPanel({ data }: { data: Eligibility | undefined }) {
   const box = "rounded-xl border p-3 text-sm";
-  if (!data) return <div className={`${box} border-border bg-background text-muted-foreground`}>Memeriksa status…</div>;
+  if (!data) return <LinesSkeleton lines={2} label="Memeriksa status…" className={`${box} border-border bg-background`} />;
   if (!data.eligible) {
     return (
       <div className={`${box} border-border bg-background`}>

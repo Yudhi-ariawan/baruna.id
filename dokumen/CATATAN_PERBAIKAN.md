@@ -1616,6 +1616,34 @@ Pola sama dengan 2bj–2bl: garis merah dan pesan di kolom yang salah, ringkasan
 
 ---
 
+## 2by. Skeleton shimmer di seluruh situs saat memuat (20 Nov, permintaan pemilik proyek)
+
+**Masalah:** skeleton shimmer baru dipakai di Konsol Kurasi dan Portal Admin (2bv). Halaman lain masih menampilkan teks "Loading…/Memuat…" atau ikon berputar selagi data dimuat, di sekitar 50 tempat. Contohnya dashboard peserta, profil, Trainer Portal, My Requests, Knowledge Hub, formulir pilihan (bahasa, kategori, topik, bidang keahlian), dialog konsol, dan pemeriksaan sesi.
+
+**Perubahan (tanpa migrasi):**
+- **Komponen bersama** `src/components/baruna/loading/Skeletons.tsx`. Semua memakai animasi `.skeleton-shimmer` yang sama dengan konsol dan menyimpan teks untuk pembaca layar (`role="status"`):
+  - `ListSkeleton` (baris daftar), `PanelSkeleton` (kartu), `LinesSkeleton` (beberapa baris);
+  - `FieldSkeleton` (dropdown yang sedang memuat pilihan), `ChipsSkeleton` (pemilih topik/bidang);
+  - `StatsSkeleton` (kotak angka), `CardGridSkeleton` (katalog), `PageSkeleton` (isi halaman).
+- **Skeleton bawaan router** (`RoutePendingSkeleton`, di `router.tsx`): tampil bila loader halaman lebih dari 400 ms (minimal 300 ms agar tidak berkedip), lengkap dengan Navbar.
+  - Temuan saat uji: router juga memakai skeleton ini untuk route paling atas saat render di server, sebelum penyedia data terpasang, sehingga Navbar di dalamnya membuat **semua halaman error 500** di hasil build.
+  - Perbaikan: Navbar hanya digambar bila `HomeExperienceContext` tersedia. Ini tertangkap sebelum commit.
+- **Pemeriksaan sesi** (`RequireAuth`, untuk dashboard, Akun, dan Pembelajaran Saya), Trainer Portal, dan halaman My Submissions kini menampilkan halaman skeleton dengan Navbar.
+- `ConsoleLoading` (cek hak akses Portal Admin dan Konsol Kurasi) kini berbentuk konsol: sidebar dan isi.
+- Sekitar 50 teks/ikon loading diganti dengan bentuk yang mirip isinya: daftar menjadi baris, profil dan dialog menjadi kartu, dropdown menjadi kolom, pratinjau dokumen menjadi lembar.
+- Ikon berputar di **tombol** yang sedang memproses (Kirim, Simpan, Unggah) tetap dipertahankan, karena itu menandai aksi, bukan isi yang dimuat.
+
+**Uji:**
+- `tsc` dan `npm run build` lulus. Lint tidak menambah temuan baru; 6 error `any` di `academy.daftar-peserta`, `academy.learn.$id`, `admin.users`, dan `governance.enrollments` sudah ada sebelumnya.
+- Hasil build:
+  - 9 halaman (beranda, dashboard, about, academy, knowledge hub, direktori expert, `/p/uji-halaman`, governance, admin) merespons 200 tanpa error di log server;
+  - isi About tetap dirender server (bukan skeleton), sehingga SEO tidak berubah.
+- Browser dengan permintaan data ditahan 4 detik:
+  - skeleton tampil di dashboard (24 balok), Profil Saya (9), dan My Requests (12);
+  - semuanya hilang setelah data datang; 0 error.
+
+---
+
 ## 2bx. Penugasan Expert dibuka lagi, dengan tinjauan admin sebelum penugasan aktif (20 Nov, Slide 38 PB-EXP-03)
 
 **Latar:** fitur ini disembunyikan sejak 20 Okt (commit `bc0ea02`). Menu admin dihapus dan tombol kirim di `/experts/request` dimatikan. Tabel dan RPC-nya sudah ada sejak migrasi `20261014040000`. Pemilik proyek meminta fitur ini dibuka lagi dan diuji manual (20 Nov).
